@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 팀 디스코드
+    url: https://discord.gg/
+    about: 긴급 이슈나 빠른 소통은 디스코드 채널을 이용해주세요.
+  - name: 📖 프로젝트 위키
+    url: https://github.com/modoo-marble-team/Blue_Marble-frontend/wiki
+    about: 프로젝트 구조, 브랜치 전략, 컨벤션 등 문서를 확인해주세요.
