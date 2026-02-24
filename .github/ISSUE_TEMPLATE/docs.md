@@ -1,8 +1,8 @@
 ---
-name: 📝 문서화
-about: README, 위키, 코드 주석 등 문서 작업이 필요할 때 작성해주세요
-title: "[DOCS] "
-labels: documentation
+name: 📝 docs - 문서 수정
+about: README, 위키, 주석 등 문서 작업이 필요할 때 작성해주세요
+title: "📝 [DOCS] "
+labels: docs
 assignees: ""
 ---
 
@@ -15,12 +15,10 @@ assignees: ""
 - [ ] README.md
 - [ ] GitHub Wiki
 - [ ] 코드 내 주석 (JSDoc / 인라인 주석)
-- [ ] API 명세
 - [ ] 기타: 
 
 
 ## ✏️ 작업 내용
-> 구체적으로 추가 / 수정 / 삭제할 내용을 설명해주세요.
 
 **추가:**
 - 
@@ -34,9 +32,8 @@ assignees: ""
 
 ## ✅ 완료 기준
 
-- [ ] 문서 작성 완료
+- [ ] 문서 작성 / 수정 완료
 - [ ] 오탈자 및 문법 확인
-- [ ] 코드 예시 정상 작동 확인 (해당 시)
 - [ ] 팀원 검토 완료
 
 
