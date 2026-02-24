@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+echo "push 전 빌드 검증을 시작합니다..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "빌드 오류가 발생했습니다. 코드를 수정한 후 다시 push 해주세요."
+  exit 1
+fi
+echo "빌드 검증 완료. push를 진행합니다."

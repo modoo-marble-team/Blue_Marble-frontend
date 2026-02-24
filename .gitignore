@@ -3,6 +3,7 @@ node_modules
 
 # Build output
 dist
+.vite
 
 # Local env files
 .env

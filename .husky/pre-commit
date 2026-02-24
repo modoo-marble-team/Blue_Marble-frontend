@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+echo "프리커밋 검사 중입니다...(lint-staged)"
+npx lint-staged
+if [ $? -ne 0 ]; then
+  echo "lint-staged 검사 실패! 오류를 수정한 후 다시 커밋해주세요."
+  exit 1
+fi
+echo "모든 검사 통과! 커밋을 계속 진행합니다."
