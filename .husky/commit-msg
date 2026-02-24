@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+echo "🔍 커밋 메시지 규칙 검사 중..."
+if ! npx --no -- commitlint --edit "$1"; then
+  echo ""
+  echo "커밋 메시지가 규칙에 맞지 않습니다."
+  echo ""
+  echo "제목 예시: feat: 로그인 기능 추가"
+  exit 1
+fi
+echo "커밋 메시지 규칙 통과"
