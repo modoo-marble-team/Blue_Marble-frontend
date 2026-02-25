@@ -2,10 +2,13 @@ import { useEffect } from 'react'
 import { useGameStore } from '../../stores/game.store'
 
 export const useGameState = () => {
-  const { setGameState } = useGameStore()
+  const { setGameState, players } = useGameStore()
 
   useEffect(() => {
     const fetchGameState = async () => {
+      // Only mock if storage is empty
+      if (players.length > 0) return
+
       try {
         const response = await fetch('/api/game/state')
         const data = await response.json()
@@ -16,7 +19,7 @@ export const useGameState = () => {
     }
 
     fetchGameState()
-  }, [setGameState])
+  }, [setGameState, players.length])
 
   return {}
 }

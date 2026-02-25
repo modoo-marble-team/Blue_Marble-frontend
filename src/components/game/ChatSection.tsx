@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { ChatMessage } from '../../types/domain'
-import { Send } from 'lucide-react'
+import { cn } from '../../lib/utils'
 
 interface ChatSectionProps {
   messages: ChatMessage[]
@@ -23,44 +23,55 @@ const ChatSection: React.FC<ChatSectionProps> = ({
   }
 
   return (
-    <div className="flex h-full flex-col gap-3">
+    <div className="flex h-full w-[320px] flex-col gap-4">
       {/* Notice Area */}
       {notice && (
-        <div className="rounded-xl bg-[#4b5563] p-3 text-center text-sm font-bold text-white shadow-md">
-          {notice}
+        <div className="flex items-center justify-start rounded-lg border border-white/10 bg-[#314158]/90 p-3 shadow-md">
+          <span className="text-xs font-bold text-white leading-none">
+            {notice}
+          </span>
         </div>
       )}
 
-      {/* Chat Window */}
-      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border-2 border-[#e5e7eb] bg-white shadow-sm">
-        <div className="flex items-center gap-2 border-b border-gray-100 p-3">
-          <span className="text-gray-400">💬</span>
-          <span className="text-[12px] font-bold tracking-widest text-gray-500">
-            CHAT
-          </span>
+      {/* Chat Box */}
+      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 shadow-xl">
+        <div className="flex items-center justify-between border-b border-[#0F172B] bg-[#F8FAFC] p-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[#90A1B9] text-sm">💬</span>
+            <span className="text-xs font-black tracking-widest text-[#45556C]">
+              CHAT
+            </span>
+          </div>
         </div>
 
-        {/* Messages List */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto bg-[#F8FAFC]/30 p-3 space-y-3">
           {messages.map((msg) => {
             const isSystem = msg.type === 'system'
-
-            if (isSystem) {
-              return (
-                <div key={msg.id} className="flex justify-center">
-                  <div className="rounded-full bg-gray-50 px-4 py-1 text-[11px] font-medium text-gray-400 border border-gray-100">
-                    {msg.content}
-                  </div>
-                </div>
-              )
-            }
+            const isMine = msg.sender_id === 'me'
 
             return (
-              <div key={msg.id} className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-gray-400 px-1">
-                  {msg.sender_nickname}
-                </span>
-                <div className="max-w-[80%] rounded-2xl bg-[#f3f4f6] px-4 py-2 text-[12px] font-medium text-[#374151] shadow-sm self-start">
+              <div
+                key={msg.id}
+                className={cn(
+                  'flex flex-col',
+                  isMine ? 'items-end' : 'items-start'
+                )}
+              >
+                <div className="mb-0.5 px-0.5">
+                  <span className="text-[9px] font-bold text-[#90A1B9]">
+                    {isSystem ? 'System' : msg.sender_nickname}
+                  </span>
+                </div>
+
+                <div
+                  className={cn(
+                    'max-w-[85%] px-3 py-2 text-xs font-medium shadow-sm leading-snug',
+                    isMine
+                      ? 'rounded-[16px_0_16px_16px] bg-[#2B7FFF] text-white'
+                      : 'rounded-[0_16px_16px_16px] bg-white border border-[#E2E8F0] text-[#314158]'
+                  )}
+                >
                   {msg.content}
                 </div>
               </div>
@@ -68,23 +79,25 @@ const ChatSection: React.FC<ChatSectionProps> = ({
           })}
         </div>
 
-        {/* Input Area */}
+        {/* Input */}
         <form
           onSubmit={handleSubmit}
-          className="border-t border-gray-100 p-3 flex items-center gap-2 bg-[#f9fafb]"
+          className="flex gap-2 border-t border-[#0F172B] bg-white p-3"
         >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="메시지..."
-            className="flex-1 bg-transparent px-2 py-1 text-[13px] outline-none"
-          />
+          <div className="flex flex-1 items-center rounded-lg bg-[#F1F5F9] px-3 py-1.5 focus-within:ring-1 ring-[#2B7FFF]/30">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="메시지..."
+              className="w-full bg-transparent text-xs font-medium text-[#314158] outline-none placeholder:text-[#90A1B9]"
+            />
+          </div>
           <button
             type="submit"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500 text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2B7FFF] text-white shadow-md transition-transform hover:scale-105 active:scale-95"
           >
-            <Send size={14} />
+            <span className="text-sm">➤</span>
           </button>
         </form>
       </div>

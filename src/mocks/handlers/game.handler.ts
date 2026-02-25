@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { socket } from '../../lib/socket'
+import { mockPlayers, mockTiles, mockMessages } from '../gameMockData'
 
 export const gameHandlers = [
   /**
@@ -52,8 +53,6 @@ export const gameHandlers = [
   }),
 
   http.get('/api/game/state', async () => {
-    const { mockPlayers, mockTiles, mockMessages } =
-      await import('../gameMockData')
     return HttpResponse.json({
       players: mockPlayers,
       tiles: mockTiles,

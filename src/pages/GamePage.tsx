@@ -5,17 +5,16 @@ import PlayerCard from '../components/game/PlayerCard'
 import ChatSection from '../components/game/ChatSection'
 import RollControl from '../components/game/RollControl'
 import { useGameStore } from '../stores/game.store'
-
 import { useGameState } from '../features/game/useGameState'
 
 const GamePage: React.FC = () => {
   const { players, tiles, messages, currentTurn, addMessage } = useGameStore()
   const [timeLeft, setTimeLeft] = useState(27)
 
-  // Initialize game state via hook
+  // Fetch initial state via hook
   useGameState()
 
-  // Timer logic
+  // Game timer logic
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 30))
@@ -39,17 +38,17 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen w-full bg-[#fdfcf5] p-6">
-      {/* Top Left Settings */}
+    <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
+      {/* Settings Tray */}
       <div className="absolute left-6 top-6">
-        <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-md border border-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+        <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 shadow-sm transition-colors hover:bg-white text-[#45556C]">
           <Settings size={20} />
         </button>
       </div>
 
-      <div className="mx-auto flex w-full max-w-[1400px] gap-8">
-        {/* Sidebar Left */}
-        <div className="w-[300px] flex flex-col pt-[120px]">
+      <div className="mx-auto flex w-full max-w-[1551px] h-full items-center justify-between gap-8 pt-4 pb-12">
+        {/* Sidebar Left: Chat */}
+        <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
           <ChatSection
             messages={messages}
             onSendMessage={handleSendMessage}
@@ -57,20 +56,13 @@ const GamePage: React.FC = () => {
           />
         </div>
 
-        {/* Center Board Area */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-10">
+        {/* Center: Board */}
+        <div className="flex flex-1 items-center justify-center shrink-0">
           <Board tiles={tiles} />
-          <div className="flex w-full items-center justify-end pr-8">
-            <RollControl
-              timeLeft={timeLeft}
-              isMyTurn={currentTurn === 'me'}
-              onRoll={handleRollDice}
-            />
-          </div>
         </div>
 
-        {/* Sidebar Right */}
-        <div className="w-[280px] flex flex-col gap-4 pt-[20px]">
+        {/* Sidebar Right: Players */}
+        <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {players.map((player) => (
             <PlayerCard
               key={player.id}
@@ -79,6 +71,15 @@ const GamePage: React.FC = () => {
             />
           ))}
         </div>
+      </div>
+
+      {/* Control Area */}
+      <div className="absolute bottom-10 right-10">
+        <RollControl
+          timeLeft={timeLeft}
+          isMyTurn={currentTurn === 'me'}
+          onRoll={handleRollDice}
+        />
       </div>
     </div>
   )
