@@ -50,4 +50,16 @@ export const gameHandlers = [
       dice: [dice1, dice2],
     })
   }),
+
+  http.get('/api/game/state', async () => {
+    const { mockPlayers, mockTiles, mockMessages } =
+      await import('../gameMockData')
+    return HttpResponse.json({
+      players: mockPlayers,
+      tiles: mockTiles,
+      messages: mockMessages,
+      currentTurn: 'me',
+      round: 1,
+    })
+  }),
 ]

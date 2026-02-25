@@ -18,12 +18,23 @@ export interface Card {
   effect_value: number
 }
 
+export interface ChatMessage {
+  id: string
+  sender_id: string
+  sender_nickname: string
+  content: string
+  timestamp: string
+  type: 'talk' | 'system'
+}
+
 export interface Tile {
   index: number
   owner_id?: string | null
   building: BuildingLevel
-  name?: string
-  type?: TileType
+  name: string
+  type: TileType
+  price?: number
+  color?: string // Group color for property
 }
 
 export interface Player {
@@ -36,6 +47,7 @@ export interface Player {
   jail_turn_count: number
   is_bankrupt: boolean
   color: string
+  avatar?: string
 }
 
 export type ActiveModal = 'buy' | 'card' | 'penalty' | 'bankrupt' | null
@@ -56,6 +68,7 @@ export type GameResult = {
 export interface GameState {
   players: Player[]
   tiles: Tile[]
+  messages: ChatMessage[]
   currentTurn: string | null // 프론트 내부 상태 — camelCase 통일
   round: number
   activeModal: ActiveModal
