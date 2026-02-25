@@ -6,6 +6,7 @@ import type {
   ActiveModal,
   GameResult,
   GameState,
+  ChatMessage,
 } from '../types/domain'
 
 interface GameActions {
@@ -15,12 +16,14 @@ interface GameActions {
   setCurrentTurn: (playerId: string) => void
   setModal: (modal: ActiveModal) => void
   setGameResult: (result: GameResult) => void
+  addMessage: (message: ChatMessage) => void
   resetGame: () => void
 }
 
 const INITIAL_STATE: GameState = {
   players: [],
   tiles: [],
+  messages: [],
   currentTurn: null,
   round: 1,
   activeModal: null,
@@ -67,6 +70,11 @@ export const useGameStore = create<GameState & GameActions>()(
     setGameResult: (result) =>
       set((draft) => {
         draft.gameResult = result
+      }),
+
+    addMessage: (message) =>
+      set((draft) => {
+        draft.messages.push(message)
       }),
 
     resetGame: () =>

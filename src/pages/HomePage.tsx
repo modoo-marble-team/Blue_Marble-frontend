@@ -137,13 +137,23 @@ function HomePage() {
           </p>
 
           <div className="mx-auto mt-8 flex w-full max-w-[380px] flex-col gap-3">
-            <button
-              type="button"
-              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-[#ffe812] py-3 text-[1.125rem] font-bold text-[#191919] shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all hover:bg-[#f5dc00] active:scale-[0.98]"
-            >
-              <MessageCircle className="size-6 shrink-0 fill-[#191919]" />
-              카카오 로그인으로 시작
-            </button>
+            <section className="mb-14 flex flex-col gap-4">
+              <button
+                className="flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-[#fee500] py-3 text-[1.125rem] font-bold text-[#191919] shadow-[0_2px_8px_rgba(0,0,0,0.1)] transition-all hover:bg-[#f5dc00] active:scale-[0.98]"
+                type="button"
+              >
+                <MessageCircle className="size-6 shrink-0 fill-[#191919]" />
+                카카오 로그인으로 시작
+              </button>
+
+              <button
+                onClick={() => (window.location.href = '/game')}
+                className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-[#e5e7eb] bg-white py-3 text-[1.125rem] font-bold text-[#374151] transition-all hover:bg-gray-50 active:scale-[0.98]"
+                type="button"
+              >
+                게임 페이지로 이동 (개발용)
+              </button>
+            </section>
             <button
               type="button"
               className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-ui-border bg-ui-surface py-3 text-[1.125rem] font-bold text-ui-text-primary transition-colors hover:border-ui-text-subtle hover:bg-ui-surface-muted active:scale-[0.98]"

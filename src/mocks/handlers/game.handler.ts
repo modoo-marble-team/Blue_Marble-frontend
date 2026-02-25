@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { socket } from '../../lib/socket'
+import { mockPlayers, mockTiles, mockMessages } from '../gameMockData'
 
 export const gameHandlers = [
   /**
@@ -48,6 +49,16 @@ export const gameHandlers = [
     return HttpResponse.json({
       success: true,
       dice: [dice1, dice2],
+    })
+  }),
+
+  http.get('/api/game/state', async () => {
+    return HttpResponse.json({
+      players: mockPlayers,
+      tiles: mockTiles,
+      messages: mockMessages,
+      currentTurn: 'me',
+      round: 1,
     })
   }),
 ]
