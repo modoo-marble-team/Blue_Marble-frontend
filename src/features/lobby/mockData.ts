@@ -1,0 +1,107 @@
+import type { LobbyRoom, LobbyUser } from './types'
+
+export const mockLobbyRooms: LobbyRoom[] = [
+  {
+    id: 'room-1',
+    title: '초보자 환영! 같이 즐겨요',
+    status: 'WAITING',
+    currentPlayers: 2,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+  {
+    id: 'room-2',
+    title: '고수들만 오세요',
+    status: 'WAITING',
+    currentPlayers: 3,
+    maxPlayers: 4,
+    isPrivate: true,
+  },
+  {
+    id: 'room-3',
+    title: '친구끼리 재미있게',
+    status: 'PLAYING',
+    currentPlayers: 4,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+  {
+    id: 'room-4',
+    title: '편하게 하실 분',
+    status: 'WAITING',
+    currentPlayers: 1,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+  {
+    id: 'room-5',
+    title: '느긋하게 즐기는 방',
+    status: 'WAITING',
+    currentPlayers: 2,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+  {
+    id: 'room-6',
+    title: '빠른 게임 원하시는 분',
+    status: 'PLAYING',
+    currentPlayers: 3,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+  {
+    id: 'room-7',
+    title: '저녁 파티룸',
+    status: 'WAITING',
+    currentPlayers: 1,
+    maxPlayers: 4,
+    isPrivate: true,
+  },
+  {
+    id: 'room-8',
+    title: '실력 상관없이 환영',
+    status: 'WAITING',
+    currentPlayers: 3,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+  {
+    id: 'room-9',
+    title: '마지막 한 자리!',
+    status: 'WAITING',
+    currentPlayers: 3,
+    maxPlayers: 4,
+    isPrivate: false,
+  },
+]
+
+export const mockLobbyUsers: LobbyUser[] = [
+  {
+    id: 'user-1',
+    nickname: '마블왕',
+    status: 'WAITING',
+    avatarText: 'M',
+    avatarBackground: '#f6c8a9',
+  },
+  {
+    id: 'user-2',
+    nickname: '주사위마스터',
+    status: 'PLAYING',
+    avatarText: 'D',
+    avatarBackground: '#7f8ea3',
+  },
+  {
+    id: 'user-3',
+    nickname: '행운의여신',
+    status: 'WAITING',
+    avatarText: 'L',
+    avatarBackground: '#dbc4f8',
+  },
+  {
+    id: 'user-4',
+    nickname: '부동산왕',
+    status: 'PLAYING',
+    avatarText: 'R',
+    avatarBackground: '#8f7f77',
+  },
+]
