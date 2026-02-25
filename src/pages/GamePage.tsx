@@ -1,19 +1,19 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { Settings } from 'lucide-react'
 import PlayerCard from '../components/game/PlayerCard'
 import ChatSection from '../components/game/ChatSection'
 import RollControl from '../components/game/RollControl'
 import { useGameStore } from '../stores/game.store'
 import { useGameState } from '../features/game/useGameState'
+import BoardGame, { BoardGameHandle } from '../game/phaserConfig' // ← 이게 전부
 
 const GamePage: React.FC = () => {
   const { players, currentTurn, messages, addMessage } = useGameStore()
   const [timeLeft, setTimeLeft] = useState(27)
+  const boardRef = useRef<BoardGameHandle>(null)
 
-  // Fetch initial state via hook
   useGameState()
 
-  // Game timer logic
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 30))
@@ -32,9 +32,9 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const handleRollDice = () => {
-    console.log('Rolling dice...')
-  }
+  const handleRollDice = useCallback(() => {
+    boardRef.current?.rollDice()
+  }, [])
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
@@ -55,15 +55,10 @@ const GamePage: React.FC = () => {
           />
         </div>
 
-        {/* Center: Phaser Game Container */}
+        {/* Center: Board Game */}
         <div className="flex flex-1 items-center justify-center shrink-0">
-          <div
-            id="game-container"
-            className="aspect-square w-full max-w-[800px] rounded-[48px] bg-[#DBEAFE] shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)] flex items-center justify-center border-[8px] border-white"
-          >
-            <span className="text-[#2B7FFF] font-black opacity-20 text-xl tracking-widest">
-              PHASER ENGINE LOADING...
-            </span>
+          <div className="aspect-square w-full max-w-[800px] rounded-[48px] shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)] border-[8px] border-white overflow-hidden">
+            <BoardGame ref={boardRef} />
           </div>
         </div>
 
