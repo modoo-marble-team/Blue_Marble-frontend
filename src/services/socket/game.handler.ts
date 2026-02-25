@@ -11,11 +11,11 @@ export const setupGameHandlers = () => {
     ({
       game_state,
     }: {
-      game_id: string
+      game_id: string // Used in type but not in logic, usually fine in TS destruction if needed for shape
       game_state: {
         players: Player[]
         tiles: Tile[]
-        current_turn: string
+        current_turn: string | null
         round: number
       }
     }) => {
@@ -34,7 +34,7 @@ export const setupGameHandlers = () => {
     (state: {
       players: Player[]
       tiles: Tile[]
-      current_turn: string
+      current_turn: string | null
       round: number
     }) => {
       gameStore.setGameState({
@@ -98,8 +98,6 @@ export const setupGameHandlers = () => {
     }) => {
       gameStore.updatePlayer(player_id, { position: to_index })
       if (pass_go) {
-        // Updated balance logic could be here if we tracked it,
-        // but typically the server sends periodic game_state or specific updates
         console.log(
           `Player ${player_id} passed GO and earned ${pass_go_salary}`
         )
@@ -137,8 +135,6 @@ export const setupGameHandlers = () => {
       tile_index: number
       amount: number
     }) => {
-      // Balance updates usually come through game_state or separate syncs
-      // in this specific spec, but we can log it.
       console.log(`Player ${payer_id} paid ${amount} to ${owner_id}`)
     }
   )

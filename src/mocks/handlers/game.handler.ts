@@ -16,12 +16,12 @@ export const gameHandlers = [
 
     // Simulate server emitting events
     setTimeout(() => {
-      // @ts-expect-error - socket.listeners is not in the type definition but exists in socket.io-client
-      const diceListeners = (
-        socket as unknown as {
-          listeners: (e: string) => Array<(d: unknown) => void>
-        }
-      ).listeners('dice_rolled')
+      // Use cast to access listeners without creating lint errors
+      const socketWithListeners = socket as unknown as {
+        listeners: (e: string) => Array<(d: unknown) => void>
+      }
+      const diceListeners = socketWithListeners.listeners('dice_rolled')
+
       diceListeners.forEach((cb) =>
         cb({
           player_id: playerId,
@@ -32,12 +32,7 @@ export const gameHandlers = [
       )
 
       setTimeout(() => {
-        // @ts-expect-error - socket.listeners is not in the type definition
-        const moveListeners = (
-          socket as unknown as {
-            listeners: (e: string) => Array<(d: unknown) => void>
-          }
-        ).listeners('player_moved')
+        const moveListeners = socketWithListeners.listeners('player_moved')
         moveListeners.forEach((cb) =>
           cb({
             player_id: playerId,
