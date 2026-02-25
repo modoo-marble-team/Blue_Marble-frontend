@@ -1,0 +1,14 @@
+﻿.board-tile-enter {
+  transition: transform 220ms ease, opacity 220ms ease;
+}
+
+.board-tile-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.board-tile-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+}
+
