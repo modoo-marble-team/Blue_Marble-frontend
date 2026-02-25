@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Header from '../../components/Header'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import { useOnlineUsersSocket } from '../../features/presence/hooks'
-import type { LobbyRoomFilter } from './api'
+import { useOnlineUsersQuery } from '../../features/presence/hooks'
+import { filterLobbyRooms, type RoomFilter } from './filterRooms'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
 
 function LobbyPage() {
-  const [searchRoom, setSearchRoom] = useState('')
-  const [roomFilter, setRoomFilter] = useState<LobbyRoomFilter>('ALL')
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [roomFilter, setRoomFilter] = useState<RoomFilter>('ALL')
   const [excludePrivateRoom, setExcludePrivateRoom] = useState(false)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
 
@@ -17,17 +17,22 @@ function LobbyPage() {
     data: rooms = [],
     isLoading: isRoomsLoading,
     isError: isRoomsError,
-  } = useLobbyRoomsQuery({
-    searchRoom,
-    roomFilter,
-    excludePrivateRoom,
-  })
+  } = useLobbyRoomsQuery()
 
   const {
     data: users = [],
     isLoading: isUsersLoading,
     isError: isUsersError,
-  } = useOnlineUsersSocket()
+  } = useOnlineUsersQuery()
+
+  const filteredRooms = useMemo(() => {
+    return filterLobbyRooms({
+      rooms,
+      searchKeyword,
+      roomFilter,
+      excludePrivateRoom,
+    })
+  }, [excludePrivateRoom, roomFilter, rooms, searchKeyword])
 
   return (
     <div className="min-h-screen bg-ui-app-bg">
@@ -36,16 +41,16 @@ function LobbyPage() {
       <main className="flex flex-col gap-4 p-4 sm:p-6 xl:flex-row">
         <section className="min-w-0 flex-1">
           <LobbyControls
-            searchKeyword={searchRoom}
+            searchKeyword={searchKeyword}
             roomFilter={roomFilter}
             excludePrivateRoom={excludePrivateRoom}
-            onSearchKeywordChange={setSearchRoom}
+            onSearchKeywordChange={setSearchKeyword}
             onRoomFilterChange={setRoomFilter}
             onExcludePrivateRoomChange={setExcludePrivateRoom}
           />
 
           <RoomGrid
-            rooms={rooms}
+            rooms={filteredRooms}
             isLoading={isRoomsLoading}
             isError={isRoomsError}
             isUserListOpen={isUserListOpen}
