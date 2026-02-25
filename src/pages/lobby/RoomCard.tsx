@@ -3,13 +3,13 @@ import type { LobbyRoom, LobbyRoomStatus } from './types'
 import { cn } from '../../lib/utils'
 
 const ROOM_STATUS_LABEL: Record<LobbyRoomStatus, string> = {
-  WAITING: '대기중',
-  PLAYING: '게임중',
+  waiting: '대기중',
+  playing: '게임중',
 }
 
 const ROOM_STATUS_STYLE: Record<LobbyRoomStatus, string> = {
-  WAITING: 'bg-ui-tag-waiting-bg text-ui-tag-waiting-text',
-  PLAYING: 'bg-ui-tag-playing-bg text-ui-tag-playing-text',
+  waiting: 'bg-ui-tag-waiting-bg text-ui-tag-waiting-text',
+  playing: 'bg-ui-tag-playing-bg text-ui-tag-playing-text',
 }
 
 const JOIN_BUTTON_LABEL = {
@@ -19,7 +19,7 @@ const JOIN_BUTTON_LABEL = {
 } as const
 
 function getJoinButtonLabel(room: LobbyRoom): string {
-  if (room.status === 'PLAYING') {
+  if (room.status === 'playing') {
     return JOIN_BUTTON_LABEL.PLAYING
   }
   const isFull = room.currentPlayers >= room.maxPlayers
@@ -28,7 +28,7 @@ function getJoinButtonLabel(room: LobbyRoom): string {
 
 export function RoomCard({ room }: { room: LobbyRoom }) {
   const isFull = room.currentPlayers >= room.maxPlayers
-  const isJoinDisabled = room.status === 'PLAYING' || isFull
+  const isJoinDisabled = room.status === 'playing' || isFull
   const joinButtonLabel = getJoinButtonLabel(room)
 
   return (

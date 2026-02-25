@@ -4,7 +4,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-1',
     title: '초보자 환영! 같이 즐겨요',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 2,
     maxPlayers: 4,
     isPrivate: false,
@@ -12,7 +12,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-2',
     title: '고수들만 오세요',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 3,
     maxPlayers: 4,
     isPrivate: true,
@@ -20,7 +20,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-3',
     title: '친구끼리 재미있게',
-    status: 'PLAYING',
+    status: 'playing',
     currentPlayers: 4,
     maxPlayers: 4,
     isPrivate: false,
@@ -28,7 +28,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-4',
     title: '편하게 하실 분',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 1,
     maxPlayers: 4,
     isPrivate: false,
@@ -36,7 +36,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-5',
     title: '느긋하게 즐기는 방',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 2,
     maxPlayers: 4,
     isPrivate: false,
@@ -44,7 +44,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-6',
     title: '빠른 게임 원하시는 분',
-    status: 'PLAYING',
+    status: 'playing',
     currentPlayers: 3,
     maxPlayers: 4,
     isPrivate: false,
@@ -52,7 +52,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-7',
     title: '저녁 파티룸',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 1,
     maxPlayers: 4,
     isPrivate: true,
@@ -60,7 +60,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-8',
     title: '실력 상관없이 환영',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 3,
     maxPlayers: 4,
     isPrivate: false,
@@ -68,7 +68,7 @@ export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-9',
     title: '마지막 한 자리!',
-    status: 'WAITING',
+    status: 'waiting',
     currentPlayers: 3,
     maxPlayers: 4,
     isPrivate: false,

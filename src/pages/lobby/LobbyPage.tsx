@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import Header from '../../components/Header'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
-import { filterLobbyRooms, type RoomFilter } from './filterRooms'
+import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
 
 function LobbyPage() {
-  const [searchKeyword, setSearchKeyword] = useState('')
-  const [roomFilter, setRoomFilter] = useState<RoomFilter>('ALL')
+  const [searchRoom, setSearchRoom] = useState('')
+  const [roomFilter, setRoomFilter] = useState<LobbyRoomFilter>('ALL')
   const [excludePrivateRoom, setExcludePrivateRoom] = useState(false)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
 
@@ -17,16 +17,11 @@ function LobbyPage() {
     data: rooms = [],
     isLoading: isRoomsLoading,
     isError: isRoomsError,
-  } = useLobbyRoomsQuery()
-
-  const filteredRooms = useMemo(() => {
-    return filterLobbyRooms({
-      rooms,
-      searchKeyword,
-      roomFilter,
-      excludePrivateRoom,
-    })
-  }, [excludePrivateRoom, roomFilter, rooms, searchKeyword])
+  } = useLobbyRoomsQuery({
+    searchRoom,
+    roomFilter,
+    excludePrivateRoom,
+  })
 
   const {
     data: users = [],
@@ -41,16 +36,16 @@ function LobbyPage() {
       <main className="flex flex-col gap-4 p-4 sm:p-6 xl:flex-row">
         <section className="min-w-0 flex-1">
           <LobbyControls
-            searchKeyword={searchKeyword}
+            searchKeyword={searchRoom}
             roomFilter={roomFilter}
             excludePrivateRoom={excludePrivateRoom}
-            onSearchKeywordChange={setSearchKeyword}
+            onSearchKeywordChange={setSearchRoom}
             onRoomFilterChange={setRoomFilter}
             onExcludePrivateRoomChange={setExcludePrivateRoom}
           />
 
           <RoomGrid
-            rooms={filteredRooms}
+            rooms={rooms}
             isLoading={isRoomsLoading}
             isError={isRoomsError}
             isUserListOpen={isUserListOpen}
