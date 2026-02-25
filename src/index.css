@@ -1,5 +1,33 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-ui-app-bg: #faf8f0;
+  --color-ui-surface: #ffffff;
+  --color-ui-surface-muted: #f8fafc;
+  --color-ui-surface-soft: #f1f5f9;
+  --color-ui-border: #e2e8f0;
+  --color-ui-text-strong: #1e293b;
+  --color-ui-text-primary: #374151;
+  --color-ui-text-muted: #64748b;
+  --color-ui-text-subtle: #94a3b8;
+  --color-ui-brand: #3b82f6;
+  --color-ui-brand-strong: #2563eb;
+  --color-ui-brand-soft: #dbeafe;
+  --color-ui-danger: #dc2626;
+  --color-ui-danger-bg: #fef2f2;
+  --color-ui-danger-border: #fecaca;
+  --color-ui-presence-playing: #f97316;
+  --color-ui-presence-waiting: #22c55e;
+  --color-ui-tag-waiting-bg: #c8f1df;
+  --color-ui-tag-waiting-text: #0a9161;
+  --color-ui-tag-playing-bg: #ffe3c2;
+  --color-ui-tag-playing-text: #ec6e10;
+  --color-ui-tag-private-bg: #ede9fe;
+  --color-ui-tag-private-text: #6d28d9;
+  --color-ui-disabled-bg: #e5e7eb;
+  --color-ui-disabled-text: #9ca3af;
+}
+
 @layer base {
   body {
     @apply m-0 min-h-screen;
