@@ -1,21 +1,21 @@
 import { Plus, Search } from 'lucide-react'
-import type { RoomFilter } from './filterRooms'
+import type { LobbyRoomFilter } from './api'
 import { cn } from '../../lib/utils'
 
 interface LobbyControlsProps {
   searchKeyword: string
-  roomFilter: RoomFilter
+  roomFilter: LobbyRoomFilter
   excludePrivateRoom: boolean
   onSearchKeywordChange: (value: string) => void
-  onRoomFilterChange: (filter: RoomFilter) => void
+  onRoomFilterChange: (filter: LobbyRoomFilter) => void
   onExcludePrivateRoomChange: (next: boolean) => void
   onCreateRoom?: () => void
 }
 
-const ROOM_FILTERS: Array<{ value: RoomFilter; label: string }> = [
+const ROOM_FILTERS: Array<{ value: LobbyRoomFilter; label: string }> = [
   { value: 'ALL', label: '전체' },
-  { value: 'WAITING', label: '대기중' },
-  { value: 'PLAYING', label: '게임중' },
+  { value: 'waiting', label: '대기중' },
+  { value: 'playing', label: '게임중' },
 ]
 
 export function LobbyControls({
