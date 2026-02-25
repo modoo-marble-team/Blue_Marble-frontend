@@ -39,7 +39,7 @@ export function UserRow({ user }: { user: OnlineUser }) {
         type="button"
         disabled={isDmDisabled}
         className={cn(
-          'rounded-lg p-2 text-ui-text-subtle transition-opacity transition-colors sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
+          'rounded-lg p-2 text-ui-text-subtle transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
           isDmDisabled
             ? 'cursor-not-allowed opacity-45'
             : 'hover:bg-ui-surface-soft hover:text-ui-text-muted'
