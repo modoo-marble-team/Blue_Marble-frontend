@@ -1,10 +1,10 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { UserRow } from './UserRow'
-import type { LobbyUser } from '../features/lobby/types'
+import type { OnlineUser } from '../features/presence/types'
 import { cn } from '../lib/utils'
 
 interface UserListPanelProps {
-  users: LobbyUser[]
+  users: OnlineUser[]
   isLoading: boolean
   isError: boolean
   isOpen: boolean

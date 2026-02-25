@@ -1,5 +1,5 @@
 import { Plus, Search } from 'lucide-react'
-import type { RoomFilter } from '../../features/lobby/filterRooms'
+import type { RoomFilter } from './filterRooms'
 import { cn } from '../../lib/utils'
 
 interface LobbyControlsProps {

@@ -1,5 +1,6 @@
 import { delay, http, HttpResponse } from 'msw'
-import { mockLobbyRooms, mockLobbyUsers } from '../features/lobby/mockData'
+import { mockOnlineUsers } from '../features/presence/mockData'
+import { mockLobbyRooms } from '../pages/lobby/mockData'
 import { gameHandlers } from './handlers/game.handler'
 
 export const handlers = [
@@ -13,6 +14,6 @@ export const handlers = [
   }),
   http.get('/api/lobby/users', async () => {
     await delay(250)
-    return HttpResponse.json({ users: mockLobbyUsers })
+    return HttpResponse.json({ users: mockOnlineUsers })
   }),
 ]
