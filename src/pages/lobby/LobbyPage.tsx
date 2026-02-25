@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import Header from '../../components/Header'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import { useOnlineUsersQuery } from '../../features/presence/hooks'
+import { useOnlineUsersSocket } from '../../features/presence/hooks'
 import { filterLobbyRooms, type RoomFilter } from './filterRooms'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
@@ -19,12 +19,6 @@ function LobbyPage() {
     isError: isRoomsError,
   } = useLobbyRoomsQuery()
 
-  const {
-    data: users = [],
-    isLoading: isUsersLoading,
-    isError: isUsersError,
-  } = useOnlineUsersQuery()
-
   const filteredRooms = useMemo(() => {
     return filterLobbyRooms({
       rooms,
@@ -33,6 +27,12 @@ function LobbyPage() {
       excludePrivateRoom,
     })
   }, [excludePrivateRoom, roomFilter, rooms, searchKeyword])
+
+  const {
+    data: users = [],
+    isLoading: isUsersLoading,
+    isError: isUsersError,
+  } = useOnlineUsersSocket()
 
   return (
     <div className="min-h-screen bg-ui-app-bg">

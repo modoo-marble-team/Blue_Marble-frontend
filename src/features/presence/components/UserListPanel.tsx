@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../../lib/utils'
+import { ONLINE_USER_STATUS_DOT_CLASS_MAP } from '../status'
 import type { OnlineUser } from '../types'
 import { UserRow } from './UserRow'
 
@@ -101,9 +102,7 @@ export function UserListPanel({
                   <span
                     className={cn(
                       'absolute -bottom-0.5 -right-0.5 size-2 rounded-full border-2 border-white',
-                      user.status === 'PLAYING'
-                        ? 'bg-ui-presence-playing'
-                        : 'bg-ui-presence-waiting'
+                      ONLINE_USER_STATUS_DOT_CLASS_MAP[user.status]
                     )}
                   />
                 </div>
