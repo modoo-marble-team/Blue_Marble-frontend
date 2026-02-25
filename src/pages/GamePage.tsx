@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { Settings } from 'lucide-react'
-import Board from '../components/game/Board'
 import PlayerCard from '../components/game/PlayerCard'
 import ChatSection from '../components/game/ChatSection'
 import RollControl from '../components/game/RollControl'
@@ -8,7 +7,7 @@ import { useGameStore } from '../stores/game.store'
 import { useGameState } from '../features/game/useGameState'
 
 const GamePage: React.FC = () => {
-  const { players, tiles, messages, currentTurn, addMessage } = useGameStore()
+  const { players, currentTurn, messages, addMessage } = useGameStore()
   const [timeLeft, setTimeLeft] = useState(27)
 
   // Fetch initial state via hook
@@ -56,9 +55,16 @@ const GamePage: React.FC = () => {
           />
         </div>
 
-        {/* Center: Board */}
+        {/* Center: Phaser Game Container */}
         <div className="flex flex-1 items-center justify-center shrink-0">
-          <Board tiles={tiles} />
+          <div
+            id="game-container"
+            className="aspect-square w-full max-w-[800px] rounded-[48px] bg-[#DBEAFE] shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)] flex items-center justify-center border-[8px] border-white"
+          >
+            <span className="text-[#2B7FFF] font-black opacity-20 text-xl tracking-widest">
+              PHASER ENGINE LOADING...
+            </span>
+          </div>
         </div>
 
         {/* Sidebar Right: Players */}
