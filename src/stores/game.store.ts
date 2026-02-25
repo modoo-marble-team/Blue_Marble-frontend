@@ -21,7 +21,7 @@ interface GameActions {
 const INITIAL_STATE: GameState = {
   players: [],
   tiles: [],
-  currentTurnId: null,
+  current_turn: null, // Changed from currentTurnId
   round: 1,
   activeModal: null,
   gameResult: null,
@@ -56,7 +56,7 @@ export const useGameStore = create<GameState & GameActions>()(
 
     setCurrentTurn: (playerId) =>
       set((draft) => {
-        draft.currentTurnId = playerId
+        draft.current_turn = playerId
       }),
 
     setModal: (modal) =>

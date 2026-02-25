@@ -1,127 +1,213 @@
 import { socket } from '../../lib/socket'
 import { useGameStore } from '../../stores/game.store'
-import { Player, Tile, BuildingLevel } from '../../types/domain'
+import { Player, Tile, Card, GameResult } from '../../types/domain'
 
 export const setupGameHandlers = () => {
   const gameStore = useGameStore.getState()
 
+  // SOCK-028: game_start
+  socket.on(
+    'game_start',
+    ({
+      game_state,
+    }: {
+      game_id: string
+      game_state: {
+        players: Player[]
+        tiles: Tile[]
+        current_turn: string
+        round: number
+      }
+    }) => {
+      gameStore.setGameState({
+        players: game_state.players,
+        tiles: game_state.tiles,
+        current_turn: game_state.current_turn,
+        round: game_state.round,
+      })
+    }
+  )
+
+  // SOCK-012: game_state
   socket.on(
     'game_state',
     (state: {
       players: Player[]
       tiles: Tile[]
-      currentTurnId: string
+      current_turn: string
       round: number
     }) => {
       gameStore.setGameState({
         players: state.players,
         tiles: state.tiles,
-        currentTurnId: state.currentTurnId,
+        current_turn: state.current_turn,
         round: state.round,
       })
     }
   )
 
+  // SOCK-009: turn_start
   socket.on(
     'turn_start',
-    ({ playerId, round }: { playerId: string; round: number }) => {
+    ({
+      player_id,
+      round,
+    }: {
+      player_id: string
+      round: number
+      timeout_sec: number
+    }) => {
       gameStore.setGameState({
-        currentTurnId: playerId,
+        current_turn: player_id,
         round,
       })
     }
   )
 
+  // SOCK-010: dice_rolled
   socket.on(
     'dice_rolled',
-    ({ playerId, dice }: { playerId: string; dice: number[] }) => {
-      console.log(`Player ${playerId} rolled: ${dice[0]}, ${dice[1]}`)
+    ({
+      player_id,
+      dice,
+    }: {
+      player_id: string
+      dice: number[]
+      is_double: boolean
+      double_count: number
+    }) => {
+      console.log(`Player ${player_id} rolled: ${dice[0]}, ${dice[1]}`)
     }
   )
 
+  // SOCK-011: player_moved
   socket.on(
     'player_moved',
-    ({ playerId, position }: { playerId: string; position: number }) => {
-      gameStore.updatePlayer(playerId, { position })
+    ({
+      player_id,
+      to_index,
+      pass_go,
+      pass_go_salary,
+    }: {
+      player_id: string
+      from_index: number
+      to_index: number
+      trigger: string
+      pass_go: boolean
+      pass_go_salary: number
+    }) => {
+      gameStore.updatePlayer(player_id, { position: to_index })
+      if (pass_go) {
+        // Updated balance logic could be here if we tracked it,
+        // but typically the server sends periodic game_state or specific updates
+        console.log(
+          `Player ${player_id} passed GO and earned ${pass_go_salary}`
+        )
+      }
     }
   )
 
+  // SOCK-013: tile_purchased
   socket.on(
     'tile_purchased',
     ({
-      playerId,
-      tileId,
-      buildingLevel,
-      money,
+      player_id,
+      tile_index,
     }: {
-      playerId: string
-      tileId: number
-      buildingLevel: BuildingLevel
-      money: number
+      player_id: string
+      tile_index: number
+      tile_name: string
+      price: number
     }) => {
-      // Assuming tileId refers to tile index for now, or we should find by id
-      gameStore.updateTile(tileId, { ownerId: playerId, buildingLevel })
-      gameStore.updatePlayer(playerId, { money })
+      gameStore.updateTile(tile_index, { owner_id: player_id })
       gameStore.setModal(null)
     }
   )
 
+  // SOCK-014: toll_paid
   socket.on(
     'toll_paid',
     ({
-      payerId,
-      receiverId,
+      payer_id,
+      owner_id,
       amount,
-      payerMoney,
-      receiverMoney,
     }: {
-      payerId: string
-      receiverId: string
+      payer_id: string
+      owner_id: string
+      tile_index: number
       amount: number
-      payerMoney: number
-      receiverMoney: number
     }) => {
-      gameStore.updatePlayer(payerId, { money: payerMoney })
-      if (receiverId) {
-        gameStore.updatePlayer(receiverId, { money: receiverMoney })
-      }
-      console.log(`Toll paid: ${amount}`)
+      // Balance updates usually come through game_state or separate syncs
+      // in this specific spec, but we can log it.
+      console.log(`Player ${payer_id} paid ${amount} to ${owner_id}`)
     }
   )
 
-  socket.on(
-    'card_drawn',
-    ({ playerId, cardType }: { playerId: string; cardType: string }) => {
-      gameStore.setModal('card')
-      console.log(`Player ${playerId} drew card: ${cardType}`)
-    }
-  )
+  // SOCK-015, SOCK-029: event_card_drawn, chance_card_drawn
+  const handleCardDrawn = ({
+    player_id,
+    card,
+  }: {
+    player_id: string
+    card: Card
+  }) => {
+    gameStore.setModal('card')
+    console.log(`Player ${player_id} drew: ${card.title} - ${card.description}`)
+  }
+  socket.on('event_card_drawn', handleCardDrawn)
+  socket.on('chance_card_drawn', handleCardDrawn)
 
+  // SOCK-016: player_sent_to_jail
   socket.on(
     'player_sent_to_jail',
-    ({ playerId, position }: { playerId: string; position: number }) => {
-      gameStore.updatePlayer(playerId, { position, isJailed: true })
+    ({ player_id }: { player_id: string; source: string }) => {
+      gameStore.updatePlayer(player_id, { is_in_jail: true })
     }
   )
 
-  socket.on('player_bankrupt', ({ playerId }: { playerId: string }) => {
-    gameStore.updatePlayer(playerId, { isBankrupt: true })
-    gameStore.setModal('bankrupt')
+  // SOCK-017: player_bankrupt
+  socket.on(
+    'player_bankrupt',
+    ({
+      player_id,
+    }: {
+      player_id: string
+      reason: string
+      released_tiles: number[]
+    }) => {
+      gameStore.updatePlayer(player_id, { is_bankrupt: true })
+      gameStore.setModal('bankrupt')
+    }
+  )
+
+  // SOCK-018: game_over
+  socket.on('game_over', (payload: GameResult) => {
+    const winner = payload.rankings.find((r) => r.is_winner)
+    gameStore.setGameState({
+      gameResult: payload,
+      isGameOver: true,
+      winnerId: winner?.player_id || null,
+    })
   })
 
-  socket.on('game_over', ({ winnerId }: { winnerId: string }) => {
-    gameStore.setGameState({ isGameOver: true, winnerId })
+  // SOCK-019: ai_penalty_loading
+  socket.on('ai_penalty_loading', ({ player_id }: { player_id: string }) => {
+    console.log(`AI Penalty loading for ${player_id}...`)
   })
 
-  socket.on('ai_penalty_loading', () => {
-    console.log('AI Penalty loading...')
-  })
-
+  // SOCK-020: ai_penalty
   socket.on(
     'ai_penalty',
-    ({ playerId, amount }: { playerId: string; amount: number }) => {
+    ({
+      player_id,
+      penalty,
+    }: {
+      player_id: string
+      penalty: number
+      source: string
+    }) => {
       gameStore.setModal('penalty')
-      console.log(`AI Penalty for ${playerId}: ${amount}`)
+      console.log(`AI Penalty for ${player_id}: ${penalty}`)
     }
   )
 }

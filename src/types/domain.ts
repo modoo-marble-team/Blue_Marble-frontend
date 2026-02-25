@@ -11,48 +11,55 @@ export type TileType =
   | 'airport'
   | 'card'
 
+export interface Card {
+  title: string
+  description: string
+  effect_type: string
+  effect_value: number
+}
+
 export interface Tile {
-  id: number
-  index: number // Added index as store uses t.index
-  name: string
-  type: TileType
-  price?: number
-  toll?: number[]
-  ownerId?: string | null
-  buildingLevel: BuildingLevel
+  index: number
+  owner_id?: string | null
+  building: BuildingLevel
+  name?: string // Optional metadata
+  type?: TileType // Optional metadata
 }
 
 export interface Player {
   id: string
   nickname: string
-  money: number
   position: number
-  isBankrupt: boolean
-  isJailed: boolean
-  jailTurns: number
+  balance: number
+  owned_tiles: number[]
+  is_in_jail: boolean
+  jail_turn_count: number
+  is_bankrupt: boolean
   color: string
 }
 
 export type ActiveModal = 'buy' | 'card' | 'penalty' | 'bankrupt' | null
 
+export type GameRanking = {
+  rank: number
+  player_id: string
+  nickname: string
+  final_assets: number
+  is_winner: boolean
+}
+
 export type GameResult = {
   reason: 'bankrupt' | 'round_limit'
-  rankings: {
-    rank: number
-    playerId: string
-    nickname: string
-    finalAssets: number
-    isWinner: boolean
-  }[]
+  rankings: GameRanking[]
 }
 
 export interface GameState {
   players: Player[]
   tiles: Tile[]
-  currentTurnId: string | null
+  current_turn: string | null
   round: number
   activeModal: ActiveModal
   gameResult: GameResult | null
-  isGameOver: boolean // Added for convenience
-  winnerId: string | null // Added for convenience
+  isGameOver: boolean
+  winnerId: string | null
 }
