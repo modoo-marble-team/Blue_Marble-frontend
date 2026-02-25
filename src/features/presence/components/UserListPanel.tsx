@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '../../../lib/utils'
+import type { OnlineUser } from '../types'
 import { UserRow } from './UserRow'
-import type { OnlineUser } from '../features/presence/types'
-import { cn } from '../lib/utils'
 
 interface UserListPanelProps {
   users: OnlineUser[]
