@@ -22,8 +22,8 @@ export interface Tile {
   index: number
   owner_id?: string | null
   building: BuildingLevel
-  name?: string // Optional metadata
-  type?: TileType // Optional metadata
+  name?: string
+  type?: TileType
 }
 
 export interface Player {
@@ -56,7 +56,7 @@ export type GameResult = {
 export interface GameState {
   players: Player[]
   tiles: Tile[]
-  current_turn: string | null
+  currentTurn: string | null // 프론트 내부 상태 — camelCase 통일
   round: number
   activeModal: ActiveModal
   gameResult: GameResult | null

@@ -11,7 +11,7 @@ export const setupGameHandlers = () => {
     ({
       game_state,
     }: {
-      game_id: string // Used in type but not in logic, usually fine in TS destruction if needed for shape
+      game_id: string
       game_state: {
         players: Player[]
         tiles: Tile[]
@@ -22,7 +22,7 @@ export const setupGameHandlers = () => {
       gameStore.setGameState({
         players: game_state.players,
         tiles: game_state.tiles,
-        current_turn: game_state.current_turn,
+        currentTurn: game_state.current_turn, // 서버 payload → 프론트 camelCase 매핑
         round: game_state.round,
       })
     }
@@ -40,7 +40,7 @@ export const setupGameHandlers = () => {
       gameStore.setGameState({
         players: state.players,
         tiles: state.tiles,
-        current_turn: state.current_turn,
+        currentTurn: state.current_turn, // 서버 payload → 프론트 camelCase 매핑
         round: state.round,
       })
     }
@@ -58,7 +58,7 @@ export const setupGameHandlers = () => {
       timeout_sec: number
     }) => {
       gameStore.setGameState({
-        current_turn: player_id,
+        currentTurn: player_id,
         round,
       })
     }
@@ -182,7 +182,7 @@ export const setupGameHandlers = () => {
     gameStore.setGameState({
       gameResult: payload,
       isGameOver: true,
-      winnerId: winner?.player_id || null,
+      winnerId: winner?.player_id ?? null,
     })
   })
 

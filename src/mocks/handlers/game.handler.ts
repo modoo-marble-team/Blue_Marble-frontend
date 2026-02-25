@@ -7,7 +7,7 @@ export const gameHandlers = [
    * Emits SOCK-010 (dice_rolled) and SOCK-011 (player_moved) payloads according to spec.
    */
   http.post('/api/game/roll-dice', async ({ request }) => {
-    const { playerId } = (await request.json()) as { playerId: string }
+    const { player_id } = (await request.json()) as { player_id: string }
 
     const dice1 = Math.floor(Math.random() * 6) + 1
     const dice2 = Math.floor(Math.random() * 6) + 1
@@ -16,7 +16,6 @@ export const gameHandlers = [
 
     // Simulate server emitting events
     setTimeout(() => {
-      // Use cast to access listeners without creating lint errors
       const socketWithListeners = socket as unknown as {
         listeners: (e: string) => Array<(d: unknown) => void>
       }
@@ -24,7 +23,7 @@ export const gameHandlers = [
 
       diceListeners.forEach((cb) =>
         cb({
-          player_id: playerId,
+          player_id,
           dice: [dice1, dice2],
           is_double: isDouble,
           double_count: isDouble ? 1 : 0,
@@ -35,7 +34,7 @@ export const gameHandlers = [
         const moveListeners = socketWithListeners.listeners('player_moved')
         moveListeners.forEach((cb) =>
           cb({
-            player_id: playerId,
+            player_id,
             from_index: 0,
             to_index: total,
             trigger: 'dice',
