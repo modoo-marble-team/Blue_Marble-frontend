@@ -1,4 +1,4 @@
-import type { LobbyRoom } from '../../features/lobby/types'
+import type { LobbyRoom } from './types'
 import { cn } from '../../lib/utils'
 import { RoomCard } from './RoomCard'
 

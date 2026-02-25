@@ -1,5 +1,5 @@
 import { Users } from 'lucide-react'
-import type { LobbyRoom, LobbyRoomStatus } from '../../features/lobby/types'
+import type { LobbyRoom, LobbyRoomStatus } from './types'
 import { cn } from '../../lib/utils'
 
 const ROOM_STATUS_LABEL: Record<LobbyRoomStatus, string> = {

@@ -1,8 +1,8 @@
 import { MessageCircle } from 'lucide-react'
-import type { LobbyUser } from '../features/lobby/types'
-import { cn } from '../lib/utils'
+import { cn } from '../../../lib/utils'
+import type { OnlineUser } from '../types'
 
-export function UserRow({ user }: { user: LobbyUser }) {
+export function UserRow({ user }: { user: OnlineUser }) {
   const isPlaying = user.status === 'PLAYING'
 
   return (

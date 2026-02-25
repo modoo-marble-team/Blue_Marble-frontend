@@ -1,16 +1,11 @@
 import { useMemo, useState } from 'react'
 import Header from '../../components/Header'
-import {
-  useLobbyRoomsQuery,
-  useLobbyUsersQuery,
-} from '../../features/lobby/hooks'
-import {
-  filterLobbyRooms,
-  type RoomFilter,
-} from '../../features/lobby/filterRooms'
+import { UserListPanel } from '../../features/presence/components/UserListPanel'
+import { useOnlineUsersQuery } from '../../features/presence/hooks'
+import { filterLobbyRooms, type RoomFilter } from './filterRooms'
+import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
-import { UserListPanel } from '../../components/UserListPanel'
 
 function LobbyPage() {
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -28,7 +23,7 @@ function LobbyPage() {
     data: users = [],
     isLoading: isUsersLoading,
     isError: isUsersError,
-  } = useLobbyUsersQuery()
+  } = useOnlineUsersQuery()
 
   const filteredRooms = useMemo(() => {
     return filterLobbyRooms({
