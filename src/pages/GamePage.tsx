@@ -1,25 +1,22 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+﻿import React, { useRef } from 'react'
 import { Settings } from 'lucide-react'
-import PlayerCard from '../components/game/PlayerCard'
-import ChatSection from '../components/game/ChatSection'
-import RollControl from '../components/game/RollControl'
+import PlayerPanel from '../components/game/panels/PlayerPanel'
+import GameChat from '../components/game/chat/GameChat'
+import RollButton from '../components/game/controls/RollButton'
 import { useGameStore } from '../stores/game.store'
-import { useGameState } from '../features/game/useGameState'
-import BoardGame, { BoardGameHandle } from '../game/phaserConfig' // ← 이게 전부
+import { useGameState } from '../hooks/game/useGameState'
+import { useGameTimer } from '../hooks/game/useGameTimer'
+import { useDiceRoll } from '../hooks/game/useDiceRoll'
+import { useTurn } from '../hooks/game/useTurn'
+import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 
 const GamePage: React.FC = () => {
   const { players, currentTurn, messages, addMessage } = useGameStore()
-  const [timeLeft, setTimeLeft] = useState(27)
+  const [timeLeft] = useGameTimer({ initialTime: 27, resetTime: 30 })
   const boardRef = useRef<BoardGameHandle>(null)
+  const isMyTurn = useTurn(currentTurn)
 
   useGameState()
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 30))
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
 
   const handleSendMessage = (content: string) => {
     addMessage({
@@ -32,40 +29,34 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const handleRollDice = useCallback(() => {
-    boardRef.current?.rollDice()
-  }, [])
+  const handleRollDice = useDiceRoll(boardRef)
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
-      {/* Settings Tray */}
       <div className="absolute left-6 top-6">
-        <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 shadow-sm transition-colors hover:bg-white text-[#45556C]">
+        <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 text-[#45556C] shadow-sm transition-colors hover:bg-white">
           <Settings size={20} />
         </button>
       </div>
 
-      <div className="mx-auto flex w-full max-w-[1551px] h-full items-center justify-between gap-8 pt-4 pb-12">
-        {/* Sidebar Left: Chat */}
+      <div className="mx-auto flex h-full w-full max-w-[1551px] items-center justify-between gap-8 pb-12 pt-4">
         <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
-          <ChatSection
+          <GameChat
             messages={messages}
             onSendMessage={handleSendMessage}
-            notice="게임 시작! 순서를 정합니다."
+            notice="寃뚯엫 ?쒖옉! ?쒖꽌瑜??뺥빀?덈떎."
           />
         </div>
 
-        {/* Center: Board Game */}
-        <div className="flex flex-1 items-center justify-center shrink-0">
-          <div className="aspect-square w-full max-w-[800px] rounded-[48px] shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)] border-[8px] border-white overflow-hidden">
+        <div className="flex shrink-0 flex-1 items-center justify-center">
+          <div className="aspect-square w-full max-w-[800px] overflow-hidden rounded-[48px] border-[8px] border-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)]">
             <BoardGame ref={boardRef} />
           </div>
         </div>
 
-        {/* Sidebar Right: Players */}
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {players.map((player) => (
-            <PlayerCard
+            <PlayerPanel
               key={player.id}
               player={player}
               isActive={player.id === currentTurn}
@@ -74,11 +65,10 @@ const GamePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Control Area */}
       <div className="absolute bottom-10 right-10">
-        <RollControl
+        <RollButton
           timeLeft={timeLeft}
-          isMyTurn={currentTurn === 'me'}
+          isMyTurn={isMyTurn}
           onRoll={handleRollDice}
         />
       </div>
