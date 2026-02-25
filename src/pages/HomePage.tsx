@@ -16,25 +16,25 @@ const featureCards = [
     title: '실시간 대전',
     description: '친구들과 함께 즐기는 스릴만점 승부',
     icon: Gamepad2,
-    iconBackground: 'bg-[#3b82f6]',
+    iconBackground: 'bg-ui-brand',
   },
   {
     title: '최대 4인',
     description: '모두가 함께할 수 있는 멀티플레이',
     icon: UsersRound,
-    iconBackground: 'bg-[#22c55e]',
+    iconBackground: 'bg-ui-presence-waiting',
   },
   {
     title: '빠른 한 판',
     description: '복잡한 규칙 없이 바로 시작하세요',
     icon: Zap,
-    iconBackground: 'bg-[#f97316]',
+    iconBackground: 'bg-ui-presence-playing',
   },
 ]
 
 function HomePage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#faf8f0] px-4 py-8 sm:px-8 sm:py-10">
+    <div className="relative min-h-screen overflow-hidden bg-ui-app-bg px-4 py-8 sm:px-8 sm:py-10">
       {/* 배경 반투명 아이콘 */}
       <div className="pointer-events-none absolute inset-0">
         <motion.div
@@ -44,7 +44,7 @@ function HomePage() {
           className="absolute left-[10%] top-[10%]"
         >
           <Dice5
-            className="size-14 stroke-[1.5] text-[#bfd8f3] opacity-60"
+            className="size-14 stroke-[1.5] text-ui-brand-soft opacity-60"
             strokeWidth={1.5}
           />
         </motion.div>
@@ -60,7 +60,7 @@ function HomePage() {
           className="absolute right-[10%] top-[12%]"
         >
           <Coins
-            className="size-14 stroke-[1.5] text-[#f0dc9f] opacity-60"
+            className="size-14 stroke-[1.5] text-ui-tag-playing-text opacity-60"
             strokeWidth={1.5}
           />
         </motion.div>
@@ -76,7 +76,7 @@ function HomePage() {
           className="absolute bottom-[12%] left-[8%]"
         >
           <MapPin
-            className="size-20 stroke-[1.5] text-[#f3c0b5] opacity-55"
+            className="size-20 stroke-[1.5] text-ui-tag-playing-bg opacity-80"
             strokeWidth={1.5}
           />
         </motion.div>
@@ -92,7 +92,7 @@ function HomePage() {
           className="absolute bottom-[12%] right-[8%]"
         >
           <Trophy
-            className="size-20 stroke-[1.5] text-[#e4cfea] opacity-60"
+            className="size-20 stroke-[1.5] text-ui-tag-private-bg opacity-80"
             strokeWidth={1.5}
           />
         </motion.div>
@@ -111,9 +111,9 @@ function HomePage() {
               className="size-14 shrink-0 text-[#ff3f47] sm:size-16"
               strokeWidth={2}
             />
-            <div className="flex size-28 items-center justify-center rounded-3xl border border-[#e5e7eb] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)] sm:size-32">
+            <div className="flex size-28 items-center justify-center rounded-3xl border border-ui-border bg-ui-surface shadow-[0_8px_24px_rgba(0,0,0,0.06)] sm:size-32">
               <Dice5
-                className="size-12 text-[#3b82f6] sm:size-14"
+                className="size-12 text-ui-brand sm:size-14"
                 strokeWidth={2}
               />
             </div>
@@ -123,14 +123,14 @@ function HomePage() {
             />
           </div>
 
-          <h1 className="text-[clamp(2.5rem,8vw,5rem)] font-extrabold leading-[0.95] tracking-tight text-[#1f2937]">
-            <span className="text-[#16233f]">MARBLE</span>
+          <h1 className="text-[clamp(2.5rem,8vw,5rem)] font-extrabold leading-[0.95] tracking-tight text-ui-text-strong">
+            <span className="text-ui-text-strong">MARBLE</span>
             <span className="ml-1.5 bg-linear-to-r from-[#a78bfa] via-[#8b5cf6] to-[#7c3aed] bg-clip-text text-transparent sm:ml-2">
               POP
             </span>
           </h1>
 
-          <p className="mt-5 whitespace-pre-line text-[clamp(1rem,1.8vw,1.25rem)] font-bold leading-relaxed text-[#4b5563]">
+          <p className="mt-5 whitespace-pre-line text-[clamp(1rem,1.8vw,1.25rem)] font-bold leading-relaxed text-ui-text-primary">
             {
               '주사위를 굴려 나만의 도시를 건설하세요!\n귀엽고 신나는 실시간 보드게임'
             }
@@ -156,14 +156,14 @@ function HomePage() {
             </section>
             <button
               type="button"
-              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-[#e5e7eb] bg-white py-3 text-[1.125rem] font-bold text-[#374151] transition-colors hover:border-[#d1d5db] hover:bg-[#f9fafb] active:scale-[0.98]"
+              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-ui-border bg-ui-surface py-3 text-[1.125rem] font-bold text-ui-text-primary transition-colors hover:border-ui-text-subtle hover:bg-ui-surface-muted active:scale-[0.98]"
             >
-              <UserRound className="size-6 shrink-0 text-[#6b7280]" />
+              <UserRound className="size-6 shrink-0 text-ui-text-muted" />
               게스트로 시작
             </button>
           </div>
 
-          <p className="mt-2.5 text-[0.75rem] font-medium text-[#9ca3af]">
+          <p className="mt-2.5 text-[0.75rem] font-medium text-ui-text-subtle">
             * 게스트는 전적이 저장되지 않으며 일부 기능이 제한됩니다.
           </p>
         </motion.section>
@@ -182,17 +182,17 @@ function HomePage() {
                   delay: 0.15 + index * 0.12,
                   ease: [0.18, 0.9, 0.28, 1],
                 }}
-                className="rounded-3xl border border-[#e5e7eb] bg-white px-6 py-6 text-center shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
+                className="rounded-3xl border border-ui-border bg-ui-surface px-6 py-6 text-center shadow-[0_4px_16px_rgba(0,0,0,0.06)]"
               >
                 <div
                   className={`mx-auto mb-3 flex size-12 items-center justify-center rounded-xl ${card.iconBackground}`}
                 >
                   <Icon className="size-6 text-white" strokeWidth={2} />
                 </div>
-                <h2 className="text-[1.25rem] font-bold text-[#374151]">
+                <h2 className="text-[1.25rem] font-bold text-ui-text-primary">
                   {card.title}
                 </h2>
-                <p className="mt-1.5 text-[0.9375rem] font-medium text-[#6b7280]">
+                <p className="mt-1.5 text-[0.9375rem] font-medium text-ui-text-muted">
                   {card.description}
                 </p>
               </motion.article>
