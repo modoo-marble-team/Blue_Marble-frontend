@@ -200,7 +200,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 {tile.name}
               </span>
             )}
-            {hasBuilding && <BuildingBadge level={buildingLevel} />}
+            {hasBuilding && (
+              <BuildingBadge
+                level={buildingLevel}
+                ownerColor={tileOwner?.ownerColor}
+              />
+            )}
             {isCity && (
               <span
                 style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
@@ -299,7 +304,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 {tile.name}
               </span>
             )}
-            {hasBuilding && <BuildingBadge level={buildingLevel} />}
+            {hasBuilding && (
+              <BuildingBadge
+                level={buildingLevel}
+                ownerColor={tileOwner?.ownerColor}
+              />
+            )}
             {isCity && (
               <span
                 style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
