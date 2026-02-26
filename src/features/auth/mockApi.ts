@@ -1,11 +1,14 @@
 import type {
   NicknameAvailabilityResult,
   AuthSession,
+  MyPageProfileResult,
+  MyPageStats,
   NicknameSetResult,
   NicknameValidationResult,
 } from './types'
 
 const MOCK_AUTH_DELAY_MS = 350
+const MOCK_NICKNAME_CHECK_DELAY_MS = 0
 const TAKEN_NICKNAMES_STORAGE_KEY = 'marble-pop-mock-taken-nicknames'
 const KAKAO_USER_STORAGE_KEY = 'marble-pop-mock-kakao-user'
 const DEFAULT_TAKEN_NICKNAMES = [
@@ -170,6 +173,23 @@ function createGuestNickname() {
   return `Guest_${uuid.slice(0, 4)}`
 }
 
+function createMockMyPageStats(userId: string): MyPageStats {
+  let hash = 0
+  for (let index = 0; index < userId.length; index += 1) {
+    hash = (hash * 31 + userId.charCodeAt(index)) | 0
+  }
+
+  const normalizedHash = Math.abs(hash)
+  const wins = 100 + (normalizedHash % 700)
+  const losses = 100 + ((normalizedHash >> 4) % 700)
+
+  return {
+    total: wins + losses,
+    wins,
+    losses,
+  }
+}
+
 export function validateNickname(nickname: string): NicknameValidationResult {
   const normalizedNickname = nickname.trim()
 
@@ -220,6 +240,7 @@ export async function mockKakaoLogin() {
     accessToken: `mock-kakao-token-${kakaoUser.id}`,
     userId: kakaoUser.id,
     nickname: existingNickname,
+    profileImage: kakaoUser.profileImage,
     isGuest: false,
     needsNicknameSetup: !hasNickname,
     provider: 'kakao',
@@ -240,6 +261,7 @@ export async function mockGuestLogin() {
     accessToken: `mock-guest-token-${userId}`,
     userId,
     nickname,
+    profileImage: null,
     isGuest: true,
     needsNicknameSetup: false,
     provider: 'guest',
@@ -251,7 +273,9 @@ export async function mockGuestLogin() {
 export async function mockCheckNicknameAvailability(
   nickname: string
 ): Promise<NicknameAvailabilityResult> {
-  await delay(MOCK_AUTH_DELAY_MS)
+  if (MOCK_NICKNAME_CHECK_DELAY_MS > 0) {
+    await delay(MOCK_NICKNAME_CHECK_DELAY_MS)
+  }
   seedTakenNicknamesIfMissing()
 
   const validationResult = validateNickname(nickname)
@@ -311,5 +335,35 @@ export async function mockSetNickname({
   return {
     ok: true,
     nickname: validationResult.normalizedNickname,
+  }
+}
+
+export async function mockGetMyPageProfile(
+  session: AuthSession
+): Promise<MyPageProfileResult> {
+  await delay(MOCK_AUTH_DELAY_MS)
+
+  if (session.isGuest) {
+    return {
+      ok: false,
+      code: 'FORBIDDEN',
+      message: '게스트는 마이페이지를 이용할 수 없습니다.',
+    }
+  }
+
+  const kakaoUser = getOrCreateMockKakaoUser()
+  const profileNickname =
+    session.nickname.trim().length > 0
+      ? session.nickname
+      : (kakaoUser.nickname ?? '플레이어')
+
+  return {
+    ok: true,
+    profile: {
+      id: session.userId,
+      nickname: profileNickname,
+      profileImage: session.profileImage ?? kakaoUser.profileImage,
+      stats: createMockMyPageStats(session.userId),
+    },
   }
 }
