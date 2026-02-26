@@ -8,6 +8,7 @@ import {
 import {
   createNicknameHelperFeedback,
   NICKNAME_CHECK_DEBOUNCE_MS,
+  VALIDATION_MESSAGE_DEBOUNCE_MS,
 } from '../nicknameSetupRules'
 import { useAuthStore } from '../store'
 
@@ -24,6 +25,7 @@ export function useNicknameSetupForm() {
   const [isNicknameAvailable, setIsNicknameAvailable] = useState<
     boolean | null
   >(null)
+  const [showValidationMessage, setShowValidationMessage] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -73,6 +75,15 @@ export function useNicknameSetupForm() {
     }
   }, [nicknameValidation])
 
+  useEffect(() => {
+    setShowValidationMessage(false)
+    const timer = window.setTimeout(
+      () => setShowValidationMessage(true),
+      VALIDATION_MESSAGE_DEBOUNCE_MS
+    )
+    return () => window.clearTimeout(timer)
+  }, [nickname])
+
   const helperFeedback = useMemo(
     () =>
       createNicknameHelperFeedback({
@@ -82,6 +93,7 @@ export function useNicknameSetupForm() {
         nicknameValidation,
         isCheckingNickname,
         isNicknameAvailable,
+        showValidationMessage,
       }),
     [
       isCheckingNickname,
@@ -89,6 +101,7 @@ export function useNicknameSetupForm() {
       isNicknameFocused,
       nickname,
       nicknameValidation,
+      showValidationMessage,
       submitMessage,
     ]
   )

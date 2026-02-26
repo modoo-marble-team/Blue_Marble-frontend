@@ -25,14 +25,13 @@ function NicknameSetupPage() {
         type="button"
         onClick={handleBackToHome}
         aria-label="홈으로 이동"
-        className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-xl border border-ui-border bg-ui-surface px-3 py-2 text-sm font-semibold text-ui-text-primary transition-colors hover:bg-ui-surface-muted sm:left-6 sm:top-6"
+        className="absolute left-4 top-4 flex size-10 items-center justify-center rounded-full border border-ui-border bg-ui-surface text-ui-text-primary transition-colors hover:bg-ui-surface-muted sm:left-6 sm:top-6"
       >
-        <ArrowLeft className="size-4" />
-        홈으로 이동
+        <ArrowLeft className="size-5" />
       </button>
 
       <main className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10 sm:px-6">
-        <section className="w-full max-w-[560px] rounded-3xl border border-ui-border bg-ui-surface px-8 py-10 shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
+        <section className="-mt-24 w-full max-w-[560px] rounded-3xl border border-ui-border bg-ui-surface px-8 py-10 shadow-[0_12px_32px_rgba(15,23,42,0.08)]">
           <div className="mb-6 flex justify-center">
             <div className="flex size-[72px] items-center justify-center rounded-full bg-ui-brand-soft">
               <UserRound className="size-8 text-ui-brand" />
