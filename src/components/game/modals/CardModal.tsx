@@ -52,16 +52,22 @@ const CardModal: React.FC<CardModalProps> = ({
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-11 pt-12 shadow-2xl">
         <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-[#FFF3E5]">
           {variant === 'event' ? (
-            <img src="/event-question.svg" alt="이벤트 카드 아이콘" className="h-24 w-24" />
+            <img
+              src="/event-question.svg"
+              alt="이벤트 카드 아이콘"
+              className="h-24 w-24"
+            />
           ) : (
-            <img src="/chance-box.svg" alt="찬스 카드 아이콘" className="h-24 w-24" />
+            <img
+              src="/chance-box.svg"
+              alt="찬스 카드 아이콘"
+              className="h-24 w-24"
+            />
           )}
         </div>
-
         <h2 className="mb-5 text-center text-[40px] font-black tracking-tight text-[#1F2A44]">
           {resolvedTitle}
         </h2>
-
         <p className="text-center text-[22px] font-bold leading-[1.35] text-[#5A6D8A]">
           {resolvedDescriptionLine1}
           {resolvedDescriptionLine2 ? (
@@ -79,7 +85,6 @@ const CardModal: React.FC<CardModalProps> = ({
             </>
           ) : null}
         </p>
-
         <button
           type="button"
           onClick={onConfirm}

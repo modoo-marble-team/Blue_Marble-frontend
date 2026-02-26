@@ -59,6 +59,23 @@ export const PlayerToken: React.FC<TokenProps> = ({
   )
 }
 
+// ─── 아이콘 렌더링 헬퍼 ───────────────────────────────────────────
+function TileIcon({ tile, size = 12 }: { tile: TileData; size?: number }) {
+  if (tile.svgIcon) {
+    return (
+      <img
+        src={tile.svgIcon}
+        alt={tile.name}
+        style={{ width: size, height: size, objectFit: 'contain' }}
+      />
+    )
+  }
+  if (tile.emoji) {
+    return <span style={{ fontSize: size, lineHeight: 1 }}>{tile.emoji}</span>
+  }
+  return null
+}
+
 // ─── BoardTile ────────────────────────────────────────────────────
 interface BoardTileProps {
   tile: TileData
@@ -78,6 +95,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const buildingLevel = tileOwner?.level ?? 0
   const hasBuilding = isCity && buildingLevel >= 1
   const stripOffset = strip ? 7 : 0
+  const hasIcon = !!(tile.svgIcon || tile.emoji)
 
   // ── 코너 ─────────────────────────────────────────────────────────
   if (dir === 'corner') {
@@ -100,9 +118,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
           overflow: 'visible',
         }}
       >
-        {tile.emoji && (
-          <span style={{ fontSize: 28, lineHeight: 1 }}>{tile.emoji}</span>
-        )}
+        <TileIcon tile={tile} size={28} />
         <span
           style={{
             fontSize: 9,
@@ -125,8 +141,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
 
   // ── 상단 / 하단 ───────────────────────────────────────────────────
   if (dir === 'top' || dir === 'bottom') {
-    const stripOnTop = true
-
     return (
       <div
         style={{
@@ -151,7 +165,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
             overflow: 'hidden',
           }}
         >
-          {stripOnTop && strip && (
+          {strip && (
             <div
               style={{
                 height: 14,
@@ -172,10 +186,8 @@ const BoardTile: React.FC<BoardTileProps> = ({
               padding: isCity ? '8px 3px' : '2px 3px',
             }}
           >
-            {tile.emoji && (
-              <span style={{ fontSize: 12, lineHeight: 1 }}>{tile.emoji}</span>
-            )}
-            {(!tile.emoji || isCity) && (
+            <TileIcon tile={tile} size={12} />
+            {(!hasIcon || isCity) && (
               <span
                 style={{
                   fontSize: 8,
@@ -188,7 +200,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 {tile.name}
               </span>
             )}
-            {/* 건물 있으면 이름과 60M 사이에 아이콘 */}
             {hasBuilding && <BuildingBadge level={buildingLevel} />}
             {isCity && (
               <span
@@ -227,7 +238,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
         borderRadius: 13,
       }}
     >
-      {/* 회전되는 타일 본체 */}
       <div
         style={{
           position: 'absolute',
@@ -274,10 +284,8 @@ const BoardTile: React.FC<BoardTileProps> = ({
               padding: isCity ? '8px 3px' : '2px 3px',
             }}
           >
-            {tile.emoji && (
-              <span style={{ fontSize: 11, lineHeight: 1 }}>{tile.emoji}</span>
-            )}
-            {(!tile.emoji || isCity) && (
+            <TileIcon tile={tile} size={11} />
+            {(!hasIcon || isCity) && (
               <span
                 style={{
                   fontSize: 8,
@@ -291,7 +299,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 {tile.name}
               </span>
             )}
-            {/* 건물 있으면 이름과 60M 사이에 아이콘 - position 없이 flex로 중앙 배치 */}
             {hasBuilding && <BuildingBadge level={buildingLevel} />}
             {isCity && (
               <span
@@ -304,7 +311,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
         </div>
       </div>
 
-      {/* PlayerToken: 회전 바깥 기준 중앙 */}
       {tokens.map((p, i) => (
         <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
       ))}

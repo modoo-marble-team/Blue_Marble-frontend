@@ -1,6 +1,7 @@
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
+import CardModal from '../game/modals/CardModal'
 import {
   TILES,
   TOP_ROW,
@@ -103,6 +104,12 @@ interface BuyModalState {
   onDoneCallback?: () => void
 }
 
+interface CardModalState {
+  open: boolean
+  variant: 'event' | 'chance'
+  onDoneCallback?: () => void
+}
+
 // ─── GameBoard ────────────────────────────────────────────────────
 const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   const [players, setPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
@@ -135,6 +142,12 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
     open: false,
     tileId: null,
     isUpgrade: false,
+  })
+
+  // ── 카드 모달 상태 (이벤트 / 찬스) ───────────────────────────────
+  const [cardModal, setCardModal] = useState<CardModalState>({
+    open: false,
+    variant: 'event',
   })
 
   function rollDice(onDone?: () => void) {
@@ -172,8 +185,9 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
 
         setTimeout(() => {
           const tile = TILES[landedTileId]
+
           if (tile.type === 'city') {
-            // ref에서 최신 tileOwners 읽기
+            // ── 도시 칸: 구매 / 업그레이드 모달 ──────────────────
             const owner = tileOwnersRef.current[landedTileId]
             const isMyTile =
               owner !== undefined && owner.ownerId === activeCurPlayer
@@ -184,8 +198,22 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
               isUpgrade: isMyTile,
               onDoneCallback: onDone,
             })
+          } else if (tile.type === 'event') {
+            // ── 이벤트 칸: 이벤트 카드 모달 ────────────────────────
+            setCardModal({
+              open: true,
+              variant: 'event',
+              onDoneCallback: onDone,
+            })
+          } else if (tile.type === 'chance') {
+            // ── 찬스 칸(?): 찬스 카드 모달 ─────────────────────────
+            setCardModal({
+              open: true,
+              variant: 'chance',
+              onDoneCallback: onDone,
+            })
           } else {
-            // city가 아니면 바로 턴 넘김
+            // ── 그 외 칸: 바로 턴 넘김 ──────────────────────────────
             const next = (activeCurPlayer + 1) % INIT_PLAYERS.length
             curPlayerRef.current = next
             setCurPlayer(next)
@@ -234,6 +262,16 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
     curPlayerRef.current = next
     setCurPlayer(next)
     onDone?.()
+  }
+
+  // ── 카드 모달 확인 처리 ───────────────────────────────────────────
+  function handleCardConfirm() {
+    const { onDoneCallback } = cardModal
+    setCardModal({ open: false, variant: 'event' })
+    const next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
+    curPlayerRef.current = next
+    setCurPlayer(next)
+    onDoneCallback?.()
   }
 
   // FE-B에서 ref로 rollDice 호출 가능
@@ -363,6 +401,13 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
         currentLevel={modalOwner?.level ?? 0}
         onPass={handlePass}
         onBuy={handleBuy}
+      />
+
+      {/* ── 이벤트 / 찬스 카드 모달 ── */}
+      <CardModal
+        open={cardModal.open}
+        variant={cardModal.variant}
+        onConfirm={handleCardConfirm}
       />
     </div>
   )
