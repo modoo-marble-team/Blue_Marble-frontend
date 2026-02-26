@@ -16,6 +16,7 @@ export interface TileData {
   type: TileType
   color?: string
   emoji?: string
+  svgIcon?: string
 }
 
 export interface PlayerState {
@@ -30,34 +31,34 @@ export const TILES: TileData[] = [
   { id: 0, name: 'START', type: 'corner', emoji: '🚩' },
   { id: 1, name: '수원', type: 'city', color: '#EF5350' },
   { id: 2, name: '용인', type: 'city', color: '#FFD15B' },
-  { id: 3, name: '?', type: 'chance', emoji: '❓' },
+  { id: 3, name: '?', type: 'chance', svgIcon: 'event-question.svg' },
   { id: 4, name: '군산', type: 'city', color: '#66BB6A' },
   { id: 5, name: '평택', type: 'city', color: '#42A5F5' },
   { id: 6, name: '익산', type: 'city', color: '#42A5F5' },
-  { id: 7, name: '이벤트', type: 'event', emoji: '🎁' },
+  { id: 7, name: '이벤트', type: 'event', svgIcon: 'chance-box.svg' },
   { id: 8, name: '무인도', type: 'corner', emoji: '🏝️' },
   { id: 9, name: '앙양', type: 'city', color: '#FF7043' },
-  { id: 10, name: '포포', type: 'city', color: '#7E57C2' },
+  { id: 10, name: '?', type: 'chance', svgIcon: 'event-question.svg' },
   { id: 11, name: '용포', type: 'city', color: '#26A69A' },
   { id: 12, name: '나포', type: 'city', color: '#66BB6A' },
-  { id: 13, name: '?', type: 'chance', emoji: '❓' },
+  { id: 13, name: '포포', type: 'city', color: '#7E57C2' },
   { id: 14, name: '목포', type: 'city', color: '#EF5350' },
   { id: 15, name: '여수', type: 'city', color: '#EF5350' },
   { id: 16, name: '국내여행', type: 'corner', emoji: '✈️' },
   { id: 17, name: '제주', type: 'city', color: '#42A5F5' },
   { id: 18, name: '여수', type: 'city', color: '#26A69A' },
   { id: 19, name: '광주', type: 'city', color: '#66BB6A' },
-  { id: 20, name: 'AI', type: 'ai', color: '#111111', emoji: '🤖' },
+  { id: 20, name: 'AI', type: 'ai', color: '#111111', svgIcon: '/ai-head.png' },
   { id: 21, name: '춘천', type: 'city', color: '#7E57C2' },
   { id: 22, name: '강릉', type: 'city', color: '#7E57C2' },
   { id: 23, name: '원주', type: 'city', color: '#FF7043' },
   { id: 24, name: '무인도\n이동칸', type: 'corner', emoji: '👮' },
   { id: 25, name: '춘포', type: 'city', color: '#42A5F5' },
   { id: 26, name: '원포', type: 'city', color: '#42A5F5' },
-  { id: 27, name: '?', type: 'chance', emoji: '❓' },
+  { id: 27, name: '?', type: 'chance', svgIcon: 'event-question.svg' },
   { id: 28, name: '대전', type: 'city', color: '#66BB6A' },
   { id: 29, name: '인천', type: 'city', color: '#7E57C2' },
-  { id: 30, name: '이벤트', type: 'event', emoji: '🎁' },
+  { id: 30, name: '이벤트', type: 'event', svgIcon: 'chance-box.svg' },
   { id: 31, name: '서울', type: 'city', color: '#FF7043' },
 ]
 
