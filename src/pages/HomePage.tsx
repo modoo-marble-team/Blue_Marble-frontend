@@ -10,6 +10,10 @@ import {
   Zap,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { mockGuestLogin, mockKakaoLogin } from '../features/auth/mockApi'
+import { useAuthStore } from '../features/auth/store'
 
 const featureCards = [
   {
@@ -33,6 +37,51 @@ const featureCards = [
 ]
 
 function HomePage() {
+  const navigate = useNavigate()
+  const session = useAuthStore((state) => state.session)
+  const setSession = useAuthStore((state) => state.setSession)
+
+  const [isKakaoLoading, setIsKakaoLoading] = useState(false)
+  const [isGuestLoading, setIsGuestLoading] = useState(false)
+
+  useEffect(() => {
+    if (!session) {
+      return
+    }
+
+    if (session.needsNicknameSetup) {
+      return
+    }
+
+    navigate('/lobby', { replace: true })
+  }, [navigate, session])
+
+  const isAnyLoading = isKakaoLoading || isGuestLoading
+
+  async function handleKakaoLogin() {
+    setIsKakaoLoading(true)
+    try {
+      const kakaoSession = await mockKakaoLogin()
+      setSession(kakaoSession)
+      navigate(kakaoSession.needsNicknameSetup ? '/nickname-setup' : '/lobby', {
+        replace: true,
+      })
+    } finally {
+      setIsKakaoLoading(false)
+    }
+  }
+
+  async function handleGuestLogin() {
+    setIsGuestLoading(true)
+    try {
+      const guestSession = await mockGuestLogin()
+      setSession(guestSession)
+      navigate('/lobby', { replace: true })
+    } finally {
+      setIsGuestLoading(false)
+    }
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-ui-app-bg px-4 py-8 sm:px-8 sm:py-10">
       {/* 배경 반투명 아이콘 */}
@@ -139,17 +188,21 @@ function HomePage() {
           <div className="mx-auto mt-8 flex w-full max-w-[380px] flex-col gap-3">
             <button
               type="button"
-              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-[#ffe812] py-3 text-[1.125rem] font-bold text-[#191919] shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all hover:bg-[#f5dc00] active:scale-[0.98]"
+              onClick={handleKakaoLogin}
+              disabled={isAnyLoading}
+              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl bg-[#ffe812] py-3 text-[1.125rem] font-bold text-[#191919] shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-all hover:bg-[#f5dc00] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
             >
               <MessageCircle className="size-6 shrink-0 fill-[#191919]" />
-              카카오 로그인으로 시작
+              {isKakaoLoading ? '로그인 중...' : '카카오 로그인으로 시작'}
             </button>
             <button
               type="button"
-              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-ui-border bg-ui-surface py-3 text-[1.125rem] font-bold text-ui-text-primary transition-colors hover:border-ui-text-subtle hover:bg-ui-surface-muted active:scale-[0.98]"
+              onClick={handleGuestLogin}
+              disabled={isAnyLoading}
+              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-ui-border bg-ui-surface py-3 text-[1.125rem] font-bold text-ui-text-primary transition-colors hover:border-ui-text-subtle hover:bg-ui-surface-muted active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
             >
               <UserRound className="size-6 shrink-0 text-ui-text-muted" />
-              게스트로 시작
+              {isGuestLoading ? '입장 중...' : '게스트로 시작'}
             </button>
           </div>
 
