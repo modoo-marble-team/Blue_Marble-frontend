@@ -1,4 +1,5 @@
 ﻿import React from 'react'
+import '../../styles/board.css'
 
 interface PlayerPieceProps {
   color: string
@@ -8,7 +9,7 @@ interface PlayerPieceProps {
 const PlayerPiece: React.FC<PlayerPieceProps> = ({ color, label }) => {
   return (
     <div
-      className="h-4 w-4 rounded-full border-2 border-white shadow"
+      className="player-token"
       style={{ backgroundColor: color }}
       aria-label={label}
     />
@@ -16,4 +17,3 @@ const PlayerPiece: React.FC<PlayerPieceProps> = ({ color, label }) => {
 }
 
 export default PlayerPiece
-
