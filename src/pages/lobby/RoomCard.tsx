@@ -26,7 +26,12 @@ function getJoinButtonLabel(room: LobbyRoom): string {
   return isFull ? JOIN_BUTTON_LABEL.FULL : JOIN_BUTTON_LABEL.AVAILABLE
 }
 
-export function RoomCard({ room }: { room: LobbyRoom }) {
+interface RoomCardProps {
+  room: LobbyRoom
+  onJoinRoom?: (room: LobbyRoom) => void
+}
+
+export function RoomCard({ room, onJoinRoom }: RoomCardProps) {
   const isFull = room.currentPlayers >= room.maxPlayers
   const isJoinDisabled = room.status === 'playing' || isFull
   const joinButtonLabel = getJoinButtonLabel(room)
@@ -67,6 +72,7 @@ export function RoomCard({ room }: { room: LobbyRoom }) {
         <button
           type="button"
           disabled={isJoinDisabled}
+          onClick={() => onJoinRoom?.(room)}
           className={cn(
             'shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-colors',
             isJoinDisabled

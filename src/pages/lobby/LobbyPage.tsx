@@ -1,13 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/Header'
 import { useAuthStore } from '../../features/auth/store'
+import {
+  createProfileMenuItems,
+  getAvatarBackground,
+  getAvatarText,
+} from '../../features/auth/ui'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
 import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
+import type { LobbyRoom } from './types'
 
 function LobbyPage() {
   const navigate = useNavigate()
@@ -46,13 +52,6 @@ function LobbyPage() {
     isError: isUsersError,
   } = useOnlineUsersSocket()
 
-  const avatarText = useMemo(() => {
-    const trimmedNickname = session?.nickname.trim() ?? ''
-    return trimmedNickname.length > 0 ? trimmedNickname.slice(0, 1) : 'P'
-  }, [session?.nickname])
-
-  const avatarBackground = session?.isGuest ? '#fde68a' : '#bfdbfe'
-
   function handleLogout() {
     clearSession()
     navigate('/', { replace: true })
@@ -62,32 +61,26 @@ function LobbyPage() {
     navigate('/my-page')
   }
 
+  function handleJoinRoom(room: LobbyRoom) {
+    navigate(`/rooms/${room.id}`, {
+      state: {
+        roomId: room.id,
+        roomTitle: room.title,
+      },
+    })
+  }
+
   if (!session || session.needsNicknameSetup) {
     return null
   }
 
-  const headerMenuItems = session.isGuest
-    ? [
-        {
-          id: 'logout',
-          label: '로그아웃',
-          onSelect: handleLogout,
-          tone: 'danger' as const,
-        },
-      ]
-    : [
-        {
-          id: 'my-page',
-          label: '마이페이지',
-          onSelect: handleGoMyPage,
-        },
-        {
-          id: 'logout',
-          label: '로그아웃',
-          onSelect: handleLogout,
-          tone: 'danger' as const,
-        },
-      ]
+  const avatarText = getAvatarText(session.nickname)
+  const avatarBackground = getAvatarBackground(session.isGuest)
+  const headerMenuItems = createProfileMenuItems({
+    isGuest: session.isGuest,
+    onGoMyPage: handleGoMyPage,
+    onLogout: handleLogout,
+  })
 
   return (
     <div className="min-h-screen bg-ui-app-bg">
@@ -114,6 +107,7 @@ function LobbyPage() {
             isLoading={isRoomsLoading}
             isError={isRoomsError}
             isUserListOpen={isUserListOpen}
+            onJoinRoom={handleJoinRoom}
           />
         </section>
 

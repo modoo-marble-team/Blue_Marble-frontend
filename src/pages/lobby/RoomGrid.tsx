@@ -7,6 +7,7 @@ interface RoomGridProps {
   isLoading: boolean
   isError: boolean
   isUserListOpen: boolean
+  onJoinRoom?: (room: LobbyRoom) => void
 }
 
 export function RoomGrid({
@@ -14,6 +15,7 @@ export function RoomGrid({
   isLoading,
   isError,
   isUserListOpen,
+  onJoinRoom,
 }: RoomGridProps) {
   return (
     <div
@@ -46,7 +48,9 @@ export function RoomGrid({
 
       {!isLoading &&
         !isError &&
-        rooms.map((room) => <RoomCard key={room.id} room={room} />)}
+        rooms.map((room) => (
+          <RoomCard key={room.id} room={room} onJoinRoom={onJoinRoom} />
+        ))}
     </div>
   )
 }

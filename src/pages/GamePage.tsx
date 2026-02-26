@@ -1,7 +1,7 @@
 ﻿import { useRef } from 'react'
 import { Settings } from 'lucide-react'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
-import GameChat from '../components/game/chat/GameChat'
+import RoomChat from '../features/room-chat/RoomChat'
 import RollButton from '../components/game/controls/RollButton'
 import { useGameStore } from '../stores/game.store'
 import { useGameState } from '../hooks/game/useGameState'
@@ -44,10 +44,11 @@ const GamePage: React.FC = () => {
         style={{ maxWidth: '1551px' }}
       >
         <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
-          <GameChat
+          <RoomChat
+            title="실시간 채팅"
             messages={messages}
             onSendMessage={handleSendMessage}
-            notice="寃뚯엫 ?쒖옉! ?쒖꽌瑜??뺥빀?덈떎."
+            notice="게임 시작! 순서를 정했습니다."
           />
         </div>
 

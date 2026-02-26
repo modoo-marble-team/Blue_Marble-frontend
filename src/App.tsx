@@ -4,6 +4,7 @@ import GamePage from './pages/GamePage'
 import LobbyPage from './pages/lobby/LobbyPage'
 import NicknameSetupPage from './pages/NicknameSetupPage'
 import MyPage from './pages/MyPage'
+import WaitingRoomPage from './pages/waiting-room/WaitingRoomPage'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route path="/my-page" element={<MyPage />} />
       <Route path="/game" element={<GamePage />} />
       <Route path="/lobby" element={<LobbyPage />} />
+      <Route path="/rooms/:roomId" element={<WaitingRoomPage />} />
     </Routes>
   )
 }

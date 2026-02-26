@@ -10,6 +10,8 @@ interface UserListPanelProps {
   isError: boolean
   isOpen: boolean
   onToggle: () => void
+  heightMode?: 'screen' | 'full'
+  disableWidthTransition?: boolean
 }
 
 export function UserListPanel({
@@ -18,16 +20,29 @@ export function UserListPanel({
   isError,
   isOpen,
   onToggle,
+  heightMode = 'screen',
+  disableWidthTransition = false,
 }: UserListPanelProps) {
+  const panelHeightClass =
+    heightMode === 'full' ? 'h-full' : 'xl:min-h-[calc(100vh-7rem)]'
+  const panelContainerHeightClass = heightMode === 'full' ? 'h-full' : undefined
+  const widthTransitionClass = disableWidthTransition
+    ? undefined
+    : 'transition-[width] duration-300'
+
   return (
     <aside
       className={cn(
-        'shrink-0 overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm transition-[width] duration-300',
+        'shrink-0 overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm',
+        panelContainerHeightClass,
+        widthTransitionClass,
         isOpen ? 'w-full xl:w-[280px]' : 'w-full xl:w-[72px]'
       )}
     >
       {isOpen ? (
-        <div className="flex h-full min-h-[280px] flex-col xl:min-h-[calc(100vh-7rem)]">
+        <div
+          className={cn('flex h-full min-h-[280px] flex-col', panelHeightClass)}
+        >
           <div className="flex items-center justify-between border-b border-ui-border px-4 py-3">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-ui-text-strong">
@@ -74,7 +89,12 @@ export function UserListPanel({
           </div>
         </div>
       ) : (
-        <div className="flex min-h-[120px] items-center gap-2 overflow-x-auto p-3 xl:min-h-[calc(100vh-7rem)] xl:flex-col xl:items-center xl:justify-start xl:overflow-visible">
+        <div
+          className={cn(
+            'flex min-h-[120px] items-center gap-2 overflow-x-auto p-3 xl:flex-col xl:items-center xl:justify-start xl:overflow-visible',
+            panelHeightClass
+          )}
+        >
           <button
             type="button"
             onClick={onToggle}
