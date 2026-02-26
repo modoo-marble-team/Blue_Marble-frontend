@@ -1,16 +1,13 @@
 ﻿import React from 'react'
-import '../../styles/board.css'
 
 interface BuildingBadgeProps {
   level: number
 }
 
-// level → SVG 파일 경로 매핑
-// 1=집1, 2=집2, 3=집3, 4=호텔, 5=랜드마크
 const BUILDING_ICON: Record<number, string> = {
   1: '/BuildingIcon/house.svg',
-  2: '/BuildingIcon/Second%20house%20upgrade.svg',
-  3: '/BuildingIcon/Third%20house%20upgrade.svg',
+  2: '/BuildingIcon/Second house upgrade.svg',
+  3: '/BuildingIcon/Third house upgrade.svg',
   4: '/BuildingIcon/hotel.svg',
   5: '/BuildingIcon/landmark.svg',
 }
@@ -21,23 +18,44 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level }) => {
   const src = BUILDING_ICON[level]
 
   return (
-    <div className={`building-badge building-badge--level-${level}`}>
-      {src ? (
-        <img
-          src={src}
-          alt={`building-level-${level}`}
-          className="building-badge__icon"
-          onError={(e) => {
-            // SVG 로드 실패 시 숫자 폴백
-            e.currentTarget.style.display = 'none'
-            const fallback = e.currentTarget
-              .nextElementSibling as HTMLElement | null
-            if (fallback) fallback.style.display = 'flex'
-          }}
-        />
-      ) : null}
-      {/* 폴백: SVG 없을 때 숫자 */}
-      <span className="building-badge__fallback" style={{ display: 'none' }}>
+    <div
+      style={{
+        width: 24,
+        height: 24,
+        borderRadius: '50%',
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        boxShadow: '0 1px 5px rgba(0,0,0,0.25)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <img
+        src={src}
+        alt={`building-level-${level}`}
+        style={{
+          width: 16,
+          height: 16,
+          objectFit: 'contain',
+          display: 'block',
+        }}
+        onError={(e) => {
+          e.currentTarget.style.display = 'none'
+          const fallback = e.currentTarget
+            .nextElementSibling as HTMLElement | null
+          if (fallback) fallback.style.display = 'flex'
+        }}
+      />
+      <span
+        style={{
+          display: 'none',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#2b7fff',
+        }}
+      >
         {level}
       </span>
     </div>
