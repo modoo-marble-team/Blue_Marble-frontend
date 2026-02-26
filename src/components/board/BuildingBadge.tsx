@@ -1,16 +1,12 @@
 ﻿import React from 'react'
+import '../../styles/board.css'
 
 interface BuildingBadgeProps {
   level: number
 }
 
 const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level }) => {
-  return (
-    <span className="inline-flex min-w-5 items-center justify-center rounded bg-[#2B7FFF] px-1 text-[10px] font-bold text-white">
-      {level}
-    </span>
-  )
+  return <span className="building-badge">{level}</span>
 }
 
 export default BuildingBadge
-
