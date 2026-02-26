@@ -58,9 +58,36 @@ function LobbyPage() {
     navigate('/', { replace: true })
   }
 
+  function handleGoMyPage() {
+    navigate('/my-page')
+  }
+
   if (!session || session.needsNicknameSetup) {
     return null
   }
+
+  const headerMenuItems = session.isGuest
+    ? [
+        {
+          id: 'logout',
+          label: '로그아웃',
+          onSelect: handleLogout,
+          tone: 'danger' as const,
+        },
+      ]
+    : [
+        {
+          id: 'my-page',
+          label: '마이페이지',
+          onSelect: handleGoMyPage,
+        },
+        {
+          id: 'logout',
+          label: '로그아웃',
+          onSelect: handleLogout,
+          tone: 'danger' as const,
+        },
+      ]
 
   return (
     <div className="min-h-screen bg-ui-app-bg">
@@ -68,14 +95,7 @@ function LobbyPage() {
         playerLabel={session.nickname}
         avatarText={avatarText}
         avatarBackground={avatarBackground}
-        menuItems={[
-          {
-            id: 'logout',
-            label: '로그아웃',
-            onSelect: handleLogout,
-            tone: 'danger',
-          },
-        ]}
+        menuItems={headerMenuItems}
       />
 
       <main className="flex flex-col gap-4 p-4 sm:p-6 xl:flex-row">
