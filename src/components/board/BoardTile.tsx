@@ -3,8 +3,10 @@ import {
   TileData,
   TileDir,
   PlayerState,
+  TileOwner,
   getStripColor,
 } from './board.constants'
+import BuildingIcon from './BuildingIcon'
 import '../../styles/board.css'
 
 // ─── PlayerToken ─────────────────────────────────────────────────
@@ -38,11 +40,20 @@ interface BoardTileProps {
   tile: TileData
   dir: TileDir
   tokens: PlayerState[]
+  tileOwner?: TileOwner // 소유 정보 (없으면 미구매)
 }
 
-const BoardTile: React.FC<BoardTileProps> = ({ tile, dir, tokens }) => {
+const BoardTile: React.FC<BoardTileProps> = ({
+  tile,
+  dir,
+  tokens,
+  tileOwner,
+}) => {
   const isCity = tile.type === 'city'
-  const strip = getStripColor(tile)
+
+  // 구매된 타일이면 strip 색상을 ownerColor로, 배경을 #E0E9F6으로
+  const strip = tileOwner ? tileOwner.ownerColor : getStripColor(tile)
+  const ownedBg = tileOwner ? '#E0E9F6' : undefined
 
   // ── 코너 ─────────────────────────────────────────────────────────
   if (dir === 'corner') {
@@ -60,7 +71,10 @@ const BoardTile: React.FC<BoardTileProps> = ({ tile, dir, tokens }) => {
   // ── 상단 / 하단 ───────────────────────────────────────────────────
   if (dir === 'top' || dir === 'bottom') {
     return (
-      <div className={`board-tile board-tile--${dir}`}>
+      <div
+        className={`board-tile board-tile--${dir}`}
+        style={ownedBg ? { backgroundColor: ownedBg } : undefined}
+      >
         <div className="tile-inner">
           {strip && (
             <div
@@ -72,6 +86,13 @@ const BoardTile: React.FC<BoardTileProps> = ({ tile, dir, tokens }) => {
             {tile.emoji && <span className="tile-emoji">{tile.emoji}</span>}
             <span className="tile-name">{tile.name}</span>
             {isCity && <span className="tile-price">60M</span>}
+            {/* 건물 아이콘: 구매된 city 타일에만 표시 */}
+            {tileOwner && tileOwner.level > 0 && (
+              <BuildingIcon
+                level={tileOwner.level}
+                ownerColor={tileOwner.ownerColor}
+              />
+            )}
           </div>
         </div>
         {tokens.map((p, i) => (
@@ -83,7 +104,10 @@ const BoardTile: React.FC<BoardTileProps> = ({ tile, dir, tokens }) => {
 
   // ── 좌측 / 우측 ───────────────────────────────────────────────────
   return (
-    <div className={`board-tile board-tile--${dir}`}>
+    <div
+      className={`board-tile board-tile--${dir}`}
+      style={ownedBg ? { backgroundColor: ownedBg } : undefined}
+    >
       <div className="tile-inner">
         {strip && (
           <div
@@ -95,6 +119,13 @@ const BoardTile: React.FC<BoardTileProps> = ({ tile, dir, tokens }) => {
           {tile.emoji && <span className="tile-emoji">{tile.emoji}</span>}
           <span className="tile-name">{tile.name}</span>
           {isCity && <span className="tile-price">60M</span>}
+          {/* 건물 아이콘: 구매된 city 타일에만 표시 */}
+          {tileOwner && tileOwner.level > 0 && (
+            <BuildingIcon
+              level={tileOwner.level}
+              ownerColor={tileOwner.ownerColor}
+            />
+          )}
         </div>
       </div>
       {tokens.map((p, i) => (

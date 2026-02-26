@@ -1,5 +1,6 @@
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import BoardTile from './BoardTile'
+import BuyModal from '../game/modals/BuyModal'
 import {
   TILES,
   TOP_ROW,
@@ -12,6 +13,8 @@ import {
   PLAYER_COLORS,
   INIT_PLAYERS,
   PlayerState,
+  TileOwner,
+  BuildingLevel,
 } from './board.constants'
 import '../../styles/board.css'
 
@@ -87,9 +90,17 @@ function DiceFace({ value, rolling }: { value: number; rolling: boolean }) {
   )
 }
 
-// ─── BoardGameHandle (FE-B 호환) ──────────────────────────────────
+// ─── BoardGameHandle ──────────────────────────────────────────────
 export interface BoardGameHandle {
   rollDice: (onDone?: () => void) => void
+}
+
+// ─── 모달 상태 타입 ───────────────────────────────────────────────
+interface BuyModalState {
+  open: boolean
+  tileId: number | null
+  isUpgrade: boolean
+  onDoneCallback?: () => void
 }
 
 // ─── GameBoard ────────────────────────────────────────────────────
@@ -101,6 +112,30 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   const [rolling, setRolling] = useState(false)
   const [status, setStatus] = useState('🎮 게임 시작!')
   const lock = useRef(false)
+
+  // curPlayer를 ref로도 관리 (클로저 stale 방지)
+  const curPlayerRef = useRef(0)
+
+  // tileOwners를 state + ref 동시 관리 (setInterval 클로저 stale 방지)
+  const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
+  const tileOwnersRef = useRef<Record<number, TileOwner>>({})
+
+  function updateTileOwners(
+    updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>
+  ) {
+    setTileOwners((prev) => {
+      const next = updater(prev)
+      tileOwnersRef.current = next
+      return next
+    })
+  }
+
+  // ── 구매/업그레이드 모달 상태 ─────────────────────────────────────
+  const [buyModal, setBuyModal] = useState<BuyModalState>({
+    open: false,
+    tileId: null,
+    isUpgrade: false,
+  })
 
   function rollDice(onDone?: () => void) {
     if (lock.current) return
@@ -122,18 +157,83 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
         lock.current = false
 
         const total = f1 + f2
+        const activeCurPlayer = curPlayerRef.current
+
+        let landedTileId = 0
         setPlayers((prev) => {
           const next = [...prev]
-          const p = { ...next[curPlayer] }
+          const p = { ...next[activeCurPlayer] }
           p.pos = (p.pos + total) % TILES.length
-          next[curPlayer] = p
+          landedTileId = p.pos
+          next[activeCurPlayer] = p
           setStatus(`${p.name} → ${TILES[p.pos].name} (+${total}칸)`)
           return next
         })
-        setCurPlayer((c) => (c + 1) % INIT_PLAYERS.length)
-        onDone?.()
+
+        setTimeout(() => {
+          const tile = TILES[landedTileId]
+          if (tile.type === 'city') {
+            // ref에서 최신 tileOwners 읽기
+            const owner = tileOwnersRef.current[landedTileId]
+            const isMyTile =
+              owner !== undefined && owner.ownerId === activeCurPlayer
+
+            setBuyModal({
+              open: true,
+              tileId: landedTileId,
+              isUpgrade: isMyTile,
+              onDoneCallback: onDone,
+            })
+          } else {
+            // city가 아니면 바로 턴 넘김
+            const next = (activeCurPlayer + 1) % INIT_PLAYERS.length
+            curPlayerRef.current = next
+            setCurPlayer(next)
+            onDone?.()
+          }
+        }, 50)
       }
     }, 70)
+  }
+
+  // ── 구매 처리 ─────────────────────────────────────────────────────
+  function handleBuy() {
+    const { tileId, onDoneCallback } = buyModal
+    if (tileId === null) return
+
+    const activeCurPlayer = curPlayerRef.current
+
+    updateTileOwners((prev) => {
+      const existing = prev[tileId]
+      const newLevel =
+        existing && existing.ownerId === activeCurPlayer
+          ? (Math.min(existing.level + 1, 5) as BuildingLevel)
+          : 1
+
+      return {
+        ...prev,
+        [tileId]: {
+          ownerId: activeCurPlayer,
+          ownerColor: PLAYER_COLORS[activeCurPlayer],
+          level: newLevel,
+        },
+      }
+    })
+
+    closeBuyModalAndNextTurn(onDoneCallback)
+  }
+
+  // ── 패스 처리 ─────────────────────────────────────────────────────
+  function handlePass() {
+    closeBuyModalAndNextTurn(buyModal.onDoneCallback)
+  }
+
+  function closeBuyModalAndNextTurn(onDone?: () => void) {
+    setBuyModal({ open: false, tileId: null, isUpgrade: false })
+    const next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
+    curPlayerRef.current = next
+    setCurPlayer(next)
+    onDone?.()
   }
 
   // FE-B에서 ref로 rollDice 호출 가능
@@ -150,12 +250,16 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   const SS = STRAIGHT_SIZE
   const GAP = GRID_GAP
 
+  const modalTile = buyModal.tileId !== null ? TILES[buyModal.tileId] : null
+  const modalOwner =
+    buyModal.tileId !== null ? tileOwners[buyModal.tileId] : undefined
+
   return (
     <div className="board-page">
       {/* 상태 표시 */}
       <div className="board-status">{status}</div>
 
-      {/* 내부 그리드 (외곽 파란 배경 제거) */}
+      {/* 내부 그리드 */}
       <div
         className="board-inner"
         style={{
@@ -171,6 +275,7 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
               tile={TILES[id]}
               dir={ci === 0 || ci === 8 ? 'corner' : 'top'}
               tokens={byTile[id] ?? []}
+              tileOwner={tileOwners[id]}
             />
           </div>
         ))}
@@ -182,6 +287,7 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
               tile={TILES[id]}
               dir={ci === 0 || ci === 8 ? 'corner' : 'bottom'}
               tokens={byTile[id] ?? []}
+              tileOwner={tileOwners[id]}
             />
           </div>
         ))}
@@ -189,14 +295,24 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
         {/* ── 왼쪽 열 (col 1, row 2~8) ── */}
         {LEFT_COL.map((id, ri) => (
           <div key={id} style={{ gridRow: ri + 2, gridColumn: 1 }}>
-            <BoardTile tile={TILES[id]} dir="left" tokens={byTile[id] ?? []} />
+            <BoardTile
+              tile={TILES[id]}
+              dir="left"
+              tokens={byTile[id] ?? []}
+              tileOwner={tileOwners[id]}
+            />
           </div>
         ))}
 
         {/* ── 오른쪽 열 (col 9, row 2~8) ── */}
         {RIGHT_COL.map((id, ri) => (
           <div key={id} style={{ gridRow: ri + 2, gridColumn: 9 }}>
-            <BoardTile tile={TILES[id]} dir="right" tokens={byTile[id] ?? []} />
+            <BoardTile
+              tile={TILES[id]}
+              dir="right"
+              tokens={byTile[id] ?? []}
+              tileOwner={tileOwners[id]}
+            />
           </div>
         ))}
 
@@ -236,6 +352,18 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
           </div>
         </div>
       </div>
+
+      {/* ── 구매/업그레이드 모달 ── */}
+      <BuyModal
+        open={buyModal.open}
+        cityName={modalTile?.name ?? ''}
+        purchaseCostText="60M"
+        tollText="30M"
+        isUpgrade={buyModal.isUpgrade}
+        currentLevel={modalOwner?.level ?? 0}
+        onPass={handlePass}
+        onBuy={handleBuy}
+      />
     </div>
   )
 })
