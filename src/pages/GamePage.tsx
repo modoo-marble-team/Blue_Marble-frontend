@@ -1,4 +1,4 @@
-﻿import React, { useRef } from 'react'
+﻿import { useRef } from 'react'
 import { Settings } from 'lucide-react'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import GameChat from '../components/game/chat/GameChat'
@@ -39,7 +39,10 @@ const GamePage: React.FC = () => {
         </button>
       </div>
 
-      <div className="mx-auto flex h-full w-full max-w-[1551px] items-center justify-between gap-8 pb-12 pt-4">
+      <div
+        className="mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4"
+        style={{ maxWidth: '1551px' }}
+      >
         <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
           <GameChat
             messages={messages}
@@ -49,7 +52,10 @@ const GamePage: React.FC = () => {
         </div>
 
         <div className="flex shrink-0 flex-1 items-center justify-center">
-          <div className="aspect-square w-full max-w-[800px] overflow-hidden rounded-[48px] border-[8px] border-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)]">
+          <div
+            className="aspect-square w-full overflow-hidden rounded-[48px] border-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)]"
+            style={{ maxWidth: '800px', borderWidth: '8px' }}
+          >
             <BoardGame ref={boardRef} />
           </div>
         </div>

@@ -1,5 +1,353 @@
-﻿.board-tile-enter {
-  transition: transform 220ms ease, opacity 220ms ease;
+﻿/* ═══════════════════════════════════════════════════════════════
+   board.css — 모두의마블 보드 렌더링 스타일 (FE-C)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── CSS Variables ─────────────────────────────────────────── */
+:root {
+  --board-corner: 86px;
+  --board-straight: 60px;
+  --board-gap: 2px;
+  --board-radius-outer: 48px;
+  --board-radius-inner: 40px;
+  --board-radius-tile: 13px;
+  --board-radius-corner: 18px;
+  --board-bg-from: #f0f4ff;
+  --board-bg-to: #e8f0fe;
+  --board-outer-bg: #dbeafe;
+  --board-inner-bg: #f0f9ff;
+  --board-strip-h: 14px;
+  --board-font: 'Inter', 'Pretendard', system-ui, -apple-system, sans-serif;
+}
+
+/* ─── Page Container ────────────────────────────────────────── */
+.board-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--board-bg-from), var(--board-bg-to));
+  padding: 8px;
+  gap: 6px;
+  font-family: var(--board-font);
+}
+
+/* ─── Status Bar ────────────────────────────────────────────── */
+.board-status {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3b82f6;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+/* ─── Board Outer Shell ─────────────────────────────────────── */
+.board-outer {
+  background-color: var(--board-outer-bg);
+  border-radius: var(--board-radius-outer);
+  border: 8px solid white;
+  padding: 28px;
+  box-shadow: 0 50px 100px -20px rgba(30, 58, 138, 0.3);
+  user-select: none;
+}
+
+/* ─── Board Inner Grid ──────────────────────────────────────── */
+.board-inner {
+  background-color: var(--board-inner-bg);
+  border-radius: var(--board-radius-inner);
+  border: 4px solid rgba(239, 246, 255, 0.7);
+  padding: 10px;
+  box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.05);
+  display: grid;
+  box-sizing: content-box;
+}
+
+/* ─── Center Area ───────────────────────────────────────────── */
+.board-center {
+  grid-column: 2 / 9;
+  grid-row: 2 / 9;
+  background: linear-gradient(135deg, #eff6ff, #eef2ff);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.board-center__title {
+  font-size: 24px;
+  font-weight: 900;
+  color: #3b82f6;
+  letter-spacing: 0.1em;
+}
+
+/* ─── Dice Pair ─────────────────────────────────────────────── */
+.board-dice-pair {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Player Status (Center) ────────────────────────────────── */
+.board-players {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.board-players__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.board-players__dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.board-players__money {
+  font-size: 9px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   TILES
+   ───────────────────────────────────────────────────────────── */
+
+/* ─── Base Tile ─────────────────────────────────────────────── */
+.board-tile {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ─── Corner Tile ───────────────────────────────────────────── */
+.board-tile--corner {
+  background-color: #ffffff;
+  border: 2.5px solid #2b7fff;
+  border-radius: var(--board-radius-corner);
+  box-shadow: 0 0 0 5px rgba(190, 219, 255, 0.65);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.board-tile--corner .tile-emoji {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.board-tile--corner .tile-name {
+  font-size: 9px;
+  font-weight: 800;
+  color: #374151;
+  text-align: center;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  padding: 0 4px;
+}
+
+/* ─── Straight Tile (top / bottom) ──────────────────────────── */
+.board-tile--top,
+.board-tile--bottom {
+  background-color: #e2e8f0;
+  border-radius: var(--board-radius-tile);
+  padding: 2px;
+}
+
+.board-tile--top .tile-inner,
+.board-tile--bottom .tile-inner {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
+  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.board-tile--top .tile-content,
+.board-tile--bottom .tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 3px;
+}
+
+.board-tile--top .tile-content .tile-emoji,
+.board-tile--bottom .tile-content .tile-emoji {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.board-tile--top .tile-content .tile-name,
+.board-tile--bottom .tile-content .tile-name {
+  font-size: 8px;
+  font-weight: 800;
+  color: #374151;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.board-tile--top .tile-content .tile-price,
+.board-tile--bottom .tile-content .tile-price {
+  font-size: 6.5px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* Strip positioning — strips face upward on both top and bottom rows
+   Top row: strip on TOP (above text)
+   Bottom row: strip on TOP (facing center/upward) */
+.board-tile--bottom .tile-strip {
+  height: var(--board-strip-h);
+  background-color: var(--strip-color);
+  flex-shrink: 0;
+  border-radius: 7px 7px 0 0;
+  order: -1;
+}
+
+.board-tile--top .tile-strip {
+  height: var(--board-strip-h);
+  background-color: var(--strip-color);
+  flex-shrink: 0;
+  border-radius: 7px 7px 0 0;
+  order: -1;
+}
+
+/* ─── Straight Tile (left / right) — horizontal flex, no rotation ─ */
+.board-tile--left,
+.board-tile--right {
+  background-color: #e2e8f0;
+  border-radius: var(--board-radius-tile);
+  padding: 2px;
+}
+
+.board-tile--left .tile-inner,
+.board-tile--right .tile-inner {
+  width: 100%;
+  height: 100%;
+  background-color: #ffffff;
+  border-radius: 9px;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Strip: vertical bar facing INWARD (toward board center) */
+/* Left tile → strip on RIGHT (inward toward center) */
+.board-tile--left .tile-strip {
+  width: var(--board-strip-h);
+  height: 100%;
+  background-color: var(--strip-color);
+  flex-shrink: 0;
+  border-radius: 0 7px 7px 0;
+  order: 1;
+}
+
+/* Right tile → strip on LEFT (inward toward center) */
+.board-tile--right .tile-strip {
+  width: var(--board-strip-h);
+  height: 100%;
+  background-color: var(--strip-color);
+  flex-shrink: 0;
+  border-radius: 7px 0 0 7px;
+  order: -1;
+}
+
+.board-tile--left .tile-content,
+.board-tile--right .tile-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px 3px;
+}
+
+.board-tile--left .tile-content .tile-emoji,
+.board-tile--right .tile-content .tile-emoji {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.board-tile--left .tile-content .tile-name,
+.board-tile--right .tile-content .tile-name {
+  font-size: 9px;
+  font-weight: 800;
+  color: #374151;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.board-tile--left .tile-content .tile-price,
+.board-tile--right .tile-content .tile-price {
+  font-size: 7px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* ─── Player Token ──────────────────────────────────────────── */
+.player-token {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-weight: 800;
+  color: #fff;
+  z-index: 20;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Building Badge ────────────────────────────────────────── */
+.building-badge {
+  display: inline-flex;
+  min-width: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background-color: #2b7fff;
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+}
+
+/* ─── Tile Entrance Animation ───────────────────────────────── */
+.board-tile-enter {
+  transition:
+    transform 220ms ease,
+    opacity 220ms ease;
 }
 
 .board-tile-enter-from {
@@ -11,4 +359,3 @@
   opacity: 1;
   transform: translateY(0);
 }
-
