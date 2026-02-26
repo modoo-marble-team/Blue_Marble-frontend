@@ -21,11 +21,6 @@ const DEFAULT_CHANCE_DESC_1 = '이런 ㅠㅠㅠㅠ'
 const DEFAULT_CHANCE_DESC_2 = '당신은 무인도로 가게 됩니다'
 const DEFAULT_CONFIRM_LABEL = '확인하기'
 
-const ICON_BY_VARIANT: Record<CardModalVariant, string> = {
-  event: '❓',
-  chance: '🎁',
-}
-
 const CardModal: React.FC<CardModalProps> = ({
   open,
   variant = 'event',
@@ -51,17 +46,21 @@ const CardModal: React.FC<CardModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-11 pt-12 shadow-2xl">
-        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-[#FFF3E5] text-[58px]">
-          <span role="img" aria-label={variant === 'event' ? '이벤트 카드' : '찬스 카드'}>
-            {ICON_BY_VARIANT[variant]}
-          </span>
+        <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-3xl bg-[#FFF3E5]">
+          {variant === 'event' ? (
+            <img src="/event-question.svg" alt="이벤트 카드 아이콘" className="h-16.5 w-16.5" />
+          ) : (
+            <span role="img" aria-label="찬스 카드" className="text-[58px]">
+              🎁
+            </span>
+          )}
         </div>
 
-        <h2 className="mb-5 text-center text-[54px] font-black tracking-tight text-[#1F2A44]">
+        <h2 className="mb-5 text-center text-[50px] font-black tracking-tight text-[#1F2A44]">
           {resolvedTitle}
         </h2>
 
-        <p className="text-center text-[34px] font-bold leading-[1.35] text-[#5A6D8A]">
+        <p className="text-center text-[30px] font-bold leading-[1.35] text-[#5A6D8A]">
           {resolvedDescriptionLine1}
           <br />
           {hasHighlightText ? (
@@ -78,7 +77,7 @@ const CardModal: React.FC<CardModalProps> = ({
         <button
           type="button"
           onClick={onConfirm}
-          className="mt-10 h-18.5 w-full rounded-[22px] bg-[#245FE5] text-[34px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1]"
+          className="mt-10 h-18.5 w-full rounded-[22px] bg-[#245FE5] text-[30px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1]"
         >
           {confirmLabel}
         </button>
