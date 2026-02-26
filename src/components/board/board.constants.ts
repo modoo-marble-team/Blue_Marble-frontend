@@ -1,6 +1,15 @@
 ﻿export type TileType = 'corner' | 'city' | 'chance' | 'event' | 'ai'
 export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
 
+// 0: 미구매, 1: 집1, 2: 집2, 3: 집3, 4: 호텔, 5: 랜드마크
+export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5
+
+export interface TileOwner {
+  ownerId: number
+  ownerColor: string
+  level: BuildingLevel
+}
+
 export interface TileData {
   id: number
   name: string
