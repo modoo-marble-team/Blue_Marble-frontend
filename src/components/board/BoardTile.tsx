@@ -12,22 +12,26 @@ import BuildingBadge from './BuildingBadge'
 interface TokenProps {
   player: PlayerState
   idx: number
-  // 스트립이 있는 타일은 중앙이 위로 7px 밀림 → 보정값 전달
+  total: number
   stripOffset?: number
 }
 
 export const PlayerToken: React.FC<TokenProps> = ({
   player,
   idx,
+  total,
   stripOffset = 0,
 }) => {
-  const offsets = [
-    { x: -1, y: -1 },
-    { x: 13, y: -13 },
-    { x: -13, y: 13 },
-    { x: 13, y: 13 },
-  ]
-  const { x, y } = offsets[idx % 4]
+  const offsets =
+    total === 1
+      ? [{ x: 0, y: 0 }]
+      : [
+          { x: -13, y: -13 },
+          { x: 13, y: -13 },
+          { x: -13, y: 13 },
+          { x: 13, y: 13 },
+        ]
+  const { x, y } = offsets[idx % offsets.length]
   return (
     <div
       style={{
@@ -73,8 +77,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const strip = getStripColor(tile)
   const buildingLevel = tileOwner?.level ?? 0
   const hasBuilding = isCity && buildingLevel >= 1
-
-  // 스트립(14px) 있는 타일은 시각적 중앙이 7px 아래로 밀림 → +7 보정
   const stripOffset = strip ? 7 : 0
 
   // ── 코너 ─────────────────────────────────────────────────────────
@@ -115,7 +117,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
           {tile.name}
         </span>
         {tokens.map((p, i) => (
-          <PlayerToken key={p.id} player={p} idx={i} />
+          <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
         ))}
       </div>
     )
@@ -147,7 +149,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            position: 'relative',
           }}
         >
           {stripOnTop && strip && (
@@ -187,6 +188,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 {tile.name}
               </span>
             )}
+            {/* 건물 있으면 이름과 60M 사이에 아이콘 */}
             {hasBuilding && <BuildingBadge level={buildingLevel} />}
             {isCity && (
               <span
@@ -198,12 +200,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
           </div>
         </div>
 
-        {/* 스트립 14px 만큼 중앙이 아래로 밀리므로 +7px 보정 */}
         {tokens.map((p, i) => (
           <PlayerToken
             key={p.id}
             player={p}
             idx={i}
+            total={tokens.length}
             stripOffset={stripOffset}
           />
         ))}
@@ -225,6 +227,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
         borderRadius: 13,
       }}
     >
+      {/* 회전되는 타일 본체 */}
       <div
         style={{
           position: 'absolute',
@@ -288,15 +291,8 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 {tile.name}
               </span>
             )}
-            {hasBuilding && (
-              <div
-                style={{
-                  transform: isLeft ? 'rotate(-90deg)' : 'rotate(90deg)',
-                }}
-              >
-                <BuildingBadge level={buildingLevel} />
-              </div>
-            )}
+            {/* 건물 있으면 이름과 60M 사이에 아이콘 - position 없이 flex로 중앙 배치 */}
+            {hasBuilding && <BuildingBadge level={buildingLevel} />}
             {isCity && (
               <span
                 style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
@@ -308,9 +304,9 @@ const BoardTile: React.FC<BoardTileProps> = ({
         </div>
       </div>
 
-      {/* 좌우 타일은 회전된 내부와 무관하게 외부 컨테이너 기준 중앙 → 보정 불필요 */}
+      {/* PlayerToken: 회전 바깥 기준 중앙 */}
       {tokens.map((p, i) => (
-        <PlayerToken key={p.id} player={p} idx={i} />
+        <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
       ))}
     </div>
   )
