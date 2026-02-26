@@ -3,6 +3,7 @@ import { ArrowLeft, Gamepad2, Shield, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../features/auth/store'
 import { useMyPageProfileQuery } from '../features/auth/hooks/useMyPageProfileQuery'
+import { getAvatarText } from '../features/auth/ui'
 
 const myPageStatsCardMeta = [
   {
@@ -45,8 +46,7 @@ function MyPage() {
   }, [navigate, session])
 
   const fallbackAvatarText = useMemo(() => {
-    const trimmedNickname = session?.nickname.trim() ?? ''
-    return trimmedNickname.length > 0 ? trimmedNickname.slice(0, 1) : 'P'
+    return getAvatarText(session?.nickname)
   }, [session?.nickname])
 
   if (!session || session.needsNicknameSetup) {
