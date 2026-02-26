@@ -9,10 +9,10 @@ interface BuildingIconProps {
 
 const BUILDING_SVG: Record<number, string> = {
   1: '/BuildingIcon/house.svg',
-  2: '/BuildingIcon/Second house upgrade.svg',
-  3: '/BuildingIcon/Third house upgrade.svg',
+  2: '/BuildingIcon/Second%20house%20upgrade.svg',
+  3: '/BuildingIcon/Third%20house%20upgrade.svg',
   4: '/BuildingIcon/hotel.svg',
-  5: '/BuildingIcon/ landmark.svg',
+  5: '/BuildingIcon/landmark.svg',
 }
 
 const BuildingIcon: React.FC<BuildingIconProps> = ({ level, ownerColor }) => {

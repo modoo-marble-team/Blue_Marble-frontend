@@ -3,31 +3,51 @@ import {
   TileData,
   TileDir,
   PlayerState,
-  TileOwner,
   getStripColor,
+  TileOwner,
 } from './board.constants'
-import BuildingIcon from './BuildingIcon'
-import '../../styles/board.css'
+import BuildingBadge from './BuildingBadge'
 
 // ─── PlayerToken ─────────────────────────────────────────────────
 interface TokenProps {
   player: PlayerState
   idx: number
+  // 스트립이 있는 타일은 중앙이 위로 7px 밀림 → 보정값 전달
+  stripOffset?: number
 }
 
-export const PlayerToken: React.FC<TokenProps> = ({ player, idx }) => {
-  const positions: React.CSSProperties[] = [
-    { bottom: 3, right: 3 },
-    { bottom: 3, left: 3 },
-    { top: 3, right: 3 },
-    { top: 3, left: 3 },
+export const PlayerToken: React.FC<TokenProps> = ({
+  player,
+  idx,
+  stripOffset = 0,
+}) => {
+  const offsets = [
+    { x: -1, y: -1 },
+    { x: 13, y: -13 },
+    { x: -13, y: 13 },
+    { x: 13, y: 13 },
   ]
+  const { x, y } = offsets[idx % 4]
   return (
     <div
-      className="player-token"
       style={{
-        ...positions[idx % 4],
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y + stripOffset}px))`,
+        width: 26,
+        height: 26,
+        borderRadius: '50%',
         backgroundColor: player.color,
+        border: '2.5px solid white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        fontWeight: 900,
+        color: '#fff',
+        zIndex: 20,
+        boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
       }}
     >
       {player.id + 1}
@@ -40,7 +60,7 @@ interface BoardTileProps {
   tile: TileData
   dir: TileDir
   tokens: PlayerState[]
-  tileOwner?: TileOwner // 소유 정보 (없으면 미구매)
+  tileOwner?: TileOwner
 }
 
 const BoardTile: React.FC<BoardTileProps> = ({
@@ -50,17 +70,50 @@ const BoardTile: React.FC<BoardTileProps> = ({
   tileOwner,
 }) => {
   const isCity = tile.type === 'city'
+  const strip = getStripColor(tile)
+  const buildingLevel = tileOwner?.level ?? 0
+  const hasBuilding = isCity && buildingLevel >= 1
 
-  // 구매된 타일이면 strip 색상을 ownerColor로, 배경을 #E0E9F6으로
-  const strip = tileOwner ? tileOwner.ownerColor : getStripColor(tile)
-  const ownedBg = tileOwner ? '#E0E9F6' : undefined
+  // 스트립(14px) 있는 타일은 시각적 중앙이 7px 아래로 밀림 → +7 보정
+  const stripOffset = strip ? 7 : 0
 
   // ── 코너 ─────────────────────────────────────────────────────────
   if (dir === 'corner') {
     return (
-      <div className="board-tile board-tile--corner">
-        {tile.emoji && <span className="tile-emoji">{tile.emoji}</span>}
-        <span className="tile-name">{tile.name}</span>
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#FFFFFF',
+          border: '2.5px solid #2B7FFF',
+          borderRadius: 18,
+          boxShadow: '0 0 0 5px rgba(190,219,255,0.65)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          position: 'relative',
+          boxSizing: 'border-box',
+          overflow: 'visible',
+        }}
+      >
+        {tile.emoji && (
+          <span style={{ fontSize: 28, lineHeight: 1 }}>{tile.emoji}</span>
+        )}
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 800,
+            color: '#374151',
+            textAlign: 'center',
+            lineHeight: 1.3,
+            whiteSpace: 'pre-wrap',
+            padding: '0 4px',
+          }}
+        >
+          {tile.name}
+        </span>
         {tokens.map((p, i) => (
           <PlayerToken key={p.id} player={p} idx={i} />
         ))}
@@ -70,64 +123,192 @@ const BoardTile: React.FC<BoardTileProps> = ({
 
   // ── 상단 / 하단 ───────────────────────────────────────────────────
   if (dir === 'top' || dir === 'bottom') {
+    const stripOnTop = true
+
     return (
       <div
-        className={`board-tile board-tile--${dir}`}
-        style={ownedBg ? { backgroundColor: ownedBg } : undefined}
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#E2E8F0',
+          borderRadius: 13,
+          padding: 2,
+          boxSizing: 'border-box',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
       >
-        <div className="tile-inner">
-          {strip && (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#FFFFFF',
+            borderRadius: 9,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
+          {stripOnTop && strip && (
             <div
-              className="tile-strip"
-              style={{ '--strip-color': strip } as React.CSSProperties}
+              style={{
+                height: 14,
+                backgroundColor: strip,
+                flexShrink: 0,
+                borderRadius: '7px 7px 0 0',
+              }}
             />
           )}
-          <div className="tile-content">
-            {tile.emoji && <span className="tile-emoji">{tile.emoji}</span>}
-            <span className="tile-name">{tile.name}</span>
-            {isCity && <span className="tile-price">60M</span>}
-            {/* 건물 아이콘: 구매된 city 타일에만 표시 */}
-            {tileOwner && tileOwner.level > 0 && (
-              <BuildingIcon
-                level={tileOwner.level}
-                ownerColor={tileOwner.ownerColor}
-              />
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: isCity ? 'space-between' : 'center',
+              gap: 2,
+              padding: isCity ? '8px 3px' : '2px 3px',
+            }}
+          >
+            {tile.emoji && (
+              <span style={{ fontSize: 12, lineHeight: 1 }}>{tile.emoji}</span>
+            )}
+            {(!tile.emoji || isCity) && (
+              <span
+                style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  color: '#374151',
+                  textAlign: 'center',
+                  lineHeight: 1.2,
+                }}
+              >
+                {tile.name}
+              </span>
+            )}
+            {hasBuilding && <BuildingBadge level={buildingLevel} />}
+            {isCity && (
+              <span
+                style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
+              >
+                60M
+              </span>
             )}
           </div>
         </div>
+
+        {/* 스트립 14px 만큼 중앙이 아래로 밀리므로 +7px 보정 */}
         {tokens.map((p, i) => (
-          <PlayerToken key={p.id} player={p} idx={i} />
+          <PlayerToken
+            key={p.id}
+            player={p}
+            idx={i}
+            stripOffset={stripOffset}
+          />
         ))}
       </div>
     )
   }
 
   // ── 좌측 / 우측 ───────────────────────────────────────────────────
+  const isLeft = dir === 'left'
+  const rotation = isLeft ? 'rotate(90deg)' : 'rotate(-90deg)'
+
   return (
     <div
-      className={`board-tile board-tile--${dir}`}
-      style={ownedBg ? { backgroundColor: ownedBg } : undefined}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: 13,
+      }}
     >
-      <div className="tile-inner">
-        {strip && (
-          <div
-            className="tile-strip"
-            style={{ '--strip-color': strip } as React.CSSProperties}
-          />
-        )}
-        <div className="tile-content">
-          {tile.emoji && <span className="tile-emoji">{tile.emoji}</span>}
-          <span className="tile-name">{tile.name}</span>
-          {isCity && <span className="tile-price">60M</span>}
-          {/* 건물 아이콘: 구매된 city 타일에만 표시 */}
-          {tileOwner && tileOwner.level > 0 && (
-            <BuildingIcon
-              level={tileOwner.level}
-              ownerColor={tileOwner.ownerColor}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          width: '70px',
+          height: '90px',
+          transform: `translate(-50%, -50%) ${rotation}`,
+          backgroundColor: '#E2E8F0',
+          borderRadius: 13,
+          padding: 2,
+          boxSizing: 'border-box' as const,
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#FFFFFF',
+            borderRadius: 9,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {strip && (
+            <div
+              style={{
+                height: 14,
+                backgroundColor: strip,
+                flexShrink: 0,
+                borderRadius: '7px 7px 0 0',
+              }}
             />
           )}
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: isCity ? 'space-between' : 'center',
+              gap: 2,
+              padding: isCity ? '8px 3px' : '2px 3px',
+            }}
+          >
+            {tile.emoji && (
+              <span style={{ fontSize: 11, lineHeight: 1 }}>{tile.emoji}</span>
+            )}
+            {(!tile.emoji || isCity) && (
+              <span
+                style={{
+                  fontSize: 8,
+                  fontWeight: 800,
+                  color: '#374151',
+                  textAlign: 'center',
+                  lineHeight: 1.2,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {tile.name}
+              </span>
+            )}
+            {hasBuilding && (
+              <div
+                style={{
+                  transform: isLeft ? 'rotate(-90deg)' : 'rotate(90deg)',
+                }}
+              >
+                <BuildingBadge level={buildingLevel} />
+              </div>
+            )}
+            {isCity && (
+              <span
+                style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
+              >
+                60M
+              </span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* 좌우 타일은 회전된 내부와 무관하게 외부 컨테이너 기준 중앙 → 보정 불필요 */}
       {tokens.map((p, i) => (
         <PlayerToken key={p.id} player={p} idx={i} />
       ))}

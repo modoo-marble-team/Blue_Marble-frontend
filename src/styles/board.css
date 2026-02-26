@@ -331,16 +331,33 @@
 
 /* ─── Building Badge ────────────────────────────────────────── */
 .building-badge {
-  display: inline-flex;
-  min-width: 20px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.92);
+  display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  background-color: #2b7fff;
-  padding: 0 4px;
+  z-index: 10;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.building-badge__icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+}
+
+/* 폴백 숫자: SVG 로드 실패 시에만 표시 */
+.building-badge__fallback {
+  display: none;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
   font-weight: 700;
-  color: white;
+  color: #2b7fff;
 }
 
 /* ─── Tile Entrance Animation ───────────────────────────────── */
