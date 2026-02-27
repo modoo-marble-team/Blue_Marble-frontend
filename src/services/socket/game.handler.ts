@@ -9,6 +9,7 @@ type GameStatePayload = {
   tiles: Tile[]
   current_turn: string | null
   round: number
+  timeout_sec?: number
 }
 
 let teardownGameHandlersRef: Teardown | null = null
@@ -20,6 +21,7 @@ const applyGameState = (payload: GameStatePayload) => {
     tiles: payload.tiles,
     currentTurn: payload.current_turn,
     round: payload.round,
+    turnTimeoutSec: payload.timeout_sec ?? gameStore.turnTimeoutSec,
   })
 }
 
@@ -40,6 +42,7 @@ export const setupGameHandlers = (): Teardown => {
   const handleTurnStart = ({
     player_id,
     round,
+    timeout_sec,
   }: {
     player_id: string
     round: number
@@ -48,6 +51,8 @@ export const setupGameHandlers = (): Teardown => {
     gameStore.setGameState({
       currentTurn: player_id,
       round,
+      turnTimeoutSec: timeout_sec,
+      turnTimerKey: Date.now(),
     })
   }
 
