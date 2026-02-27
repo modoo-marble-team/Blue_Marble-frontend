@@ -2,6 +2,7 @@ import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import CardModal from '../game/modals/CardModal'
+import TollModal from '../game/modals/TollModal'
 import {
   TILES,
   TOP_ROW,
@@ -110,6 +111,14 @@ interface CardModalState {
   onDoneCallback?: () => void
 }
 
+interface TollModalState {
+  open: boolean
+  tileId: number | null
+  ownerName: string
+  tollText: string
+  onDoneCallback?: () => void
+}
+
 // ─── GameBoard ────────────────────────────────────────────────────
 const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   const [players, setPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
@@ -126,6 +135,9 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   // tileOwners를 state + ref 동시 관리 (setInterval 클로저 stale 방지)
   const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
   const tileOwnersRef = useRef<Record<number, TileOwner>>({})
+
+  // players를 ref로도 관리 (클로저 stale 방지)
+  const playersRef = useRef<PlayerState[]>(INIT_PLAYERS)
 
   function updateTileOwners(
     updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>
@@ -148,6 +160,14 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   const [cardModal, setCardModal] = useState<CardModalState>({
     open: false,
     variant: 'event',
+  })
+
+  // ── 통행료 모달 상태 ──────────────────────────────────────────────
+  const [tollModal, setTollModal] = useState<TollModalState>({
+    open: false,
+    tileId: null,
+    ownerName: '',
+    tollText: '30M',
   })
 
   function rollDice(onDone?: () => void) {
@@ -179,6 +199,7 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
           p.pos = (p.pos + total) % TILES.length
           landedTileId = p.pos
           next[activeCurPlayer] = p
+          playersRef.current = next
           setStatus(`${p.name} → ${TILES[p.pos].name} (+${total}칸)`)
           return next
         })
@@ -187,17 +208,37 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
           const tile = TILES[landedTileId]
 
           if (tile.type === 'city') {
-            // ── 도시 칸: 구매 / 업그레이드 모달 ──────────────────
             const owner = tileOwnersRef.current[landedTileId]
-            const isMyTile =
-              owner !== undefined && owner.ownerId === activeCurPlayer
 
-            setBuyModal({
-              open: true,
-              tileId: landedTileId,
-              isUpgrade: isMyTile,
-              onDoneCallback: onDone,
-            })
+            if (owner === undefined) {
+              // ── 미소유 도시: 구매 모달 ────────────────────────────
+              setBuyModal({
+                open: true,
+                tileId: landedTileId,
+                isUpgrade: false,
+                onDoneCallback: onDone,
+              })
+            } else if (owner.ownerId === activeCurPlayer) {
+              // ── 내 소유 도시: 업그레이드 모달 ────────────────────
+              setBuyModal({
+                open: true,
+                tileId: landedTileId,
+                isUpgrade: true,
+                onDoneCallback: onDone,
+              })
+            } else {
+              // ── 타인 소유 도시: 통행료 모달 ──────────────────────
+              const ownerPlayer = playersRef.current.find(
+                (p) => p.id === owner.ownerId
+              )
+              setTollModal({
+                open: true,
+                tileId: landedTileId,
+                ownerName: ownerPlayer?.name ?? '상대방',
+                tollText: '30M',
+                onDoneCallback: onDone,
+              })
+            }
           } else if (tile.type === 'event') {
             // ── 이벤트 칸: 이벤트 카드 모달 ────────────────────────
             setCardModal({
@@ -274,6 +315,16 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
     onDoneCallback?.()
   }
 
+  // ── 통행료 모달 확인 처리 ─────────────────────────────────────────
+  function handleTollConfirm() {
+    const { onDoneCallback } = tollModal
+    setTollModal({ open: false, tileId: null, ownerName: '', tollText: '30M' })
+    const next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
+    curPlayerRef.current = next
+    setCurPlayer(next)
+    onDoneCallback?.()
+  }
+
   // FE-B에서 ref로 rollDice 호출 가능
   useImperativeHandle(ref, () => ({ rollDice }))
 
@@ -291,6 +342,8 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
   const modalTile = buyModal.tileId !== null ? TILES[buyModal.tileId] : null
   const modalOwner =
     buyModal.tileId !== null ? tileOwners[buyModal.tileId] : undefined
+
+  const tollTile = tollModal.tileId !== null ? TILES[tollModal.tileId] : null
 
   return (
     <div className="board-page">
@@ -408,6 +461,15 @@ const GameBoard = forwardRef<BoardGameHandle>((_, ref) => {
         open={cardModal.open}
         variant={cardModal.variant}
         onConfirm={handleCardConfirm}
+      />
+
+      {/* ── 통행료 모달 ── */}
+      <TollModal
+        open={tollModal.open}
+        cityName={tollTile?.name}
+        ownerName={tollModal.ownerName}
+        tollText={tollModal.tollText}
+        onConfirm={handleTollConfirm}
       />
     </div>
   )
