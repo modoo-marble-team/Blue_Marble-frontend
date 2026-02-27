@@ -67,6 +67,7 @@ function WaitingRoomPage() {
     isReadyPending,
     isStartPending,
     isLeavePending,
+    isHost,
     isReady,
     canToggleReady,
     canStartGame,
@@ -243,6 +244,7 @@ function WaitingRoomPage() {
             <WaitingRoomChatPanel
               messages={chatMessages}
               currentUserId={session.userId}
+              isHost={isHost}
               canStartGame={canStartGame}
               canToggleReady={canToggleReady}
               isReady={isReady}
