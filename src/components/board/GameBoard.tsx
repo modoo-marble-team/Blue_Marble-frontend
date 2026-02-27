@@ -7,6 +7,7 @@ import TollModal from '../game/modals/TollModal'
 import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import { emitConfirmPenalty } from '../../services/socket/game.handler'
+import { gameApi } from '../../services/game/game.api'
 import {
   TILES,
   TOP_ROW,
@@ -420,11 +421,26 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 70)
     }
 
+    function toActionErrorMessage(status: number) {
+      if (status === 401) return '로그인이 필요합니다.'
+      if (status === 403) return '현재 턴이 아닙니다.'
+      if (status === 404) return '대상을 찾을 수 없습니다.'
+      if (status === 409) return '조건이 맞지 않아 처리할 수 없습니다.'
+      return '요청 처리 중 오류가 발생했습니다.'
+    }
+
     // ?? 援щℓ (-60M) ???????????????????????????????????????????????
-    function handleBuy() {
+    async function handleBuy() {
       const { tileId, onDoneCallback } = buyModal
       if (tileId === null) return
       const active = curPlayerRef.current
+
+      const actionResult = await gameApi.buyTile({ tile_index: tileId })
+      if (!actionResult.ok) {
+        setStatus(toActionErrorMessage(actionResult.status))
+        return
+      }
+
       setBuyModal({ open: false, tileId: null })
       const bankrupt = applyMoney(active, -PURCHASE_COST, onDoneCallback)
       if (!bankrupt) {
@@ -447,10 +463,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     // ?? ?낃렇?덉씠??(-30M) ?????????????????????????????????????????
-    function handleBuildConfirm() {
+    async function handleBuildConfirm() {
       const { tileId, onDoneCallback } = buildModal
       if (tileId === null) return
       const active = curPlayerRef.current
+
+      const actionResult = await gameApi.buildTile({ tile_index: tileId })
+      if (!actionResult.ok) {
+        setStatus(toActionErrorMessage(actionResult.status))
+        return
+      }
+
       setBuildModal({ open: false, tileId: null })
       const bankrupt = applyMoney(active, -UPGRADE_COST, onDoneCallback)
       if (!bankrupt) {
