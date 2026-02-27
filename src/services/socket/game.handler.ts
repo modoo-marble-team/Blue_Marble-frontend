@@ -99,6 +99,7 @@ export const setupGameHandlers = (): Teardown => {
 
   const handleTollPaid = ({
     payer_id,
+    owner_id,
     amount,
   }: {
     payer_id: string
@@ -109,8 +110,13 @@ export const setupGameHandlers = (): Teardown => {
     // If this player exists in store, pessimistically reflect balance.
     const state = useGameStore.getState()
     const payer = state.players.find((p) => p.id === payer_id)
-    if (!payer) return
-    state.updatePlayer(payer_id, { balance: Math.max(0, payer.balance - amount) })
+    const owner = state.players.find((p) => p.id === owner_id)
+    if (payer) {
+      state.updatePlayer(payer_id, { balance: Math.max(0, payer.balance - amount) })
+    }
+    if (owner) {
+      state.updatePlayer(owner_id, { balance: owner.balance + amount })
+    }
   }
 
   const handleCardDrawn = ({ card }: { player_id: string; card: Card }) => {
