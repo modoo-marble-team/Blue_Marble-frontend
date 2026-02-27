@@ -26,6 +26,8 @@ const INITIAL_STATE: GameState = {
   messages: [],
   currentTurn: null,
   round: 1,
+  turnTimeoutSec: 30,
+  turnTimerKey: 0,
   activeModal: null,
   gameResult: null,
   isGameOver: false,
