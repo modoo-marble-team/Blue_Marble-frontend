@@ -26,6 +26,8 @@ export const useGameState = () => {
           current_turn?: string | null
           currentTurn?: string | null
           round?: number
+          timeout_sec?: number
+          timeoutSec?: number
         }
 
         setGameState({
@@ -34,6 +36,7 @@ export const useGameState = () => {
           messages: (payload.messages as never[]) ?? [],
           currentTurn: payload.current_turn ?? payload.currentTurn ?? null,
           round: payload.round ?? 1,
+          turnTimeoutSec: payload.timeout_sec ?? payload.timeoutSec ?? 30,
         })
       }
     }
