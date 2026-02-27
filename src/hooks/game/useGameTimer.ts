@@ -2,22 +2,26 @@
 
 interface UseGameTimerOptions {
   initialTime?: number
-  resetTime?: number
+  resetSignal?: number
 }
 
 export const useGameTimer = ({
   initialTime = 30,
-  resetTime = 30,
+  resetSignal = 0,
 }: UseGameTimerOptions = {}) => {
   const [timeLeft, setTimeLeft] = useState(initialTime)
 
   useEffect(() => {
+    setTimeLeft(initialTime)
+  }, [initialTime, resetSignal])
+
+  useEffect(() => {
     const timer = window.setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : resetTime))
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [resetTime])
+  }, [])
 
   return [timeLeft, setTimeLeft] as const
 }
