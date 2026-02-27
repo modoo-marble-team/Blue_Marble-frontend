@@ -1,11 +1,11 @@
 import { delay, http, HttpResponse } from 'msw'
 import { mockOnlineUsers } from '../features/presence/mockData'
-import { mockLobbyRooms } from '../pages/lobby/mockData'
 import type { LobbyRoomPayload, LobbyRoomStatus } from '../pages/lobby/types'
+import { getMockLobbyRooms } from '../pages/waiting-room/mockGateway'
 import { gameHandlers } from './handlers/game.handler'
 
 function mapLobbyRoomPayload(
-  room: (typeof mockLobbyRooms)[number]
+  room: ReturnType<typeof getMockLobbyRooms>[number]
 ): LobbyRoomPayload {
   return {
     id: room.id,
@@ -28,7 +28,7 @@ export const handlers = [
     const excludePrivate = url.searchParams.get('exclude_private') === 'true'
     const keyword = (url.searchParams.get('keyword') ?? '').trim().toLowerCase()
 
-    const filteredRooms = mockLobbyRooms.filter((room) => {
+    const filteredRooms = getMockLobbyRooms().filter((room) => {
       if (status && room.status !== status) {
         return false
       }
