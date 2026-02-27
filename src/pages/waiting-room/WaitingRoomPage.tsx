@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../../features/auth/store'
 import {
@@ -9,20 +10,24 @@ import {
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
 import { cn } from '../../lib/utils'
-import { waitingRoomMock } from './mockData'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
 import { WaitingRoomChatPanel } from './components/WaitingRoomChatPanel'
+import { useWaitingRoomController } from './hooks'
+import type { GameStartEventPayload } from './types'
 
 interface WaitingRoomLocationState {
   roomId?: string
   roomTitle?: string
 }
 
+const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
+
 function formatRoomIdLabel(roomId: string) {
   const matchedNumber = roomId.match(/\d+/)?.[0]
+
   if (!matchedNumber) {
-    return waitingRoomMock.roomIdLabel
+    return 'Room'
   }
 
   return `Room ${matchedNumber}`
@@ -34,9 +39,46 @@ function WaitingRoomPage() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
   const clearSession = useAuthStore((state) => state.clearSession)
-
-  const [seats, setSeats] = useState(waitingRoomMock.seats)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
+
+  const locationState = location.state as WaitingRoomLocationState | null
+  const isSameRoomState = locationState?.roomId === roomId
+  const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
+
+  const handleGameStart = useCallback(
+    (payload: GameStartEventPayload) => {
+      navigate('/game', {
+        state: {
+          gameId: payload.game_id,
+          roomId,
+        },
+      })
+    },
+    [navigate, roomId]
+  )
+
+  const {
+    room,
+    seats,
+    chatMessages,
+    isRoomLoading,
+    roomErrorMessage,
+    isReadyPending,
+    isStartPending,
+    isLeavePending,
+    isReady,
+    canToggleReady,
+    canStartGame,
+    sendChatMessage,
+    handleToggleReady,
+    handleStartGame,
+    leaveRoom,
+  } = useWaitingRoomController({
+    roomId,
+    session,
+    fallbackRoomTitle: selectedRoomTitle ?? undefined,
+    onGameStart: handleGameStart,
+  })
 
   const {
     data: users = [],
@@ -55,46 +97,75 @@ function WaitingRoomPage() {
     }
   }, [navigate, session])
 
-  const avatarText = getAvatarText(session?.nickname)
+  useEffect(() => {
+    if (!roomErrorMessage) {
+      return
+    }
 
-  const occupiedSeats = seats.filter((seat) => seat !== null)
-  const isReady = seats.find((seat) => seat?.isMe)?.isReady ?? false
-  const canStartGame =
-    occupiedSeats.length >= 2 && occupiedSeats.every((seat) => seat?.isReady)
+    toast.error(roomErrorMessage)
+  }, [roomErrorMessage])
 
-  function handleToggleReady() {
-    setSeats((previousSeats) => {
-      return previousSeats.map((seat) => {
-        if (!seat || !seat.isMe) {
-          return seat
-        }
+  const handleLeaveToLobby = useCallback(async () => {
+    const result = await leaveRoom()
 
-        return {
-          ...seat,
-          isReady: !seat.isReady,
-        }
-      })
-    })
-  }
+    if (!result.ok) {
+      if (result.message) {
+        toast.error(result.message)
+      }
+      return
+    }
 
-  function handleLogout() {
+    navigate('/lobby', { replace: true })
+  }, [leaveRoom, navigate])
+
+  const handleLogout = useCallback(async () => {
+    const result = await leaveRoom()
+
+    if (!result.ok && result.message) {
+      toast.error(result.message)
+    }
+
     clearSession()
     navigate('/', { replace: true })
-  }
+  }, [clearSession, leaveRoom, navigate])
 
-  function handleGoMyPage() {
+  const handleGoMyPage = useCallback(async () => {
+    const result = await leaveRoom()
+
+    if (!result.ok) {
+      if (result.message) {
+        toast.error(result.message)
+      }
+      return
+    }
+
     navigate('/my-page')
-  }
+  }, [leaveRoom, navigate])
+
+  const onToggleReady = useCallback(async () => {
+    const result = await handleToggleReady()
+
+    if (!result.ok && result.message) {
+      toast.error(result.message)
+    }
+  }, [handleToggleReady])
+
+  const onStartGame = useCallback(async () => {
+    const result = await handleStartGame()
+
+    if (!result.ok && result.message) {
+      toast.error(result.message)
+    }
+  }, [handleStartGame])
 
   if (!session || session.needsNicknameSetup) {
     return null
   }
 
-  const locationState = location.state as WaitingRoomLocationState | null
-  const isSameRoomState = locationState?.roomId === roomId
-  const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
-  const roomTitle = selectedRoomTitle ?? waitingRoomMock.roomTitle
+  const roomTitle =
+    room?.title ?? selectedRoomTitle ?? DEFAULT_WAITING_ROOM_TITLE
   const roomIdLabel = formatRoomIdLabel(roomId)
+  const avatarText = getAvatarText(session.nickname)
   const avatarBackground = getAvatarBackground(session.isGuest)
   const headerMenuItems = createProfileMenuItems({
     isGuest: session.isGuest,
@@ -111,17 +182,46 @@ function WaitingRoomPage() {
         avatarText={avatarText}
         avatarBackground={avatarBackground}
         menuItems={headerMenuItems}
-        onBackToLobby={() => navigate('/lobby')}
+        onBackToLobby={() => {
+          void handleLeaveToLobby()
+        }}
       />
 
       <main className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6 xl:flex-row">
         <section className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2 xl:auto-rows-fr">
-          {seats.map((seat, seatIndex) => (
-            <WaitingSeatCard
-              key={seat?.id ?? `empty-seat-${seatIndex}`}
-              seat={seat}
-            />
-          ))}
+          {isRoomLoading &&
+            Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`waiting-seat-skeleton-${index}`}
+                className="h-full min-h-[260px] animate-pulse rounded-[34px] bg-ui-surface-soft"
+              />
+            ))}
+
+          {!isRoomLoading && roomErrorMessage && (
+            <article className="col-span-full flex min-h-[260px] flex-col items-center justify-center rounded-[34px] border border-ui-danger-border bg-ui-danger-bg p-6 text-center">
+              <p className="text-base font-semibold text-ui-danger">
+                대기방 정보를 불러오지 못했습니다.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleLeaveToLobby()
+                }}
+                className="mt-4 rounded-xl bg-ui-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-ui-brand-strong"
+              >
+                로비로 돌아가기
+              </button>
+            </article>
+          )}
+
+          {!isRoomLoading &&
+            !roomErrorMessage &&
+            seats.map((seat, seatIndex) => (
+              <WaitingSeatCard
+                key={seat?.id ?? `empty-seat-${seatIndex}`}
+                seat={seat}
+              />
+            ))}
         </section>
 
         <div
@@ -132,10 +232,20 @@ function WaitingRoomPage() {
         >
           <div className="min-h-0 xl:h-full xl:w-[340px] xl:shrink-0">
             <WaitingRoomChatPanel
-              initialMessages={waitingRoomMock.chatMessages}
+              messages={chatMessages}
+              currentUserId={session.userId}
               canStartGame={canStartGame}
+              canToggleReady={canToggleReady}
               isReady={isReady}
-              onToggleReady={handleToggleReady}
+              isReadyPending={isReadyPending}
+              isStartPending={isStartPending}
+              onToggleReady={() => {
+                void onToggleReady()
+              }}
+              onStartGame={() => {
+                void onStartGame()
+              }}
+              onSendMessage={sendChatMessage}
             />
           </div>
 
@@ -152,6 +262,13 @@ function WaitingRoomPage() {
           </div>
         </div>
       </main>
+
+      {isLeavePending && (
+        <div
+          className="pointer-events-none absolute inset-0 bg-black/5"
+          aria-hidden
+        />
+      )}
     </div>
   )
 }

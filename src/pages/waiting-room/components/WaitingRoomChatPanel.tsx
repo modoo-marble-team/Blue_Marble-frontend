@@ -1,77 +1,72 @@
-import { useMemo, useState } from 'react'
-import { Info } from 'lucide-react'
+import { useMemo } from 'react'
 import { cn } from '../../../lib/utils'
 import RoomChat from '../../../features/room-chat/RoomChat'
 import type { ChatMessage } from '../../../types/domain'
-import type { WaitingRoomChatMessage } from '../mockData'
+import type { WaitingRoomChatMessage } from '../types'
 
 interface WaitingRoomChatPanelProps {
-  initialMessages: WaitingRoomChatMessage[]
+  messages: WaitingRoomChatMessage[]
+  currentUserId: string
   canStartGame: boolean
+  canToggleReady: boolean
   isReady: boolean
+  isReadyPending: boolean
+  isStartPending: boolean
   onToggleReady: () => void
+  onStartGame: () => void
+  onSendMessage: (content: string) => void
 }
 
 export function WaitingRoomChatPanel({
-  initialMessages,
+  messages,
+  currentUserId,
   canStartGame,
+  canToggleReady,
   isReady,
+  isReadyPending,
+  isStartPending,
   onToggleReady,
+  onStartGame,
+  onSendMessage,
 }: WaitingRoomChatPanelProps) {
-  const [messages, setMessages] =
-    useState<WaitingRoomChatMessage[]>(initialMessages)
-
   const chatMessages = useMemo<ChatMessage[]>(() => {
     return messages.map((message) => ({
       id: message.id,
       sender_id: message.senderId,
-      sender_nickname: message.senderName,
+      sender_nickname: message.senderNickname,
       content: message.content,
       timestamp: message.timestamp,
       type: message.type,
     }))
   }, [messages])
 
-  function handleSendMessage(content: string) {
-    const normalizedInput = content.trim()
-
-    setMessages((previousMessages) => [
-      ...previousMessages,
-      {
-        id: `chat-${Date.now()}`,
-        senderId: 'me',
-        senderName: 'GoormEE',
-        content: normalizedInput,
-        timestamp: new Date().toISOString(),
-        type: 'talk',
-        avatarEmoji: '🐶',
-      },
-    ])
-  }
+  const isStartButtonDisabled = !canStartGame || isStartPending
+  const isReadyButtonDisabled = !canToggleReady || isReadyPending
+  const readyButtonLabel = canToggleReady
+    ? isReady
+      ? '준비 완료!'
+      : '준비하기'
+    : '방장'
 
   return (
     <aside className="flex h-full min-h-[320px] flex-col rounded-3xl border border-ui-border bg-ui-surface p-3">
       <RoomChat
         className="flex-1 w-full"
         title="실시간 채팅"
-        currentUserId="me"
+        currentUserId={currentUserId}
         inputPlaceholder="메시지 입력..."
         messages={chatMessages}
-        onSendMessage={handleSendMessage}
+        onSendMessage={onSendMessage}
       />
 
-      <p className="mx-auto mt-4 inline-flex items-center gap-1 rounded-full border border-ui-border bg-ui-surface-muted px-4 py-1.5 text-xs font-semibold text-ui-text-muted">
-        <Info className="size-3.5 text-ui-brand" /> 최소 2명 + 모두 준비 완료 시
-        시작 가능
-      </p>
-
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-2 gap-2">
         <button
           type="button"
-          disabled={!canStartGame}
+          disabled={isStartButtonDisabled}
+          onClick={onStartGame}
           className={cn(
             'h-16 rounded-2xl text-[2.1rem] font-bold transition-colors',
-            canStartGame
+            !isStartButtonDisabled
               ? 'bg-ui-brand text-white hover:bg-ui-brand-strong'
               : 'cursor-not-allowed bg-ui-disabled-bg text-ui-disabled-text'
           )}
@@ -80,15 +75,18 @@ export function WaitingRoomChatPanel({
         </button>
         <button
           type="button"
+          disabled={isReadyButtonDisabled}
           onClick={onToggleReady}
           className={cn(
             'h-16 rounded-2xl text-[2.1rem] font-bold transition-colors',
-            isReady
-              ? 'border border-ui-border bg-ui-surface-soft text-ui-text-muted hover:bg-ui-surface-muted'
-              : 'bg-[#00c853] text-white hover:bg-[#00b84d]'
+            isReadyButtonDisabled
+              ? 'cursor-not-allowed border border-ui-border bg-ui-surface-soft text-ui-text-subtle'
+              : isReady
+                ? 'border border-ui-border bg-ui-surface-soft text-ui-text-muted hover:bg-ui-surface-muted'
+                : 'bg-[#00c853] text-white hover:bg-[#00b84d]'
           )}
         >
-          {isReady ? '준비 완료!' : '준비하기'}
+          {readyButtonLabel}
         </button>
       </div>
     </aside>

@@ -1,6 +1,6 @@
 import { CheckCircle2, Clock3, Crown, UserRound } from 'lucide-react'
 import { cn } from '../../../lib/utils'
-import type { WaitingRoomSeat } from '../mockData'
+import type { WaitingRoomSeat } from '../types'
 
 interface WaitingSeatCardProps {
   seat: WaitingRoomSeat | null
