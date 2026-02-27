@@ -1,88 +1,124 @@
 import React from 'react'
-import { Player } from '../../../types/domain'
-import { cn } from '../../../lib/utils'
 
-interface PlayerCardProps {
-  player: Player
-  isActive: boolean
+interface Player {
+  id: string
+  name?: string
+  nickname?: string
+  color?: string
+  money?: number
+  totalAssets?: number
+  avatarUrl?: string
 }
 
-const PlayerCard: React.FC<PlayerCardProps> = ({ player, isActive }) => {
+interface PlayerPanelProps {
+  player: Player
+  isActive: boolean
+  isRichest?: boolean // 보유금 1위일 때 왕관 표시
+}
+
+const PlayerPanel: React.FC<PlayerPanelProps> = ({
+  player,
+  isActive,
+  isRichest = false,
+}) => {
+  const money = player.money ?? 0
+  const totalAssets = player.totalAssets ?? money
+
   return (
     <div
-      className={cn(
-        'relative flex items-center gap-3 rounded-2xl bg-white/90 p-4 transition-all duration-300',
-        isActive
-          ? 'border-2 border-[#3B82F6] shadow-[0_8px_16px_-4px_rgba(59,130,246,0.2)]'
-          : 'border-transparent shadow-sm'
-      )}
+      style={{
+        border: isActive ? '2.5px solid #3B82F6' : '2.5px solid transparent',
+        boxShadow: isActive ? '0 0 0 3px rgba(147,197,253,0.45)' : 'none',
+        borderRadius: 24,
+        transition: 'border 0.2s ease, box-shadow 0.2s ease',
+        background: '#ffffff',
+      }}
+      className="relative flex items-center gap-4 rounded-3xl px-5 py-4 shadow-sm"
     >
-      {/* Turn Badge */}
-      {isActive && (
-        <div className="absolute right-4 top-4 flex items-center justify-center rounded-full bg-[#2B7FFF] px-2 py-0.5 shadow-sm">
-          <span className="text-[10px] font-black tracking-wider text-white">
-            TURN
-          </span>
-        </div>
-      )}
-
-      {/* Avatar Section */}
+      {/* ── 아바타 + 왕관 ── */}
       <div className="relative shrink-0">
-        {isActive && (
-          <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-2xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)] z-10">
+        {/* 왕관 — 보유금 1위 */}
+        {isRichest && (
+          <span
+            style={{
+              position: 'absolute',
+              top: -14,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 20,
+              lineHeight: 1,
+              zIndex: 10,
+            }}
+          >
             👑
           </span>
         )}
-
-        <div className="absolute left-0.5 top-1 h-10 w-10 rounded-full bg-black/10 blur-[2px]" />
-
         <div
-          className="flex h-10 w-10 items-center justify-center rounded-full border-b-[3px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)] text-xl"
-          style={{
-            background: isActive
-              ? 'linear-gradient(135deg, #FF6467 0%, #E7000B 100%)'
-              : 'linear-gradient(135deg, #FFDF20 0%, #F0B100 100%)',
-            borderBottomColor: isActive ? '#C10007' : '#D08700',
-          }}
+          className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full"
+          style={{ backgroundColor: player.color ?? '#E2E8F0' }}
         >
-          <span className="mb-0.5">{player.avatar || '👤'}</span>
-          <div className="absolute left-[18%] top-[15%] h-[18%] w-[30%] -rotate-[20deg] rounded-full bg-white/30" />
+          {player.avatarUrl ? (
+            <img
+              src={player.avatarUrl}
+              alt={player.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            /* 구슬 느낌의 원형 그라데이션 */
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                background: `radial-gradient(circle at 35% 35%, rgba(255,255,255,0.55) 0%, transparent 60%), ${player.color ?? '#E2E8F0'}`,
+              }}
+            />
+          )}
         </div>
       </div>
 
-      {/* Info Section */}
-      <div className="flex-1 min-w-0">
-        <div className="mb-0.5">
+      {/* ── 이름 + 보유금 ── */}
+      <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+        {/* 이름 행 */}
+        <div className="flex items-center justify-between gap-2">
           <span
-            className={cn(
-              'text-sm font-black leading-none',
-              isActive ? 'text-[#155DFC]' : 'text-[#314158]'
-            )}
+            className="truncate text-[16px] font-black"
+            style={{ color: isActive ? '#245FE5' : '#1F2A44' }}
           >
-            {player.nickname}
+            {player.nickname ?? player.name ?? `Player ${player.id}`}
+          </span>
+          {/* TURN 뱃지 — 이름 옆에 배치해서 돈 가리지 않음 */}
+          {isActive && (
+            <span
+              className="shrink-0 rounded-full px-3 py-0.5 text-[12px] font-black text-white"
+              style={{ backgroundColor: '#3B82F6' }}
+            >
+              TURN
+            </span>
+          )}
+        </div>
+
+        {/* 보유금 행 */}
+        <div className="flex items-center justify-between">
+          <span className="text-[13px] text-[#8B9AB0]">보유금</span>
+          <span className="text-[20px] font-black text-[#1F2A44]">
+            {money.toLocaleString()}M
           </span>
         </div>
 
-        <div className="space-y-0.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#45556C]">보유금</span>
-            <span className="text-[12px] font-black text-[#45556C]">
-              {player.balance.toLocaleString()}M
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-medium text-[#90A1B9]">
-              🏦 총자산
-            </span>
-            <span className="text-[10px] font-bold text-[#90A1B9]">
-              {player.balance.toLocaleString()}M
-            </span>
-          </div>
+        {/* 총자산 행 */}
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1 text-[12px] text-[#B0BBC8]">
+            <span>🏢</span>
+            <span>총자산</span>
+          </span>
+          <span className="text-[13px] text-[#B0BBC8]">
+            {totalAssets.toLocaleString()}M
+          </span>
         </div>
       </div>
     </div>
   )
 }
 
-export default PlayerCard
+export default PlayerPanel
