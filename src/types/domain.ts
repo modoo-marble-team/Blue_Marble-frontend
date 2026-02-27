@@ -71,6 +71,8 @@ export interface GameState {
   messages: ChatMessage[]
   currentTurn: string | null // 프론트 내부 상태 — camelCase 통일
   round: number
+  turnTimeoutSec: number
+  turnTimerKey: number
   activeModal: ActiveModal
   gameResult: GameResult | null
   isGameOver: boolean
