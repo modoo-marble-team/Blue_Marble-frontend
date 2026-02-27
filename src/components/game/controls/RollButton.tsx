@@ -54,7 +54,7 @@ const RollControl: React.FC<RollControlProps> = ({
       <button
         onClick={onRoll}
         disabled={!isMyTurn}
-        className="group relative flex h-24 w-24 flex-col items-center justify-center gap-0.5 rounded-3xl bg-gradient-to-br from-[#2B7FFF] to-[#4F39F6] border-4 border-[#BEDBFF] text-white shadow-[0_0_0_4px_rgba(255,255,255,0.5),0_20px_25px_-5px_rgba(142,197,255,0.5)] transition-all hover:translate-y-[-2px] hover:shadow-2xl active:translate-y-[2px] active:scale-95 disabled:grayscale disabled:opacity-50"
+        className="group relative flex h-24 w-24 flex-col items-center justify-center gap-0.5 rounded-3xl bg-linear-to-br from-[#2B7FFF] to-[#4F39F6] border-4 border-[#BEDBFF] text-white shadow-[0_0_0_4px_rgba(255,255,255,0.5),0_20px_25px_-5px_rgba(142,197,255,0.5)] transition-all hover:translate-y-[-2px] hover:shadow-2xl active:translate-y-[2px] active:scale-95 disabled:grayscale disabled:opacity-50"
       >
         <span className="text-3xl leading-none drop-shadow-md">🎲</span>
         <span className="text-[10px] font-black tracking-widest opacity-90 uppercase">

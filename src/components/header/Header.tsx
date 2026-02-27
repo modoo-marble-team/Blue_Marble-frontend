@@ -1,6 +1,6 @@
 import { Dice5 } from 'lucide-react'
-import { ProfileDropdown } from './layout/ProfileDropdown'
-import type { ProfileMenuItem } from '../types/layout'
+import { ProfileDropdown } from './ProfileDropdown'
+import type { ProfileMenuItem } from './profileMenu'
 
 interface HeaderProps {
   playerLabel?: string

@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
-import { ProfileDropdown } from '../../../components/layout/ProfileDropdown'
-import type { ProfileMenuItem } from '../../../types/layout'
+import { ProfileDropdown } from '../../../components/header/ProfileDropdown'
+import type { ProfileMenuItem } from '../../../components/header/profileMenu'
 
 interface WaitingRoomHeaderProps {
   roomIdLabel: string
