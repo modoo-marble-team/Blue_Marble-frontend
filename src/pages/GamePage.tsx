@@ -10,6 +10,7 @@ import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useTurn } from '../hooks/game/useTurn'
 import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
+import { emitSendChat } from '../services/socket/game.handler'
 
 const GamePage: React.FC = () => {
   const { currentTurn, messages, addMessage } = useGameStore()
@@ -24,6 +25,7 @@ const GamePage: React.FC = () => {
   useGameState()
 
   const handleSendMessage = (content: string) => {
+    emitSendChat({ message: content })
     addMessage({
       id: Date.now().toString(),
       sender_id: 'me',
