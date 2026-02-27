@@ -12,8 +12,12 @@ import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
 
 const GamePage: React.FC = () => {
-  const { currentTurn, messages, addMessage } = useGameStore()
-  const [timeLeft] = useGameTimer({ initialTime: 27, resetTime: 30 })
+  const { currentTurn, messages, addMessage, turnTimeoutSec, turnTimerKey } =
+    useGameStore()
+  const [timeLeft] = useGameTimer({
+    initialTime: turnTimeoutSec,
+    resetSignal: turnTimerKey,
+  })
   const boardRef = useRef<BoardGameHandle>(null)
   const isMyTurn = useTurn(currentTurn)
 
