@@ -2,20 +2,33 @@
 
 interface BuildingBadgeProps {
   level: number
+  ownerColor?: string
 }
 
-const BUILDING_ICON: Record<number, string> = {
-  1: '/BuildingIcon/house.svg',
-  2: '/BuildingIcon/Second house upgrade.svg',
-  3: '/BuildingIcon/Third house upgrade.svg',
-  4: '/BuildingIcon/hotel.svg',
-  5: '/BuildingIcon/landmark.svg',
+// 플레이어 색상 → 폴더명 + 파일 prefix 매핑
+const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
+  '#EF5350': { folder: 'redbuildingIcon', prefix: 'red' },
+  '#42A5F5': { folder: 'bluebuildingIcon', prefix: 'blue' },
+  '#66BB6A': { folder: 'greenbuildingIcon', prefix: 'green' },
+  '#FFD15B': { folder: 'yellowbuildingIcon', prefix: 'yellow' },
 }
 
-const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level }) => {
+const BUILDING_SUFFIX: Record<number, string> = {
+  1: 'house.svg',
+  2: 'second house upgrade.svg',
+  3: 'third house upgrade.svg',
+  4: 'hotel.svg',
+  5: 'landmark.svg',
+}
+
+const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
   if (!level || level < 1) return null
 
-  const src = BUILDING_ICON[level]
+  const theme = COLOR_TO_THEME[ownerColor ?? ''] ?? {
+    folder: 'redbuildingIcon',
+    prefix: 'red',
+  }
+  const src = `/${theme.folder}/${theme.prefix}${BUILDING_SUFFIX[level]}`
 
   return (
     <div
