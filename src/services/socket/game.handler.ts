@@ -182,8 +182,3 @@ export const emitRollDice = (payload: { player_id: string }) => {
 export const emitConfirmPenalty = (payload: { player_id: string }) => {
   socket.emit('confirm_penalty', payload)
 }
-
-export const emitSendChat = (payload: { game_id?: string; message: string }) => {
-  socket.emit('send_chat', payload)
-}
-
