@@ -15,8 +15,8 @@ const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
 
 const BUILDING_SUFFIX: Record<number, string> = {
   1: 'house.svg',
-  2: 'second house upgrade.svg',
-  3: 'third house upgrade.svg',
+  2: 'second%20house%20upgrade.svg',
+  3: 'third%20house%20upgrade.svg',
   4: 'hotel.svg',
   5: 'landmark.svg',
 }
