@@ -1,4 +1,4 @@
-﻿import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useState, forwardRef, useImperativeHandle } from 'react'
 import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
@@ -25,7 +25,6 @@ import {
 } from './board.constants'
 import '../../styles/board.css'
 
-// ??? 鍮꾩슜 ?곸닔 ????????????????????????????????????????????????????
 const PURCHASE_COST = 60
 const UPGRADE_COST = 30
 const TOLL_COST = 30
@@ -116,22 +115,15 @@ function DiceFace({ value, rolling }: { value: number; rolling: boolean }) {
   )
 }
 
-// ??? 怨듦컻 ?몃뱾 ???????????????????????????????????????????????????
 export interface BoardGameHandle {
   rollDice: (onDone?: () => void) => void
 }
 
-// ??? Props ???????????????????????????????????????????????????????
 interface GameBoardProps {
-  /** ?뚮젅?댁뼱 ?곹깭 (GamePage?먯꽌 愿由? */
   players: PlayerState[]
-  /** ?꾩옱 ???몃뜳??(GamePage?먯꽌 愿由? */
   curPlayer: number
-  /** ???꾩튂 蹂??肄쒕갚 ??GamePage媛 state ?낅뜲?댄듃 */
   onPlayersChange: (players: PlayerState[]) => void
-  /** ??蹂寃?肄쒕갚 */
   onCurPlayerChange: (idx: number) => void
-  /** ?뚯궛 肄쒕갚 */
   onBankrupt?: (playerIdx: number) => void
 }
 
@@ -193,7 +185,6 @@ type SyncStatePayload = {
   currentTurn?: string | number | null
 }
 
-// ??? GameBoard ???????????????????????????????????????????????????
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     { players, curPlayer, onPlayersChange, onCurPlayerChange, onBankrupt },
@@ -202,19 +193,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
-    const [status, setStatus] = useState('?렜 寃뚯엫 ?쒖옉!')
+    const [status, setStatus] = useState('게임 시작!')
     const lock = useRef(false)
 
-    // ref 濡?理쒖떊媛??좎? (setInterval ?대줈? stale 諛⑹?)
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
-
-    // props 蹂寃???ref ?숆린??
     curPlayerRef.current = curPlayer
     playersRef.current = players
 
     const bankruptSetRef = useRef<Set<number>>(new Set())
-
     const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
     const tileOwnersRef = useRef<Record<number, TileOwner>>({})
 
@@ -223,35 +210,61 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (!syncResult.ok) return false
 
       const payload = syncResult.data as SyncStatePayload
-      const nextPlayers = (payload.players ?? []).map((player, idx) => {
-        const prevPlayer = playersRef.current[idx]
-        return {
-          id: Number(player.id),
-          name:
-            player.nickname ??
-            player.name ??
-            prevPlayer?.name ??
-            `Player ${idx + 1}`,
-          color:
-            player.color ??
-            prevPlayer?.color ??
-            PLAYER_COLORS[idx % PLAYER_COLORS.length],
-          pos: player.position ?? player.pos ?? prevPlayer?.pos ?? 0,
-          money: player.balance ?? player.money ?? prevPlayer?.money ?? 0,
-        }
-      })
+      const payloadPlayers = payload.players ?? []
+      const prevById = new Map(
+        playersRef.current.map((player) => [String(player.id), player])
+      )
 
-      if (nextPlayers.length > 0) {
+      if (payloadPlayers.length > 0) {
+        const nextById = new Map<string, PlayerState>()
+
+        payloadPlayers.forEach((player, idx) => {
+          const playerId = Number(player.id)
+          if (Number.isNaN(playerId)) return
+
+          const prevPlayer = prevById.get(String(player.id))
+          nextById.set(String(player.id), {
+            id: playerId,
+            name:
+              player.nickname ??
+              player.name ??
+              prevPlayer?.name ??
+              `Player ${idx + 1}`,
+            color:
+              player.color ??
+              prevPlayer?.color ??
+              PLAYER_COLORS[idx % PLAYER_COLORS.length],
+            pos: player.position ?? player.pos ?? prevPlayer?.pos ?? 0,
+            money: player.balance ?? player.money ?? prevPlayer?.money ?? 0,
+          })
+        })
+
+        const orderedPlayers = playersRef.current.map((prevPlayer) => {
+          return nextById.get(String(prevPlayer.id)) ?? prevPlayer
+        })
+        const additionalPlayers = Array.from(nextById.values()).filter(
+          (nextPlayer) =>
+            !orderedPlayers.some(
+              (orderedPlayer) => orderedPlayer.id === nextPlayer.id
+            )
+        )
+
+        const nextPlayers = [...orderedPlayers, ...additionalPlayers]
         playersRef.current = nextPlayers
         onPlayersChange(nextPlayers)
       }
 
       if (payload.tiles) {
         const nextOwners: Record<number, TileOwner> = {}
+
         payload.tiles.forEach((tile) => {
           const tileIndex = tile.index ?? tile.id
           const ownerRaw = tile.owner_id ?? tile.ownerId
-          if (tileIndex === undefined || ownerRaw === null || ownerRaw === undefined) {
+          if (
+            tileIndex === undefined ||
+            ownerRaw === null ||
+            ownerRaw === undefined
+          ) {
             return
           }
 
@@ -261,16 +274,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               : Number.parseInt(String(ownerRaw), 10)
           if (Number.isNaN(ownerId)) return
 
-          const ownerPlayer = playersRef.current.find((player) => player.id === ownerId)
+          const ownerPlayer = playersRef.current.find(
+            (player) => player.id === ownerId
+          )
           nextOwners[tileIndex] = {
             ownerId,
-            ownerColor: ownerPlayer?.color ?? PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
-            level: Math.min(
-              Math.max(tile.building ?? tile.level ?? 1, 0),
-              5
-            ) as BuildingLevel,
+            ownerColor:
+              ownerPlayer?.color ?? PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
+            level: Math.min(Math.max(tile.building ?? tile.level ?? 1, 0), 5) as BuildingLevel,
           }
         })
+
         tileOwnersRef.current = nextOwners
         setTileOwners(nextOwners)
       }
@@ -327,7 +341,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       })
     }
 
-    // ?? ??蹂寃???遺紐⑥뿉寃??꾨떖 ??????????????????????????????????
     function applyMoney(
       playerIdx: number,
       delta: number,
@@ -358,7 +371,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       return false
     }
 
-    // ?? ?뚯궛 ?뺤젙 ?????????????????????????????????????????????????
     function handleBankruptConfirm() {
       const { playerIdx, onDoneCallback } = bankruptModal
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
@@ -377,7 +389,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    // ?? ???섍린湲?(?뚯궛??嫄대꼫?) ????????????????????????????????
     function advanceTurn(onDone?: () => void) {
       let next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
       let tries = 0
@@ -390,9 +401,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onDone?.()
     }
 
-    // ?? AI 移??????????????????????????????????????????????????????
     async function handleAITile(onDone?: () => void) {
       setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
+
       try {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method: 'POST',
@@ -404,18 +415,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               {
                 role: 'user',
                 content:
-                  '遺猷⑤쭏釉?蹂대뱶寃뚯엫??AI 移몄뿉 ?꾩갑?덉뒿?덈떎. ?뚮젅?댁뼱?먭쾶 ?щ??덈뒗 ?⑤꼸?곕굹 蹂대꼫?ㅻ? ??臾몄옣?쇰줈 ?뚮젮二쇱꽭?? ?? "?ㅼ쓬 ???대룞 移?+2 蹂대꼫??" ?먮뒗 "?듯뻾猷?1??硫댁젣 移대뱶 ?띾뱷!"',
+                  '부루마블 보드게임의 AI 칸에 도착했습니다. 플레이어에게 재미있는 패널티나 보너스를 한 문장으로 알려주세요. 예: "다음 턴 이동 칸 +2 보너스!" 또는 "통행료 1회 면제 카드 획득!"',
               },
             ],
           }),
         })
+
         if (!res.ok) throw new Error()
         const data = await res.json()
         const text =
           data.content
             ?.filter((b: { type: string }) => b.type === 'text')
             .map((b: { text: string }) => b.text)
-            .join('') ?? '寃곌낵瑜??뺤씤?섏꽭??'
+            .join('') ?? '결과를 확인하세요.'
+
         setAiModal((prev) => ({
           ...prev,
           status: 'result',
@@ -426,21 +439,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
     }
 
-    // ?? 二쇱궗??????????????????????????????????????????????????????
     function rollDice(onDone?: () => void) {
       if (lock.current) return
       lock.current = true
       setRolling(true)
 
-      let count = 0,
-        f1 = 1,
-        f2 = 1
+      let count = 0
+      let f1 = 1
+      let f2 = 1
+
       const iv = setInterval(() => {
         f1 = Math.ceil(Math.random() * 6)
         f2 = Math.ceil(Math.random() * 6)
         setDice1(f1)
         setDice2(f2)
         count++
+
         if (count >= 12) {
           clearInterval(iv)
           setRolling(false)
@@ -449,11 +463,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           const total = f1 + f2
           const activeCurPlayer = curPlayerRef.current
 
-          // ?꾩튂 ?대룞
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
             const newPos = (p.pos + total) % TILES.length
-            setStatus(`${p.name} ??${TILES[newPos].name} (+${total}移?`)
+            setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
             return { ...p, pos: newPos }
           })
           playersRef.current = movedPlayers
@@ -463,6 +476,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           setTimeout(() => {
             const tile = TILES[landedTileId]
+
             if (tile.type === 'city') {
               const owner = tileOwnersRef.current[landedTileId]
               if (!owner) {
@@ -523,6 +537,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       return '요청 처리 중 오류가 발생했습니다.'
     }
 
+    function getSellFallbackRefund(level: BuildingLevel) {
+      if (level <= 0) return 0
+      return PURCHASE_COST + Math.max(0, level - 1) * UPGRADE_COST
+    }
+
     async function sellOwnedTileForPlayer(playerIdx: number) {
       const ownedTileEntries = Object.entries(tileOwnersRef.current)
         .filter(([, owner]) => owner.ownerId === playerIdx)
@@ -532,6 +551,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const [tileIdText, owner] = ownedTileEntries[0]
       const tileId = Number(tileIdText)
+
       const sellResult = await gameApi.sellTile({
         tile_index: tileId,
         level: owner.level,
@@ -549,13 +569,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           delete next[tileId]
           return next
         })
-        applyMoney(playerIdx, +PURCHASE_COST)
+        applyMoney(playerIdx, +getSellFallbackRefund(owner.level))
       }
 
       return true
     }
 
-    // ?? 援щℓ (-60M) ???????????????????????????????????????????????
     async function handleBuy() {
       const { tileId, onDoneCallback } = buyModal
       if (tileId === null) return
@@ -589,7 +608,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    // ?? ?낃렇?덉씠??(-30M) ?????????????????????????????????????????
     async function handleBuildConfirm() {
       const { tileId, onDoneCallback } = buildModal
       if (tileId === null) return
@@ -626,7 +644,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    // ?? ?듯뻾猷?(-30M / +30M) ??????????????????????????????????????
     async function handleTollConfirm() {
       const { tileId, onDoneCallback } = tollModal
       const active = curPlayerRef.current
@@ -670,11 +687,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         handleAITile(onDoneCallback)
         return
       }
+
       const active = curPlayerRef.current
       const activePlayer = playersRef.current[active]
       if (activePlayer) {
         emitConfirmPenalty({ player_id: String(activePlayer.id) })
       }
+
       setAiModal({ open: false, status: 'loading' })
       advanceTurn(onDoneCallback)
     }
@@ -687,9 +706,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       byTile[p.pos].push(p)
     })
 
-    const CS = CORNER_SIZE,
-      SS = STRAIGHT_SIZE,
-      GAP = GRID_GAP
+    const CS = CORNER_SIZE
+    const SS = STRAIGHT_SIZE
+    const GAP = GRID_GAP
     const buyTile = buyModal.tileId !== null ? TILES[buyModal.tileId] : null
     const buildTile =
       buildModal.tileId !== null ? TILES[buildModal.tileId] : null
@@ -751,7 +770,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             </div>
           ))}
 
-          {/* ?? 以묒븰: ?뚮젅?댁뼱 ???쒓굅, 二쇱궗?꾨쭔 ?? */}
           <div className="board-center">
             <span style={{ fontSize: 52 }}>🎲</span>
             <span className="board-center__title">부루마블</span>
@@ -805,7 +823,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <BankruptModal
           open={bankruptModal.open}
           playerName={bankruptModal.playerName}
-          description="寃뚯엫?먯꽌 ?덈씫?⑸땲??"
+          description="게임에서 탈락합니다."
           onConfirm={handleBankruptConfirm}
         />
       </div>
@@ -815,4 +833,3 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
 GameBoard.displayName = 'GameBoard'
 export default GameBoard
-
