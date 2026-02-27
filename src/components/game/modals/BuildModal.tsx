@@ -3,6 +3,7 @@
 interface BuildModalProps {
   open: boolean
   cityName?: string
+  upgradeStage?: 'building-to-hotel' | 'hotel-to-landmark'
   currentLevelLabel?: string
   nextLevelLabel?: string
   buildCostText?: string
@@ -15,8 +16,13 @@ interface BuildModalProps {
 }
 
 const DEFAULT_CITY_NAME = '대구'
-const DEFAULT_CURRENT_LEVEL_LABEL = '별장'
-const DEFAULT_NEXT_LEVEL_LABEL = '빌딩'
+const UPGRADE_STAGE_LABEL: Record<
+  NonNullable<BuildModalProps['upgradeStage']>,
+  { current: string; next: string }
+> = {
+  'building-to-hotel': { current: '건물', next: '호텔' },
+  'hotel-to-landmark': { current: '호텔', next: '랜드마크' },
+}
 const DEFAULT_BUILD_COST_TEXT = '30M'
 const DEFAULT_NEXT_TOLL_TEXT = '60M'
 const DEFAULT_CANCEL_LABEL = '취소'
@@ -25,8 +31,9 @@ const DEFAULT_CONFIRM_LABEL = '건설하기'
 const BuildModal: React.FC<BuildModalProps> = ({
   open,
   cityName = DEFAULT_CITY_NAME,
-  currentLevelLabel = DEFAULT_CURRENT_LEVEL_LABEL,
-  nextLevelLabel = DEFAULT_NEXT_LEVEL_LABEL,
+  upgradeStage = 'building-to-hotel',
+  currentLevelLabel,
+  nextLevelLabel,
   buildCostText = DEFAULT_BUILD_COST_TEXT,
   nextTollText = DEFAULT_NEXT_TOLL_TEXT,
   cancelLabel = DEFAULT_CANCEL_LABEL,
@@ -38,6 +45,11 @@ const BuildModal: React.FC<BuildModalProps> = ({
   if (!open) {
     return null
   }
+
+  const resolvedCurrentLevelLabel =
+    currentLevelLabel ?? UPGRADE_STAGE_LABEL[upgradeStage].current
+  const resolvedNextLevelLabel =
+    nextLevelLabel ?? UPGRADE_STAGE_LABEL[upgradeStage].next
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
@@ -59,9 +71,9 @@ const BuildModal: React.FC<BuildModalProps> = ({
         </p>
 
         <p className="mb-8 mt-4 text-center text-[20px] font-bold leading-[1.35] text-[#5A6D8A]">
-          <span>{currentLevelLabel}</span>
+          <span>{resolvedCurrentLevelLabel}</span>
           <span> → </span>
-          <span className="text-[#245FE5]">{nextLevelLabel}</span>
+          <span className="text-[#245FE5]">{resolvedNextLevelLabel}</span>
           <br />
           건설 비용 <span className="text-[#EF5350]">{buildCostText}</span> · 다음 통행료{' '}
           <span className="text-[#245FE5]">{nextTollText}</span>
