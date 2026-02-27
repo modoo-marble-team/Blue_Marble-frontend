@@ -1,4 +1,4 @@
-﻿import { RefObject, useCallback } from 'react'
+import { RefObject, useCallback } from 'react'
 import type { BoardGameHandle } from '../../components/board/LegacyBoardGame'
 import { socket } from '../../lib/socket'
 import { emitRollDice } from '../../services/socket/game.handler'
