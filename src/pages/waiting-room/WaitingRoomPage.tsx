@@ -34,7 +34,8 @@ function formatRoomIdLabel(roomId: string) {
 }
 
 function WaitingRoomPage() {
-  const { roomId = 'room-5' } = useParams<{ roomId: string }>()
+  const { roomId } = useParams<{ roomId: string }>()
+  const currentRoomId = roomId ?? ''
   const location = useLocation()
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
@@ -42,7 +43,7 @@ function WaitingRoomPage() {
   const [isUserListOpen, setIsUserListOpen] = useState(true)
 
   const locationState = location.state as WaitingRoomLocationState | null
-  const isSameRoomState = locationState?.roomId === roomId
+  const isSameRoomState = locationState?.roomId === currentRoomId
   const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
 
   const handleGameStart = useCallback(
@@ -50,11 +51,11 @@ function WaitingRoomPage() {
       navigate('/game', {
         state: {
           gameId: payload.game_id,
-          roomId,
+          roomId: currentRoomId,
         },
       })
     },
-    [navigate, roomId]
+    [currentRoomId, navigate]
   )
 
   const {
@@ -74,7 +75,7 @@ function WaitingRoomPage() {
     handleStartGame,
     leaveRoom,
   } = useWaitingRoomController({
-    roomId,
+    roomId: currentRoomId,
     session,
     fallbackRoomTitle: selectedRoomTitle ?? undefined,
     onGameStart: handleGameStart,
@@ -87,6 +88,11 @@ function WaitingRoomPage() {
   } = useOnlineUsersSocket()
 
   useEffect(() => {
+    if (!currentRoomId) {
+      navigate('/lobby', { replace: true })
+      return
+    }
+
     if (!session) {
       navigate('/', { replace: true })
       return
@@ -95,7 +101,7 @@ function WaitingRoomPage() {
     if (session.needsNicknameSetup) {
       navigate('/nickname-setup', { replace: true })
     }
-  }, [navigate, session])
+  }, [currentRoomId, navigate, session])
 
   useEffect(() => {
     if (!roomErrorMessage) {
@@ -161,10 +167,13 @@ function WaitingRoomPage() {
   if (!session || session.needsNicknameSetup) {
     return null
   }
+  if (!currentRoomId) {
+    return null
+  }
 
   const roomTitle =
     room?.title ?? selectedRoomTitle ?? DEFAULT_WAITING_ROOM_TITLE
-  const roomIdLabel = formatRoomIdLabel(roomId)
+  const roomIdLabel = formatRoomIdLabel(currentRoomId)
   const avatarText = getAvatarText(session.nickname)
   const avatarBackground = getAvatarBackground(session.isGuest)
   const headerMenuItems = createProfileMenuItems({
