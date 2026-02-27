@@ -31,12 +31,12 @@ const UPGRADE_COST = 30
 const TOLL_COST = 30
 
 const LEVEL_LABEL: Record<number, string> = {
-  0: '誘멸뎄留?,
-  1: '吏?1梨?,
-  2: '吏?2梨?,
-  3: '吏?3梨?,
-  4: '?명뀛',
-  5: '?쒕뱶留덊겕',
+  0: '미구매',
+  1: '집 1채',
+  2: '집 2채',
+  3: '집 3채',
+  4: '호텔',
+  5: '랜드마크',
 }
 
 function getUpgradeStage(
@@ -394,7 +394,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 setTollModal({
                   open: true,
                   tileId: landedTileId,
-                  ownerName: ownerPlayer?.name ?? '?곷?諛?,
+                  ownerName: ownerPlayer?.name ?? '상대방',
                   tollText: `${TOLL_COST}M`,
                   onDoneCallback: onDone,
                 })
@@ -617,8 +617,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           {/* ?? 以묒븰: ?뚮젅?댁뼱 ???쒓굅, 二쇱궗?꾨쭔 ?? */}
           <div className="board-center">
-            <span style={{ fontSize: 52 }}>?눖?눟</span>
-            <span className="board-center__title">遺猷⑤쭏釉?/span>
+            <span style={{ fontSize: 52 }}>🎲</span>
+            <span className="board-center__title">부루마블</span>
             <div className="board-dice-pair">
               <DiceFace value={dice1} rolling={rolling} />
               <DiceFace value={dice2} rolling={rolling} />
