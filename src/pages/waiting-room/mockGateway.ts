@@ -21,22 +21,6 @@ const ROOM_PRIVATE_PASSWORDS: Record<string, string> = {
   'room-7': DEFAULT_ROOM_PASSWORD,
 }
 
-const SEEDED_ROOM_PLAYERS: Record<string, string[]> = {
-  'room-1': ['초보마블', '연습유저'],
-  'room-2': ['고수킹', '주사위마스터', '전략가'],
-  'room-3': ['게임왕1', '게임왕2', '게임왕3', '게임왕4'],
-  'room-4': ['편한방장'],
-  'room-5': ['GoormEE', 'MarbleKing'],
-  'room-6': ['스피드왕', '템포러', '빠른손'],
-  'room-7': ['저녁파티장'],
-  'room-8': ['환영봇', '실력러', '행운의별'],
-  'room-9': ['마지막주자', '도전자', '한자리'],
-}
-
-const SEEDED_READY_INDEXES: Record<string, number[]> = {
-  'room-5': [1],
-}
-
 interface MockRoomPlayer {
   id: string
   nickname: string
@@ -76,44 +60,18 @@ function wait(delayMs: number) {
 }
 
 function createRoomPlayers(roomId: string, count: number): MockRoomPlayer[] {
-  const seededNicknames = SEEDED_ROOM_PLAYERS[roomId] ?? []
-  const seededReadyIndexes = new Set(SEEDED_READY_INDEXES[roomId] ?? [])
-
   return Array.from({ length: count }, (_, index) => {
-    const fallbackNickname = `Player${index + 1}`
-
     return {
       id: `${roomId}-user-${index + 1}`,
-      nickname: seededNicknames[index] ?? fallbackNickname,
-      is_ready: index !== 0 && seededReadyIndexes.has(index),
+      nickname: `플레이어${index + 1}`,
+      is_ready: false,
       is_host: index === 0,
     }
   })
 }
 
-function createSeededRoomChat(roomId: string): WaitingRoomChatPayload[] {
-  if (roomId !== 'room-5') {
-    return []
-  }
-
-  return [
-    {
-      id: 'room-5-chat-1',
-      sender_id: 'room-5-user-1',
-      sender_nickname: 'GoormEE',
-      message: '빨리 시작하죠! 현기증 난단 말이에요🤣',
-      sent_at: '2026-02-26T14:30:00+09:00',
-      type: 'talk',
-    },
-    {
-      id: 'room-5-chat-2',
-      sender_id: 'room-5-user-2',
-      sender_nickname: 'MarbleKing',
-      message: '잠시만요 화장실좀 ㅎㅎ 금방 다녀올게요!',
-      sent_at: '2026-02-26T14:31:00+09:00',
-      type: 'talk',
-    },
-  ]
+function createSeededRoomChat(): WaitingRoomChatPayload[] {
+  return []
 }
 
 function createInitialRooms(): Map<string, MockRoom> {
@@ -128,7 +86,7 @@ function createInitialRooms(): Map<string, MockRoom> {
         ? (ROOM_PRIVATE_PASSWORDS[room.id] ?? DEFAULT_ROOM_PASSWORD)
         : null,
       players: createRoomPlayers(room.id, room.currentPlayers),
-      chat_messages: createSeededRoomChat(room.id),
+      chat_messages: createSeededRoomChat(),
     } as MockRoom
   })
 

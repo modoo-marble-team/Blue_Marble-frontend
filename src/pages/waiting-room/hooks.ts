@@ -126,6 +126,16 @@ export function useWaitingRoomController({
   const hasLeftRoomRef = useRef(false)
 
   useEffect(() => {
+    if (!roomId) {
+      setRoom(null)
+      setChatMessages([])
+      setIsRoomLoading(false)
+      setRoomErrorMessage(null)
+      hasEnteredRoomRef.current = false
+      hasLeftRoomRef.current = false
+      return
+    }
+
     if (!session) {
       setRoom(null)
       setChatMessages([])
@@ -185,7 +195,7 @@ export function useWaitingRoomController({
   const activeRoomId = room?.roomId
 
   useEffect(() => {
-    if (!session || !activeRoomId) {
+    if (!roomId || !session || !activeRoomId) {
       return
     }
 
@@ -255,7 +265,7 @@ export function useWaitingRoomController({
     return () => {
       unsubscribe()
     }
-  }, [activeRoomId, onGameStart, session])
+  }, [activeRoomId, onGameStart, roomId, session])
 
   useEffect(() => {
     return () => {
