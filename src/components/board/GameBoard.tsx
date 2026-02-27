@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
+﻿import { useState, useRef, forwardRef, useImperativeHandle } from 'react'
 import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
@@ -6,6 +6,7 @@ import CardModal from '../game/modals/CardModal'
 import TollModal from '../game/modals/TollModal'
 import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
+import { emitConfirmPenalty } from '../../services/socket/game.handler'
 import {
   TILES,
   TOP_ROW,
@@ -23,18 +24,18 @@ import {
 } from './board.constants'
 import '../../styles/board.css'
 
-// ─── 비용 상수 ────────────────────────────────────────────────────
+// ??? 鍮꾩슜 ?곸닔 ????????????????????????????????????????????????????
 const PURCHASE_COST = 60
 const UPGRADE_COST = 30
 const TOLL_COST = 30
 
 const LEVEL_LABEL: Record<number, string> = {
-  0: '미구매',
-  1: '집 1채',
-  2: '집 2채',
-  3: '집 3채',
-  4: '호텔',
-  5: '랜드마크',
+  0: '誘멸뎄留?,
+  1: '吏?1梨?,
+  2: '吏?2梨?,
+  3: '吏?3梨?,
+  4: '?명뀛',
+  5: '?쒕뱶留덊겕',
 }
 
 function getUpgradeStage(
@@ -114,22 +115,22 @@ function DiceFace({ value, rolling }: { value: number; rolling: boolean }) {
   )
 }
 
-// ─── 공개 핸들 ───────────────────────────────────────────────────
+// ??? 怨듦컻 ?몃뱾 ???????????????????????????????????????????????????
 export interface BoardGameHandle {
   rollDice: (onDone?: () => void) => void
 }
 
-// ─── Props ───────────────────────────────────────────────────────
+// ??? Props ???????????????????????????????????????????????????????
 interface GameBoardProps {
-  /** 플레이어 상태 (GamePage에서 관리) */
+  /** ?뚮젅?댁뼱 ?곹깭 (GamePage?먯꽌 愿由? */
   players: PlayerState[]
-  /** 현재 턴 인덱스 (GamePage에서 관리) */
+  /** ?꾩옱 ???몃뜳??(GamePage?먯꽌 愿由? */
   curPlayer: number
-  /** 돈/위치 변화 콜백 → GamePage가 state 업데이트 */
+  /** ???꾩튂 蹂??肄쒕갚 ??GamePage媛 state ?낅뜲?댄듃 */
   onPlayersChange: (players: PlayerState[]) => void
-  /** 턴 변경 콜백 */
+  /** ??蹂寃?肄쒕갚 */
   onCurPlayerChange: (idx: number) => void
-  /** 파산 콜백 */
+  /** ?뚯궛 肄쒕갚 */
   onBankrupt?: (playerIdx: number) => void
 }
 
@@ -168,7 +169,7 @@ interface BankruptModalState {
   onDoneCallback?: () => void
 }
 
-// ─── GameBoard ───────────────────────────────────────────────────
+// ??? GameBoard ???????????????????????????????????????????????????
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     { players, curPlayer, onPlayersChange, onCurPlayerChange, onBankrupt },
@@ -177,14 +178,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
-    const [status, setStatus] = useState('🎮 게임 시작!')
+    const [status, setStatus] = useState('?렜 寃뚯엫 ?쒖옉!')
     const lock = useRef(false)
 
-    // ref 로 최신값 유지 (setInterval 클로저 stale 방지)
+    // ref 濡?理쒖떊媛??좎? (setInterval ?대줈? stale 諛⑹?)
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
 
-    // props 변경 시 ref 동기화
+    // props 蹂寃???ref ?숆린??
     curPlayerRef.current = curPlayer
     playersRef.current = players
 
@@ -231,7 +232,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       })
     }
 
-    // ── 돈 변경 → 부모에게 전달 ──────────────────────────────────
+    // ?? ??蹂寃???遺紐⑥뿉寃??꾨떖 ??????????????????????????????????
     function applyMoney(
       playerIdx: number,
       delta: number,
@@ -262,7 +263,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       return false
     }
 
-    // ── 파산 확정 ─────────────────────────────────────────────────
+    // ?? ?뚯궛 ?뺤젙 ?????????????????????????????????????????????????
     function handleBankruptConfirm() {
       const { playerIdx, onDoneCallback } = bankruptModal
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
@@ -281,7 +282,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    // ── 턴 넘기기 (파산자 건너뜀) ────────────────────────────────
+    // ?? ???섍린湲?(?뚯궛??嫄대꼫?) ????????????????????????????????
     function advanceTurn(onDone?: () => void) {
       let next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
       let tries = 0
@@ -294,7 +295,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onDone?.()
     }
 
-    // ── AI 칸 ─────────────────────────────────────────────────────
+    // ?? AI 移??????????????????????????????????????????????????????
     async function handleAITile(onDone?: () => void) {
       setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
       try {
@@ -308,7 +309,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               {
                 role: 'user',
                 content:
-                  '부루마블 보드게임의 AI 칸에 도착했습니다. 플레이어에게 재미있는 패널티나 보너스를 한 문장으로 알려주세요. 예: "다음 턴 이동 칸 +2 보너스!" 또는 "통행료 1회 면제 카드 획득!"',
+                  '遺猷⑤쭏釉?蹂대뱶寃뚯엫??AI 移몄뿉 ?꾩갑?덉뒿?덈떎. ?뚮젅?댁뼱?먭쾶 ?щ??덈뒗 ?⑤꼸?곕굹 蹂대꼫?ㅻ? ??臾몄옣?쇰줈 ?뚮젮二쇱꽭?? ?? "?ㅼ쓬 ???대룞 移?+2 蹂대꼫??" ?먮뒗 "?듯뻾猷?1??硫댁젣 移대뱶 ?띾뱷!"',
               },
             ],
           }),
@@ -319,7 +320,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           data.content
             ?.filter((b: { type: string }) => b.type === 'text')
             .map((b: { text: string }) => b.text)
-            .join('') ?? '결과를 확인하세요.'
+            .join('') ?? '寃곌낵瑜??뺤씤?섏꽭??'
         setAiModal((prev) => ({
           ...prev,
           status: 'result',
@@ -330,7 +331,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
     }
 
-    // ── 주사위 ────────────────────────────────────────────────────
+    // ?? 二쇱궗??????????????????????????????????????????????????????
     function rollDice(onDone?: () => void) {
       if (lock.current) return
       lock.current = true
@@ -353,11 +354,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           const total = f1 + f2
           const activeCurPlayer = curPlayerRef.current
 
-          // 위치 이동
+          // ?꾩튂 ?대룞
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
             const newPos = (p.pos + total) % TILES.length
-            setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
+            setStatus(`${p.name} ??${TILES[newPos].name} (+${total}移?`)
             return { ...p, pos: newPos }
           })
           playersRef.current = movedPlayers
@@ -392,7 +393,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 setTollModal({
                   open: true,
                   tileId: landedTileId,
-                  ownerName: ownerPlayer?.name ?? '상대방',
+                  ownerName: ownerPlayer?.name ?? '?곷?諛?,
                   tollText: `${TOLL_COST}M`,
                   onDoneCallback: onDone,
                 })
@@ -419,7 +420,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 70)
     }
 
-    // ── 구매 (-60M) ───────────────────────────────────────────────
+    // ?? 援щℓ (-60M) ???????????????????????????????????????????????
     function handleBuy() {
       const { tileId, onDoneCallback } = buyModal
       if (tileId === null) return
@@ -445,7 +446,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    // ── 업그레이드 (-30M) ─────────────────────────────────────────
+    // ?? ?낃렇?덉씠??(-30M) ?????????????????????????????????????????
     function handleBuildConfirm() {
       const { tileId, onDoneCallback } = buildModal
       if (tileId === null) return
@@ -474,7 +475,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    // ── 통행료 (-30M / +30M) ──────────────────────────────────────
+    // ?? ?듯뻾猷?(-30M / +30M) ??????????????????????????????????????
     function handleTollConfirm() {
       const { tileId, onDoneCallback } = tollModal
       const active = curPlayerRef.current
@@ -509,6 +510,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (aiModal.status === 'error') {
         handleAITile(onDoneCallback)
         return
+      }
+      const active = curPlayerRef.current
+      const activePlayer = playersRef.current[active]
+      if (activePlayer) {
+        emitConfirmPenalty({ player_id: String(activePlayer.id) })
       }
       setAiModal({ open: false, status: 'loading' })
       advanceTurn(onDoneCallback)
@@ -586,10 +592,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             </div>
           ))}
 
-          {/* ── 중앙: 플레이어 점 제거, 주사위만 ── */}
+          {/* ?? 以묒븰: ?뚮젅?댁뼱 ???쒓굅, 二쇱궗?꾨쭔 ?? */}
           <div className="board-center">
-            <span style={{ fontSize: 52 }}>🇰🇷</span>
-            <span className="board-center__title">부루마블</span>
+            <span style={{ fontSize: 52 }}>?눖?눟</span>
+            <span className="board-center__title">遺猷⑤쭏釉?/span>
             <div className="board-dice-pair">
               <DiceFace value={dice1} rolling={rolling} />
               <DiceFace value={dice2} rolling={rolling} />
@@ -640,7 +646,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <BankruptModal
           open={bankruptModal.open}
           playerName={bankruptModal.playerName}
-          description="게임에서 탈락합니다."
+          description="寃뚯엫?먯꽌 ?덈씫?⑸땲??"
           onConfirm={handleBankruptConfirm}
         />
       </div>
@@ -650,3 +656,4 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
 GameBoard.displayName = 'GameBoard'
 export default GameBoard
+
