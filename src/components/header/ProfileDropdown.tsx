@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ProfileMenuItem } from '../../types/layout'
+import type { ProfileMenuItem } from './profileMenu'
 
 interface ProfileDropdownProps {
   playerLabel?: string

@@ -1,4 +1,9 @@
-import type { ProfileMenuItem } from '../../types/layout'
+export interface ProfileMenuItem {
+  id: string
+  label: string
+  onSelect: () => void
+  tone?: 'default' | 'danger'
+}
 
 interface CreateProfileMenuItemsParams {
   isGuest: boolean

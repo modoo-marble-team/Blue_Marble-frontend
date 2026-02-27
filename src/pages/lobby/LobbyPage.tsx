@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Header from '../../components/Header'
+import Header from '../../components/header/Header'
 import { useAuthStore } from '../../features/auth/store'
 import {
   createProfileMenuItems,
   getAvatarBackground,
   getAvatarText,
-} from '../../features/auth/ui'
+} from '../../components/header/profileMenu'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
 import type { LobbyRoomFilter } from './api'

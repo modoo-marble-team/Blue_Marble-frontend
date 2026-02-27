@@ -5,7 +5,7 @@ import {
   createProfileMenuItems,
   getAvatarBackground,
   getAvatarText,
-} from '../../features/auth/ui'
+} from '../../components/header/profileMenu'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
 import { cn } from '../../lib/utils'

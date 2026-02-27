@@ -3,7 +3,7 @@ import { ArrowLeft, Gamepad2, Shield, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../features/auth/store'
 import { useMyPageProfileQuery } from '../features/auth/hooks/useMyPageProfileQuery'
-import { getAvatarText } from '../features/auth/ui'
+import { getAvatarText } from '../components/header/profileMenu'
 
 const myPageStatsCardMeta = [
   {
