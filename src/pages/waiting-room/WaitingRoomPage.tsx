@@ -12,7 +12,7 @@ import { useOnlineUsersSocket } from '../../features/presence/hooks'
 import { cn } from '../../lib/utils'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
-import { WaitingRoomChatPanel } from './components/WaitingRoomChatPanel'
+import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
 import { useWaitingRoomController } from './hooks'
 import type { GameStartEventPayload } from './types'
 
@@ -241,7 +241,7 @@ function WaitingRoomPage() {
           )}
         >
           <div className="min-h-0 xl:h-full xl:w-[340px] xl:shrink-0">
-            <WaitingRoomChatPanel
+            <WaitingRoomSidePanel
               messages={chatMessages}
               currentUserId={session.userId}
               isHost={isHost}

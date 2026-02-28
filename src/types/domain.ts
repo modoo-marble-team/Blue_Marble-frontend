@@ -24,7 +24,7 @@ export interface ChatMessage {
   sender_nickname: string
   content: string
   timestamp: string
-  type: 'talk' | 'system'
+  type: 'talk'
 }
 
 export interface Tile {
