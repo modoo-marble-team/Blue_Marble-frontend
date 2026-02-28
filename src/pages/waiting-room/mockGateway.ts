@@ -259,6 +259,20 @@ interface MockSendChatParams {
   message: string
 }
 
+interface MockCreateRoomParams {
+  title: string
+  isPrivate: boolean
+  password?: string
+  hostUserId: string
+  hostNickname: string
+}
+
+export interface MockCreateRoomResult {
+  roomId: string
+  roomTitle: string
+  preJoinedSnapshot: WaitingRoomSnapshot
+}
+
 export async function mockJoinWaitingRoom({
   roomId,
   userId,
@@ -296,6 +310,64 @@ export async function mockJoinWaitingRoom({
 
   emitLobbyUpdated(room, 'status_changed')
   return toWaitingRoomSnapshot(room)
+}
+
+function getNextRoomId() {
+  const nextRoomNumber =
+    Array.from(roomsStore.keys()).reduce((maxRoomNumber, roomId) => {
+      return Math.max(maxRoomNumber, getRoomIdSortValue(roomId))
+    }, 0) + 1
+
+  return `room-${nextRoomNumber}`
+}
+
+export async function mockCreateWaitingRoom({
+  title,
+  isPrivate,
+  password,
+  hostUserId,
+  hostNickname,
+}: MockCreateRoomParams): Promise<MockCreateRoomResult> {
+  await wait(MOCK_NETWORK_DELAY_MS)
+
+  const normalizedTitle = title.trim()
+
+  if (normalizedTitle.length === 0) {
+    throw new WaitingRoomMockError(400, '방 제목을 입력해주세요.')
+  }
+
+  if (isPrivate && !/^\d{4}$/.test(password ?? '')) {
+    throw new WaitingRoomMockError(400, '비밀번호는 숫자 4자리여야 합니다.')
+  }
+
+  const roomId = getNextRoomId()
+
+  const createdRoom: MockRoom = {
+    id: roomId,
+    title: normalizedTitle,
+    status: 'waiting',
+    max_players: 4,
+    is_private: isPrivate,
+    password: isPrivate ? (password ?? null) : null,
+    players: [
+      {
+        id: hostUserId,
+        nickname: hostNickname,
+        is_ready: false,
+        is_host: true,
+      },
+    ],
+    chat_messages: [],
+  }
+
+  roomsStore.set(createdRoom.id, createdRoom)
+  emitLobbyUpdated(createdRoom, 'created')
+
+  return {
+    roomId: createdRoom.id,
+    roomTitle: createdRoom.title,
+    preJoinedSnapshot: toWaitingRoomSnapshot(createdRoom),
+  }
 }
 
 export async function mockLeaveWaitingRoom({

@@ -15,7 +15,9 @@ import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
 import { PrivateRoomJoinModal } from './PrivateRoomJoinModal'
+import { CreateRoomModal, type CreateRoomFormValues } from './CreateRoomModal'
 import {
+  createWaitingRoom,
   getWaitingRoomErrorMessage,
   isJoinPasswordMismatchError,
   joinWaitingRoom,
@@ -32,6 +34,8 @@ function LobbyPage() {
   const [roomFilter, setRoomFilter] = useState<LobbyRoomFilter>('ALL')
   const [excludePrivateRoom, setExcludePrivateRoom] = useState(false)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
+  const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false)
+  const [isCreateRoomPending, setIsCreateRoomPending] = useState(false)
   const [selectedPrivateRoom, setSelectedPrivateRoom] =
     useState<LobbyRoom | null>(null)
   const [privateRoomPassword, setPrivateRoomPassword] = useState('')
@@ -76,6 +80,18 @@ function LobbyPage() {
     navigate('/my-page')
   }
 
+  function handleOpenCreateRoomModal() {
+    setIsCreateRoomModalOpen(true)
+  }
+
+  function handleCloseCreateRoomModal() {
+    if (isCreateRoomPending) {
+      return
+    }
+
+    setIsCreateRoomModalOpen(false)
+  }
+
   function handleJoinRoom(room: LobbyRoom) {
     if (room.isPrivate) {
       setSelectedPrivateRoom(room)
@@ -104,6 +120,37 @@ function LobbyPage() {
         preJoinedSnapshot,
       },
     })
+  }
+
+  async function handleSubmitCreateRoom(values: CreateRoomFormValues) {
+    if (!session) {
+      return
+    }
+
+    setIsCreateRoomPending(true)
+
+    try {
+      const createdRoom = await createWaitingRoom({
+        title: values.title,
+        isPrivate: values.isPrivate,
+        password: values.password,
+        hostUserId: session.userId,
+        hostNickname: session.nickname,
+      })
+
+      setIsCreateRoomModalOpen(false)
+      navigate(`/rooms/${createdRoom.roomId}`, {
+        state: {
+          roomId: createdRoom.roomId,
+          roomTitle: createdRoom.roomTitle,
+          preJoinedSnapshot: createdRoom.preJoinedSnapshot,
+        },
+      })
+    } catch (error) {
+      toast.error(getWaitingRoomErrorMessage(error, '방 생성에 실패했습니다.'))
+    } finally {
+      setIsCreateRoomPending(false)
+    }
   }
 
   async function handleSubmitPrivateRoomJoin() {
@@ -167,6 +214,7 @@ function LobbyPage() {
             onSearchKeywordChange={setSearchRoom}
             onRoomFilterChange={setRoomFilter}
             onExcludePrivateRoomChange={setExcludePrivateRoom}
+            onCreateRoom={handleOpenCreateRoomModal}
           />
 
           <RoomGrid
@@ -202,6 +250,17 @@ function LobbyPage() {
           onClose={handleClosePrivateRoomModal}
           onSubmit={() => {
             void handleSubmitPrivateRoomJoin()
+          }}
+        />
+      ) : null}
+
+      {isCreateRoomModalOpen ? (
+        <CreateRoomModal
+          defaultRoomTitle={`${session.nickname}님의 방`}
+          isSubmitting={isCreateRoomPending}
+          onClose={handleCloseCreateRoomModal}
+          onSubmit={(values) => {
+            void handleSubmitCreateRoom(values)
           }}
         />
       ) : null}

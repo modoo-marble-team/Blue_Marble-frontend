@@ -54,7 +54,7 @@ export function RoomCard({ room, onJoinRoom }: RoomCardProps) {
         )}
       </div>
 
-      <h3 className="mt-3 line-clamp-2 text-[1rem] font-bold leading-snug text-ui-text-primary">
+      <h3 className="mt-3 truncate text-[1rem] font-bold leading-snug text-ui-text-primary">
         {room.title}
       </h3>
 

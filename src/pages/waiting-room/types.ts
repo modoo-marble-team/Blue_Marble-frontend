@@ -62,6 +62,15 @@ export interface JoinWaitingRoomResponsePayload {
   chat_messages: WaitingRoomChatPayload[]
 }
 
+export interface CreateRoomResponsePayload {
+  id: string
+  title: string
+  status: LobbyRoomStatus
+  is_private: boolean
+  host_id: string
+  max_players: number
+}
+
 export interface LeaveWaitingRoomResponsePayload {
   success: boolean
   new_host_id?: string

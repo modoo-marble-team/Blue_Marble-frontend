@@ -127,6 +127,7 @@ export function useWaitingRoomController({
   const hasEnteredRoomRef = useRef(false)
   const hasLeftRoomRef = useRef(false)
   const hasInitializedPreJoinRef = useRef(false)
+  const shouldSkipNextCleanupLeaveRef = useRef(import.meta.env.DEV)
   const preJoinedRoomId = preJoinedSnapshot?.roomId
 
   useEffect(() => {
@@ -300,6 +301,11 @@ export function useWaitingRoomController({
 
   useEffect(() => {
     return () => {
+      if (shouldSkipNextCleanupLeaveRef.current) {
+        shouldSkipNextCleanupLeaveRef.current = false
+        return
+      }
+
       if (
         !session ||
         !roomId ||
