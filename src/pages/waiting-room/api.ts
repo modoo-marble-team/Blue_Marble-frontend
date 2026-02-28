@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios'
 import { apiClient } from '../../lib/axios'
 import {
+  mockCreateWaitingRoom,
   mockJoinWaitingRoom,
   mockLeaveWaitingRoom,
   mockStartWaitingGame,
@@ -8,6 +9,7 @@ import {
   WaitingRoomMockError,
 } from './mockGateway'
 import type {
+  CreateRoomResponsePayload,
   JoinWaitingRoomResponsePayload,
   LeaveWaitingRoomResponsePayload,
   StartWaitingGameResponsePayload,
@@ -28,6 +30,20 @@ interface JoinWaitingRoomParams {
   nickname: string
   fallbackTitle?: string
   password?: string
+}
+
+interface CreateWaitingRoomParams {
+  title: string
+  isPrivate: boolean
+  password?: string
+  hostUserId: string
+  hostNickname: string
+}
+
+export interface CreateWaitingRoomResult {
+  roomId: string
+  roomTitle: string
+  preJoinedSnapshot?: WaitingRoomSnapshot
 }
 
 interface LeaveWaitingRoomParams {
@@ -78,6 +94,59 @@ function mapJoinResponse(
     players: payload.players.map(mapRoomPlayer),
     chatMessages: (payload.chat_messages ?? []).map(mapChatMessage),
   }
+}
+
+function mapCreateRoomResponse(
+  payload: CreateRoomResponsePayload,
+  hostUserId: string,
+  hostNickname: string
+): CreateWaitingRoomResult {
+  return {
+    roomId: payload.id,
+    roomTitle: payload.title,
+    preJoinedSnapshot: {
+      roomId: payload.id,
+      title: payload.title || DEFAULT_WAITING_ROOM_TITLE,
+      status: payload.status ?? 'waiting',
+      maxPlayers: payload.max_players ?? DEFAULT_WAITING_ROOM_MAX_PLAYERS,
+      isPrivate: payload.is_private ?? false,
+      players: [
+        {
+          id: hostUserId,
+          nickname: hostNickname,
+          isReady: false,
+          isHost: true,
+        },
+      ],
+      chatMessages: [],
+    },
+  }
+}
+
+export async function createWaitingRoom({
+  title,
+  isPrivate,
+  password,
+  hostUserId,
+  hostNickname,
+}: CreateWaitingRoomParams): Promise<CreateWaitingRoomResult> {
+  if (USE_WAITING_ROOM_MOCK) {
+    return mockCreateWaitingRoom({
+      title,
+      isPrivate,
+      password,
+      hostUserId,
+      hostNickname,
+    })
+  }
+
+  const { data } = await apiClient.post<CreateRoomResponsePayload>('/rooms', {
+    title,
+    is_private: isPrivate,
+    password: isPrivate ? password : null,
+  })
+
+  return mapCreateRoomResponse(data, hostUserId, hostNickname)
 }
 
 export async function joinWaitingRoom({
