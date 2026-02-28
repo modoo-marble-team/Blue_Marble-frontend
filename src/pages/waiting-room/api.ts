@@ -191,3 +191,15 @@ export function getWaitingRoomErrorMessage(
 
   return fallbackMessage
 }
+
+export function isJoinPasswordMismatchError(error: unknown) {
+  if (error instanceof WaitingRoomMockError) {
+    return error.status === 403
+  }
+
+  if (isAxiosError(error)) {
+    return error.response?.status === 403
+  }
+
+  return false
+}
