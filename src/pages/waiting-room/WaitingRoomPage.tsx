@@ -14,11 +14,12 @@ import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
 import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
 import { useWaitingRoomController } from './hooks'
-import type { GameStartEventPayload } from './types'
+import type { GameStartEventPayload, WaitingRoomSnapshot } from './types'
 
 interface WaitingRoomLocationState {
   roomId?: string
   roomTitle?: string
+  preJoinedSnapshot?: WaitingRoomSnapshot
 }
 
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
@@ -45,6 +46,9 @@ function WaitingRoomPage() {
   const locationState = location.state as WaitingRoomLocationState | null
   const isSameRoomState = locationState?.roomId === currentRoomId
   const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
+  const preJoinedSnapshot = isSameRoomState
+    ? (locationState?.preJoinedSnapshot ?? null)
+    : null
 
   const handleGameStart = useCallback(
     (payload: GameStartEventPayload) => {
@@ -79,6 +83,7 @@ function WaitingRoomPage() {
     roomId: currentRoomId,
     session,
     fallbackRoomTitle: selectedRoomTitle ?? undefined,
+    preJoinedSnapshot,
     onGameStart: handleGameStart,
   })
 

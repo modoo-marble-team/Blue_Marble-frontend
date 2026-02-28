@@ -35,6 +35,7 @@ interface UseWaitingRoomControllerParams {
   roomId: string
   session: AuthSession | null
   fallbackRoomTitle?: string
+  preJoinedSnapshot?: WaitingRoomSnapshot | null
   onGameStart: (payload: GameStartEventPayload) => void
 }
 
@@ -112,6 +113,7 @@ export function useWaitingRoomController({
   roomId,
   session,
   fallbackRoomTitle,
+  preJoinedSnapshot,
   onGameStart,
 }: UseWaitingRoomControllerParams) {
   const [room, setRoom] = useState<WaitingRoomSnapshot | null>(null)
@@ -124,6 +126,8 @@ export function useWaitingRoomController({
 
   const hasEnteredRoomRef = useRef(false)
   const hasLeftRoomRef = useRef(false)
+  const hasInitializedPreJoinRef = useRef(false)
+  const preJoinedRoomId = preJoinedSnapshot?.roomId
 
   useEffect(() => {
     if (!roomId) {
@@ -133,6 +137,7 @@ export function useWaitingRoomController({
       setRoomErrorMessage(null)
       hasEnteredRoomRef.current = false
       hasLeftRoomRef.current = false
+      hasInitializedPreJoinRef.current = false
       return
     }
 
@@ -143,6 +148,32 @@ export function useWaitingRoomController({
       setRoomErrorMessage(null)
       hasEnteredRoomRef.current = false
       hasLeftRoomRef.current = false
+      hasInitializedPreJoinRef.current = false
+      return
+    }
+
+    if (
+      hasInitializedPreJoinRef.current &&
+      hasEnteredRoomRef.current &&
+      preJoinedRoomId === roomId
+    ) {
+      setIsRoomLoading(false)
+      return
+    }
+
+    if (
+      preJoinedSnapshot &&
+      preJoinedRoomId === roomId &&
+      !hasInitializedPreJoinRef.current
+    ) {
+      setRoom(preJoinedSnapshot)
+      setChatMessages(preJoinedSnapshot.chatMessages)
+      setRoomErrorMessage(null)
+      setIsRoomLoading(false)
+      enterWaitingRoomSocket({ roomId })
+      hasEnteredRoomRef.current = true
+      hasLeftRoomRef.current = false
+      hasInitializedPreJoinRef.current = true
       return
     }
 
@@ -190,7 +221,7 @@ export function useWaitingRoomController({
     return () => {
       isMounted = false
     }
-  }, [fallbackRoomTitle, roomId, session])
+  }, [fallbackRoomTitle, preJoinedRoomId, preJoinedSnapshot, roomId, session])
 
   const activeRoomId = room?.roomId
 
@@ -269,13 +300,23 @@ export function useWaitingRoomController({
 
   useEffect(() => {
     return () => {
-      if (!hasEnteredRoomRef.current || hasLeftRoomRef.current) {
+      if (
+        !session ||
+        !roomId ||
+        !hasEnteredRoomRef.current ||
+        hasLeftRoomRef.current
+      ) {
         return
       }
 
+      hasLeftRoomRef.current = true
+      void leaveWaitingRoom({
+        roomId,
+        userId: session.userId,
+      })
       leaveWaitingRoomSocket({ roomId })
     }
-  }, [roomId])
+  }, [roomId, session])
 
   const me = useMemo(() => {
     if (!room || !session) {
@@ -395,7 +436,7 @@ export function useWaitingRoomController({
     }, [canStartGame, isStartPending, room, session])
 
   const leaveRoom = useCallback(async (): Promise<WaitingRoomActionResult> => {
-    if (!room || !session || hasLeftRoomRef.current) {
+    if (!session || hasLeftRoomRef.current) {
       return {
         ok: true,
       }
@@ -408,21 +449,32 @@ export function useWaitingRoomController({
     }
 
     setIsLeavePending(true)
+    const targetRoomId = room?.roomId ?? roomId
+
+    if (!targetRoomId) {
+      setIsLeavePending(false)
+      return {
+        ok: false,
+        message: '대기방 퇴장에 실패했습니다.',
+      }
+    }
+
+    hasLeftRoomRef.current = true
 
     try {
       await leaveWaitingRoom({
-        roomId: room.roomId,
+        roomId: targetRoomId,
         userId: session.userId,
       })
       leaveWaitingRoomSocket({
-        roomId: room.roomId,
+        roomId: targetRoomId,
       })
-      hasLeftRoomRef.current = true
 
       return {
         ok: true,
       }
     } catch (error) {
+      hasLeftRoomRef.current = false
       return {
         ok: false,
         message: getWaitingRoomErrorMessage(
@@ -433,7 +485,7 @@ export function useWaitingRoomController({
     } finally {
       setIsLeavePending(false)
     }
-  }, [isLeavePending, room, session])
+  }, [isLeavePending, room, roomId, session])
 
   return {
     room,

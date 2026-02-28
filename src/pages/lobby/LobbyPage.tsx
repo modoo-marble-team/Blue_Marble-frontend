@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
 import { useAuthStore } from '../../features/auth/store'
@@ -13,7 +14,14 @@ import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
+import { PrivateRoomJoinModal } from './PrivateRoomJoinModal'
+import {
+  getWaitingRoomErrorMessage,
+  isJoinPasswordMismatchError,
+  joinWaitingRoom,
+} from '../waiting-room/api'
 import type { LobbyRoom } from './types'
+import type { WaitingRoomSnapshot } from '../waiting-room/types'
 
 function LobbyPage() {
   const navigate = useNavigate()
@@ -24,6 +32,13 @@ function LobbyPage() {
   const [roomFilter, setRoomFilter] = useState<LobbyRoomFilter>('ALL')
   const [excludePrivateRoom, setExcludePrivateRoom] = useState(false)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
+  const [selectedPrivateRoom, setSelectedPrivateRoom] =
+    useState<LobbyRoom | null>(null)
+  const [privateRoomPassword, setPrivateRoomPassword] = useState('')
+  const [isPrivateRoomJoinPending, setIsPrivateRoomJoinPending] =
+    useState(false)
+  const [isPrivateRoomPasswordInvalid, setIsPrivateRoomPasswordInvalid] =
+    useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -62,12 +77,64 @@ function LobbyPage() {
   }
 
   function handleJoinRoom(room: LobbyRoom) {
+    if (room.isPrivate) {
+      setSelectedPrivateRoom(room)
+      setPrivateRoomPassword('')
+      setIsPrivateRoomPasswordInvalid(false)
+      return
+    }
+
+    handleEnterWaitingRoom(room)
+  }
+
+  function handleClosePrivateRoomModal() {
+    setSelectedPrivateRoom(null)
+    setPrivateRoomPassword('')
+    setIsPrivateRoomPasswordInvalid(false)
+  }
+
+  function handleEnterWaitingRoom(
+    room: LobbyRoom,
+    preJoinedSnapshot?: WaitingRoomSnapshot
+  ) {
     navigate(`/rooms/${room.id}`, {
       state: {
         roomId: room.id,
         roomTitle: room.title,
+        preJoinedSnapshot,
       },
     })
+  }
+
+  async function handleSubmitPrivateRoomJoin() {
+    if (!selectedPrivateRoom || !session) {
+      return
+    }
+
+    setIsPrivateRoomJoinPending(true)
+
+    try {
+      const joinedRoomSnapshot = await joinWaitingRoom({
+        roomId: selectedPrivateRoom.id,
+        userId: session.userId,
+        nickname: session.nickname,
+        fallbackTitle: selectedPrivateRoom.title,
+        password: privateRoomPassword,
+      })
+
+      handleEnterWaitingRoom(selectedPrivateRoom, joinedRoomSnapshot)
+      handleClosePrivateRoomModal()
+    } catch (error) {
+      if (isJoinPasswordMismatchError(error)) {
+        setIsPrivateRoomPasswordInvalid(true)
+      }
+
+      toast.error(
+        getWaitingRoomErrorMessage(error, '비밀방 입장에 실패했습니다.')
+      )
+    } finally {
+      setIsPrivateRoomJoinPending(false)
+    }
   }
 
   if (!session || session.needsNicknameSetup) {
@@ -119,6 +186,25 @@ function LobbyPage() {
           onToggle={() => setIsUserListOpen((prev) => !prev)}
         />
       </main>
+
+      {selectedPrivateRoom ? (
+        <PrivateRoomJoinModal
+          roomTitle={selectedPrivateRoom.title}
+          password={privateRoomPassword}
+          isSubmitting={isPrivateRoomJoinPending}
+          isPasswordInvalid={isPrivateRoomPasswordInvalid}
+          onPasswordChange={(password) => {
+            setPrivateRoomPassword(password)
+            if (isPrivateRoomPasswordInvalid) {
+              setIsPrivateRoomPasswordInvalid(false)
+            }
+          }}
+          onClose={handleClosePrivateRoomModal}
+          onSubmit={() => {
+            void handleSubmitPrivateRoomJoin()
+          }}
+        />
+      ) : null}
     </div>
   )
 }
