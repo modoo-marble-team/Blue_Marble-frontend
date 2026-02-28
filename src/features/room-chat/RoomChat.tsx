@@ -57,7 +57,6 @@ export default function RoomChat({
 
         <div className="flex-1 space-y-3 overflow-y-auto bg-[#F8FAFC]/30 p-3">
           {messages.map((message) => {
-            const isSystemMessage = message.type === 'system'
             const isMine = message.sender_id === currentUserId
 
             return (
@@ -70,7 +69,7 @@ export default function RoomChat({
               >
                 <div className="mb-0.5 px-0.5">
                   <span className="text-[9px] font-bold text-[#90A1B9]">
-                    {isSystemMessage ? 'System' : message.sender_nickname}
+                    {message.sender_nickname}
                   </span>
                 </div>
 

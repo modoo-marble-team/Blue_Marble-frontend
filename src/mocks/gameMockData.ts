@@ -250,14 +250,6 @@ export const mockPlayers: Player[] = [
 export const mockMessages: ChatMessage[] = [
   {
     id: '1',
-    sender_id: 'system',
-    sender_nickname: 'System',
-    content: '게임이 시작되었습니다.',
-    timestamp: new Date().toISOString(),
-    type: 'system',
-  },
-  {
-    id: '2',
     sender_id: 'player2',
     sender_nickname: 'MarbleKing',
     content: '즐겜해요~',
@@ -265,7 +257,7 @@ export const mockMessages: ChatMessage[] = [
     type: 'talk',
   },
   {
-    id: '3',
+    id: '2',
     sender_id: 'me',
     sender_nickname: 'GoormEE',
     content: '모두의 마블 한판!',
