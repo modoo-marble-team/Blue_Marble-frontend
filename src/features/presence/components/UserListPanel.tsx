@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import { ONLINE_USER_STATUS_DOT_CLASS_MAP } from '../status'
 import type { OnlineUser } from '../types'
+import { formatUnreadBadgeCount } from '../unreadBadge'
 import { UserRow } from './UserRow'
 
 interface UserListPanelProps {
@@ -10,6 +11,9 @@ interface UserListPanelProps {
   isError: boolean
   isOpen: boolean
   onToggle: () => void
+  currentUserId?: string
+  unreadDirectMessageCountByUserId?: Record<string, number>
+  onOpenDirectMessage?: (user: OnlineUser) => void
   heightMode?: 'screen' | 'full'
   disableWidthTransition?: boolean
 }
@@ -20,6 +24,9 @@ export function UserListPanel({
   isError,
   isOpen,
   onToggle,
+  currentUserId,
+  unreadDirectMessageCountByUserId = {},
+  onOpenDirectMessage,
   heightMode = 'screen',
   disableWidthTransition = false,
 }: UserListPanelProps) {
@@ -85,7 +92,17 @@ export function UserListPanel({
 
             {!isLoading &&
               !isError &&
-              users.map((user) => <UserRow key={user.id} user={user} />)}
+              users.map((user) => (
+                <UserRow
+                  key={user.id}
+                  user={user}
+                  isCurrentUser={currentUserId === user.id}
+                  unreadDirectMessageCount={
+                    unreadDirectMessageCountByUserId[user.id] ?? 0
+                  }
+                  onOpenDirectMessage={onOpenDirectMessage}
+                />
+              ))}
           </div>
         </div>
       ) : (
@@ -125,6 +142,13 @@ export function UserListPanel({
                       ONLINE_USER_STATUS_DOT_CLASS_MAP[user.status]
                     )}
                   />
+                  {(unreadDirectMessageCountByUserId[user.id] ?? 0) > 0 ? (
+                    <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-ui-danger px-1 text-[10px] font-bold leading-none text-white">
+                      {formatUnreadBadgeCount(
+                        unreadDirectMessageCountByUserId[user.id] ?? 0
+                      )}
+                    </span>
+                  ) : null}
                 </div>
               ))}
           </div>

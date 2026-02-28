@@ -5,11 +5,23 @@ import {
   ONLINE_USER_STATUS_LABEL_MAP,
 } from '../status'
 import type { OnlineUser } from '../types'
+import { formatUnreadBadgeCount } from '../unreadBadge'
 
-export function UserRow({ user }: { user: OnlineUser }) {
-  const isPlaying = user.status === 'playing'
+interface UserRowProps {
+  user: OnlineUser
+  isCurrentUser?: boolean
+  unreadDirectMessageCount?: number
+  onOpenDirectMessage?: (user: OnlineUser) => void
+}
+
+export function UserRow({
+  user,
+  isCurrentUser = false,
+  unreadDirectMessageCount = 0,
+  onOpenDirectMessage,
+}: UserRowProps) {
   const statusLabel = ONLINE_USER_STATUS_LABEL_MAP[user.status]
-  const isDmDisabled = isPlaying
+  const isDmDisabled = isCurrentUser || !onOpenDirectMessage
 
   return (
     <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted">
@@ -26,6 +38,11 @@ export function UserRow({ user }: { user: OnlineUser }) {
             ONLINE_USER_STATUS_DOT_CLASS_MAP[user.status]
           )}
         />
+        {unreadDirectMessageCount > 0 ? (
+          <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-ui-danger px-1 text-[10px] font-bold leading-none text-white">
+            {formatUnreadBadgeCount(unreadDirectMessageCount)}
+          </span>
+        ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -38,14 +55,26 @@ export function UserRow({ user }: { user: OnlineUser }) {
       <button
         type="button"
         disabled={isDmDisabled}
+        onClick={() => {
+          if (isDmDisabled) {
+            return
+          }
+          onOpenDirectMessage?.(user)
+        }}
         className={cn(
-          'rounded-lg p-2 text-ui-text-subtle transition sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
+          'rounded-lg p-2 text-ui-text-subtle transition',
           isDmDisabled
             ? 'cursor-not-allowed opacity-45'
             : 'hover:bg-ui-surface-soft hover:text-ui-text-muted'
         )}
         aria-label={`${user.nickname} 채팅`}
-        title={isDmDisabled ? '게임 중에는 DM을 보낼 수 없습니다.' : 'DM 열기'}
+        title={
+          isCurrentUser
+            ? '본인에게는 DM을 보낼 수 없습니다.'
+            : isDmDisabled
+              ? 'DM 기능을 사용할 수 없습니다.'
+              : 'DM 열기'
+        }
       >
         <MessageCircle className="size-4" />
       </button>

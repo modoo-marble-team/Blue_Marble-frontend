@@ -9,7 +9,17 @@ import {
   getAvatarText,
 } from '../../components/header/profileMenu'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
+import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
+import {
+  sendDirectMessage,
+  subscribeDirectMessageSocketEvents,
+} from '../../features/presence/directMessageSocket'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
+import type {
+  DirectMessage,
+  DirectMessageReceiveSocketPayload,
+  OnlineUser,
+} from '../../features/presence/types'
 import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
@@ -36,6 +46,14 @@ function LobbyPage() {
   const [isUserListOpen, setIsUserListOpen] = useState(true)
   const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false)
   const [isCreateRoomPending, setIsCreateRoomPending] = useState(false)
+  const [dmTargetUser, setDmTargetUser] = useState<OnlineUser | null>(null)
+  const [directMessagesByUserId, setDirectMessagesByUserId] = useState<
+    Record<string, DirectMessage[]>
+  >({})
+  const [
+    unreadDirectMessageCountByUserId,
+    setUnreadDirectMessageCountByUserId,
+  ] = useState<Record<string, number>>({})
   const [selectedPrivateRoom, setSelectedPrivateRoom] =
     useState<LobbyRoom | null>(null)
   const [privateRoomPassword, setPrivateRoomPassword] = useState('')
@@ -71,6 +89,77 @@ function LobbyPage() {
     isError: isUsersError,
   } = useOnlineUsersSocket()
 
+  const openedDirectMessageUserId = dmTargetUser?.id
+
+  useEffect(() => {
+    if (!session) {
+      return
+    }
+
+    const unsubscribe = subscribeDirectMessageSocketEvents({
+      onReceive: (payload: DirectMessageReceiveSocketPayload) => {
+        const receivedMessage: DirectMessage = {
+          id: `${payload.sender_id}-${payload.sent_at}`,
+          senderId: payload.sender_id,
+          senderNickname: payload.sender_nickname,
+          content: payload.message,
+          sentAt: payload.sent_at,
+        }
+
+        setDirectMessagesByUserId((previousMessagesByUserId) => {
+          const previousMessages =
+            previousMessagesByUserId[payload.sender_id] ?? []
+          const hasSameMessage = previousMessages.some(
+            (message) => message.id === receivedMessage.id
+          )
+
+          if (hasSameMessage) {
+            return previousMessagesByUserId
+          }
+
+          return {
+            ...previousMessagesByUserId,
+            [payload.sender_id]: [...previousMessages, receivedMessage],
+          }
+        })
+
+        if (payload.sender_id === openedDirectMessageUserId) {
+          return
+        }
+
+        setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
+          const previousCount = previousCountByUserId[payload.sender_id] ?? 0
+
+          return {
+            ...previousCountByUserId,
+            [payload.sender_id]: previousCount + 1,
+          }
+        })
+      },
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [openedDirectMessageUserId, session])
+
+  useEffect(() => {
+    if (!dmTargetUser) {
+      return
+    }
+
+    const matchedUser = users.find((user) => user.id === dmTargetUser.id)
+
+    if (!matchedUser) {
+      setDmTargetUser(null)
+      return
+    }
+
+    if (matchedUser !== dmTargetUser) {
+      setDmTargetUser(matchedUser)
+    }
+  }, [dmTargetUser, users])
+
   function handleLogout() {
     clearSession()
     navigate('/', { replace: true })
@@ -78,6 +167,53 @@ function LobbyPage() {
 
   function handleGoMyPage() {
     navigate('/my-page')
+  }
+
+  function handleOpenDirectMessage(user: OnlineUser) {
+    setDmTargetUser(user)
+    setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
+      if (!previousCountByUserId[user.id]) {
+        return previousCountByUserId
+      }
+
+      const nextCountByUserId = { ...previousCountByUserId }
+      delete nextCountByUserId[user.id]
+      return nextCountByUserId
+    })
+  }
+
+  function handleCloseDirectMessage() {
+    setDmTargetUser(null)
+  }
+
+  function handleSendDirectMessage(message: string) {
+    if (!dmTargetUser || !session) {
+      return
+    }
+
+    const targetUserId = dmTargetUser.id
+    const nextDirectMessage: DirectMessage = {
+      id: `${targetUserId}-${Date.now()}`,
+      senderId: session.userId,
+      senderNickname: session.nickname,
+      content: message,
+      sentAt: new Date().toISOString(),
+    }
+
+    setDirectMessagesByUserId((previousMessagesByUserId) => {
+      const previousMessages = previousMessagesByUserId[targetUserId] ?? []
+
+      return {
+        ...previousMessagesByUserId,
+        [targetUserId]: [...previousMessages, nextDirectMessage],
+      }
+    })
+
+    sendDirectMessage({
+      receiverId: dmTargetUser.id,
+      receiverNickname: dmTargetUser.nickname,
+      message,
+    })
   }
 
   function handleOpenCreateRoomModal() {
@@ -231,6 +367,9 @@ function LobbyPage() {
           isLoading={isUsersLoading}
           isError={isUsersError}
           isOpen={isUserListOpen}
+          currentUserId={session.userId}
+          unreadDirectMessageCountByUserId={unreadDirectMessageCountByUserId}
+          onOpenDirectMessage={handleOpenDirectMessage}
           onToggle={() => setIsUserListOpen((prev) => !prev)}
         />
       </main>
@@ -262,6 +401,16 @@ function LobbyPage() {
           onSubmit={(values) => {
             void handleSubmitCreateRoom(values)
           }}
+        />
+      ) : null}
+
+      {dmTargetUser ? (
+        <DirectMessagePanel
+          user={dmTargetUser}
+          currentUserId={session.userId}
+          messages={directMessagesByUserId[dmTargetUser.id] ?? []}
+          onClose={handleCloseDirectMessage}
+          onSendMessage={handleSendDirectMessage}
         />
       ) : null}
     </div>
