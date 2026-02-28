@@ -16,7 +16,12 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         {children}
-        <Toaster position="top-center" />
+        <Toaster
+          position="top-center"
+          containerStyle={{
+            top: 72,
+          }}
+        />
       </BrowserRouter>
     </QueryClientProvider>
   )
