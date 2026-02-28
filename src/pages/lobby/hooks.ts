@@ -39,5 +39,6 @@ export function useLobbyRoomsQuery(params: GetLobbyRoomsParams) {
     ],
     queryFn: () => getLobbyRooms(params),
     staleTime: LOBBY_QUERY_STALE_TIME_MS,
+    refetchOnMount: 'always',
   })
 }
