@@ -1,5 +1,6 @@
 import type { OnlineUserPayload } from './types'
 
+// 접속자 목록 UI 개발용 목 데이터
 export const mockOnlineUsers: OnlineUserPayload[] = [
   {
     id: 'user-1',

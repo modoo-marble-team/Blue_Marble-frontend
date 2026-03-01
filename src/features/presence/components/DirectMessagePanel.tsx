@@ -3,6 +3,7 @@ import { SendHorizontal, X } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import type { DirectMessage, OnlineUser } from '../types'
 
+// 1:1 채팅 패널 렌더링 입력값 타입
 interface DirectMessagePanelProps {
   user: OnlineUser
   currentUserId: string
@@ -11,6 +12,7 @@ interface DirectMessagePanelProps {
   onSendMessage: (message: string) => void
 }
 
+// ISO 시간 문자열을 한국어 시각 표시로 변환
 function formatMessageTime(sentAt: string) {
   return new Date(sentAt).toLocaleTimeString('ko-KR', {
     hour: 'numeric',
@@ -19,6 +21,7 @@ function formatMessageTime(sentAt: string) {
   })
 }
 
+// 선택된 사용자와의 1:1 채팅 패널 렌더링
 export function DirectMessagePanel({
   user,
   currentUserId,
@@ -28,6 +31,7 @@ export function DirectMessagePanel({
 }: DirectMessagePanelProps) {
   const [inputMessage, setInputMessage] = useState('')
 
+  // 메시지 목록을 전송 시각 기준으로 오름차순 정렬
   const sortedMessages = useMemo(() => {
     return [...messages].sort((firstMessage, secondMessage) => {
       return firstMessage.sentAt.localeCompare(secondMessage.sentAt)
@@ -106,6 +110,7 @@ export function DirectMessagePanel({
 
           const normalizedMessage = inputMessage.trim()
 
+          // 공백 메시지는 전송하지 않음
           if (!normalizedMessage) {
             return
           }

@@ -7,6 +7,7 @@ import {
 import type { OnlineUser } from '../types'
 import { formatUnreadBadgeCount } from '../unreadBadge'
 
+// 접속자 행 렌더링 입력값 타입
 interface UserRowProps {
   user: OnlineUser
   isCurrentUser?: boolean
@@ -14,6 +15,7 @@ interface UserRowProps {
   onOpenDirectMessage?: (user: OnlineUser) => void
 }
 
+// 접속자 1명의 아바타/상태/DM 버튼을 렌더링
 export function UserRow({
   user,
   isCurrentUser = false,
@@ -56,6 +58,7 @@ export function UserRow({
         type="button"
         disabled={isDmDisabled}
         onClick={() => {
+          // 비활성 상태에서는 DM 열기 동작을 차단
           if (isDmDisabled) {
             return
           }

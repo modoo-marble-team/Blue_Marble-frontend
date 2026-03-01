@@ -2,15 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Lock, X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
+// 비밀방 비밀번호는 숫자 4자리만 허용
 const ROOM_PASSWORD_PATTERN = /^\d{4}$/
+// 방 제목 최대 글자수 제한
 const ROOM_TITLE_MAX_LENGTH = 16
 
+// 방 생성 제출 payload 타입
 export interface CreateRoomFormValues {
   title: string
   isPrivate: boolean
   password?: string
 }
 
+// 방 생성 모달 입력값 타입
 interface CreateRoomModalProps {
   defaultRoomTitle: string
   isSubmitting: boolean
@@ -18,6 +22,7 @@ interface CreateRoomModalProps {
   onSubmit: (values: CreateRoomFormValues) => void
 }
 
+// 방 제목/비밀방 여부/비밀번호를 입력받는 방 생성 모달
 export function CreateRoomModal({
   defaultRoomTitle,
   isSubmitting,
@@ -28,6 +33,7 @@ export function CreateRoomModal({
   const [isPrivateRoomEnabled, setIsPrivateRoomEnabled] = useState(false)
   const [roomPassword, setRoomPassword] = useState('')
 
+  // 입력 제목이 비어 있으면 기본 제목을 사용하고 길이를 제한
   const normalizedRoomTitle = useMemo(() => {
     const trimmedTitle = roomTitle.trim()
 
@@ -43,6 +49,7 @@ export function CreateRoomModal({
   const isSubmitDisabled = isSubmitting || !isPrivatePasswordValid
   const canClose = !isSubmitting
 
+  // 제출 중이 아닐 때만 모달 닫기를 허용
   const handleClose = useCallback(() => {
     if (!canClose) {
       return
@@ -51,6 +58,7 @@ export function CreateRoomModal({
     onClose()
   }, [canClose, onClose])
 
+  // ESC 키 입력 시 모달 닫기 처리
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -103,6 +111,7 @@ export function CreateRoomModal({
           onSubmit={(event) => {
             event.preventDefault()
 
+            // 유효하지 않은 상태에서는 submit 동작 차단
             if (isSubmitDisabled) {
               return
             }
@@ -148,6 +157,7 @@ export function CreateRoomModal({
                 setIsPrivateRoomEnabled((previous) => {
                   const nextValue = !previous
 
+                  // 비밀방 설정 해제 시 기존 비밀번호 입력값 초기화
                   if (!nextValue) {
                     setRoomPassword('')
                   }

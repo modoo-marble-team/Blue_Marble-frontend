@@ -35,6 +35,7 @@ import {
 import type { LobbyRoom } from './types'
 import type { WaitingRoomSnapshot } from '../waiting-room/types'
 
+// 로비 화면 상태 관리와 방/접속자/DM 상호작용 통합 처리
 function LobbyPage() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
@@ -62,12 +63,15 @@ function LobbyPage() {
   const [isPrivateRoomPasswordInvalid, setIsPrivateRoomPasswordInvalid] =
     useState(false)
 
+  // 세션 유효성에 따라 홈 또는 닉네임 설정 페이지로 이동
   useEffect(() => {
+    // 로그인 세션이 없으면 홈으로 이동
     if (!session) {
       navigate('/', { replace: true })
       return
     }
 
+    // 닉네임 미설정 세션은 닉네임 설정 페이지로 이동
     if (session.needsNicknameSetup) {
       navigate('/nickname-setup', { replace: true })
     }
@@ -91,7 +95,9 @@ function LobbyPage() {
 
   const openedDirectMessageUserId = dmTargetUser?.id
 
+  // DM 수신 이벤트를 구독해 대화 목록과 unread 카운트를 갱신
   useEffect(() => {
+    // 비로그인 상태에서는 구독을 등록하지 않음
     if (!session) {
       return
     }
@@ -113,6 +119,7 @@ function LobbyPage() {
             (message) => message.id === receivedMessage.id
           )
 
+          // 동일 메시지 ID는 중복 삽입을 방지
           if (hasSameMessage) {
             return previousMessagesByUserId
           }
@@ -123,6 +130,7 @@ function LobbyPage() {
           }
         })
 
+        // 현재 열려 있는 사용자 메시지는 unread 카운트에서 제외
         if (payload.sender_id === openedDirectMessageUserId) {
           return
         }
@@ -143,6 +151,7 @@ function LobbyPage() {
     }
   }, [openedDirectMessageUserId, session])
 
+  // 접속자 목록 갱신 시 DM 대상 사용자 참조를 최신 객체로 동기화
   useEffect(() => {
     if (!dmTargetUser) {
       return
@@ -165,10 +174,12 @@ function LobbyPage() {
     navigate('/', { replace: true })
   }
 
+  // 프로필 드롭다운에서 마이페이지 이동 처리
   function handleGoMyPage() {
     navigate('/my-page')
   }
 
+  // DM 창을 열고 해당 사용자 unread 카운트를 초기화
   function handleOpenDirectMessage(user: OnlineUser) {
     setDmTargetUser(user)
     setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
@@ -186,7 +197,9 @@ function LobbyPage() {
     setDmTargetUser(null)
   }
 
+  // 로컬 DM 목록에 메시지를 추가하고 소켓 전송 실행
   function handleSendDirectMessage(message: string) {
+    // 대상 사용자 또는 세션이 없으면 전송 중단
     if (!dmTargetUser || !session) {
       return
     }
@@ -220,6 +233,7 @@ function LobbyPage() {
     setIsCreateRoomModalOpen(true)
   }
 
+  // 방 생성 요청 중에는 모달 닫기를 막아 중복 동작 방지
   function handleCloseCreateRoomModal() {
     if (isCreateRoomPending) {
       return
@@ -228,6 +242,7 @@ function LobbyPage() {
     setIsCreateRoomModalOpen(false)
   }
 
+  // 비밀방은 비밀번호 모달을 열고, 일반방은 바로 입장 처리
   function handleJoinRoom(room: LobbyRoom) {
     if (room.isPrivate) {
       setSelectedPrivateRoom(room)
@@ -245,6 +260,7 @@ function LobbyPage() {
     setIsPrivateRoomPasswordInvalid(false)
   }
 
+  // 대기방 페이지로 이동하면서 roomId/title/snapshot을 전달
   function handleEnterWaitingRoom(
     room: LobbyRoom,
     preJoinedSnapshot?: WaitingRoomSnapshot
@@ -258,7 +274,9 @@ function LobbyPage() {
     })
   }
 
+  // 방 생성 API를 호출하고 성공 시 생성된 대기방으로 이동
   async function handleSubmitCreateRoom(values: CreateRoomFormValues) {
+    // 세션이 없으면 생성 요청을 보내지 않음
     if (!session) {
       return
     }
@@ -289,6 +307,7 @@ function LobbyPage() {
     }
   }
 
+  // 비밀방 비밀번호 검증 입장 요청 처리
   async function handleSubmitPrivateRoomJoin() {
     if (!selectedPrivateRoom || !session) {
       return
@@ -308,6 +327,7 @@ function LobbyPage() {
       handleEnterWaitingRoom(selectedPrivateRoom, joinedRoomSnapshot)
       handleClosePrivateRoomModal()
     } catch (error) {
+      // 비밀번호 불일치 에러는 인풋 에러 상태를 별도 표시
       if (isJoinPasswordMismatchError(error)) {
         setIsPrivateRoomPasswordInvalid(true)
       }
@@ -320,6 +340,7 @@ function LobbyPage() {
     }
   }
 
+  // 리다이렉트 대상 세션 상태면 화면 렌더링 생략
   if (!session || session.needsNicknameSetup) {
     return null
   }

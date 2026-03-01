@@ -1,5 +1,6 @@
 import type { LobbyRoom } from './types'
 
+// 백엔드 미연동 환경에서 사용하는 로비 방 목 데이터
 export const mockLobbyRooms: LobbyRoom[] = [
   {
     id: 'room-1',

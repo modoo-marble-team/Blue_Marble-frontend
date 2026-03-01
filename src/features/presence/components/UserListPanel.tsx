@@ -5,6 +5,7 @@ import type { OnlineUser } from '../types'
 import { formatUnreadBadgeCount } from '../unreadBadge'
 import { UserRow } from './UserRow'
 
+// 접속자 목록 패널 렌더링 입력값 타입
 interface UserListPanelProps {
   users: OnlineUser[]
   isLoading: boolean
@@ -18,6 +19,7 @@ interface UserListPanelProps {
   disableWidthTransition?: boolean
 }
 
+// 접속자 목록 패널의 열림/닫힘 UI와 목록 상태 렌더링
 export function UserListPanel({
   users,
   isLoading,
