@@ -19,11 +19,13 @@ import type {
   WaitingRoomSnapshot,
 } from './types'
 
+// 대기방 기본 제목/정원과 모드 전환 플래그
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
 const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
 const USE_WAITING_ROOM_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
 
+// 대기방 입장 요청 파라미터 타입
 interface JoinWaitingRoomParams {
   roomId: string
   userId: string
@@ -32,6 +34,7 @@ interface JoinWaitingRoomParams {
   password?: string
 }
 
+// 방 생성 요청 파라미터 타입
 interface CreateWaitingRoomParams {
   title: string
   isPrivate: boolean
@@ -40,12 +43,14 @@ interface CreateWaitingRoomParams {
   hostNickname: string
 }
 
+// 방 생성 후 페이지 이동에 사용하는 결과 타입
 export interface CreateWaitingRoomResult {
   roomId: string
   roomTitle: string
   preJoinedSnapshot?: WaitingRoomSnapshot
 }
 
+// 퇴장/준비/시작 요청 파라미터 타입
 interface LeaveWaitingRoomParams {
   roomId: string
   userId: string
@@ -61,6 +66,7 @@ interface StartWaitingGameParams {
   userId: string
 }
 
+// 플레이어 payload를 화면 모델로 매핑
 function mapRoomPlayer(payload: WaitingRoomPlayerPayload) {
   return {
     id: payload.id,
@@ -70,6 +76,7 @@ function mapRoomPlayer(payload: WaitingRoomPlayerPayload) {
   }
 }
 
+// 채팅 payload를 화면 메시지 모델로 매핑
 function mapChatMessage(payload: WaitingRoomChatPayload) {
   return {
     id: payload.id,
@@ -81,6 +88,7 @@ function mapChatMessage(payload: WaitingRoomChatPayload) {
   }
 }
 
+// 입장 응답 payload를 대기방 스냅샷으로 변환
 function mapJoinResponse(
   payload: JoinWaitingRoomResponsePayload,
   fallbackTitle?: string
@@ -96,6 +104,7 @@ function mapJoinResponse(
   }
 }
 
+// 방 생성 응답 payload를 생성 결과 모델로 변환
 function mapCreateRoomResponse(
   payload: CreateRoomResponsePayload,
   hostUserId: string,
@@ -123,6 +132,7 @@ function mapCreateRoomResponse(
   }
 }
 
+// 방 생성 API 호출 또는 목 게이트웨이 호출
 export async function createWaitingRoom({
   title,
   isPrivate,
@@ -130,6 +140,7 @@ export async function createWaitingRoom({
   hostUserId,
   hostNickname,
 }: CreateWaitingRoomParams): Promise<CreateWaitingRoomResult> {
+  // 개발 목 모드에서는 mock 게이트웨이를 사용
   if (USE_WAITING_ROOM_MOCK) {
     return mockCreateWaitingRoom({
       title,
@@ -146,9 +157,11 @@ export async function createWaitingRoom({
     password: isPrivate ? password : null,
   })
 
+  // 실서버 응답을 화면 모델로 정규화
   return mapCreateRoomResponse(data, hostUserId, hostNickname)
 }
 
+// 대기방 입장 API 호출 또는 목 게이트웨이 호출
 export async function joinWaitingRoom({
   roomId,
   userId,
@@ -174,6 +187,7 @@ export async function joinWaitingRoom({
   return mapJoinResponse(data, fallbackTitle)
 }
 
+// 대기방 퇴장 API 호출 또는 목 게이트웨이 호출
 export async function leaveWaitingRoom({
   roomId,
   userId,
@@ -195,6 +209,7 @@ export async function leaveWaitingRoom({
   }
 }
 
+// 준비 상태 토글 API 호출 또는 목 게이트웨이 호출
 export async function toggleWaitingReady({
   roomId,
   userId,
@@ -215,6 +230,7 @@ export async function toggleWaitingReady({
   }
 }
 
+// 게임 시작 API 호출 또는 목 게이트웨이 호출
 export async function startWaitingGame({
   roomId,
   userId,
@@ -236,14 +252,17 @@ export async function startWaitingGame({
   }
 }
 
+// API/목 에러를 사용자 표시용 메시지로 정규화
 export function getWaitingRoomErrorMessage(
   error: unknown,
   fallbackMessage: string
 ) {
+  // 목 게이트웨이 에러는 message를 그대로 사용
   if (error instanceof WaitingRoomMockError) {
     return error.message
   }
 
+  // Axios 에러는 서버 message가 있으면 우선 사용
   if (isAxiosError(error)) {
     const serverMessage = (
       error.response?.data as { message?: string } | undefined
@@ -254,6 +273,7 @@ export function getWaitingRoomErrorMessage(
     }
   }
 
+  // 일반 Error message가 있으면 fallback 대신 사용
   if (error instanceof Error && error.message.length > 0) {
     return error.message
   }
@@ -261,6 +281,7 @@ export function getWaitingRoomErrorMessage(
   return fallbackMessage
 }
 
+// 입장 실패 원인이 비밀번호 불일치인지 판별
 export function isJoinPasswordMismatchError(error: unknown) {
   if (error instanceof WaitingRoomMockError) {
     return error.status === 403

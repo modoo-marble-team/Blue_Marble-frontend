@@ -21,6 +21,7 @@ import type {
   WaitingRoomSnapshot,
 } from './types'
 
+// 대기방 기본 정원과 좌석 색상 팔레트
 const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
 const AVATAR_COLORS = [
   '#ef4444',
@@ -31,6 +32,7 @@ const AVATAR_COLORS = [
   '#14b8a6',
 ]
 
+// 대기방 컨트롤러 훅 입력값 타입
 interface UseWaitingRoomControllerParams {
   roomId: string
   session: AuthSession | null
@@ -39,11 +41,13 @@ interface UseWaitingRoomControllerParams {
   onGameStart: (payload: GameStartEventPayload) => void
 }
 
+// 대기방 액션 함수 공통 반환 타입
 interface WaitingRoomActionResult {
   ok: boolean
   message?: string
 }
 
+// playerId 해시 기반으로 좌석 아바타 색상 선택
 function getAvatarColor(playerId: string) {
   const colorIndex =
     playerId
@@ -54,10 +58,12 @@ function getAvatarColor(playerId: string) {
   return AVATAR_COLORS[colorIndex]
 }
 
+// 채팅 이벤트 payload에서 메시지 고유 ID 생성
 function getChatMessageId(payload: ChatEventPayload) {
   return `${payload.room_id}-${payload.sender_id}-${payload.sent_at}`
 }
 
+// 채팅 이벤트 payload를 화면 메시지 모델로 매핑
 function mapChatPayloadToMessage(
   payload: ChatEventPayload
 ): WaitingRoomChatMessage {
@@ -71,6 +77,7 @@ function mapChatPayloadToMessage(
   }
 }
 
+// 방 스냅샷을 좌석 배열(빈 자리 포함)로 변환
 function buildWaitingRoomSeats(
   room: WaitingRoomSnapshot | null,
   myUserId: string
@@ -81,6 +88,7 @@ function buildWaitingRoomSeats(
     () => null
   ) as Array<WaitingRoomSeat | null>
 
+  // 방 정보가 없으면 빈 자리 배열만 반환
   if (!room) {
     return seats
   }
@@ -99,6 +107,7 @@ function buildWaitingRoomSeats(
   return seats
 }
 
+// 게임 시작 가능 조건(2명 이상 + 방장 제외 전원 ready) 판별
 function getStartConditionMet(room: WaitingRoomSnapshot | null) {
   if (!room || room.players.length < 2) {
     return false
@@ -109,6 +118,7 @@ function getStartConditionMet(room: WaitingRoomSnapshot | null) {
     .every((player) => player.isReady)
 }
 
+// 대기방 상태 동기화/소켓 구독/액션 핸들러를 통합한 컨트롤러 훅
 export function useWaitingRoomController({
   roomId,
   session,
@@ -130,7 +140,9 @@ export function useWaitingRoomController({
   const shouldSkipNextCleanupLeaveRef = useRef(import.meta.env.DEV)
   const preJoinedRoomId = preJoinedSnapshot?.roomId
 
+  // roomId/세션/사전 조인 상태에 따라 초기 입장 로직을 실행
   useEffect(() => {
+    // roomId가 없으면 관련 상태를 초기값으로 리셋
     if (!roomId) {
       setRoom(null)
       setChatMessages([])
@@ -142,6 +154,7 @@ export function useWaitingRoomController({
       return
     }
 
+    // 세션이 없으면 대기방 상태를 유지하지 않음
     if (!session) {
       setRoom(null)
       setChatMessages([])
@@ -153,6 +166,7 @@ export function useWaitingRoomController({
       return
     }
 
+    // 사전 조인 초기화가 이미 끝난 동일 roomId는 재조인 생략
     if (
       hasInitializedPreJoinRef.current &&
       hasEnteredRoomRef.current &&
@@ -162,6 +176,7 @@ export function useWaitingRoomController({
       return
     }
 
+    // 로비에서 사전 조인된 스냅샷이 있으면 즉시 화면 반영
     if (
       preJoinedSnapshot &&
       preJoinedRoomId === roomId &&
@@ -193,6 +208,7 @@ export function useWaitingRoomController({
           fallbackTitle: fallbackRoomTitle,
         })
 
+        // 언마운트 이후에는 상태 업데이트를 건너뜀
         if (!isMounted) {
           return
         }
@@ -203,6 +219,7 @@ export function useWaitingRoomController({
         hasEnteredRoomRef.current = true
         hasLeftRoomRef.current = false
       } catch (error) {
+        // 언마운트 이후에는 에러 상태 반영을 건너뜀
         if (!isMounted) {
           return
         }
@@ -211,6 +228,7 @@ export function useWaitingRoomController({
           getWaitingRoomErrorMessage(error, '대기방 입장에 실패했습니다.')
         )
       } finally {
+        // 마운트된 상태에서만 로딩 종료 반영
         if (isMounted) {
           setIsRoomLoading(false)
         }
@@ -226,6 +244,7 @@ export function useWaitingRoomController({
 
   const activeRoomId = room?.roomId
 
+  // 대기방 소켓 이벤트를 구독해 room/chat 상태를 실시간 반영
   useEffect(() => {
     if (!roomId || !session || !activeRoomId) {
       return
@@ -271,6 +290,7 @@ export function useWaitingRoomController({
         })
       },
       onChat: (payload) => {
+        // 다른 방 채팅 이벤트는 무시
         if (payload.room_id !== activeRoomId) {
           return
         }
@@ -282,6 +302,7 @@ export function useWaitingRoomController({
             (previousMessage) => previousMessage.id === message.id
           )
 
+          // 동일 메시지 중복 삽입 방지
           if (hasSameMessage) {
             return previousMessages
           }
@@ -299,13 +320,16 @@ export function useWaitingRoomController({
     }
   }, [activeRoomId, onGameStart, roomId, session])
 
+  // 언마운트 시 대기방 퇴장 API와 소켓 leave를 정리
   useEffect(() => {
     return () => {
+      // StrictMode 첫 cleanup은 테스트성 호출이므로 1회 스킵
       if (shouldSkipNextCleanupLeaveRef.current) {
         shouldSkipNextCleanupLeaveRef.current = false
         return
       }
 
+      // 퇴장 조건을 만족할 때만 leave API 호출
       if (
         !session ||
         !roomId ||
@@ -324,6 +348,7 @@ export function useWaitingRoomController({
     }
   }, [roomId, session])
 
+  // 현재 세션 사용자 정보 조회
   const me = useMemo(() => {
     if (!room || !session) {
       return null
@@ -332,15 +357,18 @@ export function useWaitingRoomController({
     return room.players.find((player) => player.id === session.userId) ?? null
   }, [room, session])
 
+  // UI 제어에 필요한 파생 상태 계산
   const isHost = me?.isHost ?? false
   const isReady = me?.isReady ?? false
   const canToggleReady = Boolean(me) && !isHost
   const canStartGame = isHost && getStartConditionMet(room)
 
+  // 좌석 렌더링용 배열 계산
   const seats = useMemo(() => {
     return buildWaitingRoomSeats(room, session?.userId ?? '')
   }, [room, session])
 
+  // 채팅 전송 요청을 소켓 레이어로 전달
   const sendChatMessage = useCallback(
     (message: string) => {
       if (!room || !session) {
@@ -357,8 +385,10 @@ export function useWaitingRoomController({
     [room, session]
   )
 
+  // 준비 상태 토글 액션 처리
   const handleToggleReady =
     useCallback(async (): Promise<WaitingRoomActionResult> => {
+      // 액션 불가 상태에서는 즉시 종료
       if (!room || !session || !canToggleReady || isReadyPending) {
         return {
           ok: false,
@@ -411,6 +441,7 @@ export function useWaitingRoomController({
 
   const handleStartGame =
     useCallback(async (): Promise<WaitingRoomActionResult> => {
+      // 시작 조건 미충족 또는 요청 중 상태에서는 종료
       if (!room || !session || !canStartGame || isStartPending) {
         return {
           ok: false,
@@ -442,12 +473,14 @@ export function useWaitingRoomController({
     }, [canStartGame, isStartPending, room, session])
 
   const leaveRoom = useCallback(async (): Promise<WaitingRoomActionResult> => {
+    // 이미 퇴장 완료 상태면 성공으로 간주
     if (!session || hasLeftRoomRef.current) {
       return {
         ok: true,
       }
     }
 
+    // 중복 퇴장 요청 방지
     if (isLeavePending) {
       return {
         ok: false,
@@ -457,6 +490,7 @@ export function useWaitingRoomController({
     setIsLeavePending(true)
     const targetRoomId = room?.roomId ?? roomId
 
+    // 대상 roomId를 찾지 못하면 실패 반환
     if (!targetRoomId) {
       setIsLeavePending(false)
       return {

@@ -3,17 +3,20 @@ import RoomChat from '../../../features/room-chat/RoomChat'
 import type { ChatMessage } from '../../../types/domain'
 import type { WaitingRoomChatMessage } from '../types'
 
+// 대기방 채팅 박스 렌더링 입력값 타입
 interface WaitingRoomChatBoxProps {
   messages: WaitingRoomChatMessage[]
   currentUserId: string
   onSendMessage: (content: string) => void
 }
 
+// 대기방 채팅 메시지를 RoomChat 공통 포맷으로 변환해 렌더링
 export function WaitingRoomChatBox({
   messages,
   currentUserId,
   onSendMessage,
 }: WaitingRoomChatBoxProps) {
+  // 대기방 채팅 모델을 RoomChat 도메인 타입으로 매핑
   const chatMessages = useMemo<ChatMessage[]>(() => {
     return messages.map((message) => ({
       id: message.id,

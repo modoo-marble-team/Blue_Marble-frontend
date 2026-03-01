@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { ProfileDropdown } from '../../../components/header/ProfileDropdown'
 import type { ProfileMenuItem } from '../../../components/header/profileMenu'
 
+// 대기방 헤더 렌더링 입력값 타입
 interface WaitingRoomHeaderProps {
   roomIdLabel: string
   roomTitle: string
@@ -12,6 +13,7 @@ interface WaitingRoomHeaderProps {
   onBackToLobby: () => void
 }
 
+// 뒤로가기/방 정보/프로필 드롭다운을 포함한 대기방 헤더 렌더링
 export function WaitingRoomHeader({
   roomIdLabel,
   roomTitle,

@@ -34,6 +34,7 @@ interface WaitingRoomLocationState {
 
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
 
+// roomId에서 숫자를 추출해 헤더 배지 텍스트로 변환
 function formatRoomIdLabel(roomId: string) {
   const matchedNumber = roomId.match(/\d+/)?.[0]
 
@@ -44,6 +45,7 @@ function formatRoomIdLabel(roomId: string) {
   return `Room ${matchedNumber}`
 }
 
+// 대기방 화면 렌더링과 DM/접속자/대기방 컨트롤 흐름 통합
 function WaitingRoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const currentRoomId = roomId ?? ''
@@ -113,22 +115,26 @@ function WaitingRoomPage() {
 
   const openedDirectMessageUserId = dmTargetUser?.id
 
+  // URL/세션 상태 검증 후 잘못된 진입을 리다이렉트
   useEffect(() => {
     if (!currentRoomId) {
       navigate('/lobby', { replace: true })
       return
     }
 
+    // 비로그인 사용자는 홈으로 이동
     if (!session) {
       navigate('/', { replace: true })
       return
     }
 
+    // 닉네임 미설정 사용자는 닉네임 설정 화면으로 이동
     if (session.needsNicknameSetup) {
       navigate('/nickname-setup', { replace: true })
     }
   }, [currentRoomId, navigate, session])
 
+  // 대기방 로딩 에러를 토스트로 표시
   useEffect(() => {
     if (!roomErrorMessage) {
       return
@@ -137,6 +143,7 @@ function WaitingRoomPage() {
     toast.error(roomErrorMessage)
   }, [roomErrorMessage])
 
+  // DM 수신 이벤트를 구독해 메시지 목록/unread 상태를 갱신
   useEffect(() => {
     if (!session) {
       return
@@ -159,6 +166,7 @@ function WaitingRoomPage() {
             (message) => message.id === receivedMessage.id
           )
 
+          // 동일 메시지는 중복 저장하지 않음
           if (hasSameMessage) {
             return previousMessagesByUserId
           }
@@ -189,6 +197,7 @@ function WaitingRoomPage() {
     }
   }, [openedDirectMessageUserId, session])
 
+  // 접속자 목록 갱신 시 DM 대상 사용자 참조를 동기화
   useEffect(() => {
     if (!dmTargetUser) {
       return
@@ -206,6 +215,7 @@ function WaitingRoomPage() {
     }
   }, [dmTargetUser, users])
 
+  // 대기방을 떠나 로비로 복귀
   const handleLeaveToLobby = useCallback(async () => {
     const result = await leaveRoom()
 
@@ -219,6 +229,7 @@ function WaitingRoomPage() {
     navigate('/lobby', { replace: true })
   }, [leaveRoom, navigate])
 
+  // 로그아웃 시 대기방 정리 후 세션을 제거
   const handleLogout = useCallback(async () => {
     const result = await leaveRoom()
 
@@ -230,6 +241,7 @@ function WaitingRoomPage() {
     navigate('/', { replace: true })
   }, [clearSession, leaveRoom, navigate])
 
+  // 마이페이지 이동 전 대기방 퇴장 처리
   const handleGoMyPage = useCallback(async () => {
     const result = await leaveRoom()
 
@@ -243,6 +255,7 @@ function WaitingRoomPage() {
     navigate('/my-page')
   }, [leaveRoom, navigate])
 
+  // 준비 토글 액션 실패 메시지를 토스트로 표시
   const onToggleReady = useCallback(async () => {
     const result = await handleToggleReady()
 
@@ -251,6 +264,7 @@ function WaitingRoomPage() {
     }
   }, [handleToggleReady])
 
+  // 게임 시작 액션 실패 메시지를 토스트로 표시
   const onStartGame = useCallback(async () => {
     const result = await handleStartGame()
 
@@ -259,6 +273,7 @@ function WaitingRoomPage() {
     }
   }, [handleStartGame])
 
+  // DM 창을 열고 해당 사용자 unread 카운트를 제거
   function handleOpenDirectMessage(user: OnlineUser) {
     setDmTargetUser(user)
     setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
@@ -276,7 +291,9 @@ function WaitingRoomPage() {
     setDmTargetUser(null)
   }
 
+  // DM 메시지를 로컬 목록에 반영한 뒤 소켓으로 전송
   function handleSendDirectMessage(message: string) {
+    // 세션 또는 대상이 없으면 전송 중단
     if (!dmTargetUser || !session) {
       return
     }
@@ -306,6 +323,7 @@ function WaitingRoomPage() {
     })
   }
 
+  // 리다이렉트 대상 상태에서는 화면 렌더링 생략
   if (!session || session.needsNicknameSetup) {
     return null
   }

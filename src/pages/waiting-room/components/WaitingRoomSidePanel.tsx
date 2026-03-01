@@ -2,6 +2,7 @@ import { WaitingRoomActionPanel } from './WaitingRoomActionPanel'
 import { WaitingRoomChatBox } from './WaitingRoomChatBox'
 import type { WaitingRoomChatMessage } from '../types'
 
+// 우측 사이드 패널 렌더링 입력값 타입
 interface WaitingRoomSidePanelProps {
   messages: WaitingRoomChatMessage[]
   currentUserId: string
@@ -16,6 +17,7 @@ interface WaitingRoomSidePanelProps {
   onSendMessage: (content: string) => void
 }
 
+// 채팅 박스와 액션 패널을 결합한 대기방 우측 패널 렌더링
 export function WaitingRoomSidePanel({
   messages,
   currentUserId,

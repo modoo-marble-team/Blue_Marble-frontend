@@ -1,5 +1,6 @@
 import { cn } from '../../../lib/utils'
 
+// 하단 액션 패널 렌더링 입력값 타입
 interface WaitingRoomActionPanelProps {
   isHost: boolean
   canStartGame: boolean
@@ -11,6 +12,7 @@ interface WaitingRoomActionPanelProps {
   onStartGame: () => void
 }
 
+// 방장/일반 유저 역할에 따라 시작 또는 준비 버튼을 렌더링
 export function WaitingRoomActionPanel({
   isHost,
   canStartGame,
