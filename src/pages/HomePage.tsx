@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom'
 import { mockGuestLogin, mockKakaoLogin } from '../features/auth/mockApi'
 import { useAuthStore } from '../features/auth/store'
 
+// 홈 하단 기능 소개 카드 메타데이터
 const featureCards = [
   {
     title: '실시간 대전',
@@ -36,6 +37,7 @@ const featureCards = [
   },
 ]
 
+// 로그인 진입 홈 화면 렌더링과 인증 흐름 제어
 function HomePage() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
@@ -44,11 +46,14 @@ function HomePage() {
   const [isKakaoLoading, setIsKakaoLoading] = useState(false)
   const [isGuestLoading, setIsGuestLoading] = useState(false)
 
+  // 세션이 이미 유효하면 홈 대신 로비로 리다이렉트
   useEffect(() => {
+    // 비로그인 상태에서는 홈 화면 유지
     if (!session) {
       return
     }
 
+    // 닉네임 설정이 필요한 경우에는 홈에서 이동시키지 않음
     if (session.needsNicknameSetup) {
       return
     }
@@ -58,6 +63,7 @@ function HomePage() {
 
   const isAnyLoading = isKakaoLoading || isGuestLoading
 
+  // 카카오 로그인 결과에 따라 닉네임 설정/로비로 분기 이동
   async function handleKakaoLogin() {
     setIsKakaoLoading(true)
     try {
@@ -71,6 +77,7 @@ function HomePage() {
     }
   }
 
+  // 게스트 세션을 발급받아 로비로 바로 이동
   async function handleGuestLogin() {
     setIsGuestLoading(true)
     try {

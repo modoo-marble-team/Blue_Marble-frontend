@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProfileMenuItem } from './profileMenu'
 
+// 프로필 드롭다운 렌더링 입력값 타입
 interface ProfileDropdownProps {
   playerLabel?: string
   avatarText?: string
@@ -8,6 +9,7 @@ interface ProfileDropdownProps {
   menuItems?: ProfileMenuItem[]
 }
 
+// 프로필 아바타와 드롭다운 메뉴 열림 상태를 관리
 export function ProfileDropdown({
   playerLabel = '플레이어',
   avatarText = 'P',
@@ -28,11 +30,13 @@ export function ProfileDropdown({
   )
 
   useEffect(() => {
+    // 메뉴 항목이 없거나 닫힌 상태면 이벤트 리스너 등록 생략
     if (!hasMenuItems || !isMenuOpen) {
       return
     }
 
     function handlePointerDown(event: PointerEvent) {
+      // 드롭다운 바깥 클릭이면 메뉴 닫기
       if (
         menuContainerRef.current &&
         !menuContainerRef.current.contains(event.target as Node)
@@ -42,6 +46,7 @@ export function ProfileDropdown({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
+      // ESC 입력이면 메뉴 닫기
       if (event.key === 'Escape') {
         setIsMenuOpen(false)
       }
@@ -84,6 +89,7 @@ export function ProfileDropdown({
                   <button
                     type="button"
                     onClick={() => {
+                      // 메뉴 액션 실행 후 드롭다운 닫기
                       item.onSelect()
                       setIsMenuOpen(false)
                     }}

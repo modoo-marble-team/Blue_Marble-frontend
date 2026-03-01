@@ -2,6 +2,7 @@ import { Dice5 } from 'lucide-react'
 import { ProfileDropdown } from './ProfileDropdown'
 import type { ProfileMenuItem } from './profileMenu'
 
+// 공통 헤더 렌더링 입력값 타입
 interface HeaderProps {
   playerLabel?: string
   avatarText?: string
@@ -9,6 +10,7 @@ interface HeaderProps {
   menuItems?: ProfileMenuItem[]
 }
 
+// 좌측 로고와 우측 프로필 드롭다운을 포함한 상단 헤더 렌더링
 function Header({
   playerLabel = '플레이어',
   avatarText = 'P',

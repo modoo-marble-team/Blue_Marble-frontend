@@ -5,6 +5,7 @@ import { useAuthStore } from '../features/auth/store'
 import { useMyPageProfileQuery } from '../features/auth/hooks/useMyPageProfileQuery'
 import { getAvatarText } from '../components/header/profileMenu'
 
+// 전적 카드 렌더링 메타데이터
 const myPageStatsCardMeta = [
   {
     key: 'total' as const,
@@ -29,26 +30,32 @@ const myPageStatsCardMeta = [
   },
 ]
 
+// 마이페이지 진입 제어와 프로필/전적 화면 렌더링
 function MyPage() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
   const { data: profile, isLoading, isError } = useMyPageProfileQuery(session)
 
+  // 세션 상태에 따라 홈/닉네임 설정 페이지로 진입 차단
   useEffect(() => {
+    // 비로그인이면 홈으로 이동
     if (!session) {
       navigate('/', { replace: true })
       return
     }
 
+    // 닉네임 미설정 사용자는 먼저 설정 화면으로 이동
     if (session.needsNicknameSetup) {
       navigate('/nickname-setup', { replace: true })
     }
   }, [navigate, session])
 
+  // 프로필 이미지가 없을 때 사용할 아바타 텍스트 계산
   const fallbackAvatarText = useMemo(() => {
     return getAvatarText(session?.nickname)
   }, [session?.nickname])
 
+  // 리다이렉트 조건에서는 화면을 렌더링하지 않음
   if (!session || session.needsNicknameSetup) {
     return null
   }
