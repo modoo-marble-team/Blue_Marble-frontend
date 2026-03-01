@@ -14,6 +14,7 @@ import type {
   SendChatSocketPayload,
 } from './types'
 
+// 대기방 소켓 이벤트 이름 맵
 const WAITING_ROOM_EVENT_NAMES = {
   enterRoom: 'enter_room',
   leaveRoom: 'leave_room',
@@ -27,6 +28,7 @@ const WAITING_ROOM_EVENT_NAMES = {
 const USE_WAITING_ROOM_SOCKET_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
 
+// 소켓 송신 함수 파라미터 타입
 interface EnterWaitingRoomSocketParams {
   roomId: string
 }
@@ -42,6 +44,7 @@ interface SendWaitingRoomChatParams {
   message: string
 }
 
+// 대기방 소켓 구독 핸들러 타입
 interface WaitingRoomSocketHandlers {
   onPlayerReady: (payload: PlayerReadyEventPayload) => void
   onHostChanged: (payload: HostChangedEventPayload) => void
@@ -49,16 +52,19 @@ interface WaitingRoomSocketHandlers {
   onGameStart: (payload: GameStartEventPayload) => void
 }
 
+// 실소켓 모드에서만 연결 상태를 확인해 connect 실행
 function connectSocketIfNeeded() {
   if (USE_WAITING_ROOM_SOCKET_MOCK) {
     return
   }
 
+  // 연결이 닫혀 있으면 명시적으로 연결
   if (!socket.connected) {
     socket.connect()
   }
 }
 
+// 대기방에서 필요한 소켓 이벤트를 한 번에 구독
 export function subscribeWaitingRoomSocketEvents(
   handlers: WaitingRoomSocketHandlers
 ) {
@@ -77,9 +83,11 @@ export function subscribeWaitingRoomSocketEvents(
   }
 }
 
+// 대기방 입장 소켓 이벤트 송신
 export function enterWaitingRoomSocket({
   roomId,
 }: EnterWaitingRoomSocketParams) {
+  // 목 모드에서는 게이트웨이 내부에서 별도 처리
   if (USE_WAITING_ROOM_SOCKET_MOCK) {
     mockEnterWaitingRoomSocket()
     return
@@ -92,6 +100,7 @@ export function enterWaitingRoomSocket({
   socket.emit(WAITING_ROOM_EVENT_NAMES.enterRoom, payload)
 }
 
+// 대기방 퇴장 소켓 이벤트 송신
 export function leaveWaitingRoomSocket({
   roomId,
 }: LeaveWaitingRoomSocketParams) {
@@ -106,6 +115,7 @@ export function leaveWaitingRoomSocket({
   socket.emit(WAITING_ROOM_EVENT_NAMES.leaveRoom, payload)
 }
 
+// 대기방 채팅 메시지 소켓 이벤트 송신
 export function sendWaitingRoomChat({
   roomId,
   senderId,

@@ -6,6 +6,7 @@ import NicknameSetupPage from './pages/NicknameSetupPage'
 import MyPage from './pages/MyPage'
 import WaitingRoomPage from './pages/waiting-room/WaitingRoomPage'
 
+// 앱 전체 페이지 라우팅 테이블 정의
 function App() {
   return (
     <Routes>

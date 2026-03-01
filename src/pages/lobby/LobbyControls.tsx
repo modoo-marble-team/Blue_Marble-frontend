@@ -2,6 +2,7 @@ import { Plus, Search } from 'lucide-react'
 import type { LobbyRoomFilter } from './api'
 import { cn } from '../../lib/utils'
 
+// 로비 상단 검색/필터/토글 제어 입력값 타입
 interface LobbyControlsProps {
   searchKeyword: string
   roomFilter: LobbyRoomFilter
@@ -12,12 +13,14 @@ interface LobbyControlsProps {
   onCreateRoom?: () => void
 }
 
+// 로비 방 상태 탭 메타데이터
 const ROOM_FILTERS: Array<{ value: LobbyRoomFilter; label: string }> = [
   { value: 'ALL', label: '전체' },
   { value: 'waiting', label: '대기중' },
   { value: 'playing', label: '게임중' },
 ]
 
+// 로비 검색창/필터 탭/비밀방 토글/방 생성 버튼 렌더링
 export function LobbyControls({
   searchKeyword,
   roomFilter,

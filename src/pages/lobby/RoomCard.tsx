@@ -2,6 +2,7 @@ import { Users } from 'lucide-react'
 import type { LobbyRoom, LobbyRoomStatus } from './types'
 import { cn } from '../../lib/utils'
 
+// 방 상태별 배지 라벨 매핑
 const ROOM_STATUS_LABEL: Record<LobbyRoomStatus, string> = {
   waiting: '대기중',
   playing: '게임중',
@@ -12,13 +13,16 @@ const ROOM_STATUS_STYLE: Record<LobbyRoomStatus, string> = {
   playing: 'bg-ui-tag-playing-bg text-ui-tag-playing-text',
 }
 
+// 입장 버튼 문구 상수
 const JOIN_BUTTON_LABEL = {
   PLAYING: '입장 불가(게임중)',
   FULL: '입장 불가(정원초과)',
   AVAILABLE: '입장하기',
 } as const
 
+// 방 상태/정원 기준으로 입장 버튼 라벨 결정
 function getJoinButtonLabel(room: LobbyRoom): string {
+  // 게임 중인 방은 항상 입장 불가 처리
   if (room.status === 'playing') {
     return JOIN_BUTTON_LABEL.PLAYING
   }
@@ -26,11 +30,13 @@ function getJoinButtonLabel(room: LobbyRoom): string {
   return isFull ? JOIN_BUTTON_LABEL.FULL : JOIN_BUTTON_LABEL.AVAILABLE
 }
 
+// 방 카드 렌더링 입력값 타입
 interface RoomCardProps {
   room: LobbyRoom
   onJoinRoom?: (room: LobbyRoom) => void
 }
 
+// 상태 배지, 인원수, 입장 버튼을 포함한 로비 방 카드 렌더링
 export function RoomCard({ room, onJoinRoom }: RoomCardProps) {
   const isFull = room.currentPlayers >= room.maxPlayers
   const isJoinDisabled = room.status === 'playing' || isFull

@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Lock, X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
+// 비밀방 입장 비밀번호는 숫자 4자리 고정
 const PASSWORD_PATTERN = /^\d{4}$/
 
+// 비밀방 입장 모달 입력값 타입
 interface PrivateRoomJoinModalProps {
   roomTitle: string
   password: string
@@ -14,6 +16,7 @@ interface PrivateRoomJoinModalProps {
   onSubmit: () => void
 }
 
+// 비밀방 비밀번호 입력/검증 상태를 렌더링하는 입장 모달
 export function PrivateRoomJoinModal({
   roomTitle,
   password,
@@ -30,6 +33,8 @@ export function PrivateRoomJoinModal({
     ? '비밀번호가 올바르지 않습니다.'
     : '비밀번호 4자리를 입력해주세요'
   const canClose = !isSubmitting
+
+  // 제출 중이 아닐 때만 모달 닫기를 허용
   const handleClose = useCallback(() => {
     if (!canClose) {
       return
@@ -37,6 +42,7 @@ export function PrivateRoomJoinModal({
     onClose()
   }, [canClose, onClose])
 
+  // ESC 키 입력으로 모달 닫기 처리
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -92,6 +98,7 @@ export function PrivateRoomJoinModal({
           className="mt-6"
           onSubmit={(event) => {
             event.preventDefault()
+            // 비밀번호 형식이 맞지 않으면 입장 요청 차단
             if (isJoinDisabled) {
               return
             }

@@ -1,5 +1,7 @@
+// 로그인 공급자 종류 정의
 export type AuthProvider = 'kakao' | 'guest'
 
+// 클라이언트에서 유지하는 인증 세션 형태
 export interface AuthSession {
   accessToken: string
   userId: string
@@ -10,12 +12,14 @@ export interface AuthSession {
   provider: AuthProvider
 }
 
+// 마이페이지 전적 집계 타입
 export interface MyPageStats {
   total: number
   wins: number
   losses: number
 }
 
+// 마이페이지 프로필 응답 타입
 export interface MyPageProfile {
   id: string
   nickname: string
@@ -23,6 +27,7 @@ export interface MyPageProfile {
   stats: MyPageStats
 }
 
+// 닉네임 형식 검증 결과 유니온
 export type NicknameValidationResult =
   | {
       ok: true
@@ -34,6 +39,7 @@ export type NicknameValidationResult =
       message: string
     }
 
+// 닉네임 설정 API 결과 유니온
 export type NicknameSetResult =
   | {
       ok: true
@@ -45,6 +51,7 @@ export type NicknameSetResult =
       message: string
     }
 
+// 닉네임 중복 확인 API 결과 유니온
 export type NicknameAvailabilityResult =
   | {
       ok: true
@@ -57,6 +64,7 @@ export type NicknameAvailabilityResult =
       message: string
     }
 
+// 마이페이지 프로필 조회 API 결과 유니온
 export type MyPageProfileResult =
   | {
       ok: true

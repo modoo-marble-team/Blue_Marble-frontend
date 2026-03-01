@@ -1,6 +1,7 @@
 import { ArrowLeft, UserRound } from 'lucide-react'
 import { useNicknameSetupForm } from '../features/auth/hooks/useNicknameSetupForm'
 
+// 최초 닉네임 설정 폼 화면 렌더링
 function NicknameSetupPage() {
   const {
     shouldRender,
@@ -15,6 +16,7 @@ function NicknameSetupPage() {
     handleBackToHome,
   } = useNicknameSetupForm()
 
+  // 세션/진입 조건이 맞지 않으면 렌더링 중단
   if (!shouldRender) {
     return null
   }

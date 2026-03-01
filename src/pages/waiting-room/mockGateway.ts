@@ -12,6 +12,7 @@ import type {
   WaitingRoomSnapshot,
 } from './types'
 
+// 목 게이트웨이 네트워크 지연/게임 초기값/비밀방 기본 비밀번호
 const MOCK_NETWORK_DELAY_MS = 220
 const DEFAULT_ROOM_PASSWORD = '1234'
 const GAME_START_BALANCE = 1_000_000_000
@@ -21,6 +22,7 @@ const ROOM_PRIVATE_PASSWORDS: Record<string, string> = {
   'room-7': DEFAULT_ROOM_PASSWORD,
 }
 
+// 목 저장소 내부 플레이어 타입
 interface MockRoomPlayer {
   id: string
   nickname: string
@@ -28,6 +30,7 @@ interface MockRoomPlayer {
   is_host: boolean
 }
 
+// 목 저장소 내부 방 타입
 interface MockRoom {
   id: string
   title: string
@@ -39,10 +42,12 @@ interface MockRoom {
   chat_messages: WaitingRoomChatPayload[]
 }
 
+// 목 이벤트 발행용 socket listeners 타입
 interface SocketWithListeners {
   listeners: (eventName: string) => Array<(payload: unknown) => void>
 }
 
+// 목 게이트웨이 에러 상태코드와 메시지를 함께 전달
 export class WaitingRoomMockError extends Error {
   status: number
 
@@ -53,12 +58,14 @@ export class WaitingRoomMockError extends Error {
   }
 }
 
+// 비동기 API처럼 보이도록 지연 Promise 반환
 function wait(delayMs: number) {
   return new Promise<void>((resolve) => {
     setTimeout(() => resolve(), delayMs)
   })
 }
 
+// 초기 방 플레이어 목록을 1번 플레이어 방장으로 생성
 function createRoomPlayers(roomId: string, count: number): MockRoomPlayer[] {
   return Array.from({ length: count }, (_, index) => {
     return {
@@ -70,10 +77,12 @@ function createRoomPlayers(roomId: string, count: number): MockRoomPlayer[] {
   })
 }
 
+// 초기 채팅은 빈 배열로 시작
 function createSeededRoomChat(): WaitingRoomChatPayload[] {
   return []
 }
 
+// 로비 목 데이터 기반으로 대기방 저장소 초기화
 function createInitialRooms(): Map<string, MockRoom> {
   const seededRooms = mockLobbyRooms.map((room) => {
     return {
@@ -95,6 +104,7 @@ function createInitialRooms(): Map<string, MockRoom> {
 
 const roomsStore = createInitialRooms()
 
+// 채팅 payload를 대기방 채팅 메시지 모델로 변환
 function mapChatPayloadToMessage(
   payload: WaitingRoomChatPayload
 ): WaitingRoomChatMessage {
@@ -108,6 +118,7 @@ function mapChatPayloadToMessage(
   }
 }
 
+// 내부 MockRoom을 화면용 WaitingRoomSnapshot으로 변환
 function toWaitingRoomSnapshot(room: MockRoom): WaitingRoomSnapshot {
   return {
     roomId: room.id,
@@ -125,6 +136,7 @@ function toWaitingRoomSnapshot(room: MockRoom): WaitingRoomSnapshot {
   }
 }
 
+// 로비 갱신 브로드캐스트에 맞는 payload로 변환
 function getLobbyUpdatedPayload(room: MockRoom): LobbyUpdatedEventPayload {
   const hostPlayer = room.players.find((player) => player.is_host)
 
@@ -142,6 +154,7 @@ function getLobbyUpdatedPayload(room: MockRoom): LobbyUpdatedEventPayload {
   }
 }
 
+// 소켓 이벤트를 직접 리스너에 전달하는 목 emit 유틸
 function emitSocketEvent<TPayload>(eventName: string, payload: TPayload) {
   const socketWithListeners = socket as unknown as SocketWithListeners
   const listeners = socketWithListeners.listeners(eventName)
@@ -151,6 +164,7 @@ function emitSocketEvent<TPayload>(eventName: string, payload: TPayload) {
   })
 }
 
+// 로비 목록 갱신 이벤트를 방 상태 기반으로 발행
 function emitLobbyUpdated(
   room: MockRoom,
   action: LobbyUpdatedEventPayload['action']
@@ -162,6 +176,7 @@ function emitLobbyUpdated(
   })
 }
 
+// 시작 가능 조건(2명 이상 + 방장 제외 전원 ready) 판별
 function isAllReady(room: MockRoom) {
   if (room.players.length < 2) {
     return false
@@ -172,6 +187,7 @@ function isAllReady(room: MockRoom) {
     .every((player) => player.is_ready)
 }
 
+// roomId로 방을 조회하고 없으면 404 에러 발생
 function findRoomOrThrow(roomId: string) {
   const room = roomsStore.get(roomId)
 
@@ -182,6 +198,7 @@ function findRoomOrThrow(roomId: string) {
   return room
 }
 
+// 게임 시작 소켓 payload를 목 게임 상태와 함께 생성
 function createGameStartPayload(room: MockRoom): GameStartEventPayload {
   return {
     game_id: `game-${room.id}-${Date.now()}`,
@@ -204,6 +221,7 @@ function createGameStartPayload(room: MockRoom): GameStartEventPayload {
   }
 }
 
+// room-숫자 형식의 숫자 부분을 정렬 키로 변환
 function getRoomIdSortValue(roomId: string) {
   const matchedNumber = roomId.match(/\d+/)?.[0]
 
@@ -214,6 +232,7 @@ function getRoomIdSortValue(roomId: string) {
   return Number.parseInt(matchedNumber, 10)
 }
 
+// 일반 대화 메시지 payload를 생성
 function createTalkChatPayload(
   roomId: string,
   senderId: string,
@@ -273,6 +292,7 @@ export interface MockCreateRoomResult {
   preJoinedSnapshot: WaitingRoomSnapshot
 }
 
+// 대기방 입장 목 API 처리
 export async function mockJoinWaitingRoom({
   roomId,
   userId,
@@ -283,20 +303,24 @@ export async function mockJoinWaitingRoom({
 
   const room = findRoomOrThrow(roomId)
 
+  // 비밀방 비밀번호가 다르면 403 반환
   if (room.is_private && room.password !== (password ?? '')) {
     throw new WaitingRoomMockError(403, '비밀번호가 올바르지 않습니다.')
   }
 
+  // 이미 게임 중인 방은 입장 차단
   if (room.status === 'playing') {
     throw new WaitingRoomMockError(409, '이미 게임이 시작된 방입니다.')
   }
 
   const existingPlayer = room.players.find((player) => player.id === userId)
 
+  // 이미 입장한 사용자는 현재 스냅샷 그대로 반환
   if (existingPlayer) {
     return toWaitingRoomSnapshot(room)
   }
 
+  // 정원이 가득 찬 방은 입장 차단
   if (room.players.length >= room.max_players) {
     throw new WaitingRoomMockError(409, '방 인원이 가득 찼습니다.')
   }
@@ -312,6 +336,7 @@ export async function mockJoinWaitingRoom({
   return toWaitingRoomSnapshot(room)
 }
 
+// 기존 roomId 최대값 + 1 규칙으로 다음 roomId 생성
 function getNextRoomId() {
   const nextRoomNumber =
     Array.from(roomsStore.keys()).reduce((maxRoomNumber, roomId) => {
@@ -321,6 +346,7 @@ function getNextRoomId() {
   return `room-${nextRoomNumber}`
 }
 
+// 방 생성 목 API 처리
 export async function mockCreateWaitingRoom({
   title,
   isPrivate,
@@ -332,10 +358,12 @@ export async function mockCreateWaitingRoom({
 
   const normalizedTitle = title.trim()
 
+  // 빈 방 제목은 생성 차단
   if (normalizedTitle.length === 0) {
     throw new WaitingRoomMockError(400, '방 제목을 입력해주세요.')
   }
 
+  // 비밀방이면 숫자 4자리 비밀번호를 강제
   if (isPrivate && !/^\d{4}$/.test(password ?? '')) {
     throw new WaitingRoomMockError(400, '비밀번호는 숫자 4자리여야 합니다.')
   }
@@ -370,6 +398,7 @@ export async function mockCreateWaitingRoom({
   }
 }
 
+// 대기방 퇴장 목 API 처리
 export async function mockLeaveWaitingRoom({
   roomId,
   userId,
@@ -381,6 +410,7 @@ export async function mockLeaveWaitingRoom({
     (player) => player.id === userId
   )
 
+  // 이미 나간 사용자면 중복 퇴장 요청 차단
   if (targetPlayerIndex === -1) {
     throw new WaitingRoomMockError(409, '이미 방에서 나간 상태입니다.')
   }
@@ -388,6 +418,7 @@ export async function mockLeaveWaitingRoom({
   const [leftPlayer] = room.players.splice(targetPlayerIndex, 1)
   let newHostId: string | undefined
 
+  // 마지막 인원이 나가면 방을 삭제
   if (room.players.length === 0) {
     roomsStore.delete(room.id)
     emitLobbyUpdated(room, 'removed')
@@ -397,11 +428,13 @@ export async function mockLeaveWaitingRoom({
     }
   }
 
+  // 방장이 나간 경우 다음 플레이어를 방장으로 승계
   if (leftPlayer.is_host) {
     const [nextHost] = room.players
 
     if (nextHost) {
       room.players = room.players.map((player) => {
+        // 새 방장 외 플레이어는 방장 플래그 false로 유지
         if (player.id !== nextHost.id) {
           return {
             ...player,
@@ -437,6 +470,7 @@ export async function mockLeaveWaitingRoom({
   }
 }
 
+// 준비 상태 토글 목 API 처리
 export async function mockToggleWaitingReady({
   roomId,
   userId,
@@ -446,10 +480,12 @@ export async function mockToggleWaitingReady({
   const room = findRoomOrThrow(roomId)
   const player = room.players.find((targetPlayer) => targetPlayer.id === userId)
 
+  // 참가자가 아니면 404 반환
   if (!player) {
     throw new WaitingRoomMockError(404, '방 참가자를 찾을 수 없습니다.')
   }
 
+  // 방장은 준비 토글이 아닌 시작 버튼만 사용
   if (player.is_host) {
     throw new WaitingRoomMockError(
       403,
@@ -472,6 +508,7 @@ export async function mockToggleWaitingReady({
   }
 }
 
+// 게임 시작 목 API 처리
 export async function mockStartWaitingGame({
   roomId,
   userId,
@@ -481,10 +518,12 @@ export async function mockStartWaitingGame({
   const room = findRoomOrThrow(roomId)
   const hostPlayer = room.players.find((player) => player.is_host)
 
+  // 방장이 아니면 시작 요청 차단
   if (!hostPlayer || hostPlayer.id !== userId) {
     throw new WaitingRoomMockError(403, '방장만 게임을 시작할 수 있습니다.')
   }
 
+  // 시작 조건 미충족 시 409 반환
   if (!isAllReady(room)) {
     throw new WaitingRoomMockError(
       409,
@@ -506,14 +545,17 @@ export async function mockStartWaitingGame({
   }
 }
 
+// 목 모드에서는 REST join 처리로 충분하므로 no-op
 export function mockEnterWaitingRoomSocket() {
   // mock mode에서는 REST join 이후 상태 반영이 끝나므로 별도 작업이 필요 없다.
 }
 
+// 목 모드에서는 REST leave 처리로 충분하므로 no-op
 export function mockLeaveWaitingRoomSocket() {
   // mock mode에서는 REST leave 이후 상태 반영이 끝나므로 별도 작업이 필요 없다.
 }
 
+// 대기방 채팅 전송 목 API 처리
 export function mockSendWaitingRoomChat({
   roomId,
   senderId,
@@ -522,6 +564,7 @@ export function mockSendWaitingRoomChat({
 }: MockSendChatParams) {
   const normalizedMessage = message.trim()
 
+  // 공백 메시지는 저장/브로드캐스트하지 않음
   if (normalizedMessage.length === 0) {
     return
   }
@@ -547,6 +590,7 @@ export function mockSendWaitingRoomChat({
   emitSocketEvent<ChatEventPayload>('chat', chatEventPayload)
 }
 
+// 내부 roomsStore를 로비 카드용 모델 배열로 변환
 export function getMockLobbyRooms(): LobbyRoom[] {
   return Array.from(roomsStore.values())
     .sort((firstRoom, secondRoom) => {
