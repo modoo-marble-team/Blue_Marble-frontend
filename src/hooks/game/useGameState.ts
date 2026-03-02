@@ -17,7 +17,11 @@ export const useGameState = (roomId: string | null) => {
 
     const teardownHandlers = setupGameHandlers()
 
-    if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
+    // In mock mode, explicitly stop the shared socket so reconnect loops
+    // from previous pages do not keep hitting the real backend endpoint.
+    if (USE_GAME_SOCKET_MOCK) {
+      socket.disconnect()
+    } else if (!socket.connected) {
       connectSocketWithAuthIfNeeded()
     }
 
