@@ -5,6 +5,7 @@ import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
 const MOCK_PLAYER_ID = 'me'
 const MOCK_BUILD_COST = 30
+const MOCK_PASS_GO_SALARY = 200
 
 type DiceRequestBody = {
   player_id: string
@@ -27,12 +28,23 @@ const clonePlayers = () => structuredClone(mockPlayers)
 const cloneTiles = () => structuredClone(mockTiles)
 const cloneMessages = () => structuredClone(mockMessages)
 
-const mockGameState: GameStateResponse = {
+const createInitialGameState = (): GameStateResponse => ({
   players: clonePlayers(),
   tiles: cloneTiles(),
   messages: cloneMessages(),
   currentTurn: MOCK_PLAYER_ID,
   round: 1,
+})
+
+const mockGameState: GameStateResponse = createInitialGameState()
+
+const resetMockGameState = () => {
+  const initialState = createInitialGameState()
+  mockGameState.players = initialState.players
+  mockGameState.tiles = initialState.tiles
+  mockGameState.messages = initialState.messages
+  mockGameState.currentTurn = initialState.currentTurn
+  mockGameState.round = initialState.round
 }
 
 const buildStateResponse = () => ({
@@ -42,6 +54,26 @@ const buildStateResponse = () => ({
   currentTurn: mockGameState.currentTurn,
   round: mockGameState.round,
 })
+
+const emitSocketEvent = (eventName: string, payload: unknown) => {
+  const socketWithListeners = socket as unknown as {
+    listeners: (name: string) => Array<(eventPayload: unknown) => void>
+  }
+
+  socketWithListeners.listeners(eventName).forEach((listener) => {
+    listener(payload)
+  })
+}
+
+const emitGameState = () => {
+  emitSocketEvent('game_state', {
+    players: structuredClone(mockGameState.players),
+    tiles: structuredClone(mockGameState.tiles),
+    current_turn: mockGameState.currentTurn,
+    round: mockGameState.round,
+    timeout_sec: 30,
+  })
+}
 
 const getCurrentPlayer = () =>
   mockGameState.players.find((player) => player.id === mockGameState.currentTurn)
@@ -56,7 +88,9 @@ const ensureOwnedTiles = (player: Player, tileIndex: number) => {
 }
 
 const removeOwnedTile = (player: Player, tileIndex: number) => {
-  player.owned_tiles = player.owned_tiles.filter((ownedTile) => ownedTile !== tileIndex)
+  player.owned_tiles = player.owned_tiles.filter(
+    (ownedTile) => ownedTile !== tileIndex
+  )
 }
 
 const getSellRefund = (tile: Tile, requestedLevel?: number) => {
@@ -87,42 +121,36 @@ export const gameHandlers = [
     const total = dice1 + dice2
 
     setTimeout(() => {
-      const socketWithListeners = socket as unknown as {
-        listeners: (eventName: string) => Array<(payload: unknown) => void>
-      }
-      const diceListeners = socketWithListeners.listeners('dice_rolled')
-
-      diceListeners.forEach((listener) =>
-        listener({
-          player_id,
-          dice: [dice1, dice2],
-          is_double: isDouble,
-          double_count: isDouble ? 1 : 0,
-        })
-      )
+      emitSocketEvent('dice_rolled', {
+        player_id,
+        dice: [dice1, dice2],
+        is_double: isDouble,
+        double_count: isDouble ? 1 : 0,
+      })
 
       const currentPlayer = mockGameState.players.find(
         (player) => player.id === player_id
       )
       const fromIndex = currentPlayer?.position ?? 0
       const toIndex = (fromIndex + total) % mockGameState.tiles.length
+      const passGo = fromIndex + total >= mockGameState.tiles.length
 
       if (currentPlayer) {
         currentPlayer.position = toIndex
+        if (passGo) {
+          currentPlayer.balance += MOCK_PASS_GO_SALARY
+        }
       }
 
       setTimeout(() => {
-        const moveListeners = socketWithListeners.listeners('player_moved')
-        moveListeners.forEach((listener) =>
-          listener({
-            player_id,
-            from_index: fromIndex,
-            to_index: toIndex,
-            trigger: 'dice',
-            pass_go: fromIndex + total >= mockGameState.tiles.length,
-            pass_go_salary: 200,
-          })
-        )
+        emitSocketEvent('player_moved', {
+          player_id,
+          from_index: fromIndex,
+          to_index: toIndex,
+          trigger: 'dice',
+          pass_go: passGo,
+          pass_go_salary: MOCK_PASS_GO_SALARY,
+        })
       }, 800)
     }, 100)
 
@@ -132,7 +160,12 @@ export const gameHandlers = [
     })
   }),
 
-  http.get('/api/game/state', async () => {
+  http.get('/api/game/state', async ({ request }) => {
+    const url = new URL(request.url)
+    if (url.searchParams.get('reset') === 'true') {
+      resetMockGameState()
+    }
+
     await delay(150)
     return HttpResponse.json(buildStateResponse())
   }),
@@ -168,6 +201,16 @@ export const gameHandlers = [
     tile.owner_id = player.id
     tile.building = 0
     ensureOwnedTiles(player, tile_index)
+
+    setTimeout(() => {
+      emitSocketEvent('tile_purchased', {
+        player_id: player.id,
+        tile_index,
+        tile_name: tile.name,
+        price,
+      })
+      emitGameState()
+    }, 0)
 
     await delay(150)
     return HttpResponse.json({
@@ -213,6 +256,10 @@ export const gameHandlers = [
     player.balance -= MOCK_BUILD_COST
     tile.building = (tile.building + 1) as BuildingLevel
 
+    setTimeout(() => {
+      emitGameState()
+    }, 0)
+
     await delay(150)
     return HttpResponse.json({
       success: true,
@@ -250,6 +297,10 @@ export const gameHandlers = [
       tile.owner_id = null
       removeOwnedTile(player, tile_index)
     }
+
+    setTimeout(() => {
+      emitGameState()
+    }, 0)
 
     await delay(150)
     return HttpResponse.json({
