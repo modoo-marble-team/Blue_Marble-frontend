@@ -50,11 +50,24 @@ interface SocketWithListeners {
 // 목 게이트웨이 에러 상태코드와 메시지를 함께 전달
 export class WaitingRoomMockError extends Error {
   status: number
+  // 명세 기반 분기를 위한 에러 코드
+  code?: string
+  // 사용자 안내에 사용할 상세 메시지
+  detail?: string
 
-  constructor(status: number, message: string) {
-    super(message)
+  constructor(
+    status: number,
+    message: string,
+    options?: {
+      code?: string
+      detail?: string
+    }
+  ) {
+    super(options?.detail ?? message)
     this.name = 'WaitingRoomMockError'
     this.status = status
+    this.code = options?.code
+    this.detail = options?.detail ?? message
   }
 }
 
@@ -192,7 +205,10 @@ function findRoomOrThrow(roomId: string) {
   const room = roomsStore.get(roomId)
 
   if (!room) {
-    throw new WaitingRoomMockError(404, '존재하지 않는 방입니다.')
+    throw new WaitingRoomMockError(404, '존재하지 않는 방입니다.', {
+      code: 'ROOM_NOT_FOUND',
+      detail: '존재하지 않는 방입니다.',
+    })
   }
 
   return room
@@ -305,12 +321,18 @@ export async function mockJoinWaitingRoom({
 
   // 비밀방 비밀번호가 다르면 403 반환
   if (room.is_private && room.password !== (password ?? '')) {
-    throw new WaitingRoomMockError(403, '비밀번호가 올바르지 않습니다.')
+    throw new WaitingRoomMockError(403, '비밀번호가 올바르지 않습니다.', {
+      code: 'ROOM_PASSWORD_MISMATCH',
+      detail: '비밀번호가 올바르지 않습니다.',
+    })
   }
 
   // 이미 게임 중인 방은 입장 차단
   if (room.status === 'playing') {
-    throw new WaitingRoomMockError(409, '이미 게임이 시작된 방입니다.')
+    throw new WaitingRoomMockError(409, '이미 게임이 시작된 방입니다.', {
+      code: 'ROOM_ALREADY_PLAYING',
+      detail: '이미 게임이 시작된 방입니다.',
+    })
   }
 
   const existingPlayer = room.players.find((player) => player.id === userId)
@@ -322,7 +344,10 @@ export async function mockJoinWaitingRoom({
 
   // 정원이 가득 찬 방은 입장 차단
   if (room.players.length >= room.max_players) {
-    throw new WaitingRoomMockError(409, '방 인원이 가득 찼습니다.')
+    throw new WaitingRoomMockError(409, '방 인원이 가득 찼습니다.', {
+      code: 'ROOM_FULL',
+      detail: '방 인원이 가득 찼습니다.',
+    })
   }
 
   room.players.push({
@@ -360,12 +385,18 @@ export async function mockCreateWaitingRoom({
 
   // 빈 방 제목은 생성 차단
   if (normalizedTitle.length === 0) {
-    throw new WaitingRoomMockError(400, '방 제목을 입력해주세요.')
+    throw new WaitingRoomMockError(400, '방 제목을 입력해주세요.', {
+      code: 'ROOM_TITLE_REQUIRED',
+      detail: '방 제목을 입력해주세요.',
+    })
   }
 
   // 비밀방이면 숫자 4자리 비밀번호를 강제
   if (isPrivate && !/^\d{4}$/.test(password ?? '')) {
-    throw new WaitingRoomMockError(400, '비밀번호는 숫자 4자리여야 합니다.')
+    throw new WaitingRoomMockError(400, '비밀번호는 숫자 4자리여야 합니다.', {
+      code: 'INVALID_ROOM_PASSWORD',
+      detail: '비밀번호는 숫자 4자리여야 합니다.',
+    })
   }
 
   const roomId = getNextRoomId()
@@ -412,7 +443,10 @@ export async function mockLeaveWaitingRoom({
 
   // 이미 나간 사용자면 중복 퇴장 요청 차단
   if (targetPlayerIndex === -1) {
-    throw new WaitingRoomMockError(409, '이미 방에서 나간 상태입니다.')
+    throw new WaitingRoomMockError(409, '이미 방에서 나간 상태입니다.', {
+      code: 'ALREADY_LEFT_ROOM',
+      detail: '이미 방에서 나간 상태입니다.',
+    })
   }
 
   const [leftPlayer] = room.players.splice(targetPlayerIndex, 1)
@@ -482,14 +516,21 @@ export async function mockToggleWaitingReady({
 
   // 참가자가 아니면 404 반환
   if (!player) {
-    throw new WaitingRoomMockError(404, '방 참가자를 찾을 수 없습니다.')
+    throw new WaitingRoomMockError(404, '방 참가자를 찾을 수 없습니다.', {
+      code: 'PLAYER_NOT_IN_ROOM',
+      detail: '방 참가자를 찾을 수 없습니다.',
+    })
   }
 
   // 방장은 준비 토글이 아닌 시작 버튼만 사용
   if (player.is_host) {
     throw new WaitingRoomMockError(
       403,
-      '방장은 준비 상태를 변경할 수 없습니다.'
+      '방장은 준비 상태를 변경할 수 없습니다.',
+      {
+        code: 'HOST_CANNOT_TOGGLE_READY',
+        detail: '방장은 준비 상태를 변경할 수 없습니다.',
+      }
     )
   }
 
@@ -520,14 +561,21 @@ export async function mockStartWaitingGame({
 
   // 방장이 아니면 시작 요청 차단
   if (!hostPlayer || hostPlayer.id !== userId) {
-    throw new WaitingRoomMockError(403, '방장만 게임을 시작할 수 있습니다.')
+    throw new WaitingRoomMockError(403, '방장만 게임을 시작할 수 있습니다.', {
+      code: 'ONLY_HOST_CAN_START',
+      detail: '방장만 게임을 시작할 수 있습니다.',
+    })
   }
 
   // 시작 조건 미충족 시 409 반환
   if (!isAllReady(room)) {
     throw new WaitingRoomMockError(
       409,
-      '최소 2명 + 전원 준비 완료 조건이 필요합니다.'
+      '최소 2명 + 전원 준비 완료 조건이 필요합니다.',
+      {
+        code: 'READY_CONDITION_NOT_MET',
+        detail: '최소 2명 + 전원 준비 완료 조건이 필요합니다.',
+      }
     )
   }
 
