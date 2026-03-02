@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { socket } from '../../lib/socket'
+import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { gameApi } from '../../services/game/game.api'
 import { setupGameHandlers } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
@@ -14,11 +14,11 @@ export const useGameState = () => {
     const teardownHandlers = setupGameHandlers()
 
     if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
-      socket.connect()
+      connectSocketWithAuthIfNeeded()
     }
 
     const fetchGameState = async () => {
-      // Initial hydrate only when store is empty.
+      // 스토어가 비어 있을 때만 초기 상태를 1회 동기화
       if (players.length > 0) return
 
       const result = await gameApi.getState({ reset: USE_GAME_SOCKET_MOCK })

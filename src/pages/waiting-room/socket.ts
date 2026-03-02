@@ -1,4 +1,4 @@
-import { socket } from '../../lib/socket'
+import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import {
   mockEnterWaitingRoomSocket,
   mockLeaveWaitingRoomSocket,
@@ -60,7 +60,7 @@ function connectSocketIfNeeded() {
 
   // 연결이 닫혀 있으면 명시적으로 연결
   if (!socket.connected) {
-    socket.connect()
+    connectSocketWithAuthIfNeeded()
   }
 }
 

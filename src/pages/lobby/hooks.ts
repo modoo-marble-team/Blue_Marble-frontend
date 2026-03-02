@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { socket } from '../../lib/socket'
+import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { getLobbyRooms, type GetLobbyRoomsParams } from './api'
 
 const LOBBY_QUERY_STALE_TIME_MS = 20_000
@@ -24,7 +24,7 @@ export function useLobbyRoomsQuery(params: GetLobbyRoomsParams) {
 
     // 실제 소켓 모드에서만 연결 상태를 확인해 connect 실행
     if (!USE_SOCKET_MOCK && !socket.connected) {
-      socket.connect()
+      connectSocketWithAuthIfNeeded()
     }
 
     return () => {
