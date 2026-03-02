@@ -213,6 +213,36 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
     const tileOwnersRef = useRef<Record<number, TileOwner>>({})
 
+    function getPlayerIdByIndex(playerIdx: number) {
+      return playersRef.current[playerIdx]?.id ?? playerIdx
+    }
+
+    function getPlayerColorByIndex(playerIdx: number) {
+      return (
+        playersRef.current[playerIdx]?.color ??
+        PLAYER_COLORS[playerIdx % PLAYER_COLORS.length]
+      )
+    }
+
+    function getPlayerIndexById(playerId: number) {
+      return playersRef.current.findIndex((player) => player.id === playerId)
+    }
+
+    function toBoardBuildingLevel(
+      tile: { building?: number; level?: number },
+      hasOwner: boolean
+    ) {
+      if (!hasOwner) return 0 as BuildingLevel
+
+      if (typeof tile.level === 'number') {
+        return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
+      }
+
+      const buildingLevel =
+        typeof tile.building === 'number' ? tile.building : 0
+      return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
+    }
+
     async function syncBoardStateFromServer() {
       if (!roomId) return false
 
@@ -224,17 +254,25 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const prevById = new Map(
         playersRef.current.map((player) => [String(player.id), player])
       )
+      const serverToBoardId = new Map<string, number>()
 
       if (payloadPlayers.length > 0) {
         const nextById = new Map<string, PlayerState>()
 
         payloadPlayers.forEach((player, idx) => {
-          const playerId = Number(player.id)
-          if (Number.isNaN(playerId)) return
-
           const prevPlayer = prevById.get(String(player.id))
+          const parsedPlayerId =
+            typeof player.id === 'number'
+              ? player.id
+              : Number.parseInt(String(player.id), 10)
+          const boardPlayerId = Number.isNaN(parsedPlayerId)
+            ? (prevPlayer?.id ?? idx)
+            : parsedPlayerId
+
+          serverToBoardId.set(String(player.id), boardPlayerId)
+
           nextById.set(String(player.id), {
-            id: playerId,
+            id: boardPlayerId,
             name:
               player.nickname ??
               player.name ??
@@ -278,11 +316,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return
           }
 
-          const ownerId =
+          const mappedOwnerId = serverToBoardId.get(String(ownerRaw))
+          const parsedOwnerId =
             typeof ownerRaw === 'number'
               ? ownerRaw
               : Number.parseInt(String(ownerRaw), 10)
-          if (Number.isNaN(ownerId)) return
+          const ownerId =
+            mappedOwnerId ??
+            (Number.isNaN(parsedOwnerId) ? null : parsedOwnerId)
+          if (ownerId === null) return
 
           const ownerPlayer = playersRef.current.find(
             (player) => player.id === ownerId
@@ -292,10 +334,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             ownerColor:
               ownerPlayer?.color ??
               PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
-            level: Math.min(
-              Math.max(tile.building ?? tile.level ?? 1, 0),
-              5
-            ) as BuildingLevel,
+            level: toBoardBuildingLevel(tile, true),
           }
         })
 
@@ -305,8 +344,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const nextTurnRaw = payload.current_turn ?? payload.currentTurn
       if (nextTurnRaw !== undefined && nextTurnRaw !== null) {
+        const mappedTurnId = serverToBoardId.get(String(nextTurnRaw))
         const nextTurnIndex = playersRef.current.findIndex(
-          (player) => String(player.id) === String(nextTurnRaw)
+          (player) =>
+            player.id === mappedTurnId ||
+            String(player.id) === String(nextTurnRaw)
         )
         if (nextTurnIndex >= 0) {
           curPlayerRef.current = nextTurnIndex
@@ -390,11 +432,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
 
       bankruptSetRef.current.add(playerIdx)
+      const bankruptPlayerId = getPlayerIdByIndex(playerIdx)
 
       updateTileOwners((prev) => {
         const next = { ...prev }
         Object.keys(next).forEach((k) => {
-          if (next[Number(k)].ownerId === playerIdx) delete next[Number(k)]
+          if (next[Number(k)].ownerId === bankruptPlayerId)
+            delete next[Number(k)]
         })
         return next
       })
@@ -493,13 +537,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
             if (tile.type === 'city') {
               const owner = tileOwnersRef.current[landedTileId]
+              const activePlayer = movedPlayers[activeCurPlayer]
               if (!owner) {
                 setBuyModal({
                   open: true,
                   tileId: landedTileId,
                   onDoneCallback: onDone,
                 })
-              } else if (owner.ownerId === activeCurPlayer) {
+              } else if (owner.ownerId === activePlayer.id) {
                 if (owner.level < 5) {
                   setBuildModal({
                     open: true,
@@ -557,8 +602,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     async function sellOwnedTileForPlayer(playerIdx: number) {
+      const playerId = getPlayerIdByIndex(playerIdx)
       const ownedTileEntries = Object.entries(tileOwnersRef.current)
-        .filter(([, owner]) => owner.ownerId === playerIdx)
+        .filter(([, owner]) => owner.ownerId === playerId)
         .sort(([, a], [, b]) => b.level - a.level)
 
       if (ownedTileEntries.length === 0) return false
@@ -598,6 +644,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
       const active = curPlayerRef.current
+      const activePlayerId = getPlayerIdByIndex(active)
+      const activePlayerColor = getPlayerColorByIndex(active)
 
       const actionResult = await gameApi.buyTile(roomId, { tile_index: tileId })
       if (!actionResult.ok) {
@@ -611,8 +659,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         updateTileOwners((prev) => ({
           ...prev,
           [tileId]: {
-            ownerId: active,
-            ownerColor: PLAYER_COLORS[active],
+            ownerId: activePlayerId,
+            ownerColor: activePlayerColor,
             level: 1,
           },
         }))
@@ -690,7 +738,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
           }
-          applyMoney(owner.ownerId, +TOLL_COST)
+          const ownerPlayerIndex = getPlayerIndexById(owner.ownerId)
+          if (ownerPlayerIndex >= 0) {
+            applyMoney(ownerPlayerIndex, +TOLL_COST)
+          }
           const bankrupt = applyMoney(active, -TOLL_COST, onDoneCallback)
           if (!bankrupt) advanceTurn(onDoneCallback)
           return
