@@ -34,7 +34,7 @@ export interface Tile {
   name: string
   type: TileType
   price?: number
-  color?: string // Group color for property
+  color?: string
 }
 
 export interface Player {
@@ -50,7 +50,15 @@ export interface Player {
   avatar?: string
 }
 
-export type ActiveModal = 'buy' | 'card' | 'penalty' | 'bankrupt' | null
+export type ActiveModal =
+  | 'buy'
+  | 'build'
+  | 'card'
+  | 'toll'
+  | 'penalty'
+  | 'bankrupt'
+  | 'result'
+  | null
 
 export type GameRanking = {
   rank: number
@@ -69,7 +77,8 @@ export interface GameState {
   players: Player[]
   tiles: Tile[]
   messages: ChatMessage[]
-  currentTurn: string | null // 프론트 내부 상태 — camelCase 통일
+  // 프론트 내부 상태는 camelCase를 기준으로 관리한다.
+  currentTurn: string | null
   round: number
   turnTimeoutSec: number
   turnTimerKey: number
