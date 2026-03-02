@@ -10,7 +10,7 @@ import {
 } from '../../components/header/profileMenu'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
-import { useOnlineUsersSocket } from '../../features/presence/hooks'
+import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'

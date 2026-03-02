@@ -9,7 +9,7 @@ import {
 } from '../../components/header/profileMenu'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import { useOnlineUsersSocket } from '../../features/presence/hooks'
+import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import { cn } from '../../lib/utils'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
