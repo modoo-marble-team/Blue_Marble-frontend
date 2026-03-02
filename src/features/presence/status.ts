@@ -16,3 +16,8 @@ export const ONLINE_USER_STATUS_DOT_CLASS_MAP: Record<
   in_room: 'bg-ui-presence-in-room',
   playing: 'bg-ui-presence-playing-status',
 }
+
+// 게임중 상태 유저는 DM 대상에서 제외
+export function isDirectMessageAllowed(status: OnlineUserStatus) {
+  return status !== 'playing'
+}
