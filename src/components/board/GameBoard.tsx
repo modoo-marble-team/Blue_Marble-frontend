@@ -233,11 +233,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       hasOwner: boolean
     ) {
       if (!hasOwner) return 0 as BuildingLevel
-
       if (typeof tile.level === 'number') {
         return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
       }
-
       const buildingLevel =
         typeof tile.building === 'number' ? tile.building : 0
       return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
@@ -327,7 +325,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           if (ownerId === null) return
 
           const ownerPlayer = playersRef.current.find(
-            (player) => player.id === ownerId
+            (player) => String(player.id) === String(ownerId)
           )
           nextOwners[tileIndex] = {
             ownerId,
@@ -338,8 +336,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
         })
 
-        tileOwnersRef.current = nextOwners
-        setTileOwners(nextOwners)
+        // ✅ 로컬 상태와 merge — 서버 데이터로 완전히 덮어쓰지 않음
+        const merged = { ...tileOwnersRef.current, ...nextOwners }
+        tileOwnersRef.current = merged
+        setTileOwners(merged)
       }
 
       const nextTurnRaw = payload.current_turn ?? payload.currentTurn
@@ -588,11 +588,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 70)
     }
 
-    function toActionErrorMessage(status: number) {
-      if (status === 401) return '로그인이 필요합니다.'
-      if (status === 403) return '현재 턴이 아닙니다.'
-      if (status === 404) return '대상을 찾을 수 없습니다.'
-      if (status === 409) return '조건이 맞지 않아 처리할 수 없습니다.'
+    function toActionErrorMessage(statusCode: number) {
+      if (statusCode === 401) return '로그인이 필요합니다.'
+      if (statusCode === 403) return '현재 턴이 아닙니다.'
+      if (statusCode === 404) return '대상을 찾을 수 없습니다.'
+      if (statusCode === 409) return '조건이 맞지 않아 처리할 수 없습니다.'
       return '요청 처리 중 오류가 발생했습니다.'
     }
 
@@ -660,11 +660,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           ...prev,
           [tileId]: {
             ownerId: activePlayerId,
-            ownerColor: activePlayerColor,
+            ownerColor: activePlayerColor, // ✅ 실제 플레이어 색상
             level: 1,
           },
         }))
-        void syncBoardStateFromServer()
+        // ✅ sync 제거 — 로컬 색상이 덮어써지는 문제 방지
         advanceTurn(onDoneCallback)
       }
     }
@@ -706,7 +706,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             },
           }
         })
-        void syncBoardStateFromServer()
+        // ✅ sync 제거 — 로컬 색상이 덮어써지는 문제 방지
         advanceTurn(onDoneCallback)
       }
     }

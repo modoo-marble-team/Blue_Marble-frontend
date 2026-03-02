@@ -1,11 +1,10 @@
-﻿import React from 'react'
+import React from 'react'
 
 interface BuildingBadgeProps {
   level: number
   ownerColor?: string
 }
 
-// 플레이어 색상 → 폴더명 + 파일 prefix 매핑
 const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
   '#EF5350': { folder: 'redbuildingIcon', prefix: 'red' },
   '#42A5F5': { folder: 'bluebuildingIcon', prefix: 'blue' },
@@ -22,13 +21,19 @@ const BUILDING_SUFFIX: Record<number, string> = {
 }
 
 const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
-  if (!level || level < 1) return null
+  if (!level || level < 1 || level > 5) return null
 
-  const theme = COLOR_TO_THEME[ownerColor ?? ''] ?? {
+  const normalizedColor = ownerColor?.trim().toUpperCase() ?? ''
+  const theme = COLOR_TO_THEME[normalizedColor] ?? {
     folder: 'redbuildingIcon',
     prefix: 'red',
   }
-  const src = `/${theme.folder}/${theme.prefix}${BUILDING_SUFFIX[level]}`
+  const suffix = BUILDING_SUFFIX[level]
+  if (!suffix) return null
+
+  const src = `/${theme.folder}/${theme.prefix}${suffix}`
+
+  console.log('ownerColor:', ownerColor, '→ theme:', theme.prefix)
 
   return (
     <div
@@ -53,6 +58,7 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
           display: 'block',
         }}
         onError={(e) => {
+          console.error('❌ 이미지 로드 실패:', src)
           e.currentTarget.style.display = 'none'
           const fallback = e.currentTarget
             .nextElementSibling as HTMLElement | null
@@ -66,7 +72,7 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
           justifyContent: 'center',
           fontSize: 10,
           fontWeight: 700,
-          color: '#2b7fff',
+          color: ownerColor ?? '#2b7fff',
         }}
       >
         {level}

@@ -21,13 +21,15 @@ const GamePage: React.FC = () => {
     resetSignal: turnTimerKey,
   })
   const boardRef = useRef<BoardGameHandle>(null)
-  const isMyTurn = useTurn(currentTurn)
 
-  // ── 보드 플레이어 상태 (위치 + 돈) — 단일 소스 ──────────────────
   const [boardPlayers, setBoardPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
   const [boardCurPlayer, setBoardCurPlayer] = useState(0)
 
   useGameState(roomId ?? null)
+
+  // ✅ currentTurn null이면 (서버 연결 전) 내 턴으로 간주
+  const isMyTurnFromStore = useTurn(currentTurn)
+  const isMyTurn = currentTurn === null ? true : isMyTurnFromStore
 
   const handleSendMessage = (content: string) => {
     addMessage({
@@ -40,10 +42,8 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const rollDice = useDiceRoll(boardRef)
-  const handleRollDice = () => {
-    rollDice(roomId ?? null)
-  }
+  // ✅ roomId 인자 제거
+  const diceRoll = useDiceRoll(boardRef)
 
   const handlePlayersChange = (updated: PlayerState[]) => {
     setBoardPlayers(updated)
@@ -57,7 +57,6 @@ const GamePage: React.FC = () => {
     // 필요 시 store 업데이트 추가
   }
 
-  // ── 보유금 1위 인덱스 계산 ──────────────────────────────────────
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
 
   return (
@@ -90,7 +89,7 @@ const GamePage: React.FC = () => {
           >
             <BoardGame
               ref={boardRef}
-              roomId={roomId ?? null}
+              roomId={roomId ?? ''}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
               onPlayersChange={handlePlayersChange}
@@ -114,7 +113,6 @@ const GamePage: React.FC = () => {
                 totalAssets: bp.money,
               }}
               isActive={idx === boardCurPlayer}
-              // 공동 1위 포함, 돈이 0이면 왕관 제외
               isRichest={bp.money > 0 && bp.money === maxMoney}
             />
           ))}
@@ -125,7 +123,7 @@ const GamePage: React.FC = () => {
         <RollButton
           timeLeft={timeLeft}
           isMyTurn={isMyTurn}
-          onRoll={handleRollDice}
+          onRoll={() => diceRoll(roomId ?? null)}
         />
       </div>
     </div>
