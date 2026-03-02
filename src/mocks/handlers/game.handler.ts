@@ -76,7 +76,9 @@ const emitGameState = () => {
 }
 
 const getCurrentPlayer = () =>
-  mockGameState.players.find((player) => player.id === mockGameState.currentTurn)
+  mockGameState.players.find(
+    (player) => player.id === mockGameState.currentTurn
+  )
 
 const getTileByIndex = (tileIndex: number) =>
   mockGameState.tiles.find((tile) => tile.index === tileIndex)
@@ -270,7 +272,8 @@ export const gameHandlers = [
   }),
 
   http.post('/api/game/sell', async ({ request }) => {
-    const { tile_index, level } = (await request.json()) as TileActionRequestBody
+    const { tile_index, level } =
+      (await request.json()) as TileActionRequestBody
     const player = getCurrentPlayer()
     const tile = getTileByIndex(tile_index)
 
@@ -288,7 +291,10 @@ export const gameHandlers = [
       )
     }
 
-    const { refund, nextBuilding, releaseOwnership } = getSellRefund(tile, level)
+    const { refund, nextBuilding, releaseOwnership } = getSellRefund(
+      tile,
+      level
+    )
 
     player.balance += refund
     tile.building = nextBuilding

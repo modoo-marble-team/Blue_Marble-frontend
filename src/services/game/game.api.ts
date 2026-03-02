@@ -24,8 +24,7 @@ const toErrorResult = (error: unknown): GameActionResult<never> => {
       ? ((error as { response?: ErrorResponse }).response ?? undefined)
       : undefined
 
-  const status =
-    typeof response?.status === 'number' ? response.status : 500
+  const status = typeof response?.status === 'number' ? response.status : 500
 
   const message =
     typeof response?.data?.message === 'string' && response.data.message.trim()
@@ -39,10 +38,17 @@ const toErrorResult = (error: unknown): GameActionResult<never> => {
   }
 }
 
+const buildGamePath = (roomId: string, action?: string) => {
+  const encodedRoomId = encodeURIComponent(roomId)
+  return action
+    ? `/game/${encodedRoomId}/${action}`
+    : `/game/${encodedRoomId}/state`
+}
+
 export const gameApi = {
-  async getState(options?: { reset?: boolean }) {
+  async getState(roomId: string, options?: { reset?: boolean }) {
     try {
-      const { data } = await apiClient.get('/game/state', {
+      const { data } = await apiClient.get(buildGamePath(roomId), {
         params: options?.reset ? { reset: 'true' } : undefined,
       })
       return { ok: true, data } as const
@@ -52,9 +58,12 @@ export const gameApi = {
   },
 
   // GAME-001
-  async buyTile(payload: { tile_index: number }) {
+  async buyTile(roomId: string, payload: { tile_index: number }) {
     try {
-      const { data } = await apiClient.post('/game/buy', payload)
+      const { data } = await apiClient.post(
+        buildGamePath(roomId, 'buy'),
+        payload
+      )
       return { ok: true, data } as const
     } catch (error) {
       return toErrorResult(error)
@@ -62,9 +71,12 @@ export const gameApi = {
   },
 
   // GAME-002
-  async buildTile(payload: { tile_index: number }) {
+  async buildTile(roomId: string, payload: { tile_index: number }) {
     try {
-      const { data } = await apiClient.post('/game/build', payload)
+      const { data } = await apiClient.post(
+        buildGamePath(roomId, 'build'),
+        payload
+      )
       return { ok: true, data } as const
     } catch (error) {
       return toErrorResult(error)
@@ -72,9 +84,15 @@ export const gameApi = {
   },
 
   // GAME-003
-  async sellTile(payload: { tile_index: number; level?: number }) {
+  async sellTile(
+    roomId: string,
+    payload: { tile_index: number; level?: number }
+  ) {
     try {
-      const { data } = await apiClient.post('/game/sell', payload)
+      const { data } = await apiClient.post(
+        buildGamePath(roomId, 'sell'),
+        payload
+      )
       return { ok: true, data } as const
     } catch (error) {
       return toErrorResult(error)
@@ -82,7 +100,7 @@ export const gameApi = {
   },
 
   // GAME-004
-  async syncState() {
-    return this.getState()
+  async syncState(roomId: string, options?: { reset?: boolean }) {
+    return this.getState(roomId, options)
   },
 }
