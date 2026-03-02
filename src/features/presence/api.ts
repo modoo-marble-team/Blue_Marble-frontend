@@ -6,10 +6,10 @@ interface OnlineUsersResponsePayload {
   users: OnlineUserPayload[]
 }
 
-// 로비 접속자 목록 초기 스냅샷 조회
+// 전체 온라인 유저 목록 초기 스냅샷 조회
 export async function getOnlineUsersSnapshot() {
   const { data } =
-    await apiClient.get<OnlineUsersResponsePayload>('/lobby/users')
+    await apiClient.get<OnlineUsersResponsePayload>('/users/online')
 
   return data.users
 }
