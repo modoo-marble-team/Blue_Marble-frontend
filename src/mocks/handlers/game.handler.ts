@@ -114,7 +114,7 @@ const getSellRefund = (tile: Tile, requestedLevel?: number) => {
 }
 
 export const gameHandlers = [
-  http.post('/api/game/roll-dice', async ({ request }) => {
+  http.post('/api/game/:roomId/roll-dice', async ({ request }) => {
     const { player_id } = (await request.json()) as DiceRequestBody
 
     const dice1 = Math.floor(Math.random() * 6) + 1
@@ -162,7 +162,7 @@ export const gameHandlers = [
     })
   }),
 
-  http.get('/api/game/state', async ({ request }) => {
+  http.get('/api/game/:roomId/state', async ({ request }) => {
     const url = new URL(request.url)
     if (url.searchParams.get('reset') === 'true') {
       resetMockGameState()
@@ -172,7 +172,7 @@ export const gameHandlers = [
     return HttpResponse.json(buildStateResponse())
   }),
 
-  http.post('/api/game/buy', async ({ request }) => {
+  http.post('/api/game/:roomId/buy', async ({ request }) => {
     const { tile_index } = (await request.json()) as TileActionRequestBody
     const player = getCurrentPlayer()
     const tile = getTileByIndex(tile_index)
@@ -222,7 +222,7 @@ export const gameHandlers = [
     })
   }),
 
-  http.post('/api/game/build', async ({ request }) => {
+  http.post('/api/game/:roomId/build', async ({ request }) => {
     const { tile_index } = (await request.json()) as TileActionRequestBody
     const player = getCurrentPlayer()
     const tile = getTileByIndex(tile_index)
@@ -271,7 +271,7 @@ export const gameHandlers = [
     })
   }),
 
-  http.post('/api/game/sell', async ({ request }) => {
+  http.post('/api/game/:roomId/sell', async ({ request }) => {
     const { tile_index, level } =
       (await request.json()) as TileActionRequestBody
     const player = getCurrentPlayer()
