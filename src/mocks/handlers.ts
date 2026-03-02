@@ -56,8 +56,8 @@ export const handlers = [
       rooms: filteredRooms.map(mapLobbyRoomPayload),
     })
   }),
-  // 접속자 목록 endpoint 모킹
-  http.get('/api/lobby/users', async () => {
+  // 전체 온라인 유저 목록 endpoint 모킹
+  http.get('/api/users/online', async () => {
     await delay(250)
     return HttpResponse.json({ users: mockOnlineUsers })
   }),
