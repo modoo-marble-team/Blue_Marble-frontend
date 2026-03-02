@@ -14,6 +14,7 @@ import {
   subscribeDirectMessageSocketEvents,
 } from '../../features/presence/directMessageSocket'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
+import { isDirectMessageAllowed } from '../../features/presence/status'
 import type {
   DirectMessage,
   DirectMessageReceiveSocketPayload,
@@ -210,6 +211,11 @@ function WaitingRoomPage() {
       return
     }
 
+    if (!isDirectMessageAllowed(matchedUser.status)) {
+      setDmTargetUser(null)
+      return
+    }
+
     if (matchedUser !== dmTargetUser) {
       setDmTargetUser(matchedUser)
     }
@@ -275,6 +281,11 @@ function WaitingRoomPage() {
 
   // DM 창을 열고 해당 사용자 unread 카운트를 제거
   function handleOpenDirectMessage(user: OnlineUser) {
+    if (!isDirectMessageAllowed(user.status)) {
+      toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
+      return
+    }
+
     setDmTargetUser(user)
     setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
       if (!previousCountByUserId[user.id]) {
@@ -295,6 +306,11 @@ function WaitingRoomPage() {
   function handleSendDirectMessage(message: string) {
     // 세션 또는 대상이 없으면 전송 중단
     if (!dmTargetUser || !session) {
+      return
+    }
+
+    if (!isDirectMessageAllowed(dmTargetUser.status)) {
+      toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
       return
     }
 
