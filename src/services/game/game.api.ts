@@ -40,9 +40,11 @@ const toErrorResult = (error: unknown): GameActionResult<never> => {
 }
 
 export const gameApi = {
-  async getState() {
+  async getState(options?: { reset?: boolean }) {
     try {
-      const { data } = await apiClient.get('/game/state')
+      const { data } = await apiClient.get('/game/state', {
+        params: options?.reset ? { reset: 'true' } : undefined,
+      })
       return { ok: true, data } as const
     } catch (error) {
       return toErrorResult(error)

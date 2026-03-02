@@ -11,9 +11,7 @@ export const useGameState = () => {
   const { setGameState, players } = useGameStore()
 
   useEffect(() => {
-    const teardownHandlers = USE_GAME_SOCKET_MOCK
-      ? () => undefined
-      : setupGameHandlers()
+    const teardownHandlers = setupGameHandlers()
 
     if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
       socket.connect()
@@ -23,7 +21,7 @@ export const useGameState = () => {
       // Initial hydrate only when store is empty.
       if (players.length > 0) return
 
-      const result = await gameApi.getState()
+      const result = await gameApi.getState({ reset: USE_GAME_SOCKET_MOCK })
       if (result.ok) {
         const payload = result.data as {
           players?: unknown[]
