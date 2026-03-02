@@ -47,6 +47,11 @@ interface WaitingRoomActionResult {
   message?: string
 }
 
+// 퇴장 시퀀스 호출 경로 타입
+interface LeaveRoomSequenceParams {
+  source: 'manual' | 'cleanup'
+}
+
 // playerId 해시 기반으로 좌석 아바타 색상 선택
 function getAvatarColor(playerId: string) {
   const colorIndex =
@@ -138,7 +143,24 @@ export function useWaitingRoomController({
   const hasLeftRoomRef = useRef(false)
   const hasInitializedPreJoinRef = useRef(false)
   const shouldSkipNextCleanupLeaveRef = useRef(import.meta.env.DEV)
+  const leaveInFlightRef = useRef<Promise<WaitingRoomActionResult> | null>(null)
+  const sessionRef = useRef<AuthSession | null>(session)
+  const roomIdRef = useRef(roomId)
+  const roomRef = useRef<WaitingRoomSnapshot | null>(room)
   const preJoinedRoomId = preJoinedSnapshot?.roomId
+
+  // 최신 세션/roomId/room 값을 ref에 동기화해 cleanup에서도 동일 시퀀스 사용
+  useEffect(() => {
+    sessionRef.current = session
+  }, [session])
+
+  useEffect(() => {
+    roomIdRef.current = roomId
+  }, [roomId])
+
+  useEffect(() => {
+    roomRef.current = room
+  }, [room])
 
   // roomId/세션/사전 조인 상태에 따라 초기 입장 로직을 실행
   useEffect(() => {
@@ -320,6 +342,78 @@ export function useWaitingRoomController({
     }
   }, [activeRoomId, onGameStart, roomId, session])
 
+  // 수동 퇴장과 언마운트 cleanup에서 재사용하는 공통 퇴장 시퀀스
+  const runLeaveRoomSequence = useCallback(
+    async ({
+      source,
+    }: LeaveRoomSequenceParams): Promise<WaitingRoomActionResult> => {
+      const activeSession = sessionRef.current
+
+      // 세션이 없거나 이미 퇴장 완료된 상태는 성공으로 간주
+      if (!activeSession || hasLeftRoomRef.current) {
+        return {
+          ok: true,
+        }
+      }
+
+      // 진행 중인 퇴장 요청이 있으면 동일 Promise 재사용
+      if (leaveInFlightRef.current) {
+        return leaveInFlightRef.current
+      }
+
+      const targetRoomId = roomRef.current?.roomId ?? roomIdRef.current
+
+      // 퇴장 대상 roomId가 없으면 실패 반환
+      if (!targetRoomId) {
+        return {
+          ok: false,
+          message: '대기방 퇴장에 실패했습니다.',
+        }
+      }
+
+      const shouldTrackPending = source === 'manual'
+      if (shouldTrackPending) {
+        setIsLeavePending(true)
+      }
+
+      const leavePromise = (async (): Promise<WaitingRoomActionResult> => {
+        try {
+          await leaveWaitingRoom({
+            roomId: targetRoomId,
+            userId: activeSession.userId,
+          })
+
+          // leave API 성공 이후에만 leave_room 소켓 이벤트 전송
+          leaveWaitingRoomSocket({
+            roomId: targetRoomId,
+          })
+          hasLeftRoomRef.current = true
+
+          return {
+            ok: true,
+          }
+        } catch (error) {
+          return {
+            ok: false,
+            message: getWaitingRoomErrorMessage(
+              error,
+              '대기방 퇴장에 실패했습니다.'
+            ),
+          }
+        } finally {
+          if (shouldTrackPending) {
+            setIsLeavePending(false)
+          }
+          leaveInFlightRef.current = null
+        }
+      })()
+
+      leaveInFlightRef.current = leavePromise
+      return leavePromise
+    },
+    []
+  )
+
   // 언마운트 시 대기방 퇴장 API와 소켓 leave를 정리
   useEffect(() => {
     return () => {
@@ -339,14 +433,11 @@ export function useWaitingRoomController({
         return
       }
 
-      hasLeftRoomRef.current = true
-      void leaveWaitingRoom({
-        roomId,
-        userId: session.userId,
+      void runLeaveRoomSequence({
+        source: 'cleanup',
       })
-      leaveWaitingRoomSocket({ roomId })
     }
-  }, [roomId, session])
+  }, [roomId, runLeaveRoomSequence, session])
 
   // 현재 세션 사용자 정보 조회
   const me = useMemo(() => {
@@ -473,59 +564,10 @@ export function useWaitingRoomController({
     }, [canStartGame, isStartPending, room, session])
 
   const leaveRoom = useCallback(async (): Promise<WaitingRoomActionResult> => {
-    // 이미 퇴장 완료 상태면 성공으로 간주
-    if (!session || hasLeftRoomRef.current) {
-      return {
-        ok: true,
-      }
-    }
-
-    // 중복 퇴장 요청 방지
-    if (isLeavePending) {
-      return {
-        ok: false,
-      }
-    }
-
-    setIsLeavePending(true)
-    const targetRoomId = room?.roomId ?? roomId
-
-    // 대상 roomId를 찾지 못하면 실패 반환
-    if (!targetRoomId) {
-      setIsLeavePending(false)
-      return {
-        ok: false,
-        message: '대기방 퇴장에 실패했습니다.',
-      }
-    }
-
-    hasLeftRoomRef.current = true
-
-    try {
-      await leaveWaitingRoom({
-        roomId: targetRoomId,
-        userId: session.userId,
-      })
-      leaveWaitingRoomSocket({
-        roomId: targetRoomId,
-      })
-
-      return {
-        ok: true,
-      }
-    } catch (error) {
-      hasLeftRoomRef.current = false
-      return {
-        ok: false,
-        message: getWaitingRoomErrorMessage(
-          error,
-          '대기방 퇴장에 실패했습니다.'
-        ),
-      }
-    } finally {
-      setIsLeavePending(false)
-    }
-  }, [isLeavePending, room, roomId, session])
+    return runLeaveRoomSequence({
+      source: 'manual',
+    })
+  }, [runLeaveRoomSequence])
 
   return {
     room,
