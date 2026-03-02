@@ -120,6 +120,7 @@ export interface BoardGameHandle {
 }
 
 interface GameBoardProps {
+  roomId?: string | null
   players: PlayerState[]
   curPlayer: number
   onPlayersChange: (players: PlayerState[]) => void
@@ -187,7 +188,14 @@ type SyncStatePayload = {
 
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
-    { players, curPlayer, onPlayersChange, onCurPlayerChange, onBankrupt },
+    {
+      roomId = null,
+      players,
+      curPlayer,
+      onPlayersChange,
+      onCurPlayerChange,
+      onBankrupt,
+    },
     ref
   ) => {
     const [dice1, setDice1] = useState(1)
@@ -206,7 +214,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tileOwnersRef = useRef<Record<number, TileOwner>>({})
 
     async function syncBoardStateFromServer() {
-      const syncResult = await gameApi.syncState()
+      if (!roomId) return false
+
+      const syncResult = await gameApi.syncState(roomId)
       if (!syncResult.ok) return false
 
       const payload = syncResult.data as SyncStatePayload
@@ -280,8 +290,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           nextOwners[tileIndex] = {
             ownerId,
             ownerColor:
-              ownerPlayer?.color ?? PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
-            level: Math.min(Math.max(tile.building ?? tile.level ?? 1, 0), 5) as BuildingLevel,
+              ownerPlayer?.color ??
+              PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
+            level: Math.min(
+              Math.max(tile.building ?? tile.level ?? 1, 0),
+              5
+            ) as BuildingLevel,
           }
         })
 
@@ -551,8 +565,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const [tileIdText, owner] = ownedTileEntries[0]
       const tileId = Number(tileIdText)
+      if (!roomId) return false
 
-      const sellResult = await gameApi.sellTile({
+      const sellResult = await gameApi.sellTile(roomId, {
         tile_index: tileId,
         level: owner.level,
       })
@@ -578,9 +593,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     async function handleBuy() {
       const { tileId, onDoneCallback } = buyModal
       if (tileId === null) return
+      if (!roomId) {
+        setStatus('게임 방 식별자를 찾을 수 없습니다.')
+        return
+      }
       const active = curPlayerRef.current
 
-      const actionResult = await gameApi.buyTile({ tile_index: tileId })
+      const actionResult = await gameApi.buyTile(roomId, { tile_index: tileId })
       if (!actionResult.ok) {
         setStatus(toActionErrorMessage(actionResult.status))
         return
@@ -611,9 +630,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     async function handleBuildConfirm() {
       const { tileId, onDoneCallback } = buildModal
       if (tileId === null) return
+      if (!roomId) {
+        setStatus('게임 방 식별자를 찾을 수 없습니다.')
+        return
+      }
       const active = curPlayerRef.current
 
-      const actionResult = await gameApi.buildTile({ tile_index: tileId })
+      const actionResult = await gameApi.buildTile(roomId, {
+        tile_index: tileId,
+      })
       if (!actionResult.ok) {
         setStatus(toActionErrorMessage(actionResult.status))
         return
@@ -690,8 +715,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const active = curPlayerRef.current
       const activePlayer = playersRef.current[active]
-      if (activePlayer) {
-        emitConfirmPenalty({ player_id: String(activePlayer.id) })
+      if (activePlayer && roomId) {
+        emitConfirmPenalty({
+          room_id: roomId,
+          player_id: String(activePlayer.id),
+        })
       }
 
       setAiModal({ open: false, status: 'loading' })
