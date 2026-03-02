@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
+import { getOnlineUsersSnapshot } from './api'
 import { mockOnlineUsers } from './mockData'
 import type {
   OnlineUser,
@@ -73,10 +74,16 @@ export function useOnlineUsersSocket() {
   const [isError, setIsError] = useState(false)
 
   useEffect(() => {
+    let isActive = true
+
     // 접속자 이벤트 수신 시 목록과 상태를 갱신
     const handleOnlineUsers = ({
       users: payloadUsers,
     }: OnlineUsersEventPayload) => {
+      if (!isActive) {
+        return
+      }
+
       setUsers(mapOnlineUsers(payloadUsers))
       setIsLoading(false)
       setIsError(false)
@@ -90,6 +97,10 @@ export function useOnlineUsersSocket() {
 
     // 연결 종료 상태를 에러로 표시
     const handleDisconnect = () => {
+      if (!isActive) {
+        return
+      }
+
       setIsError(true)
     }
 
@@ -104,6 +115,26 @@ export function useOnlineUsersSocket() {
         emitOnlineUsersMock(mockOnlineUsers)
       }, SOCKET_MOCK_INTERVAL_MS)
     } else {
+      // 초기 진입 시 REST 스냅샷으로 첫 목록을 확보
+      void getOnlineUsersSnapshot()
+        .then((payloadUsers) => {
+          if (!isActive) {
+            return
+          }
+
+          setUsers(mapOnlineUsers(payloadUsers))
+          setIsLoading(false)
+          setIsError(false)
+        })
+        .catch(() => {
+          // REST 초기화 실패 시 소켓 실시간 수신으로 복구를 시도
+          if (!isActive) {
+            return
+          }
+
+          setIsLoading(false)
+        })
+
       // 실제 소켓 모드에서는 연결 오류/끊김 이벤트를 구독
       socket.on('connect_error', handleConnectError)
       socket.on('disconnect', handleDisconnect)
@@ -115,6 +146,7 @@ export function useOnlineUsersSocket() {
     }
 
     return () => {
+      isActive = false
       socket.off(ONLINE_USERS_EVENT, handleOnlineUsers)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)
