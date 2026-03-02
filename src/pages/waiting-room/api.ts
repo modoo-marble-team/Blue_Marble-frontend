@@ -1,5 +1,5 @@
-import { isAxiosError } from 'axios'
 import { apiClient } from '../../lib/axios'
+import { parseApiError } from '../../lib/apiError'
 import {
   mockCreateWaitingRoom,
   mockJoinWaitingRoom,
@@ -24,6 +24,12 @@ const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
 const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
 const USE_WAITING_ROOM_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+// 비밀번호 불일치로 간주할 서버 에러 코드 집합
+const JOIN_PASSWORD_MISMATCH_ERROR_CODES = new Set([
+  'ROOM_PASSWORD_MISMATCH',
+  'INVALID_ROOM_PASSWORD',
+  'PASSWORD_MISMATCH',
+])
 
 // 대기방 입장 요청 파라미터 타입
 interface JoinWaitingRoomParams {
@@ -257,39 +263,40 @@ export function getWaitingRoomErrorMessage(
   error: unknown,
   fallbackMessage: string
 ) {
-  // 목 게이트웨이 에러는 message를 그대로 사용
+  // 목 게이트웨이 에러는 detail > message 순으로 사용
   if (error instanceof WaitingRoomMockError) {
-    return error.message
+    return error.detail ?? error.message
   }
 
-  // Axios 에러는 서버 message가 있으면 우선 사용
-  if (isAxiosError(error)) {
-    const serverMessage = (
-      error.response?.data as { message?: string } | undefined
-    )?.message
+  // 실서버 에러는 detail 우선으로 사용자 메시지 선택
+  const parsedError = parseApiError(error)
+  const normalizedMessage = parsedError.detail ?? parsedError.message
 
-    if (serverMessage) {
-      return serverMessage
-    }
-  }
-
-  // 일반 Error message가 있으면 fallback 대신 사용
-  if (error instanceof Error && error.message.length > 0) {
-    return error.message
+  if (normalizedMessage) {
+    return normalizedMessage
   }
 
   return fallbackMessage
 }
 
+// code 값이 비밀번호 불일치 케이스인지 판별
+function isJoinPasswordMismatchCode(code?: string) {
+  if (!code) {
+    return false
+  }
+
+  return JOIN_PASSWORD_MISMATCH_ERROR_CODES.has(code.toUpperCase())
+}
+
 // 입장 실패 원인이 비밀번호 불일치인지 판별
 export function isJoinPasswordMismatchError(error: unknown) {
   if (error instanceof WaitingRoomMockError) {
-    return error.status === 403
+    return isJoinPasswordMismatchCode(error.code) || error.status === 403
   }
 
-  if (isAxiosError(error)) {
-    return error.response?.status === 403
-  }
+  const parsedError = parseApiError(error)
 
-  return false
+  return (
+    isJoinPasswordMismatchCode(parsedError.code) || parsedError.status === 403
+  )
 }

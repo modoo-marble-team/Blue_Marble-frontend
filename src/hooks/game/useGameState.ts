@@ -1,8 +1,11 @@
 import { useEffect } from 'react'
-import { socket } from '../../lib/socket'
+import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { gameApi } from '../../services/game/game.api'
 import { setupGameHandlers } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
+
+const USE_GAME_SOCKET_MOCK =
+  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
 
 export const useGameState = (roomId: string | null) => {
   const { setGameState, players } = useGameStore()
@@ -14,14 +17,17 @@ export const useGameState = (roomId: string | null) => {
 
     const teardownHandlers = setupGameHandlers()
 
-    if (!socket.connected) {
-      socket.connect()
+    if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
+      connectSocketWithAuthIfNeeded()
     }
 
     const fetchGameState = async () => {
+      // 스토어가 비어 있을 때만 초기 상태를 1회 동기화
       if (players.length > 0) return
 
-      const result = await gameApi.getState(roomId)
+      const result = await gameApi.getState(roomId, {
+        reset: USE_GAME_SOCKET_MOCK,
+      })
       if (!result.ok) return
 
       const payload = result.data as {

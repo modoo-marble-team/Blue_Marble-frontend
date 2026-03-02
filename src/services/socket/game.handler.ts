@@ -12,6 +12,55 @@ type GameStatePayload = {
   timeout_sec?: number
 }
 
+type TurnStartPayload = {
+  player_id: string
+  round: number
+  timeout_sec: number
+}
+
+type DiceRolledPayload = {
+  player_id: string
+  dice: number[]
+  is_double: boolean
+  double_count: number
+}
+
+type PlayerMovedPayload = {
+  player_id: string
+  from_index: number
+  to_index: number
+  trigger: string
+  pass_go: boolean
+  pass_go_salary: number
+}
+
+type TilePurchasedPayload = {
+  player_id: string
+  tile_index: number
+  tile_name: string
+  price: number
+}
+
+type TollPaidPayload = {
+  payer_id: string
+  owner_id: string
+  tile_index: number
+  amount: number
+}
+
+type CardDrawnPayload = {
+  player_id: string
+  card: Card
+}
+
+type PlayerSentToJailPayload = {
+  player_id: string
+}
+
+type PlayerBankruptPayload = {
+  player_id: string
+}
+
 let teardownGameHandlersRef: Teardown | null = null
 
 const applyGameState = (payload: GameStatePayload) => {
@@ -25,8 +74,15 @@ const applyGameState = (payload: GameStatePayload) => {
   })
 }
 
+const appendOwnedTile = (player: Player, tileIndex: number) => {
+  if (player.owned_tiles.includes(tileIndex)) {
+    return player.owned_tiles
+  }
+
+  return [...player.owned_tiles, tileIndex]
+}
+
 export const setupGameHandlers = (): Teardown => {
-  // Prevent duplicated listeners on remount.
   teardownGameHandlersRef?.()
 
   const gameStore = useGameStore.getState()
@@ -47,11 +103,7 @@ export const setupGameHandlers = (): Teardown => {
     player_id,
     round,
     timeout_sec,
-  }: {
-    player_id: string
-    round: number
-    timeout_sec: number
-  }) => {
+  }: TurnStartPayload) => {
     gameStore.setGameState({
       currentTurn: player_id,
       round,
@@ -60,16 +112,8 @@ export const setupGameHandlers = (): Teardown => {
     })
   }
 
-  const handleDiceRolled = ({
-    player_id,
-    dice,
-  }: {
-    player_id: string
-    dice: number[]
-    is_double: boolean
-    double_count: number
-  }) => {
-    // UI animation sync hook point. Keeping no-op to avoid console noise.
+  const handleDiceRolled = ({ player_id, dice }: DiceRolledPayload) => {
+    // 보드 애니메이션 연결 전까지는 수신만 보장한다.
     void player_id
     void dice
   }
@@ -77,70 +121,73 @@ export const setupGameHandlers = (): Teardown => {
   const handlePlayerMoved = ({
     player_id,
     to_index,
-  }: {
-    player_id: string
-    from_index: number
-    to_index: number
-    trigger: string
-    pass_go: boolean
-    pass_go_salary: number
-  }) => {
-    gameStore.updatePlayer(player_id, { position: to_index })
+    pass_go,
+    pass_go_salary,
+  }: PlayerMovedPayload) => {
+    const state = useGameStore.getState()
+    const player = state.players.find((candidate) => candidate.id === player_id)
+
+    state.updatePlayer(player_id, {
+      position: to_index,
+      balance:
+        player && pass_go ? player.balance + pass_go_salary : player?.balance,
+    })
   }
 
   const handleTilePurchased = ({
     player_id,
     tile_index,
-  }: {
-    player_id: string
-    tile_index: number
-    tile_name: string
-    price: number
-  }) => {
-    gameStore.updateTile(tile_index, { owner_id: player_id })
-    gameStore.setModal(null)
+    price,
+  }: TilePurchasedPayload) => {
+    const state = useGameStore.getState()
+    const player = state.players.find((candidate) => candidate.id === player_id)
+
+    state.updateTile(tile_index, { owner_id: player_id })
+
+    if (player) {
+      state.updatePlayer(player_id, {
+        balance: Math.max(0, player.balance - price),
+        owned_tiles: appendOwnedTile(player, tile_index),
+      })
+    }
+
+    state.setModal(null)
   }
 
-  const handleTollPaid = ({
-    payer_id,
-    owner_id,
-    amount,
-  }: {
-    payer_id: string
-    owner_id: string
-    tile_index: number
-    amount: number
-  }) => {
-    // If this player exists in store, pessimistically reflect balance.
+  const handleTollPaid = ({ payer_id, owner_id, amount }: TollPaidPayload) => {
     const state = useGameStore.getState()
-    const payer = state.players.find((p) => p.id === payer_id)
-    const owner = state.players.find((p) => p.id === owner_id)
+    const payer = state.players.find((player) => player.id === payer_id)
+    const owner = state.players.find((player) => player.id === owner_id)
+
     if (payer) {
       state.updatePlayer(payer_id, {
         balance: Math.max(0, payer.balance - amount),
       })
     }
+
     if (owner) {
-      state.updatePlayer(owner_id, { balance: owner.balance + amount })
+      state.updatePlayer(owner_id, {
+        balance: owner.balance + amount,
+      })
     }
   }
 
-  const handleCardDrawn = ({ card }: { player_id: string; card: Card }) => {
+  const handleCardDrawn = ({ card }: CardDrawnPayload) => {
     void card
     gameStore.setModal('card')
   }
 
-  const handlePlayerSentToJail = ({ player_id }: { player_id: string }) => {
+  const handlePlayerSentToJail = ({ player_id }: PlayerSentToJailPayload) => {
     gameStore.updatePlayer(player_id, { is_in_jail: true })
   }
 
-  const handlePlayerBankrupt = ({ player_id }: { player_id: string }) => {
+  const handlePlayerBankrupt = ({ player_id }: PlayerBankruptPayload) => {
     gameStore.updatePlayer(player_id, { is_bankrupt: true })
     gameStore.setModal('bankrupt')
   }
 
   const handleGameOver = (payload: GameResult) => {
-    const winner = payload.rankings.find((r) => r.is_winner)
+    const winner = payload.rankings.find((ranking) => ranking.is_winner)
     gameStore.setGameState({
       gameResult: payload,
       isGameOver: true,
