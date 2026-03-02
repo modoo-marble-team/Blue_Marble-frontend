@@ -10,6 +10,10 @@ export type TileType =
   | 'penalty'
   | 'airport'
   | 'card'
+  | 'corner'
+  | 'city'
+  | 'event'
+  | 'ai'
 
 export interface Card {
   title: string
