@@ -9,17 +9,8 @@ import {
 } from '../../components/header/profileMenu'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import {
-  sendDirectMessage,
-  subscribeDirectMessageSocketEvents,
-} from '../../features/presence/directMessageSocket'
 import { useOnlineUsersSocket } from '../../features/presence/hooks'
-import { isDirectMessageAllowed } from '../../features/presence/status'
-import type {
-  DirectMessage,
-  DirectMessageReceiveSocketPayload,
-  OnlineUser,
-} from '../../features/presence/types'
+import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import { cn } from '../../lib/utils'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
@@ -55,14 +46,6 @@ function WaitingRoomPage() {
   const session = useAuthStore((state) => state.session)
   const clearSession = useAuthStore((state) => state.clearSession)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
-  const [dmTargetUser, setDmTargetUser] = useState<OnlineUser | null>(null)
-  const [directMessagesByUserId, setDirectMessagesByUserId] = useState<
-    Record<string, DirectMessage[]>
-  >({})
-  const [
-    unreadDirectMessageCountByUserId,
-    setUnreadDirectMessageCountByUserId,
-  ] = useState<Record<string, number>>({})
 
   const locationState = location.state as WaitingRoomLocationState | null
   const isSameRoomState = locationState?.roomId === currentRoomId
@@ -114,7 +97,20 @@ function WaitingRoomPage() {
     isError: isUsersError,
   } = useOnlineUsersSocket()
 
-  const openedDirectMessageUserId = dmTargetUser?.id
+  const {
+    dmTargetUser,
+    directMessagesByUserId,
+    unreadDirectMessageCountByUserId,
+    openDirectMessage,
+    closeDirectMessage,
+    sendDirectMessage,
+  } = useDirectMessageController({
+    session,
+    users,
+    onBlockedByPlaying: () => {
+      toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
+    },
+  })
 
   // URL/세션 상태 검증 후 잘못된 진입을 리다이렉트
   useEffect(() => {
@@ -143,83 +139,6 @@ function WaitingRoomPage() {
 
     toast.error(roomErrorMessage)
   }, [roomErrorMessage])
-
-  // DM 수신 이벤트를 구독해 메시지 목록/unread 상태를 갱신
-  useEffect(() => {
-    if (!session) {
-      return
-    }
-
-    const unsubscribe = subscribeDirectMessageSocketEvents({
-      onReceive: (payload: DirectMessageReceiveSocketPayload) => {
-        const receivedMessage: DirectMessage = {
-          id: `${payload.sender_id}-${payload.sent_at}`,
-          senderId: payload.sender_id,
-          senderNickname: payload.sender_nickname,
-          content: payload.message,
-          sentAt: payload.sent_at,
-        }
-
-        setDirectMessagesByUserId((previousMessagesByUserId) => {
-          const previousMessages =
-            previousMessagesByUserId[payload.sender_id] ?? []
-          const hasSameMessage = previousMessages.some(
-            (message) => message.id === receivedMessage.id
-          )
-
-          // 동일 메시지는 중복 저장하지 않음
-          if (hasSameMessage) {
-            return previousMessagesByUserId
-          }
-
-          return {
-            ...previousMessagesByUserId,
-            [payload.sender_id]: [...previousMessages, receivedMessage],
-          }
-        })
-
-        if (payload.sender_id === openedDirectMessageUserId) {
-          return
-        }
-
-        setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
-          const previousCount = previousCountByUserId[payload.sender_id] ?? 0
-
-          return {
-            ...previousCountByUserId,
-            [payload.sender_id]: previousCount + 1,
-          }
-        })
-      },
-    })
-
-    return () => {
-      unsubscribe()
-    }
-  }, [openedDirectMessageUserId, session])
-
-  // 접속자 목록 갱신 시 DM 대상 사용자 참조를 동기화
-  useEffect(() => {
-    if (!dmTargetUser) {
-      return
-    }
-
-    const matchedUser = users.find((user) => user.id === dmTargetUser.id)
-
-    if (!matchedUser) {
-      setDmTargetUser(null)
-      return
-    }
-
-    if (!isDirectMessageAllowed(matchedUser.status)) {
-      setDmTargetUser(null)
-      return
-    }
-
-    if (matchedUser !== dmTargetUser) {
-      setDmTargetUser(matchedUser)
-    }
-  }, [dmTargetUser, users])
 
   // 대기방을 떠나 로비로 복귀
   const handleLeaveToLobby = useCallback(async () => {
@@ -278,66 +197,6 @@ function WaitingRoomPage() {
       toast.error(result.message)
     }
   }, [handleStartGame])
-
-  // DM 창을 열고 해당 사용자 unread 카운트를 제거
-  function handleOpenDirectMessage(user: OnlineUser) {
-    if (!isDirectMessageAllowed(user.status)) {
-      toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
-      return
-    }
-
-    setDmTargetUser(user)
-    setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
-      if (!previousCountByUserId[user.id]) {
-        return previousCountByUserId
-      }
-
-      const nextCountByUserId = { ...previousCountByUserId }
-      delete nextCountByUserId[user.id]
-      return nextCountByUserId
-    })
-  }
-
-  function handleCloseDirectMessage() {
-    setDmTargetUser(null)
-  }
-
-  // DM 메시지를 로컬 목록에 반영한 뒤 소켓으로 전송
-  function handleSendDirectMessage(message: string) {
-    // 세션 또는 대상이 없으면 전송 중단
-    if (!dmTargetUser || !session) {
-      return
-    }
-
-    if (!isDirectMessageAllowed(dmTargetUser.status)) {
-      toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
-      return
-    }
-
-    const targetUserId = dmTargetUser.id
-    const nextDirectMessage: DirectMessage = {
-      id: `${targetUserId}-${Date.now()}`,
-      senderId: session.userId,
-      senderNickname: session.nickname,
-      content: message,
-      sentAt: new Date().toISOString(),
-    }
-
-    setDirectMessagesByUserId((previousMessagesByUserId) => {
-      const previousMessages = previousMessagesByUserId[targetUserId] ?? []
-
-      return {
-        ...previousMessagesByUserId,
-        [targetUserId]: [...previousMessages, nextDirectMessage],
-      }
-    })
-
-    sendDirectMessage({
-      receiverId: dmTargetUser.id,
-      receiverNickname: dmTargetUser.nickname,
-      message,
-    })
-  }
 
   // 리다이렉트 대상 상태에서는 화면 렌더링 생략
   if (!session || session.needsNicknameSetup) {
@@ -445,7 +304,7 @@ function WaitingRoomPage() {
               unreadDirectMessageCountByUserId={
                 unreadDirectMessageCountByUserId
               }
-              onOpenDirectMessage={handleOpenDirectMessage}
+              onOpenDirectMessage={openDirectMessage}
               onToggle={() => setIsUserListOpen((previous) => !previous)}
               heightMode="full"
               disableWidthTransition
@@ -466,8 +325,8 @@ function WaitingRoomPage() {
           user={dmTargetUser}
           currentUserId={session.userId}
           messages={directMessagesByUserId[dmTargetUser.id] ?? []}
-          onClose={handleCloseDirectMessage}
-          onSendMessage={handleSendDirectMessage}
+          onClose={closeDirectMessage}
+          onSendMessage={sendDirectMessage}
         />
       ) : null}
     </div>
