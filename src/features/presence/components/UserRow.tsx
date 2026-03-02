@@ -1,6 +1,7 @@
 import { MessageCircle } from 'lucide-react'
 import { cn } from '../../../lib/utils'
 import {
+  isDirectMessageAllowed,
   ONLINE_USER_STATUS_DOT_CLASS_MAP,
   ONLINE_USER_STATUS_LABEL_MAP,
 } from '../status'
@@ -23,7 +24,10 @@ export function UserRow({
   onOpenDirectMessage,
 }: UserRowProps) {
   const statusLabel = ONLINE_USER_STATUS_LABEL_MAP[user.status]
-  const isDmDisabled = isCurrentUser || !onOpenDirectMessage
+  const isDmDisabled =
+    isCurrentUser ||
+    !onOpenDirectMessage ||
+    !isDirectMessageAllowed(user.status)
 
   return (
     <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted">
@@ -74,9 +78,11 @@ export function UserRow({
         title={
           isCurrentUser
             ? '본인에게는 DM을 보낼 수 없습니다.'
-            : isDmDisabled
-              ? 'DM 기능을 사용할 수 없습니다.'
-              : 'DM 열기'
+            : !isDirectMessageAllowed(user.status)
+              ? '게임중인 유저에게는 DM을 보낼 수 없습니다.'
+              : isDmDisabled
+                ? 'DM 기능을 사용할 수 없습니다.'
+                : 'DM 열기'
         }
       >
         <MessageCircle className="size-4" />
