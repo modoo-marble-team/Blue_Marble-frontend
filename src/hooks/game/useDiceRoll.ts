@@ -7,14 +7,21 @@ import { useGameStore } from '../../stores/game.store'
 export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
   const currentTurn = useGameStore((state) => state.currentTurn)
 
-  return useCallback(() => {
-    // Prefer server-authoritative roll via socket.
-    if (socket.connected && currentTurn) {
-      emitRollDice({ player_id: currentTurn })
-      return
-    }
+  return useCallback(
+    (roomId: string | null) => {
+      if (!roomId) {
+        return
+      }
 
-    // Fallback for local/mock flow.
-    boardRef.current?.rollDice()
-  }, [boardRef, currentTurn])
+      // Prefer server-authoritative roll via socket.
+      if (socket.connected && currentTurn) {
+        emitRollDice({ room_id: roomId })
+        return
+      }
+
+      // Fallback for local/mock flow.
+      boardRef.current?.rollDice()
+    },
+    [boardRef, currentTurn]
+  )
 }
