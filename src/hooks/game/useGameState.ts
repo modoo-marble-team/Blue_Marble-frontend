@@ -4,12 +4,18 @@ import { gameApi } from '../../services/game/game.api'
 import { setupGameHandlers } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
 
+const USE_GAME_SOCKET_MOCK =
+  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+
 export const useGameState = () => {
   const { setGameState, players } = useGameStore()
 
   useEffect(() => {
-    const teardownHandlers = setupGameHandlers()
-    if (!socket.connected) {
+    const teardownHandlers = USE_GAME_SOCKET_MOCK
+      ? () => undefined
+      : setupGameHandlers()
+
+    if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
       socket.connect()
     }
 
