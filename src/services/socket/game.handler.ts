@@ -31,7 +31,11 @@ export const setupGameHandlers = (): Teardown => {
 
   const gameStore = useGameStore.getState()
 
-  const handleGameStart = ({ game_state }: { game_state: GameStatePayload }) => {
+  const handleGameStart = ({
+    game_state,
+  }: {
+    game_state: GameStatePayload
+  }) => {
     applyGameState(game_state)
   }
 
@@ -112,7 +116,9 @@ export const setupGameHandlers = (): Teardown => {
     const payer = state.players.find((p) => p.id === payer_id)
     const owner = state.players.find((p) => p.id === owner_id)
     if (payer) {
-      state.updatePlayer(payer_id, { balance: Math.max(0, payer.balance - amount) })
+      state.updatePlayer(payer_id, {
+        balance: Math.max(0, payer.balance - amount),
+      })
     }
     if (owner) {
       state.updatePlayer(owner_id, { balance: owner.balance + amount })
@@ -186,10 +192,13 @@ export const setupGameHandlers = (): Teardown => {
   return teardown
 }
 
-export const emitRollDice = (payload: { player_id: string }) => {
+export const emitRollDice = (payload: { room_id: string }) => {
   socket.emit('roll_dice', payload)
 }
 
-export const emitConfirmPenalty = (payload: { player_id: string }) => {
+export const emitConfirmPenalty = (payload: {
+  room_id: string
+  player_id: string
+}) => {
   socket.emit('confirm_penalty', payload)
 }
