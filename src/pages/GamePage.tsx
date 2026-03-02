@@ -1,5 +1,6 @@
-﻿import { useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
+import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import RoomChat from '../features/room-chat/RoomChat'
 import RollButton from '../components/game/controls/RollButton'
@@ -12,6 +13,7 @@ import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
 
 const GamePage: React.FC = () => {
+  const { roomId } = useParams<{ roomId: string }>()
   const { currentTurn, messages, addMessage, turnTimeoutSec, turnTimerKey } =
     useGameStore()
   const [timeLeft] = useGameTimer({
@@ -25,7 +27,7 @@ const GamePage: React.FC = () => {
   const [boardPlayers, setBoardPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
   const [boardCurPlayer, setBoardCurPlayer] = useState(0)
 
-  useGameState()
+  useGameState(roomId ?? null)
 
   const handleSendMessage = (content: string) => {
     addMessage({
@@ -38,7 +40,10 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const handleRollDice = useDiceRoll(boardRef)
+  const rollDice = useDiceRoll(boardRef)
+  const handleRollDice = () => {
+    rollDice(roomId ?? null)
+  }
 
   const handlePlayersChange = (updated: PlayerState[]) => {
     setBoardPlayers(updated)
@@ -85,6 +90,7 @@ const GamePage: React.FC = () => {
           >
             <BoardGame
               ref={boardRef}
+              roomId={roomId ?? null}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
               onPlayersChange={handlePlayersChange}
