@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { socket } from '../../lib/socket'
+import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { mockOnlineUsers } from './mockData'
 import type {
   OnlineUser,
@@ -110,7 +110,7 @@ export function useOnlineUsersSocket() {
 
       // 아직 연결되지 않았다면 명시적으로 연결 시작
       if (!socket.connected) {
-        socket.connect()
+        connectSocketWithAuthIfNeeded()
       }
     }
 

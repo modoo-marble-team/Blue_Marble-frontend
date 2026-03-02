@@ -1,4 +1,4 @@
-import { socket } from '../../lib/socket'
+import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import type {
   DirectMessageReceiveSocketPayload,
   DirectMessageSendSocketPayload,
@@ -41,7 +41,7 @@ function connectSocketIfNeeded() {
 
   // 연결이 닫혀 있으면 재연결 시도
   if (!socket.connected) {
-    socket.connect()
+    connectSocketWithAuthIfNeeded()
   }
 }
 
