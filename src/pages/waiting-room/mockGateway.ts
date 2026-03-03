@@ -105,6 +105,35 @@ function createDevBotPlayer(roomId: string): MockRoomPlayer {
   }
 }
 
+// 방장 승계를 단일 규칙으로 적용
+function applyHostTransfer(room: MockRoom, nextHostId: string) {
+  let nextHostNickname = ''
+
+  room.players = room.players.map((player) => {
+    if (player.id !== nextHostId) {
+      return {
+        ...player,
+        is_host: false,
+      }
+    }
+
+    nextHostNickname = player.nickname
+    return {
+      ...player,
+      is_host: true,
+      is_ready: false,
+    }
+  })
+
+  const hostChangedPayload: HostChangedEventPayload = {
+    new_host_id: nextHostId,
+    new_host_nickname: nextHostNickname,
+  }
+  emitSocketEvent<HostChangedEventPayload>('host_changed', hostChangedPayload)
+
+  return hostChangedPayload
+}
+
 // 초기 채팅은 빈 배열로 시작
 function createSeededRoomChat(): WaitingRoomChatPayload[] {
   return []
@@ -482,32 +511,8 @@ export async function mockLeaveWaitingRoom({
     const [nextHost] = room.players
 
     if (nextHost) {
-      room.players = room.players.map((player) => {
-        // 새 방장 외 플레이어는 방장 플래그 false로 유지
-        if (player.id !== nextHost.id) {
-          return {
-            ...player,
-            is_host: false,
-          }
-        }
-
-        return {
-          ...player,
-          is_host: true,
-          is_ready: false,
-        }
-      })
-
       newHostId = nextHost.id
-
-      const hostChangedPayload: HostChangedEventPayload = {
-        new_host_id: nextHost.id,
-        new_host_nickname: nextHost.nickname,
-      }
-      emitSocketEvent<HostChangedEventPayload>(
-        'host_changed',
-        hostChangedPayload
-      )
+      applyHostTransfer(room, nextHost.id)
     }
   }
 
@@ -793,4 +798,79 @@ export function mockDevSeedStartCondition(roomId: string) {
   const snapshot = mockDevSetAllNonHostReady(roomId, true)
   emitLobbyUpdated(room, 'status_changed')
   return snapshot
+}
+
+// DEV 목 제어: non-host 중 첫 번째 참가자에게 방장을 넘김
+export function mockDevTransferWaitingRoomHost(roomId: string) {
+  const room = findRoomOrThrow(roomId)
+
+  // 게임 중에는 방장 이관 테스트를 막음
+  if (room.status === 'playing') {
+    throw new WaitingRoomMockError(
+      409,
+      '게임 중에는 방장을 넘길 수 없습니다.',
+      {
+        code: 'ROOM_ALREADY_PLAYING',
+        detail: '게임 중에는 방장을 넘길 수 없습니다.',
+      }
+    )
+  }
+
+  // 플레이어가 2명 미만이면 방장 이관 대상이 없음
+  if (room.players.length < 2) {
+    throw new WaitingRoomMockError(400, '방장을 넘길 참가자가 없습니다.', {
+      code: 'PLAYER_NOT_IN_ROOM',
+      detail: '방장을 넘길 참가자가 없습니다.',
+    })
+  }
+
+  const currentHostIndex = room.players.findIndex((player) => player.is_host)
+
+  if (currentHostIndex === -1) {
+    throw new WaitingRoomMockError(400, '방장을 넘길 참가자가 없습니다.', {
+      code: 'PLAYER_NOT_IN_ROOM',
+      detail: '방장을 넘길 참가자가 없습니다.',
+    })
+  }
+
+  const nextHostIndex = (currentHostIndex + 1) % room.players.length
+  const nextHost = room.players[nextHostIndex]
+
+  applyHostTransfer(room, nextHost.id)
+  emitLobbyUpdated(room, 'status_changed')
+
+  return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어: 현재 사용자만 남기고 대기방 상태를 초기화
+export function mockDevResetWaitingRoom(
+  roomId: string,
+  currentUserId: string,
+  currentNickname: string
+) {
+  const room = findRoomOrThrow(roomId)
+  const currentPlayer = room.players.find(
+    (player) => player.id === currentUserId
+  )
+  const trimmedNickname = currentNickname.trim()
+  const normalizedNickname =
+    currentPlayer?.nickname ??
+    (trimmedNickname.length > 0 ? trimmedNickname : '플레이어')
+
+  room.status = 'waiting'
+  room.players = [
+    {
+      id: currentUserId,
+      nickname: normalizedNickname,
+      is_ready: false,
+      is_host: true,
+    },
+  ]
+  room.chat_messages = []
+
+  // 멀티 클라이언트에서도 방장 표시가 즉시 맞도록 host_changed를 함께 발행
+  applyHostTransfer(room, currentUserId)
+  emitLobbyUpdated(room, 'status_changed')
+
+  return toWaitingRoomSnapshot(room)
 }
