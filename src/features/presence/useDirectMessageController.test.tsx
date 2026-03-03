@@ -11,10 +11,21 @@ const {
   sendDirectMessageSocketMock,
   subscribeDirectMessageSocketEventsMock,
   unsubscribeDirectMessageSocketMock,
+  directMessageReceiveHandlerRef,
 } = vi.hoisted(() => ({
   sendDirectMessageSocketMock: vi.fn(),
   subscribeDirectMessageSocketEventsMock: vi.fn(),
   unsubscribeDirectMessageSocketMock: vi.fn(),
+  directMessageReceiveHandlerRef: {
+    current: null as
+      | ((payload: {
+          sender_id: string
+          sender_nickname: string
+          message: string
+          sent_at: string
+        }) => void)
+      | null,
+  },
 }))
 
 vi.mock('./directMessageSocket', () => ({
@@ -56,8 +67,12 @@ describe('useDirectMessageController', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    subscribeDirectMessageSocketEventsMock.mockReturnValue(
-      unsubscribeDirectMessageSocketMock
+    directMessageReceiveHandlerRef.current = null
+    subscribeDirectMessageSocketEventsMock.mockImplementation(
+      ({ onReceive }) => {
+        directMessageReceiveHandlerRef.current = onReceive
+        return unsubscribeDirectMessageSocketMock
+      }
     )
   })
 
@@ -181,5 +196,100 @@ describe('useDirectMessageController', () => {
     expect(onBlockedByPlaying).toHaveBeenCalledTimes(1)
     expect(sendDirectMessageSocketMock).not.toHaveBeenCalled()
     expect(result.current.directMessagesByUserId['user-2']).toBeUndefined()
+  })
+
+  it('DM 창이 닫힌 상태에서 수신하면 unread 카운트가 증가하고 창을 열면 초기화된다', () => {
+    const user = createOnlineUserFixture({
+      id: 'user-2',
+      nickname: '상대',
+      status: 'lobby',
+    })
+
+    const { result } = renderDirectMessageControllerHook({
+      users: [user],
+    })
+
+    act(() => {
+      directMessageReceiveHandlerRef.current?.({
+        sender_id: 'user-2',
+        sender_nickname: '상대',
+        message: '첫 메시지',
+        sent_at: '2026-03-03T10:00:00.000Z',
+      })
+    })
+
+    expect(result.current.unreadDirectMessageCountByUserId['user-2']).toBe(1)
+
+    act(() => {
+      result.current.openDirectMessage(user)
+    })
+
+    expect(
+      result.current.unreadDirectMessageCountByUserId['user-2']
+    ).toBeUndefined()
+  })
+
+  it('현재 열려 있는 대상의 수신 메시지는 unread가 증가하지 않는다', () => {
+    const user = createOnlineUserFixture({
+      id: 'user-2',
+      nickname: '상대',
+      status: 'lobby',
+    })
+
+    const { result } = renderDirectMessageControllerHook({
+      users: [user],
+    })
+
+    act(() => {
+      result.current.openDirectMessage(user)
+    })
+
+    act(() => {
+      directMessageReceiveHandlerRef.current?.({
+        sender_id: 'user-2',
+        sender_nickname: '상대',
+        message: '열린 창 메시지',
+        sent_at: '2026-03-03T10:01:00.000Z',
+      })
+    })
+
+    expect(
+      result.current.unreadDirectMessageCountByUserId['user-2']
+    ).toBeUndefined()
+  })
+
+  it('다른 사용자의 수신 메시지는 unread가 독립적으로 누적된다', () => {
+    const user2 = createOnlineUserFixture({
+      id: 'user-2',
+      nickname: '상대A',
+      status: 'lobby',
+    })
+    const user3 = createOnlineUserFixture({
+      id: 'user-3',
+      nickname: '상대B',
+      status: 'in_room',
+    })
+
+    const { result } = renderDirectMessageControllerHook({
+      users: [user2, user3],
+    })
+
+    act(() => {
+      result.current.openDirectMessage(user2)
+    })
+
+    act(() => {
+      directMessageReceiveHandlerRef.current?.({
+        sender_id: 'user-3',
+        sender_nickname: '상대B',
+        message: '다른 사용자 메시지',
+        sent_at: '2026-03-03T10:02:00.000Z',
+      })
+    })
+
+    expect(
+      result.current.unreadDirectMessageCountByUserId['user-2']
+    ).toBeUndefined()
+    expect(result.current.unreadDirectMessageCountByUserId['user-3']).toBe(1)
   })
 })
