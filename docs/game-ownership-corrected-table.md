@@ -1,36 +1,83 @@
-# FE-B / FE-C 교정 분업표
+﻿# FE-B / FE-C 분업표 (현재 코드 기준)
 
-## 적용 범위
+## 요약 표
 
-- 포함: 게임 페이지, 게임 상태, 게임 소켓, 보드 렌더링
-- 제외(FE-A): 로비, 메신저, 랜딩, 로그인 및 관련 hooks/api/types 전체
+| 구분                | FE-B    | FE-C    | 비고                           |
+| ------------------- | ------- | ------- | ------------------------------ |
+| 게임 API 연동       | 주 담당 | 보조    | roomId 기반 계약 유지          |
+| 게임 socket 연동    | 주 담당 | 보조    | emit/handler/store 반영        |
+| 게임 store          | 주 담당 | 보조    | `game.store.ts` 기준           |
+| 게임 페이지 조립    | 주 담당 | 보조    | `GamePage.tsx`                 |
+| 게임 모달 UI        | 주 담당 | 보조    | `src/components/game/modals/*` |
+| 주사위/턴 제어 UI   | 주 담당 | 보조    | `RollButton`, timer 등         |
+| 보드 렌더링         | 보조    | 주 담당 | `src/components/board/*`       |
+| 말 이동/건물 시각화 | 보조    | 주 담당 | 렌더/애니메이션 중심           |
+| 보드 로컬 상태 정리 | 공동    | 공동    | 현재 가장 큰 정리 대상         |
+| 공용 타입           | 공동    | 공동    | `src/types/domain.ts`          |
 
-## 파일 소유권
+## 진행도 요약
 
-| 영역 | 담당 | 경로 |
-|---|---|---|
-| 게임 상태 | FE-B | `src/stores/game.store.ts` |
-| 레거시 스토어 래퍼 | FE-B | `src/stores/useGameStore.ts`, `src/stores/legacy.useGameStore.ts` |
-| 게임 소켓 핸들러 | FE-B | `src/services/socket/game.handler.ts` |
-| 게임 훅 | FE-B | `src/hooks/game/*` |
-| 게임 UI(채팅/패널/버튼/모달) | FE-B | `src/components/game/*` |
-| 게임 페이지 조립 | FE-B | `src/pages/GamePage.tsx` |
-| 보드 렌더링 | FE-C | `src/components/board/*` |
-| 보드 스타일 | FE-C | `src/styles/board.css` |
-| 보드 레거시 진입점 | FE-C | `src/game/phaserConfig.tsx` |
-| 공통 계약 타입 | 공동(Shared) | `src/types/domain.ts` |
+| 파트 | 진행도 | 상태                                |
+| ---- | ------ | ----------------------------------- |
+| FE-B | 80%    | 연동/검증/남은 모달 정리 단계       |
+| FE-C | 50%    | 보드 구조 정리와 시각화 안정화 단계 |
 
-## 명세 매핑 (게임 전용)
+## FE-B 완료된 내용
 
-| 분류 | ID | 현재 담당 기준 |
-|---|---|---|
-| REST | `GAME-001~004` | FE-B 구현 주도, FE-C 렌더링 연동 |
-| Socket C->S | `SOCK-005~007` | FE-B |
-| Socket S->C | `SOCK-009~020`, `SOCK-028`, `SOCK-029` | FE-B 상태 처리, FE-C 시각 반영 |
-| 렌더링 요구사항 | `G-001`, `G-002`, `G-004`, `G-011`, `G-014`, `G-024`, `G-025` | FE-C |
+- game store 구축 및 기본 액션 정리
+- roomId 기반 게임 API 정합화
+- socket emit/handler 주요 경로 정리
+- mock 환경 분기 및 테스트 모드 추가
+- 주요 게임 모달 UI 구현
+  - 구매
+  - 건설
+  - 카드
+  - 통행료
+  - AI 패널티
+  - 파산
+  - 게임 결과
+  - 주사위 타이머
 
-## FE-A 소유권 (비게임)
+## FE-B 남은 내용
 
-- 로비 페이지/도메인: `src/pages/lobby/*`
-- 로비 API/타입/훅: `src/pages/lobby/api.ts`, `src/pages/lobby/types.ts`, `src/pages/lobby/hooks.ts`
-- 접속자/비게임 실시간 영역: `src/features/presence/*`
+- 남은 모달 UI 구현
+  - 도시 인수 팝업
+  - 무인도 이동칸 팝업
+  - 도시 매각 팝업
+- mock 한 턴 전체 시나리오 최종 검증
+- 실서버 authoritative 흐름 최종 점검
+- `GameBoard.tsx` 안의 FE-B 로직 일부 정리
+
+## FE-C 완료된 내용
+
+- 보드 전체 배치 구조
+- 타일 렌더링 기본 구성
+- 플레이어 말 기본 렌더링
+- 건물 배지/아이콘 렌더링 구조
+- `GameBoard` 기반 게임판 동작 뼈대
+
+## FE-C 남은 내용
+
+- `LegacyBoardGame` 의존 제거 또는 얇은 래퍼화 유지 판단
+- store 기준 단일 렌더 구조로 정리
+- 보드 로컬 상태 제거 범위 확정
+- 이동/건물/타일 소유 상태 렌더 안정화
+- 시각 피드백과 애니메이션 보강
+
+## FE-A 제외 범위
+
+아래는 FE-B/FE-C 작업 범위에서 제외한다.
+
+- 로비
+- 로그인
+- 랜딩
+- 메신저/채팅방 일반 기능
+- 프레즌스
+- 게임 외 room UI
+
+## 공동 확인 필요 항목
+
+- `src/types/domain.ts`
+- 게임 상태 payload shape
+- tile type 명칭 정합화
+- player id / roomId / currentTurn 계약
