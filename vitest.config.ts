@@ -7,6 +7,13 @@ export default defineConfig({
     css: true,
     setupFiles: ['./src/test/setup.ts'],
     passWithNoTests: true,
+    // Playwright E2E 스펙은 Vitest 실행/커버리지 집계 대상에서 제외
+    exclude: [
+      'e2e/**',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.{idea,git,cache,output,temp}/**',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
