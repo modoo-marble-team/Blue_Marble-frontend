@@ -92,6 +92,9 @@ const getCurrentPlayer = () =>
 const getTileByIndex = (tileIndex: number) =>
   mockGameState.tiles.find((tile) => tile.index === tileIndex)
 
+const isOwnableTile = (tile: Tile | undefined): tile is Tile =>
+  !!tile && (tile.type === 'city' || tile.type === 'property')
+
 const ensureOwnedTiles = (player: Player, tileIndex: number) => {
   if (!player.owned_tiles.includes(tileIndex)) {
     player.owned_tiles.push(tileIndex)
@@ -217,7 +220,7 @@ export const gameHandlers = [
     const player = getCurrentPlayer()
     const tile = getTileByIndex(tile_index)
 
-    if (!player || !tile || tile.type !== 'property') {
+    if (!player || !isOwnableTile(tile)) {
       return buildErrorResponse(
         '\uAD6C\uB9E4\uD560 \uC218 \uC5C6\uB294 \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
         404
@@ -269,7 +272,7 @@ export const gameHandlers = [
     const player = getCurrentPlayer()
     const tile = getTileByIndex(tile_index)
 
-    if (!player || !tile || tile.type !== 'property') {
+    if (!player || !isOwnableTile(tile)) {
       return buildErrorResponse(
         '\uAC74\uC124\uD560 \uC218 \uC5C6\uB294 \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
         404
@@ -321,7 +324,7 @@ export const gameHandlers = [
     const player = getCurrentPlayer()
     const tile = getTileByIndex(tile_index)
 
-    if (!player || !tile || tile.type !== 'property') {
+    if (!player || !isOwnableTile(tile)) {
       return buildErrorResponse(
         '\uB9E4\uAC01\uD560 \uC218 \uC5C6\uB294 \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
         404
