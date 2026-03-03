@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import RoomChat from '../features/room-chat/RoomChat'
 import RollButton from '../components/game/controls/RollButton'
+import { useAuthStore } from '../features/auth/store'
 import { useGameStore } from '../stores/game.store'
 import { useGameState } from '../hooks/game/useGameState'
 import { useGameTimer } from '../hooks/game/useGameTimer'
@@ -12,8 +13,18 @@ import { useTurn } from '../hooks/game/useTurn'
 import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
 
+const USE_GAME_SOCKET_MOCK =
+  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+
+const GAME_CHAT_TITLE = '\uC2E4\uC2DC\uAC04 \uCC44\uD305'
+const GAME_START_NOTICE =
+  '\uAC8C\uC784 \uC2DC\uC791! \uC21C\uC11C\uB97C \uC815\uD588\uC2B5\uB2C8\uB2E4.'
+const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4'
+const DEFAULT_GUEST_ID = 'guest-local'
+
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
+  const session = useAuthStore((state) => state.session)
   const { currentTurn, messages, addMessage, turnTimeoutSec, turnTimerKey } =
     useGameStore()
   const [timeLeft] = useGameTimer({
@@ -27,22 +38,29 @@ const GamePage: React.FC = () => {
 
   useGameState(roomId ?? null)
 
-  // ✅ currentTurn null이면 (서버 연결 전) 내 턴으로 간주
-  const isMyTurnFromStore = useTurn(currentTurn)
-  const isMyTurn = currentTurn === null ? true : isMyTurnFromStore
+  const currentUserId = session?.userId ?? (USE_GAME_SOCKET_MOCK ? 'me' : null)
+  const currentNickname =
+    session?.nickname ??
+    (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_NICKNAME : 'Guest')
+  const normalizedCurrentTurn =
+    USE_GAME_SOCKET_MOCK && currentTurn === 'me' && currentUserId
+      ? currentUserId
+      : currentTurn
+
+  const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
+  const isMyTurn = normalizedCurrentTurn === null ? true : isMyTurnFromStore
 
   const handleSendMessage = (content: string) => {
     addMessage({
       id: Date.now().toString(),
-      sender_id: 'me',
-      sender_nickname: 'GoormEE',
+      sender_id: currentUserId ?? DEFAULT_GUEST_ID,
+      sender_nickname: currentNickname,
       content,
       timestamp: new Date().toISOString(),
       type: 'talk',
     })
   }
 
-  // ✅ roomId 인자 제거
   const diceRoll = useDiceRoll(boardRef)
 
   const handlePlayersChange = (updated: PlayerState[]) => {
@@ -54,7 +72,7 @@ const GamePage: React.FC = () => {
   }
 
   const handleBankrupt = () => {
-    // 필요 시 store 업데이트 추가
+    // Add store update here if needed
   }
 
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
@@ -71,17 +89,16 @@ const GamePage: React.FC = () => {
         className="mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4"
         style={{ maxWidth: '1551px' }}
       >
-        {/* ── 왼쪽 채팅 ── */}
         <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
           <RoomChat
-            title="실시간 채팅"
+            title={GAME_CHAT_TITLE}
             messages={messages}
             onSendMessage={handleSendMessage}
-            notice="게임 시작! 순서를 정했습니다."
+            currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
+            notice={GAME_START_NOTICE}
           />
         </div>
 
-        {/* ── 보드 ── */}
         <div className="flex shrink-0 flex-1 items-center justify-center">
           <div
             className="aspect-square w-full overflow-hidden rounded-[48px] border-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)]"
@@ -99,7 +116,6 @@ const GamePage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── 오른쪽 플레이어 패널 ── */}
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {boardPlayers.map((bp, idx) => (
             <PlayerPanel
