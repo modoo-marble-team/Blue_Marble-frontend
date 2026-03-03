@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
@@ -27,8 +27,14 @@ const MOCK_LOCAL_PLAYER_INDEX = 0
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const session = useAuthStore((state) => state.session)
-  const { currentTurn, messages, addMessage, turnTimeoutSec, turnTimerKey } =
-    useGameStore()
+  const {
+    currentTurn,
+    messages,
+    addMessage,
+    turnTimeoutSec,
+    turnTimerKey,
+    players: storePlayers,
+  } = useGameStore()
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
     resetSignal: turnTimerKey,
@@ -83,6 +89,41 @@ const GamePage: React.FC = () => {
   const handleBankrupt = () => {
     // Add store update here if needed
   }
+
+  useEffect(() => {
+    if (storePlayers.length === 0) {
+      return
+    }
+
+    const nextBoardPlayers = INIT_PLAYERS.map((initialPlayer, index) => {
+      const storePlayer = storePlayers[index]
+      if (!storePlayer) {
+        return initialPlayer
+      }
+
+      return {
+        ...initialPlayer,
+        name: storePlayer.nickname || initialPlayer.name,
+        color: storePlayer.color || initialPlayer.color,
+        pos: storePlayer.position,
+        money: storePlayer.balance,
+      }
+    })
+
+    setBoardPlayers(nextBoardPlayers)
+
+    if (!normalizedCurrentTurn) {
+      return
+    }
+
+    const nextTurnIndex = storePlayers.findIndex(
+      (player) => player.id === normalizedCurrentTurn
+    )
+
+    if (nextTurnIndex >= 0) {
+      setBoardCurPlayer(nextTurnIndex)
+    }
+  }, [normalizedCurrentTurn, storePlayers])
 
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
 

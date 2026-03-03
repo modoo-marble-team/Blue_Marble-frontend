@@ -17,7 +17,7 @@ export const useGameState = (roomId: string | null) => {
 
     const teardownHandlers = setupGameHandlers()
 
-    // Mock 환경에서는 공유 소켓을 끊어 실백엔드 재연결 루프를 막는다.
+    // Mock 환경에서는 공유 소켓이 없어 불필요한 재연결 루프를 막는다.
     if (USE_GAME_SOCKET_MOCK) {
       socket.disconnect()
     } else if (!socket.connected) {
@@ -25,7 +25,7 @@ export const useGameState = (roomId: string | null) => {
     }
 
     const fetchGameState = async () => {
-      // 스토어가 비어 있을 때만 초기 상태를 1회 동기화한다.
+      // 스토어가 비어 있을 때만 초기 상태를 한 번 동기화한다.
       if (players.length > 0) return
 
       const result = await gameApi.getState(roomId, {
