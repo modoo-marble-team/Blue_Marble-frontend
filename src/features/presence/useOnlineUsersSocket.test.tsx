@@ -1,0 +1,125 @@
+import { renderHook, waitFor, act } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useOnlineUsersSocket } from './useOnlineUsersSocket'
+import type { OnlineUsersEventPayload } from './types'
+
+const {
+  socketOnMock,
+  socketOffMock,
+  getOnlineUsersSnapshotMock,
+  isOnlineUsersSocketMockModeMock,
+  startOnlineUsersMockBroadcastMock,
+  stopMockBroadcastMock,
+  ensureOnlineUsersSocketConnectionMock,
+} = vi.hoisted(() => ({
+  socketOnMock: vi.fn(),
+  socketOffMock: vi.fn(),
+  getOnlineUsersSnapshotMock: vi.fn(),
+  isOnlineUsersSocketMockModeMock: vi.fn(),
+  startOnlineUsersMockBroadcastMock: vi.fn(),
+  stopMockBroadcastMock: vi.fn(),
+  ensureOnlineUsersSocketConnectionMock: vi.fn(),
+}))
+
+vi.mock('../../lib/socket', () => ({
+  socket: {
+    on: socketOnMock,
+    off: socketOffMock,
+  },
+}))
+
+vi.mock('./api', () => ({
+  getOnlineUsersSnapshot: getOnlineUsersSnapshotMock,
+}))
+
+vi.mock('./onlineUsersSocket', () => ({
+  ONLINE_USERS_EVENT_NAME: 'online_users',
+  isOnlineUsersSocketMockMode: isOnlineUsersSocketMockModeMock,
+  startOnlineUsersMockBroadcast: startOnlineUsersMockBroadcastMock,
+  ensureOnlineUsersSocketConnection: ensureOnlineUsersSocketConnectionMock,
+}))
+
+// 등록된 online_users 핸들러를 찾아 테스트에서 직접 호출
+function getRegisteredOnlineUsersHandler() {
+  const targetCall = socketOnMock.mock.calls.find(
+    (call) => call[0] === 'online_users'
+  )
+
+  if (!targetCall) {
+    return null
+  }
+
+  return targetCall[1] as (payload: OnlineUsersEventPayload) => void
+}
+
+describe('useOnlineUsersSocket', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+
+    isOnlineUsersSocketMockModeMock.mockReturnValue(false)
+    getOnlineUsersSnapshotMock.mockResolvedValue([])
+    startOnlineUsersMockBroadcastMock.mockReturnValue(stopMockBroadcastMock)
+  })
+
+  it('실소켓 모드에서 초기 REST 스냅샷을 반영한다', async () => {
+    getOnlineUsersSnapshotMock.mockResolvedValue([
+      { id: 'user-1', nickname: 'Goorm', status: 'lobby' },
+    ])
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.isError).toBe(false)
+    expect(result.current.data).toHaveLength(1)
+    expect(result.current.data[0]).toMatchObject({
+      id: 'user-1',
+      nickname: 'Goorm',
+      status: 'lobby',
+      avatarText: 'G',
+    })
+    expect(ensureOnlineUsersSocketConnectionMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('online_users 이벤트 수신 시 접속자 목록을 갱신한다', async () => {
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    const handler = getRegisteredOnlineUsersHandler()
+    expect(handler).not.toBeNull()
+
+    act(() => {
+      handler?.({
+        users: [{ id: 'user-2', nickname: '  alpha ', status: 'in_room' }],
+      })
+    })
+
+    expect(result.current.data).toHaveLength(1)
+    expect(result.current.data[0]).toMatchObject({
+      id: 'user-2',
+      status: 'in_room',
+      avatarText: 'A',
+    })
+  })
+
+  it('cleanup 시 구독 해제와 mock 브로드캐스트 정리를 수행한다', () => {
+    isOnlineUsersSocketMockModeMock.mockReturnValue(true)
+
+    const { unmount } = renderHook(() => useOnlineUsersSocket())
+
+    expect(startOnlineUsersMockBroadcastMock).toHaveBeenCalledTimes(1)
+
+    unmount()
+
+    expect(stopMockBroadcastMock).toHaveBeenCalledTimes(1)
+    expect(socketOffMock).toHaveBeenCalledWith(
+      'online_users',
+      expect.any(Function)
+    )
+  })
+})
