@@ -15,6 +15,7 @@ import { cn } from '../../lib/utils'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
 import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
+import { DevMockControlPanel } from './components/DevMockControlPanel'
 import { useWaitingRoomController } from './hooks'
 import type { GameStartEventPayload, WaitingRoomSnapshot } from './types'
 
@@ -83,6 +84,7 @@ function WaitingRoomPage() {
     handleToggleReady,
     handleStartGame,
     leaveRoom,
+    applyRoomSnapshot,
   } = useWaitingRoomController({
     roomId: currentRoomId,
     session,
@@ -319,6 +321,15 @@ function WaitingRoomPage() {
           aria-hidden
         />
       )}
+
+      <DevMockControlPanel
+        roomId={currentRoomId}
+        currentUserId={session.userId}
+        onApplySnapshot={applyRoomSnapshot}
+        onError={(message) => {
+          toast.error(message)
+        }}
+      />
 
       {dmTargetUser ? (
         <DirectMessagePanel

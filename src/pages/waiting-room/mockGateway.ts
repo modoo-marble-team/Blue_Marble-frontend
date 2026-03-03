@@ -17,10 +17,12 @@ const MOCK_NETWORK_DELAY_MS = 220
 const DEFAULT_ROOM_PASSWORD = '1234'
 const GAME_START_BALANCE = 1_000_000_000
 const GAME_PLAYER_COLORS = ['#FF6B6B', '#4F86F7', '#F8B500', '#2CCF9A']
+const DEV_BOT_NICKNAME_PREFIX = '테스터봇'
 const ROOM_PRIVATE_PASSWORDS: Record<string, string> = {
   'room-2': DEFAULT_ROOM_PASSWORD,
   'room-7': DEFAULT_ROOM_PASSWORD,
 }
+let devBotSequence = 1
 
 // 목 저장소 내부 플레이어 타입
 interface MockRoomPlayer {
@@ -88,6 +90,19 @@ function createRoomPlayers(roomId: string, count: number): MockRoomPlayer[] {
       is_host: index === 0,
     }
   })
+}
+
+// 대기방 제어 패널에서 사용할 가짜 참가자 정보를 생성
+function createDevBotPlayer(roomId: string): MockRoomPlayer {
+  const botNumber = devBotSequence
+  devBotSequence += 1
+
+  return {
+    id: `${roomId}-bot-${botNumber}`,
+    nickname: `${DEV_BOT_NICKNAME_PREFIX}${botNumber}`,
+    is_ready: false,
+    is_host: false,
+  }
 }
 
 // 초기 채팅은 빈 배열로 시작
@@ -654,4 +669,128 @@ export function getMockLobbyRooms(): LobbyRoom[] {
       maxPlayers: room.max_players,
       isPrivate: room.is_private,
     }))
+}
+
+// DEV 목 제어: 방 현재 스냅샷을 그대로 반환
+export function mockDevGetWaitingRoomSnapshot(roomId: string) {
+  const room = findRoomOrThrow(roomId)
+  return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어: non-host 가짜 참가자 1명을 추가
+export function mockDevAddWaitingRoomParticipant(roomId: string) {
+  const room = findRoomOrThrow(roomId)
+
+  // 게임 중인 방에는 DEV 참가자 추가를 막음
+  if (room.status === 'playing') {
+    throw new WaitingRoomMockError(
+      409,
+      '게임 중에는 참가자를 추가할 수 없습니다.',
+      {
+        code: 'ROOM_ALREADY_PLAYING',
+        detail: '게임 중에는 참가자를 추가할 수 없습니다.',
+      }
+    )
+  }
+
+  // 정원 초과를 방지
+  if (room.players.length >= room.max_players) {
+    throw new WaitingRoomMockError(409, '방 인원이 가득 찼습니다.', {
+      code: 'ROOM_FULL',
+      detail: '방 인원이 가득 찼습니다.',
+    })
+  }
+
+  room.players.push(createDevBotPlayer(room.id))
+  emitLobbyUpdated(room, 'status_changed')
+
+  return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어: 마지막 non-host 참가자 1명을 제거
+export function mockDevRemoveWaitingRoomParticipant(
+  roomId: string,
+  excludeUserId?: string
+) {
+  const room = findRoomOrThrow(roomId)
+  const indexedPlayers = room.players.map((player, index) => ({
+    player,
+    index,
+  }))
+
+  // 현재 사용자 제외, non-host 봇을 우선 제거
+  const removableBots = indexedPlayers.filter(({ player }) => {
+    return (
+      !player.is_host &&
+      player.id !== excludeUserId &&
+      player.id.startsWith(`${room.id}-bot-`)
+    )
+  })
+  const removableBotIndex =
+    removableBots.length > 0
+      ? removableBots[removableBots.length - 1].index
+      : undefined
+
+  // 봇이 없으면 현재 사용자 제외 non-host를 제거
+  const removablePlayers =
+    removableBotIndex === undefined
+      ? indexedPlayers.filter(({ player }) => {
+          return !player.is_host && player.id !== excludeUserId
+        })
+      : []
+  const removablePlayerIndex =
+    removableBotIndex ??
+    (removablePlayers.length > 0
+      ? removablePlayers[removablePlayers.length - 1].index
+      : undefined)
+
+  // 제거 가능한 참가자가 없으면 종료
+  if (removablePlayerIndex === undefined) {
+    throw new WaitingRoomMockError(400, '제거할 참가자가 없습니다.', {
+      code: 'PLAYER_NOT_IN_ROOM',
+      detail: '제거할 참가자가 없습니다.',
+    })
+  }
+
+  room.players.splice(removablePlayerIndex, 1)
+  emitLobbyUpdated(room, 'status_changed')
+
+  return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어: 방장 제외 전원의 준비 상태를 일괄로 변경
+export function mockDevSetAllNonHostReady(roomId: string, isReady: boolean) {
+  const room = findRoomOrThrow(roomId)
+  const nonHostPlayers = room.players.filter((player) => !player.is_host)
+
+  nonHostPlayers.forEach((player) => {
+    const hasChanged = player.is_ready !== isReady
+    player.is_ready = isReady
+
+    // 바뀐 사용자만 준비 상태 이벤트를 발행
+    if (hasChanged) {
+      const payload: PlayerReadyEventPayload = {
+        player_id: player.id,
+        is_ready: player.is_ready,
+        all_ready: isAllReady(room),
+      }
+      emitSocketEvent<PlayerReadyEventPayload>('player_ready', payload)
+    }
+  })
+
+  return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어: 게임 시작 조건(최소 2명 + non-host 전원 준비)을 즉시 만족
+export function mockDevSeedStartCondition(roomId: string) {
+  const room = findRoomOrThrow(roomId)
+
+  // 플레이어가 1명뿐이면 bot을 1명 추가해 시작 최소 인원을 만족
+  while (room.players.length < 2 && room.players.length < room.max_players) {
+    room.players.push(createDevBotPlayer(room.id))
+  }
+
+  const snapshot = mockDevSetAllNonHostReady(roomId, true)
+  emitLobbyUpdated(room, 'status_changed')
+  return snapshot
 }
