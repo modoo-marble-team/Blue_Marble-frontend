@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { AuthSession } from '../../features/auth/types'
 import type {
   GameStartEventPayload,
@@ -128,6 +128,14 @@ export function useWaitingRoomController({
     return buildWaitingRoomSeats(room, session?.userId ?? '')
   }, [room, session])
 
+  // DEV 목 제어 패널에서 받은 스냅샷을 화면 상태에 반영
+  const applyRoomSnapshot = useCallback((snapshot: WaitingRoomSnapshot) => {
+    setRoom(snapshot)
+    setChatMessages(snapshot.chatMessages)
+    setRoomErrorMessage(null)
+    setIsRoomLoading(false)
+  }, [])
+
   return {
     room,
     seats,
@@ -145,5 +153,6 @@ export function useWaitingRoomController({
     handleToggleReady,
     handleStartGame,
     leaveRoom,
+    applyRoomSnapshot,
   }
 }
