@@ -535,10 +535,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function advanceTurn(onDone?: () => void) {
-      let next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
+      const playerCount = playersRef.current.length || INIT_PLAYERS.length
+      let next = (curPlayerRef.current + 1) % playerCount
       let tries = 0
-      while (bankruptSetRef.current.has(next) && tries < INIT_PLAYERS.length) {
-        next = (next + 1) % INIT_PLAYERS.length
+      while (bankruptSetRef.current.has(next) && tries < playerCount) {
+        next = (next + 1) % playerCount
         tries++
       }
       curPlayerRef.current = next
