@@ -43,8 +43,8 @@ export const mockTiles: Tile[] = [
     price: 60,
     color: '#42A5F5',
   },
-  { index: 7, name: '\uC774\uBCA4\uD2B8', type: 'card', building: 0 },
-  { index: 8, name: '\uBB34\uC778\uB3C4', type: 'jail', building: 0 },
+  { index: 7, name: '\uC774\uBCA4\uD2B8', type: 'event', building: 0 },
+  { index: 8, name: '\uBB34\uC778\uB3C4', type: 'island', building: 0 },
   {
     index: 9,
     name: '\uC548\uC591',
@@ -94,7 +94,7 @@ export const mockTiles: Tile[] = [
     price: 60,
     color: '#EF5350',
   },
-  { index: 16, name: '\uAD6D\uB0B4\uC5EC\uD589', type: 'airport', building: 0 },
+  { index: 16, name: '\uAD6D\uB0B4\uC5EC\uD589', type: 'travel', building: 0 },
   {
     index: 17,
     name: '\uC81C\uC8FC',
@@ -119,7 +119,7 @@ export const mockTiles: Tile[] = [
     price: 60,
     color: '#66BB6A',
   },
-  { index: 20, name: 'AI', type: 'park', building: 0 },
+  { index: 20, name: 'AI', type: 'ai', building: 0 },
   {
     index: 21,
     name: '\uCD98\uCC9C',
@@ -147,7 +147,7 @@ export const mockTiles: Tile[] = [
   {
     index: 24,
     name: '\uBB34\uC778\uB3C4 \uC774\uB3D9',
-    type: 'penalty',
+    type: 'go_to_island',
     building: 0,
   },
   {
@@ -183,7 +183,7 @@ export const mockTiles: Tile[] = [
     price: 60,
     color: '#7E57C2',
   },
-  { index: 30, name: '\uC774\uBCA4\uD2B8', type: 'card', building: 0 },
+  { index: 30, name: '\uC774\uBCA4\uD2B8', type: 'event', building: 0 },
   {
     index: 31,
     name: '\uC11C\uC6B8',
@@ -196,8 +196,8 @@ export const mockTiles: Tile[] = [
 
 export const mockPlayers: Player[] = [
   {
-    id: 'me',
-    nickname: 'GoormEE',
+    id: 'mock-player-1',
+    nickname: '\uD50C\uB808\uC774\uC5B4 1',
     balance: 2000,
     position: 0,
     owned_tiles: [],
@@ -209,7 +209,7 @@ export const mockPlayers: Player[] = [
   },
   {
     id: 'player2',
-    nickname: 'MarbleKing',
+    nickname: '\uD50C\uB808\uC774\uC5B4 2',
     balance: 1800,
     position: 0,
     owned_tiles: [],
@@ -221,7 +221,7 @@ export const mockPlayers: Player[] = [
   },
   {
     id: 'player3',
-    nickname: 'Player 3',
+    nickname: '\uD50C\uB808\uC774\uC5B4 3',
     balance: 1500,
     position: 0,
     owned_tiles: [],
@@ -233,7 +233,7 @@ export const mockPlayers: Player[] = [
   },
   {
     id: 'player4',
-    nickname: 'Player 4',
+    nickname: '\uD50C\uB808\uC774\uC5B4 4',
     balance: 1400,
     position: 0,
     owned_tiles: [],
@@ -249,15 +249,15 @@ export const mockMessages: ChatMessage[] = [
   {
     id: '1',
     sender_id: 'player2',
-    sender_nickname: 'MarbleKing',
+    sender_nickname: '\uD50C\uB808\uC774\uC5B4 2',
     content: '\uC990\uAC9C\uD574\uC694~',
     timestamp: new Date().toISOString(),
     type: 'talk',
   },
   {
     id: '2',
-    sender_id: 'me',
-    sender_nickname: '\uD50C\uB808\uC774\uC5B4',
+    sender_id: 'mock-player-1',
+    sender_nickname: '\uD50C\uB808\uC774\uC5B4 1',
     content: '\uBAA8\uB450\uC758 \uB9C8\uBE14 \uD55C\uD310!',
     timestamp: new Date().toISOString(),
     type: 'talk',

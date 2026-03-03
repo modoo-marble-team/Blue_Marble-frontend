@@ -1,4 +1,10 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import {
+  useRef,
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from 'react'
 import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
@@ -163,8 +169,14 @@ interface GameBoardProps {
   roomId?: string | null
   players: PlayerState[]
   curPlayer: number
+  tiles?: Array<{
+    index: number
+    owner_id?: string | number | null
+    building: number
+  }>
   onPlayersChange: (players: PlayerState[]) => void
   onCurPlayerChange: (idx: number) => void
+  onTileOwnersChange?: (tileOwners: Record<number, TileOwner>) => void
   onBankrupt?: (playerIdx: number) => void
 }
 
@@ -232,8 +244,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       roomId = null,
       players,
       curPlayer,
+      tiles = [],
       onPlayersChange,
       onCurPlayerChange,
+      onTileOwnersChange,
       onBankrupt,
     },
     ref
@@ -252,6 +266,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const bankruptSetRef = useRef<Set<number>>(new Set())
     const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
     const tileOwnersRef = useRef<Record<number, TileOwner>>({})
+
+    useEffect(() => {
+      if (tiles.length === 0) {
+        tileOwnersRef.current = {}
+        setTileOwners({})
+        return
+      }
+
+      const nextOwners: Record<number, TileOwner> = {}
+
+      tiles.forEach((tile) => {
+        if (!tile.owner_id) {
+          return
+        }
+
+        const ownerPlayer = playersRef.current.find(
+          (player) => String(player.id) === String(tile.owner_id)
+        )
+
+        if (!ownerPlayer) {
+          return
+        }
+
+        nextOwners[tile.index] = {
+          ownerId: ownerPlayer.id,
+          ownerColor: ownerPlayer.color,
+          level: toBoardBuildingLevel(tile, true),
+        }
+      })
+
+      tileOwnersRef.current = nextOwners
+      setTileOwners(nextOwners)
+    }, [tiles])
 
     function getPlayerIdByIndex(playerIdx: number) {
       return playersRef.current[playerIdx]?.id ?? playerIdx
@@ -376,9 +423,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
         })
 
-        const merged = { ...tileOwnersRef.current, ...nextOwners }
-        tileOwnersRef.current = merged
-        setTileOwners(merged)
+        tileOwnersRef.current = nextOwners
+        setTileOwners(nextOwners)
+        onTileOwnersChange?.(nextOwners)
       }
 
       const nextTurnRaw = payload.current_turn ?? payload.currentTurn
@@ -432,6 +479,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setTileOwners((prev) => {
         const next = updater(prev)
         tileOwnersRef.current = next
+        onTileOwnersChange?.(next)
         return next
       })
     }
@@ -487,23 +535,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function advanceTurn(onDone?: () => void) {
-      let next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
+      const playerCount = playersRef.current.length || INIT_PLAYERS.length
+      let next = (curPlayerRef.current + 1) % playerCount
       let tries = 0
-
-      // 파산한 플레이어 건너뛰기
-      while (bankruptSetRef.current.has(next) && tries < INIT_PLAYERS.length) {
-        next = (next + 1) % INIT_PLAYERS.length
+      while (bankruptSetRef.current.has(next) && tries < playerCount) {
+        next = (next + 1) % playerCount
         tries++
       }
 
-      // 턴 스킵 처리 (남은 스킵 턴이 있으면 차감하고 다시 건너뛰기)
+      // 턴 스킵 처리 (남은 스킵 턴이 있으면 차감하고 다시 건너뛴다)
       const nextPlayer = playersRef.current[next]
       if (
         nextPlayer &&
         (nextPlayer.skipTurns ?? 0) > 0 &&
-        tries < INIT_PLAYERS.length
+        tries < playerCount
       ) {
-        // 스킵 턴 1회 차감 반영
+        // 스킵 턴 1회를 차감해 반영한다
         const updatedPlayers = [...playersRef.current]
         updatedPlayers[next] = {
           ...nextPlayer,
@@ -512,7 +559,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         playersRef.current = updatedPlayers
         onPlayersChange(updatedPlayers)
 
-        // 스킵된 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 후 바로 다시 턴 넘김
+        // 스킵 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 뒤 다시 턴을 넘긴다
         curPlayerRef.current = next
         onCurPlayerChange(next)
 
@@ -583,16 +630,18 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
+
             let newPos = (p.pos + total) % TILES.length
             let newSkipTurns = p.skipTurns ?? 0
-            // 탈출칸 이동 처리
+
             if (TILES[newPos].type === 'go_to_island') {
               newPos = 8
-              newSkipTurns += 1 // 무인도로 이동 시 1턴 휴식
+              newSkipTurns += 1
               setStatus(`${p.name} 무인도로 이동! (1턴 휴식)`)
             } else {
               setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
             }
+
             return { ...p, pos: newPos, skipTurns: newSkipTurns }
           })
           playersRef.current = movedPlayers
@@ -839,8 +888,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     function handleCardConfirm() {
       const { onDoneCallback, variant } = cardModal
 
-      // 찬스 카드(무인도 등)에서 주사위 1턴 쉬기로 정해졌을 때의 예시 처리
-      // 실제 게임에서는 서버에서 주는 이벤트 결과에 따라 달라지지만 프론트 단 처리 확인용
+      // 찬스 카드에서 주사위 1턴 쉬기 결과가 나왔을 때의 프런트 처리
+      // 실서버 연동 전까지는 서버 이벤트 대신 화면 동작만 확인한다
       if (variant === 'chance') {
         const active = curPlayerRef.current
         const activePlayer = playersRef.current[active]

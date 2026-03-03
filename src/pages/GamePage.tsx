@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
@@ -12,6 +12,7 @@ import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useTurn } from '../hooks/game/useTurn'
 import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
+import type { BuildingLevel } from '../types/domain'
 
 const USE_GAME_SOCKET_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
@@ -19,14 +20,29 @@ const USE_GAME_SOCKET_MOCK =
 const GAME_CHAT_TITLE = '\uC2E4\uC2DC\uAC04 \uCC44\uD305'
 const GAME_START_NOTICE =
   '\uAC8C\uC784 \uC2DC\uC791! \uC21C\uC11C\uB97C \uC815\uD588\uC2B5\uB2C8\uB2E4.'
-const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4'
+const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
+const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4 1'
 const DEFAULT_GUEST_ID = 'guest-local'
+const MOCK_LOCAL_PLAYER_INDEX = 0
+
+const toStoreBuildingLevel = (level: number): BuildingLevel =>
+  Math.min(Math.max(level, 0), 5) as BuildingLevel
 
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const session = useAuthStore((state) => state.session)
-  const { currentTurn, messages, addMessage, turnTimeoutSec, turnTimerKey } =
-    useGameStore()
+  const {
+    currentTurn,
+    messages,
+    addMessage,
+    turnTimeoutSec,
+    turnTimerKey,
+    players: storePlayers,
+    tiles: storeTiles,
+    setGameState,
+    setCurrentTurn,
+    updatePlayer,
+  } = useGameStore()
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
     resetSignal: turnTimerKey,
@@ -38,17 +54,24 @@ const GamePage: React.FC = () => {
 
   useGameState(roomId ?? null)
 
-  const currentUserId = session?.userId ?? (USE_GAME_SOCKET_MOCK ? 'me' : null)
+  const currentUserId =
+    session?.userId ?? (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_PLAYER_ID : null)
   const currentNickname =
     session?.nickname ??
     (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_NICKNAME : 'Guest')
   const normalizedCurrentTurn =
-    USE_GAME_SOCKET_MOCK && currentTurn === 'me' && currentUserId
+    USE_GAME_SOCKET_MOCK &&
+    (currentTurn === 'me' || currentTurn === DEFAULT_MOCK_PLAYER_ID) &&
+    currentUserId
       ? currentUserId
       : currentTurn
 
   const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
-  const isMyTurn = normalizedCurrentTurn === null ? true : isMyTurnFromStore
+  const isMyTurn = USE_GAME_SOCKET_MOCK
+    ? boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
+    : normalizedCurrentTurn === null
+      ? true
+      : isMyTurnFromStore
 
   const handleSendMessage = (content: string) => {
     addMessage({
@@ -65,15 +88,163 @@ const GamePage: React.FC = () => {
 
   const handlePlayersChange = (updated: PlayerState[]) => {
     setBoardPlayers(updated)
+
+    if (!USE_GAME_SOCKET_MOCK || storePlayers.length === 0) {
+      return
+    }
+
+    setGameState({
+      players: updated.map((player, index) => {
+        const storePlayer = storePlayers[index]
+
+        return {
+          id: storePlayer?.id ?? String(player.id),
+          nickname: player.name,
+          position: player.pos,
+          balance: player.money,
+          owned_tiles: storePlayer?.owned_tiles ?? [],
+          is_in_jail: storePlayer?.is_in_jail ?? false,
+          jail_turn_count: storePlayer?.jail_turn_count ?? 0,
+          is_bankrupt: storePlayer?.is_bankrupt ?? false,
+          color: player.color,
+          avatar: storePlayer?.avatar,
+        }
+      }),
+    })
   }
 
   const handleCurPlayerChange = (idx: number) => {
     setBoardCurPlayer(idx)
+
+    if (!USE_GAME_SOCKET_MOCK) {
+      return
+    }
+
+    const nextTurnPlayer = storePlayers[idx]
+    if (nextTurnPlayer) {
+      setCurrentTurn(nextTurnPlayer.id)
+    }
   }
 
-  const handleBankrupt = () => {
-    // Add store update here if needed
+  const handleBankrupt = (playerIdx: number) => {
+    if (!USE_GAME_SOCKET_MOCK) {
+      return
+    }
+
+    const bankruptPlayer = storePlayers[playerIdx]
+    if (!bankruptPlayer) {
+      return
+    }
+
+    updatePlayer(bankruptPlayer.id, { is_bankrupt: true })
   }
+
+  const handleTileOwnersChange = (
+    nextTileOwners: Record<
+      number,
+      {
+        ownerId: number
+        level: number
+      }
+    >
+  ) => {
+    if (!USE_GAME_SOCKET_MOCK || storeTiles.length === 0) {
+      return
+    }
+
+    setGameState({
+      tiles: storeTiles.map((tile) => {
+        const owner = nextTileOwners[tile.index]
+        if (!owner) {
+          return {
+            ...tile,
+            owner_id: null,
+            building: 0 as BuildingLevel,
+          }
+        }
+
+        const ownerBoardIndex = boardPlayers.findIndex(
+          (player) => player.id === owner.ownerId
+        )
+        const ownerPlayer =
+          (ownerBoardIndex >= 0 ? storePlayers[ownerBoardIndex] : undefined) ??
+          storePlayers.find(
+            (player) => String(player.id) === String(owner.ownerId)
+          )
+
+        return {
+          ...tile,
+          owner_id: ownerPlayer?.id ?? String(owner.ownerId),
+          building: toStoreBuildingLevel(owner.level - 1),
+        }
+      }),
+    })
+  }
+
+  const normalizedTilesForBoard = useMemo(() => {
+    if (storeTiles.length === 0) {
+      return storeTiles
+    }
+
+    return storeTiles.map((tile) => {
+      if (!tile.owner_id) {
+        return tile
+      }
+
+      const ownerStoreIndex = storePlayers.findIndex(
+        (player) => String(player.id) === String(tile.owner_id)
+      )
+
+      if (ownerStoreIndex < 0) {
+        return tile
+      }
+
+      const boardOwner = boardPlayers[ownerStoreIndex]
+      if (!boardOwner) {
+        return tile
+      }
+
+      return {
+        ...tile,
+        owner_id: boardOwner.id,
+      }
+    })
+  }, [boardPlayers, storePlayers, storeTiles])
+
+  useEffect(() => {
+    if (storePlayers.length === 0) {
+      return
+    }
+
+    const nextBoardPlayers = INIT_PLAYERS.map((initialPlayer, index) => {
+      const storePlayer = storePlayers[index]
+      if (!storePlayer) {
+        return initialPlayer
+      }
+
+      return {
+        ...initialPlayer,
+        name: storePlayer.nickname || initialPlayer.name,
+        color: storePlayer.color || initialPlayer.color,
+        pos: storePlayer.position,
+        money: storePlayer.balance,
+      }
+    })
+
+    setBoardPlayers(nextBoardPlayers)
+
+    if (!normalizedCurrentTurn) {
+      return
+    }
+
+    const nextTurnIndex = storePlayers.findIndex(
+      (player) => player.id === normalizedCurrentTurn
+    )
+
+    if (nextTurnIndex >= 0) {
+      setBoardCurPlayer(nextTurnIndex)
+    }
+  }, [normalizedCurrentTurn, storePlayers])
 
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
@@ -112,8 +283,10 @@ const GamePage: React.FC = () => {
               roomId={roomId ?? ''}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
+              tiles={normalizedTilesForBoard}
               onPlayersChange={handlePlayersChange}
               onCurPlayerChange={handleCurPlayerChange}
+              onTileOwnersChange={handleTileOwnersChange}
               onBankrupt={handleBankrupt}
             />
           </div>

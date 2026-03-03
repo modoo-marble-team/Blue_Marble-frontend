@@ -3,9 +3,10 @@ import { socket } from '../../lib/socket'
 import { BuildingLevel, Player, Tile } from '../../types/domain'
 import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
-const MOCK_PLAYER_ID = 'me'
+const MOCK_PLAYER_ID = 'mock-player-1'
 const MOCK_BUILD_COST = 30
 const MOCK_PASS_GO_SALARY = 200
+const MOCK_TURN_TIMEOUT_SEC = 30
 
 type DiceRequestBody = {
   player_id: string
@@ -71,7 +72,15 @@ const emitGameState = () => {
     tiles: structuredClone(mockGameState.tiles),
     current_turn: mockGameState.currentTurn,
     round: mockGameState.round,
-    timeout_sec: 30,
+    timeout_sec: MOCK_TURN_TIMEOUT_SEC,
+  })
+}
+
+const emitTurnStart = () => {
+  emitSocketEvent('turn_start', {
+    player_id: mockGameState.currentTurn,
+    round: mockGameState.round,
+    timeout_sec: MOCK_TURN_TIMEOUT_SEC,
   })
 }
 
@@ -113,6 +122,36 @@ const getSellRefund = (tile: Tile, requestedLevel?: number) => {
   }
 }
 
+const getNextActivePlayerId = (currentPlayerId: string) => {
+  const currentIndex = mockGameState.players.findIndex(
+    (player) => player.id === currentPlayerId
+  )
+
+  if (currentIndex < 0) {
+    return currentPlayerId
+  }
+
+  for (let step = 1; step <= mockGameState.players.length; step++) {
+    const nextPlayer =
+      mockGameState.players[
+        (currentIndex + step) % mockGameState.players.length
+      ]
+
+    if (!nextPlayer.is_bankrupt) {
+      return nextPlayer.id
+    }
+  }
+
+  return currentPlayerId
+}
+
+const advanceMockTurn = () => {
+  mockGameState.currentTurn = getNextActivePlayerId(mockGameState.currentTurn)
+}
+
+const buildErrorResponse = (message: string, status: number) =>
+  HttpResponse.json({ message }, { status })
+
 export const gameHandlers = [
   http.post('/api/game/:roomId/roll-dice', async ({ request }) => {
     const { player_id } = (await request.json()) as DiceRequestBody
@@ -153,6 +192,7 @@ export const gameHandlers = [
           pass_go: passGo,
           pass_go_salary: MOCK_PASS_GO_SALARY,
         })
+        emitGameState()
       }, 800)
     }, 100)
 
@@ -178,24 +218,24 @@ export const gameHandlers = [
     const tile = getTileByIndex(tile_index)
 
     if (!player || !tile || tile.type !== 'property') {
-      return HttpResponse.json(
-        { message: '구매할 수 없는 타일입니다.' },
-        { status: 404 }
+      return buildErrorResponse(
+        '\uAD6C\uB9E4\uD560 \uC218 \uC5C6\uB294 \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
+        404
       )
     }
 
     if (tile.owner_id) {
-      return HttpResponse.json(
-        { message: '이미 소유된 타일입니다.' },
-        { status: 409 }
+      return buildErrorResponse(
+        '\uC774\uBBF8 \uC18C\uC720\uB41C \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
+        409
       )
     }
 
     const price = tile.price ?? 0
     if (player.balance < price) {
-      return HttpResponse.json(
-        { message: '보유 금액이 부족합니다.' },
-        { status: 409 }
+      return buildErrorResponse(
+        '\uBCF4\uC720 \uAE08\uC561\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4.',
+        409
       )
     }
 
@@ -203,6 +243,7 @@ export const gameHandlers = [
     tile.owner_id = player.id
     tile.building = 0
     ensureOwnedTiles(player, tile_index)
+    advanceMockTurn()
 
     setTimeout(() => {
       emitSocketEvent('tile_purchased', {
@@ -212,6 +253,7 @@ export const gameHandlers = [
         price,
       })
       emitGameState()
+      emitTurnStart()
     }, 0)
 
     await delay(150)
@@ -228,38 +270,40 @@ export const gameHandlers = [
     const tile = getTileByIndex(tile_index)
 
     if (!player || !tile || tile.type !== 'property') {
-      return HttpResponse.json(
-        { message: '건설할 수 없는 타일입니다.' },
-        { status: 404 }
+      return buildErrorResponse(
+        '\uAC74\uC124\uD560 \uC218 \uC5C6\uB294 \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
+        404
       )
     }
 
     if (tile.owner_id !== player.id) {
-      return HttpResponse.json(
-        { message: '본인 소유 타일만 건설할 수 있습니다.' },
-        { status: 403 }
+      return buildErrorResponse(
+        '\uBCF8\uC778 \uC18C\uC720 \uD0C0\uC77C\uB9CC \uAC74\uC124\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+        403
       )
     }
 
     if (tile.building >= 5) {
-      return HttpResponse.json(
-        { message: '최대 단계까지 건설되었습니다.' },
-        { status: 409 }
+      return buildErrorResponse(
+        '\uCD5C\uB300 \uB2E8\uACC4\uAE4C\uC9C0 \uAC74\uC124\uD588\uC2B5\uB2C8\uB2E4.',
+        409
       )
     }
 
     if (player.balance < MOCK_BUILD_COST) {
-      return HttpResponse.json(
-        { message: '건설 비용이 부족합니다.' },
-        { status: 409 }
+      return buildErrorResponse(
+        '\uAC74\uC124 \uBE44\uC6A9\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4.',
+        409
       )
     }
 
     player.balance -= MOCK_BUILD_COST
     tile.building = (tile.building + 1) as BuildingLevel
+    advanceMockTurn()
 
     setTimeout(() => {
       emitGameState()
+      emitTurnStart()
     }, 0)
 
     await delay(150)
@@ -278,16 +322,16 @@ export const gameHandlers = [
     const tile = getTileByIndex(tile_index)
 
     if (!player || !tile || tile.type !== 'property') {
-      return HttpResponse.json(
-        { message: '매각할 수 없는 타일입니다.' },
-        { status: 404 }
+      return buildErrorResponse(
+        '\uB9E4\uAC01\uD560 \uC218 \uC5C6\uB294 \uD0C0\uC77C\uC785\uB2C8\uB2E4.',
+        404
       )
     }
 
     if (tile.owner_id !== player.id) {
-      return HttpResponse.json(
-        { message: '본인 소유 타일만 매각할 수 있습니다.' },
-        { status: 403 }
+      return buildErrorResponse(
+        '\uBCF8\uC778 \uC18C\uC720 \uD0C0\uC77C\uB9CC \uB9E4\uAC01\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+        403
       )
     }
 

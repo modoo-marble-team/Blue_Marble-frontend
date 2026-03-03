@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { gameApi } from '../../services/game/game.api'
 import { setupGameHandlers } from '../../services/socket/game.handler'
@@ -9,6 +9,7 @@ const USE_GAME_SOCKET_MOCK =
 
 export const useGameState = (roomId: string | null) => {
   const { setGameState, players } = useGameStore()
+  const syncedRoomIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!roomId) {
@@ -17,8 +18,7 @@ export const useGameState = (roomId: string | null) => {
 
     const teardownHandlers = setupGameHandlers()
 
-    // In mock mode, explicitly stop the shared socket so reconnect loops
-    // from previous pages do not keep hitting the real backend endpoint.
+    // mock 환경에서는 공유 소켓이 불필요하게 재연결되지 않도록 차단한다.
     if (USE_GAME_SOCKET_MOCK) {
       socket.disconnect()
     } else if (!socket.connected) {
@@ -26,11 +26,13 @@ export const useGameState = (roomId: string | null) => {
     }
 
     const fetchGameState = async () => {
-      // 스토어가 비어 있을 때만 초기 상태를 1회 동기화
-      if (players.length > 0) return
+      const roomChanged = syncedRoomIdRef.current !== roomId
+
+      // 같은 방에서 이미 상태를 들고 있으면 초기 조회를 반복하지 않는다.
+      if (!roomChanged && players.length > 0) return
 
       const result = await gameApi.getState(roomId, {
-        reset: USE_GAME_SOCKET_MOCK,
+        reset: USE_GAME_SOCKET_MOCK && roomChanged,
       })
       if (!result.ok) return
 
@@ -53,6 +55,7 @@ export const useGameState = (roomId: string | null) => {
         round: payload.round ?? 1,
         turnTimeoutSec: payload.timeout_sec ?? payload.timeoutSec ?? 30,
       })
+      syncedRoomIdRef.current = roomId
     }
 
     void fetchGameState()
