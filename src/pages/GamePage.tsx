@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
@@ -163,9 +163,14 @@ const GamePage: React.FC = () => {
           }
         }
 
-        const ownerPlayer = storePlayers.find(
-          (player) => String(player.id) === String(owner.ownerId)
+        const ownerBoardIndex = boardPlayers.findIndex(
+          (player) => player.id === owner.ownerId
         )
+        const ownerPlayer =
+          (ownerBoardIndex >= 0 ? storePlayers[ownerBoardIndex] : undefined) ??
+          storePlayers.find(
+            (player) => String(player.id) === String(owner.ownerId)
+          )
 
         return {
           ...tile,
@@ -175,6 +180,36 @@ const GamePage: React.FC = () => {
       }),
     })
   }
+
+  const normalizedTilesForBoard = useMemo(() => {
+    if (storeTiles.length === 0) {
+      return storeTiles
+    }
+
+    return storeTiles.map((tile) => {
+      if (!tile.owner_id) {
+        return tile
+      }
+
+      const ownerStoreIndex = storePlayers.findIndex(
+        (player) => String(player.id) === String(tile.owner_id)
+      )
+
+      if (ownerStoreIndex < 0) {
+        return tile
+      }
+
+      const boardOwner = boardPlayers[ownerStoreIndex]
+      if (!boardOwner) {
+        return tile
+      }
+
+      return {
+        ...tile,
+        owner_id: boardOwner.id,
+      }
+    })
+  }, [boardPlayers, storePlayers, storeTiles])
 
   useEffect(() => {
     if (storePlayers.length === 0) {
@@ -248,7 +283,7 @@ const GamePage: React.FC = () => {
               roomId={roomId ?? ''}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
-              tiles={storeTiles}
+              tiles={normalizedTilesForBoard}
               onPlayersChange={handlePlayersChange}
               onCurPlayerChange={handleCurPlayerChange}
               onTileOwnersChange={handleTileOwnersChange}

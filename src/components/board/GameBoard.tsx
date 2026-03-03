@@ -171,7 +171,7 @@ interface GameBoardProps {
   curPlayer: number
   tiles?: Array<{
     index: number
-    owner_id?: string | null
+    owner_id?: string | number | null
     building: number
   }>
   onPlayersChange: (players: PlayerState[]) => void
