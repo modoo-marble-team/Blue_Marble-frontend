@@ -204,7 +204,7 @@ export const mockPlayers: Player[] = [
     is_in_jail: false,
     jail_turn_count: 0,
     is_bankrupt: false,
-    color: '#ef4444',
+    color: '#EF5350',
     avatar: '\uD83D\uDD34',
   },
   {
@@ -216,7 +216,7 @@ export const mockPlayers: Player[] = [
     is_in_jail: false,
     jail_turn_count: 0,
     is_bankrupt: false,
-    color: '#3b82f6',
+    color: '#42A5F5',
     avatar: '\uD83D\uDD35',
   },
   {
@@ -228,7 +228,7 @@ export const mockPlayers: Player[] = [
     is_in_jail: false,
     jail_turn_count: 0,
     is_bankrupt: false,
-    color: '#22c55e',
+    color: '#66BB6A',
     avatar: '\uD83D\uDFE2',
   },
   {
@@ -240,7 +240,7 @@ export const mockPlayers: Player[] = [
     is_in_jail: false,
     jail_turn_count: 0,
     is_bankrupt: false,
-    color: '#eab308',
+    color: '#FFD15B',
     avatar: '\uD83D\uDFE1',
   },
 ]
