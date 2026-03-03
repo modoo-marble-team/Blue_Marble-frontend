@@ -196,8 +196,8 @@ export const mockTiles: Tile[] = [
 
 export const mockPlayers: Player[] = [
   {
-    id: 'me',
-    nickname: 'GoormEE',
+    id: 'mock-player-1',
+    nickname: '\uD50C\uB808\uC774\uC5B4 1',
     balance: 2000,
     position: 0,
     owned_tiles: [],
@@ -209,7 +209,7 @@ export const mockPlayers: Player[] = [
   },
   {
     id: 'player2',
-    nickname: 'MarbleKing',
+    nickname: '\uD50C\uB808\uC774\uC5B4 2',
     balance: 1800,
     position: 0,
     owned_tiles: [],
@@ -221,7 +221,7 @@ export const mockPlayers: Player[] = [
   },
   {
     id: 'player3',
-    nickname: 'Player 3',
+    nickname: '\uD50C\uB808\uC774\uC5B4 3',
     balance: 1500,
     position: 0,
     owned_tiles: [],
@@ -233,7 +233,7 @@ export const mockPlayers: Player[] = [
   },
   {
     id: 'player4',
-    nickname: 'Player 4',
+    nickname: '\uD50C\uB808\uC774\uC5B4 4',
     balance: 1400,
     position: 0,
     owned_tiles: [],
@@ -249,15 +249,15 @@ export const mockMessages: ChatMessage[] = [
   {
     id: '1',
     sender_id: 'player2',
-    sender_nickname: 'MarbleKing',
+    sender_nickname: '\uD50C\uB808\uC774\uC5B4 2',
     content: '\uC990\uAC9C\uD574\uC694~',
     timestamp: new Date().toISOString(),
     type: 'talk',
   },
   {
     id: '2',
-    sender_id: 'me',
-    sender_nickname: '\uD50C\uB808\uC774\uC5B4',
+    sender_id: 'mock-player-1',
+    sender_nickname: '\uD50C\uB808\uC774\uC5B4 1',
     content: '\uBAA8\uB450\uC758 \uB9C8\uBE14 \uD55C\uD310!',
     timestamp: new Date().toISOString(),
     type: 'talk',

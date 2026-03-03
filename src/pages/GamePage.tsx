@@ -19,7 +19,8 @@ const USE_GAME_SOCKET_MOCK =
 const GAME_CHAT_TITLE = '\uC2E4\uC2DC\uAC04 \uCC44\uD305'
 const GAME_START_NOTICE =
   '\uAC8C\uC784 \uC2DC\uC791! \uC21C\uC11C\uB97C \uC815\uD588\uC2B5\uB2C8\uB2E4.'
-const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4'
+const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
+const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
 
@@ -39,12 +40,15 @@ const GamePage: React.FC = () => {
 
   useGameState(roomId ?? null)
 
-  const currentUserId = session?.userId ?? (USE_GAME_SOCKET_MOCK ? 'me' : null)
+  const currentUserId =
+    session?.userId ?? (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_PLAYER_ID : null)
   const currentNickname =
     session?.nickname ??
     (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_NICKNAME : 'Guest')
   const normalizedCurrentTurn =
-    USE_GAME_SOCKET_MOCK && currentTurn === 'me' && currentUserId
+    USE_GAME_SOCKET_MOCK &&
+    (currentTurn === 'me' || currentTurn === DEFAULT_MOCK_PLAYER_ID) &&
+    currentUserId
       ? currentUserId
       : currentTurn
 

@@ -3,7 +3,7 @@ import { socket } from '../../lib/socket'
 import { BuildingLevel, Player, Tile } from '../../types/domain'
 import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
-const MOCK_PLAYER_ID = 'me'
+const MOCK_PLAYER_ID = 'mock-player-1'
 const MOCK_BUILD_COST = 30
 const MOCK_PASS_GO_SALARY = 200
 const MOCK_TURN_TIMEOUT_SEC = 30

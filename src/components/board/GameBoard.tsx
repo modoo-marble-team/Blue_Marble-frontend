@@ -554,14 +554,16 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
+
             let newPos = (p.pos + total) % TILES.length
-            // 탈출칸 이동 처리
+
             if (TILES[newPos].type === 'go_to_island') {
               newPos = 8
-              setStatus(`${p.name} 무인도로 이동!`)
+              setStatus(`${p.name} \uBB34\uC778\uB3C4\uB85C \uC774\uB3D9!`)
             } else {
-              setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
+              setStatus(`${p.name} -> ${TILES[newPos].name} (+${total}\uCE78)`)
             }
+
             return { ...p, pos: newPos }
           })
           playersRef.current = movedPlayers
