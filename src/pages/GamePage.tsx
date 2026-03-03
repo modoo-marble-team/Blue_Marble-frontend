@@ -30,6 +30,29 @@ const MOCK_LOCAL_PLAYER_INDEX = 0
 const toStoreBuildingLevel = (level: number): BuildingLevel =>
   Math.min(Math.max(level, 0), 5) as BuildingLevel
 
+const mapStorePlayersToBoardPlayers = (
+  storePlayers: Array<{
+    nickname: string
+    position: number
+    balance: number
+    color?: string
+  }>
+) =>
+  INIT_PLAYERS.map((initialPlayer, index) => {
+    const storePlayer = storePlayers[index]
+    if (!storePlayer) {
+      return initialPlayer
+    }
+
+    return {
+      ...initialPlayer,
+      name: storePlayer.nickname || initialPlayer.name,
+      color: storePlayer.color || initialPlayer.color,
+      pos: storePlayer.position,
+      money: storePlayer.balance,
+    }
+  })
+
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const session = useAuthStore((state) => state.session)
@@ -50,6 +73,7 @@ const GamePage: React.FC = () => {
     resetSignal: turnTimerKey,
   })
   const boardRef = useRef<BoardGameHandle>(null)
+  const hasHydratedMockBoardRef = useRef(false)
 
   const [boardPlayers, setBoardPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
   const [boardCurPlayer, setBoardCurPlayer] = useState(0)
@@ -214,26 +238,24 @@ const GamePage: React.FC = () => {
   }, [boardPlayers, storePlayers, storeTiles])
 
   useEffect(() => {
+    hasHydratedMockBoardRef.current = false
+  }, [roomId])
+
+  useEffect(() => {
     if (storePlayers.length === 0) {
       return
     }
 
-    const nextBoardPlayers = INIT_PLAYERS.map((initialPlayer, index) => {
-      const storePlayer = storePlayers[index]
-      if (!storePlayer) {
-        return initialPlayer
-      }
+    const shouldHydrateBoardPlayers =
+      !USE_GAME_SOCKET_MOCK || !hasHydratedMockBoardRef.current
 
-      return {
-        ...initialPlayer,
-        name: storePlayer.nickname || initialPlayer.name,
-        color: storePlayer.color || initialPlayer.color,
-        pos: storePlayer.position,
-        money: storePlayer.balance,
-      }
-    })
+    if (shouldHydrateBoardPlayers) {
+      setBoardPlayers(mapStorePlayersToBoardPlayers(storePlayers))
 
-    setBoardPlayers(nextBoardPlayers)
+      if (USE_GAME_SOCKET_MOCK) {
+        hasHydratedMockBoardRef.current = true
+      }
+    }
 
     if (!normalizedCurrentTurn) {
       return
