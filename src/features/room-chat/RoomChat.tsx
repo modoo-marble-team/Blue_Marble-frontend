@@ -2,7 +2,6 @@ import { useState } from 'react'
 import type { ChatMessage } from '../../types/domain'
 import { cn } from '../../lib/utils'
 
-// 공통 채팅 박스 렌더링 입력값 타입
 interface RoomChatProps {
   messages: ChatMessage[]
   onSendMessage: (content: string) => void
@@ -13,7 +12,6 @@ interface RoomChatProps {
   inputPlaceholder?: string
 }
 
-// 대기방/게임 공용 채팅 UI 렌더링
 export default function RoomChat({
   messages,
   onSendMessage,
@@ -25,12 +23,10 @@ export default function RoomChat({
 }: RoomChatProps) {
   const [input, setInput] = useState('')
 
-  // 채팅 입력 submit 처리
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const normalizedInput = input.trim()
 
-    // 공백 입력은 전송하지 않음
     if (!normalizedInput) {
       return
     }

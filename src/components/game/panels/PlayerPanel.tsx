@@ -13,7 +13,7 @@ interface Player {
 interface PlayerPanelProps {
   player: Player
   isActive: boolean
-  isRichest?: boolean // 보유금 1위일 때 왕관 표시
+  isRichest?: boolean
 }
 
 const PlayerPanel: React.FC<PlayerPanelProps> = ({
@@ -35,9 +35,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
       }}
       className="relative flex items-center gap-4 rounded-3xl px-5 py-4 shadow-sm"
     >
-      {/* ── 아바타 + 왕관 ── */}
       <div className="relative shrink-0">
-        {/* 왕관 — 보유금 1위 */}
         {isRichest && (
           <span
             style={{
@@ -64,7 +62,6 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
               className="h-full w-full object-cover"
             />
           ) : (
-            /* 구슬 느낌의 원형 그라데이션 */
             <div
               style={{
                 width: '100%',
@@ -77,9 +74,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
         </div>
       </div>
 
-      {/* ── 이름 + 보유금 ── */}
       <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
-        {/* 이름 행 */}
         <div className="flex items-center justify-between gap-2">
           <span
             className="truncate text-[16px] font-black"
@@ -87,7 +82,6 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
           >
             {player.nickname ?? player.name ?? `Player ${player.id}`}
           </span>
-          {/* TURN 뱃지 — 이름 옆에 배치해서 돈 가리지 않음 */}
           {isActive && (
             <span
               className="shrink-0 rounded-full px-3 py-0.5 text-[12px] font-black text-white"
@@ -98,7 +92,6 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
           )}
         </div>
 
-        {/* 보유금 행 */}
         <div className="flex items-center justify-between">
           <span className="text-[13px] text-[#8B9AB0]">보유금</span>
           <span className="text-[20px] font-black text-[#1F2A44]">
@@ -106,10 +99,9 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
           </span>
         </div>
 
-        {/* 총자산 행 */}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1 text-[12px] text-[#B0BBC8]">
-            <span>🏢</span>
+            <span>🏦</span>
             <span>총자산</span>
           </span>
           <span className="text-[13px] text-[#B0BBC8]">

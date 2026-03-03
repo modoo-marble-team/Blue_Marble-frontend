@@ -21,6 +21,7 @@ const GAME_START_NOTICE =
   '\uAC8C\uC784 \uC2DC\uC791! \uC21C\uC11C\uB97C \uC815\uD588\uC2B5\uB2C8\uB2E4.'
 const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4'
 const DEFAULT_GUEST_ID = 'guest-local'
+const MOCK_LOCAL_PLAYER_INDEX = 0
 
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
@@ -48,7 +49,11 @@ const GamePage: React.FC = () => {
       : currentTurn
 
   const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
-  const isMyTurn = normalizedCurrentTurn === null ? true : isMyTurnFromStore
+  const isMyTurn = USE_GAME_SOCKET_MOCK
+    ? boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
+    : normalizedCurrentTurn === null
+      ? true
+      : isMyTurnFromStore
 
   const handleSendMessage = (content: string) => {
     addMessage({

@@ -113,7 +113,7 @@ export const setupGameHandlers = (): Teardown => {
   }
 
   const handleDiceRolled = ({ player_id, dice }: DiceRolledPayload) => {
-    // 보드 애니메이션 연결 전까지는 수신만 보장한다.
+    // 보드 애니메이션과 연결되기 전까지는 수신 여부만 보장한다.
     void player_id
     void dice
   }

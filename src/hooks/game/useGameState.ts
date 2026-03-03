@@ -17,8 +17,7 @@ export const useGameState = (roomId: string | null) => {
 
     const teardownHandlers = setupGameHandlers()
 
-    // In mock mode, explicitly stop the shared socket so reconnect loops
-    // from previous pages do not keep hitting the real backend endpoint.
+    // Mock 환경에서는 공유 소켓을 끊어 실백엔드 재연결 루프를 막는다.
     if (USE_GAME_SOCKET_MOCK) {
       socket.disconnect()
     } else if (!socket.connected) {
