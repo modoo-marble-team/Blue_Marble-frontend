@@ -6,6 +6,8 @@ dist
 .vite
 coverage
 tsconfig.tsbuildinfo
+playwright-report
+test-results
 
 # Local env files
 .env
