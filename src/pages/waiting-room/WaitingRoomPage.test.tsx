@@ -1,4 +1,5 @@
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../features/auth/store'
@@ -37,6 +38,7 @@ const {
   useOnlineUsersSocketMock,
   useDirectMessageControllerMock,
   navigateMock,
+  toastErrorMock,
   waitingRoomControllerStateRef,
   gameStartHandlerRef,
 } = vi.hoisted(() => ({
@@ -44,11 +46,18 @@ const {
   useOnlineUsersSocketMock: vi.fn(),
   useDirectMessageControllerMock: vi.fn(),
   navigateMock: vi.fn(),
+  toastErrorMock: vi.fn(),
   waitingRoomControllerStateRef: {
     current: null as WaitingRoomControllerResult | null,
   },
   gameStartHandlerRef: {
     current: null as ((payload: GameStartEventPayload) => void) | null,
+  },
+}))
+
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: toastErrorMock,
   },
 }))
 
@@ -133,13 +142,19 @@ function createWaitingRoomControllerState(
 }
 
 // 라우트 파라미터가 포함된 대기방 페이지 렌더링 헬퍼
-function renderWaitingRoomPage() {
+function renderWaitingRoomPage({
+  routePath = '/rooms/:roomId',
+  initialEntries = ['/rooms/room-5'],
+}: {
+  routePath?: string
+  initialEntries?: string[]
+} = {}) {
   return renderWithProviders(
     <Routes>
-      <Route path="/rooms/:roomId" element={<WaitingRoomPage />} />
+      <Route path={routePath} element={<WaitingRoomPage />} />
     </Routes>,
     {
-      initialEntries: ['/rooms/room-5'],
+      initialEntries,
     }
   )
 }
@@ -236,6 +251,136 @@ describe('WaitingRoomPage interaction', () => {
         gameId: 'game-123',
         roomId: 'room-5',
       },
+    })
+  })
+
+  it('roomId가 없으면 로비로 리다이렉트한다', async () => {
+    renderWaitingRoomPage({
+      routePath: '/rooms',
+      initialEntries: ['/rooms'],
+    })
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/lobby', { replace: true })
+    })
+  })
+
+  it('세션이 없으면 홈으로 리다이렉트한다', async () => {
+    useAuthStore.setState({ session: null })
+
+    renderWaitingRoomPage()
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true })
+    })
+  })
+
+  it('닉네임 미설정 세션이면 닉네임 설정 페이지로 리다이렉트한다', async () => {
+    useAuthStore.setState({
+      session: createAuthSessionFixture({
+        userId: 'user-1',
+        nickname: '테스터',
+        needsNicknameSetup: true,
+      }),
+    })
+
+    renderWaitingRoomPage()
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/nickname-setup', {
+        replace: true,
+      })
+    })
+  })
+
+  it('대기방 오류 메시지가 있으면 토스트를 표시한다', async () => {
+    waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
+      roomErrorMessage: '대기방 정보를 불러오지 못했습니다.',
+    })
+
+    renderWaitingRoomPage()
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        '대기방 정보를 불러오지 못했습니다.'
+      )
+    })
+  })
+
+  it('헤더 뒤로가기 클릭 시 퇴장 성공이면 로비로 이동한다', async () => {
+    const user = userEvent.setup()
+    const leaveRoomMock = vi.fn(async () => ({ ok: true }))
+    waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
+      leaveRoom: leaveRoomMock,
+    })
+
+    renderWaitingRoomPage()
+    await user.click(screen.getByRole('button', { name: '로비로 이동' }))
+
+    await waitFor(() => {
+      expect(leaveRoomMock).toHaveBeenCalledTimes(1)
+      expect(navigateMock).toHaveBeenCalledWith('/lobby', { replace: true })
+    })
+  })
+
+  it('헤더 뒤로가기 클릭 시 퇴장 실패면 토스트를 표시한다', async () => {
+    const user = userEvent.setup()
+    const leaveRoomMock = vi.fn(async () => ({
+      ok: false,
+      message: '퇴장 실패',
+    }))
+    waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
+      leaveRoom: leaveRoomMock,
+    })
+
+    renderWaitingRoomPage()
+    await user.click(screen.getByRole('button', { name: '로비로 이동' }))
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('퇴장 실패')
+    })
+  })
+
+  it('non-host 준비 토글 실패 시 토스트를 표시한다', async () => {
+    const user = userEvent.setup()
+    const handleToggleReadyMock = vi.fn(async () => ({
+      ok: false,
+      message: '준비 실패',
+    }))
+    waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
+      isHost: false,
+      canToggleReady: true,
+      isReady: false,
+      handleToggleReady: handleToggleReadyMock,
+    })
+
+    renderWaitingRoomPage()
+    await user.click(screen.getByRole('button', { name: '준비하기' }))
+
+    await waitFor(() => {
+      expect(handleToggleReadyMock).toHaveBeenCalledTimes(1)
+      expect(toastErrorMock).toHaveBeenCalledWith('준비 실패')
+    })
+  })
+
+  it('host 시작 실패 시 토스트를 표시한다', async () => {
+    const user = userEvent.setup()
+    const handleStartGameMock = vi.fn(async () => ({
+      ok: false,
+      message: '시작 실패',
+    }))
+    waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
+      isHost: true,
+      canStartGame: true,
+      handleStartGame: handleStartGameMock,
+    })
+
+    renderWaitingRoomPage()
+    await user.click(screen.getByRole('button', { name: '시작' }))
+
+    await waitFor(() => {
+      expect(handleStartGameMock).toHaveBeenCalledTimes(1)
+      expect(toastErrorMock).toHaveBeenCalledWith('시작 실패')
     })
   })
 })
