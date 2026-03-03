@@ -34,6 +34,7 @@ export interface PlayerState {
   color: string
   pos: number
   money: number
+  skipTurns?: number
 }
 
 export const TILES: TileData[] = [
@@ -89,6 +90,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     color: PLAYER_COLORS[0],
     pos: 0,
     money: 1000000000,
+    skipTurns: 0,
   },
   {
     id: 1,
@@ -96,6 +98,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     color: PLAYER_COLORS[1],
     pos: 0,
     money: 1000000000,
+    skipTurns: 0,
   },
   {
     id: 2,
@@ -103,6 +106,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     color: PLAYER_COLORS[2],
     pos: 0,
     money: 1000000000,
+    skipTurns: 0,
   },
   {
     id: 3,
@@ -110,6 +114,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     color: PLAYER_COLORS[3],
     pos: 0,
     money: 1000000000,
+    skipTurns: 0,
   },
 ]
 
