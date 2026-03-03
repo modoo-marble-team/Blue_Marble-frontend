@@ -4,7 +4,6 @@ import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import RoomChat from '../features/room-chat/RoomChat'
 import RollButton from '../components/game/controls/RollButton'
-import DiceTimerModal from '../components/game/modals/DiceTimerModal'
 import { useAuthStore } from '../features/auth/store'
 import { useGameStore } from '../stores/game.store'
 import { useGameState } from '../hooks/game/useGameState'
@@ -25,7 +24,6 @@ const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
-const SHOW_DICE_TIMER_MODAL_PREVIEW = import.meta.env.DEV
 
 const toStoreBuildingLevel = (level: number): BuildingLevel =>
   Math.min(Math.max(level, 0), 5) as BuildingLevel
@@ -53,9 +51,6 @@ const GamePage: React.FC = () => {
 
   const [boardPlayers, setBoardPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
   const [boardCurPlayer, setBoardCurPlayer] = useState(0)
-  const [showDiceTimerPreview, setShowDiceTimerPreview] = useState(
-    SHOW_DICE_TIMER_MODAL_PREVIEW
-  )
 
   useGameState(roomId ?? null)
 
@@ -334,11 +329,6 @@ const GamePage: React.FC = () => {
           />
         )}
       </div>
-
-      <DiceTimerModal
-        open={showDiceTimerPreview}
-        onConfirm={() => setShowDiceTimerPreview(false)}
-      />
     </div>
   )
 }
