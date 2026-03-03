@@ -29,13 +29,23 @@ const PURCHASE_COST = 60
 const UPGRADE_COST = 30
 const TOLL_COST = 30
 
+const USE_GAME_SOCKET_MOCK =
+  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+
+const AI_PENALTY_RESULTS = [
+  '\uB2E4\uC74C \uD134 \uC2DC\uC791 \uC804\uAE4C\uC9C0 \uD1B5\uD589\uB8CC\uAC00 10M \uC99D\uAC00\uD569\uB2C8\uB2E4.',
+  '\uC989\uC2DC \uBCF4\uB108\uC2A4 30M\uB97C \uD68D\uB4DD\uD569\uB2C8\uB2E4.',
+  '\uB2E4\uC74C \uC774\uB3D9\uC5D0\uC11C \uCD94\uAC00\uB85C 2\uCE78 \uC804\uC9C4\uD569\uB2C8\uB2E4.',
+  '\uB2E4\uC74C \uD134 \uC8FC\uC0AC\uC704 \uACB0\uACFC\uC5D0\uC11C 1\uC744 \uCD94\uAC00\uB85C \uBC1B\uC2B5\uB2C8\uB2E4.',
+] as const
+
 const LEVEL_LABEL: Record<number, string> = {
-  0: '미구매',
-  1: '집 1채',
-  2: '집 2채',
-  3: '집 3채',
-  4: '호텔',
-  5: '랜드마크',
+  0: '\uBBF8\uAD6C\uB9E4',
+  1: '\uAC74\uBB3C 1\uB2E8\uACC4',
+  2: '\uAC74\uBB3C 2\uB2E8\uACC4',
+  3: '\uAC74\uBB3C 3\uB2E8\uACC4',
+  4: '\uD638\uD154',
+  5: '\uB79C\uB4DC\uB9C8\uD06C',
 }
 
 function getUpgradeStage(
@@ -201,7 +211,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
-    const [status, setStatus] = useState('게임 시작!')
+    const [status, setStatus] = useState('\\uAC8C\\uC784 \\uC2DC\\uC791!')
     const lock = useRef(false)
 
     const curPlayerRef = useRef(curPlayer)
@@ -336,7 +346,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
         })
 
-        // ✅ 로컬 상태와 merge — 서버 데이터로 완전히 덮어쓰지 않음
+        // ???棺??짆?쏆춾????ㅺ컼??? merge ????筌먦끉裕????Β?????ㅻ깹鸚???ш끽維????????? ???怨룹쓱
         const merged = { ...tileOwnersRef.current, ...nextOwners }
         tileOwnersRef.current = merged
         setTileOwners(merged)
@@ -462,41 +472,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     async function handleAITile(onDone?: () => void) {
       setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
 
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 200,
-            messages: [
-              {
-                role: 'user',
-                content:
-                  '부루마블 보드게임의 AI 칸에 도착했습니다. 플레이어에게 재미있는 패널티나 보너스를 한 문장으로 알려주세요. 예: "다음 턴 이동 칸 +2 보너스!" 또는 "통행료 1회 면제 카드 획득!"',
-              },
-            ],
-          }),
-        })
+      const fallbackDescription =
+        AI_PENALTY_RESULTS[
+          Math.floor(Math.random() * AI_PENALTY_RESULTS.length)
+        ]
 
-        if (!res.ok) throw new Error()
-        const data = await res.json()
-        const text =
-          data.content
-            ?.filter((b: { type: string }) => b.type === 'text')
-            .map((b: { text: string }) => b.text)
-            .join('') ?? '결과를 확인하세요.'
-
-        setAiModal((prev) => ({
-          ...prev,
-          status: 'result',
-          resultDescription: text,
-        }))
-      } catch {
-        setAiModal((prev) => ({ ...prev, status: 'error' }))
-      }
+      window.setTimeout(
+        () => {
+          setAiModal((prev) => ({
+            ...prev,
+            status: 'result',
+            resultDescription: fallbackDescription,
+          }))
+        },
+        USE_GAME_SOCKET_MOCK ? 500 : 900
+      )
     }
-
     function rollDice(onDone?: () => void) {
       if (lock.current) return
       lock.current = true
@@ -524,7 +515,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
             const newPos = (p.pos + total) % TILES.length
-            setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
+            setStatus(`${p.name} ??${TILES[newPos].name} (+${total}??`)
             return { ...p, pos: newPos }
           })
           playersRef.current = movedPlayers
@@ -561,7 +552,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 setTollModal({
                   open: true,
                   tileId: landedTileId,
-                  ownerName: ownerPlayer?.name ?? '상대방',
+                  ownerName: ownerPlayer?.name ?? '\\uC0C1\\uB300\\uBC29',
                   tollText: `${TOLL_COST}M`,
                   onDoneCallback: onDone,
                 })
@@ -589,11 +580,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function toActionErrorMessage(statusCode: number) {
-      if (statusCode === 401) return '로그인이 필요합니다.'
-      if (statusCode === 403) return '현재 턴이 아닙니다.'
-      if (statusCode === 404) return '대상을 찾을 수 없습니다.'
-      if (statusCode === 409) return '조건이 맞지 않아 처리할 수 없습니다.'
-      return '요청 처리 중 오류가 발생했습니다.'
+      if (statusCode === 401)
+        return '\\uB85C\\uADF8\\uC778\\uC774 \\uD544\\uC694\\uD569\\uB2C8\\uB2E4.'
+      if (statusCode === 403)
+        return '\\uD604\\uC7AC \\uD134\\uC5D0\\uB294 \\uCC98\\uB9AC\\uD560 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
+      if (statusCode === 404)
+        return '\\uB300\\uC0C1\\uC744 \\uCC3E\\uC744 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
+      if (statusCode === 409)
+        return '\\uC870\\uAC74\\uC774 \\uB9DE\\uC9C0 \\uC54A\\uC544 \\uCC98\\uB9AC\\uD560 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
+      return '\\uC694\\uCCAD \\uCC98\\uB9AC \\uC911 \\uC624\\uB958\\uAC00 \\uBC1C\\uC0DD\\uD588\\uC2B5\\uB2C8\\uB2E4.'
     }
 
     function getSellFallbackRefund(level: BuildingLevel) {
@@ -640,7 +635,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { tileId, onDoneCallback } = buyModal
       if (tileId === null) return
       if (!roomId) {
-        setStatus('게임 방 식별자를 찾을 수 없습니다.')
+        setStatus(
+          '\\uB9E4\\uAC01 \\uD560 \\uD0C0\\uC77C\\uC744 \\uCC3E\\uC744 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
+        )
         return
       }
       const active = curPlayerRef.current
@@ -660,11 +657,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           ...prev,
           [tileId]: {
             ownerId: activePlayerId,
-            ownerColor: activePlayerColor, // ✅ 실제 플레이어 색상
+            ownerColor: activePlayerColor, // ?????源놁졆 ???????⑤９苑???繹먭퍓彛?
             level: 1,
           },
         }))
-        // ✅ sync 제거 — 로컬 색상이 덮어써지는 문제 방지
+        // ??sync ??癰귙끋源????棺??짆?쏆춾???繹먭퍓彛?????????????뽮덫???袁⑸젻泳?
         advanceTurn(onDoneCallback)
       }
     }
@@ -679,7 +676,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { tileId, onDoneCallback } = buildModal
       if (tileId === null) return
       if (!roomId) {
-        setStatus('게임 방 식별자를 찾을 수 없습니다.')
+        setStatus(
+          '\\uAD6C\\uB9E4 \\uCC98\\uB9AC \\uC911 \\uC624\\uB958\\uAC00 \\uBC1C\\uC0DD\\uD588\\uC2B5\\uB2C8\\uB2E4.'
+        )
         return
       }
       const active = curPlayerRef.current
@@ -706,7 +705,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             },
           }
         })
-        // ✅ sync 제거 — 로컬 색상이 덮어써지는 문제 방지
+        // ??sync ??癰귙끋源????棺??짆?쏆춾???繹먭퍓彛?????????????뽮덫???袁⑸젻泳?
         advanceTurn(onDoneCallback)
       }
     }
@@ -850,8 +849,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           ))}
 
           <div className="board-center">
-            <span style={{ fontSize: 52 }}>🎲</span>
-            <span className="board-center__title">부루마블</span>
+            <span style={{ fontSize: 52 }}>??</span>
+            <span className="board-center__title">????</span>
             <div className="board-dice-pair">
               <DiceFace value={dice1} rolling={rolling} />
               <DiceFace value={dice2} rolling={rolling} />
@@ -902,7 +901,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <BankruptModal
           open={bankruptModal.open}
           playerName={bankruptModal.playerName}
-          description="게임에서 탈락합니다."
+          description="???? ??????."
           onConfirm={handleBankruptConfirm}
         />
       </div>
