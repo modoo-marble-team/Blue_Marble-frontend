@@ -543,14 +543,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         tries++
       }
 
-      // ? ?? ?? (?? ?? ?? ??? ???? ?? ????)
+      // 턴 스킵 처리 (남은 스킵 턴이 있으면 차감하고 다시 건너뛴다)
       const nextPlayer = playersRef.current[next]
       if (
         nextPlayer &&
         (nextPlayer.skipTurns ?? 0) > 0 &&
         tries < playerCount
       ) {
-        // ?? ? 1? ?? ??)
+        // 스킵 턴 1회를 차감해 반영한다
         const updatedPlayers = [...playersRef.current]
         updatedPlayers[next] = {
           ...nextPlayer,
@@ -559,7 +559,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         playersRef.current = updatedPlayers
         onPlayersChange(updatedPlayers)
 
-        // ?? ??? ???? ?? ?? ?? ??? ?? ? ?? ???
+        // 스킵 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 뒤 다시 턴을 넘긴다
         curPlayerRef.current = next
         onCurPlayerChange(next)
 
@@ -888,8 +888,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     function handleCardConfirm() {
       const { onDoneCallback, variant } = cardModal
 
-      // 李ъ뒪 移대뱶(臾댁씤?????먯꽌 二쇱궗??1???ш린濡??뺥빐議뚯쓣 ?뚯쓽 ?덉떆 泥섎━
-      // ?ㅼ젣 寃뚯엫?먯꽌???쒕쾭?먯꽌 二쇰뒗 ?대깽??寃곌낵???곕씪 ?щ씪吏吏留??꾨줎????泥섎━ ?뺤씤??
+      // 찬스 카드에서 주사위 1턴 쉬기 결과가 나왔을 때의 프런트 처리
+      // 실서버 연동 전까지는 서버 이벤트 대신 화면 동작만 확인한다
       if (variant === 'chance') {
         const active = curPlayerRef.current
         const activePlayer = playersRef.current[active]
@@ -900,7 +900,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
         playersRef.current = updatedPlayers
         onPlayersChange(updatedPlayers)
-        setStatus(`${activePlayer.name} 二쇱궗??1???ш린!`)
+        setStatus(`${activePlayer.name} 주사위 1턴 쉬기!`)
       }
 
       setCardModal({ open: false, variant: 'event' })
