@@ -13,6 +13,15 @@ import { useTurn } from '../hooks/game/useTurn'
 import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
 
+const USE_GAME_SOCKET_MOCK =
+  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+
+const GAME_CHAT_TITLE = '\uC2E4\uC2DC\uAC04 \uCC44\uD305'
+const GAME_START_NOTICE =
+  '\uAC8C\uC784 \uC2DC\uC791! \uC21C\uC11C\uB97C \uC815\uD588\uC2B5\uB2C8\uB2E4.'
+const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4'
+const DEFAULT_GUEST_ID = 'guest-local'
+
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const session = useAuthStore((state) => state.session)
@@ -29,17 +38,22 @@ const GamePage: React.FC = () => {
 
   useGameState(roomId ?? null)
 
-  const currentUserId = session?.userId ?? null
-  const currentNickname = session?.nickname ?? 'Guest'
+  const currentUserId = session?.userId ?? (USE_GAME_SOCKET_MOCK ? 'me' : null)
+  const currentNickname =
+    session?.nickname ??
+    (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_NICKNAME : 'Guest')
+  const normalizedCurrentTurn =
+    USE_GAME_SOCKET_MOCK && currentTurn === 'me' && currentUserId
+      ? currentUserId
+      : currentTurn
 
-  // currentTurn�� null�̸� ���� ���� �� mock ���·� �����Ѵ�.
-  const isMyTurnFromStore = useTurn(currentTurn, currentUserId)
-  const isMyTurn = currentTurn === null ? true : isMyTurnFromStore
+  const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
+  const isMyTurn = normalizedCurrentTurn === null ? true : isMyTurnFromStore
 
   const handleSendMessage = (content: string) => {
     addMessage({
       id: Date.now().toString(),
-      sender_id: currentUserId ?? 'guest-local',
+      sender_id: currentUserId ?? DEFAULT_GUEST_ID,
       sender_nickname: currentNickname,
       content,
       timestamp: new Date().toISOString(),
@@ -77,11 +91,11 @@ const GamePage: React.FC = () => {
       >
         <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
           <RoomChat
-            title="�ǽð� ä��"
+            title={GAME_CHAT_TITLE}
             messages={messages}
             onSendMessage={handleSendMessage}
-            currentUserId={currentUserId ?? 'guest-local'}
-            notice="���� ����! ������ ���߽��ϴ�."
+            currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
+            notice={GAME_START_NOTICE}
           />
         </div>
 
