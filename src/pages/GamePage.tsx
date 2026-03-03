@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import RoomChat from '../features/room-chat/RoomChat'
 import RollButton from '../components/game/controls/RollButton'
+import { useAuthStore } from '../features/auth/store'
 import { useGameStore } from '../stores/game.store'
 import { useGameState } from '../hooks/game/useGameState'
 import { useGameTimer } from '../hooks/game/useGameTimer'
@@ -14,6 +15,7 @@ import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
 
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
+  const session = useAuthStore((state) => state.session)
   const { currentTurn, messages, addMessage, turnTimeoutSec, turnTimerKey } =
     useGameStore()
   const [timeLeft] = useGameTimer({
@@ -27,22 +29,24 @@ const GamePage: React.FC = () => {
 
   useGameState(roomId ?? null)
 
-  // ✅ currentTurn null이면 (서버 연결 전) 내 턴으로 간주
-  const isMyTurnFromStore = useTurn(currentTurn)
+  const currentUserId = session?.userId ?? null
+  const currentNickname = session?.nickname ?? 'Guest'
+
+  // currentTurn�� null�̸� ���� ���� �� mock ���·� �����Ѵ�.
+  const isMyTurnFromStore = useTurn(currentTurn, currentUserId)
   const isMyTurn = currentTurn === null ? true : isMyTurnFromStore
 
   const handleSendMessage = (content: string) => {
     addMessage({
       id: Date.now().toString(),
-      sender_id: 'me',
-      sender_nickname: 'GoormEE',
+      sender_id: currentUserId ?? 'guest-local',
+      sender_nickname: currentNickname,
       content,
       timestamp: new Date().toISOString(),
       type: 'talk',
     })
   }
 
-  // ✅ roomId 인자 제거
   const diceRoll = useDiceRoll(boardRef)
 
   const handlePlayersChange = (updated: PlayerState[]) => {
@@ -54,7 +58,7 @@ const GamePage: React.FC = () => {
   }
 
   const handleBankrupt = () => {
-    // 필요 시 store 업데이트 추가
+    // �ʿ� �� store ������Ʈ �߰�
   }
 
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
@@ -71,17 +75,16 @@ const GamePage: React.FC = () => {
         className="mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4"
         style={{ maxWidth: '1551px' }}
       >
-        {/* ── 왼쪽 채팅 ── */}
         <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
           <RoomChat
-            title="실시간 채팅"
+            title="�ǽð� ä��"
             messages={messages}
             onSendMessage={handleSendMessage}
-            notice="게임 시작! 순서를 정했습니다."
+            currentUserId={currentUserId ?? 'guest-local'}
+            notice="���� ����! ������ ���߽��ϴ�."
           />
         </div>
 
-        {/* ── 보드 ── */}
         <div className="flex shrink-0 flex-1 items-center justify-center">
           <div
             className="aspect-square w-full overflow-hidden rounded-[48px] border-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)]"
@@ -99,7 +102,6 @@ const GamePage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── 오른쪽 플레이어 패널 ── */}
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {boardPlayers.map((bp, idx) => (
             <PlayerPanel
