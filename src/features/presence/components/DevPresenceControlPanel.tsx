@@ -21,6 +21,7 @@ export function DevPresenceControlPanel({
   currentUserId,
   className,
 }: DevPresenceControlPanelProps) {
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState('')
   const [incomingMessage, setIncomingMessage] = useState('테스트 DM')
 
@@ -54,6 +55,21 @@ export function DevPresenceControlPanel({
 
   if (controllableUsers.length === 0) {
     return null
+  }
+
+  if (!isPanelOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsPanelOpen(true)}
+        className={cn(
+          'fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl backdrop-blur',
+          className
+        )}
+      >
+        DEV PRESENCE 열기
+      </button>
+    )
   }
 
   // 선택 유저 상태를 변경하고 online_users 이벤트를 즉시 갱신
@@ -95,9 +111,18 @@ export function DevPresenceControlPanel({
         className
       )}
     >
-      <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
-        DEV PRESENCE CONTROL
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
+          DEV PRESENCE CONTROL
+        </h3>
+        <button
+          type="button"
+          onClick={() => setIsPanelOpen(false)}
+          className="h-6 rounded-md border border-ui-border px-2 text-[10px] font-bold text-ui-text-sub transition-colors hover:bg-ui-surface-soft"
+        >
+          숨기기
+        </button>
+      </div>
 
       <label
         htmlFor="dev-presence-user-select"

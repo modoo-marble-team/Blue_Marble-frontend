@@ -26,6 +26,7 @@ export function DevRoomChatControlPanel({
   preferredSenderId,
   className,
 }: DevRoomChatControlPanelProps) {
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [selectedSenderId, setSelectedSenderId] = useState('')
   const [incomingMessage, setIncomingMessage] = useState('테스트 채팅')
 
@@ -79,6 +80,21 @@ export function DevRoomChatControlPanel({
     return null
   }
 
+  if (!isPanelOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsPanelOpen(true)}
+        className={cn(
+          'fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl backdrop-blur',
+          className
+        )}
+      >
+        DEV CHAT 열기
+      </button>
+    )
+  }
+
   // 선택한 발신자 기준으로 room chat 이벤트를 수동 전송
   function handleEmitRoomChat() {
     if (!selectedSender) {
@@ -108,9 +124,18 @@ export function DevRoomChatControlPanel({
         className
       )}
     >
-      <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
-        DEV ROOM CHAT CONTROL
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
+          DEV ROOM CHAT CONTROL
+        </h3>
+        <button
+          type="button"
+          onClick={() => setIsPanelOpen(false)}
+          className="h-6 rounded-md border border-ui-border px-2 text-[10px] font-bold text-ui-text-sub transition-colors hover:bg-ui-surface-soft"
+        >
+          숨기기
+        </button>
+      </div>
       <p className="mt-1 text-[11px] text-ui-text-sub">{roomId}</p>
 
       <label
