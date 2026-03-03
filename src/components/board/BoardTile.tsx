@@ -7,6 +7,7 @@ import {
   TileOwner,
 } from './board.constants'
 import BuildingBadge from './BuildingBadge'
+import { formatWon } from '../../lib/utils'
 
 // ─── PlayerToken ─────────────────────────────────────────────────
 interface TokenProps {
@@ -98,7 +99,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const hasIcon = !!(tile.svgIcon || tile.emoji)
 
   // ── 코너 ─────────────────────────────────────────────────────────
-  if (dir === 'corner') {
+  if (['start', 'island', 'travel', 'go_to_island'].includes(tile.type)) {
     return (
       <div
         style={{
@@ -207,11 +208,20 @@ const BoardTile: React.FC<BoardTileProps> = ({
               />
             )}
             {isCity && (
-              <span
-                style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
+              <div
+                style={{
+                  backgroundColor: '#F1F5F9',
+                  color: '#64748B',
+                  fontSize: 7,
+                  fontWeight: 800,
+                  padding: '2px 5px',
+                  borderRadius: 8,
+                  marginTop: 'auto',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
               >
-                60M
-              </span>
+                {formatWon(tile.price ?? 0)}
+              </div>
             )}
           </div>
         </div>
@@ -311,11 +321,20 @@ const BoardTile: React.FC<BoardTileProps> = ({
               />
             )}
             {isCity && (
-              <span
-                style={{ fontSize: 6.5, color: '#9CA3AF', fontWeight: 600 }}
+              <div
+                style={{
+                  backgroundColor: '#F1F5F9',
+                  color: '#64748B',
+                  fontSize: 7,
+                  fontWeight: 800,
+                  padding: '2px 5px',
+                  borderRadius: 8,
+                  marginTop: 'auto',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
               >
-                60M
-              </span>
+                {formatWon(tile.price ?? 0)}
+              </div>
             )}
           </div>
         </div>

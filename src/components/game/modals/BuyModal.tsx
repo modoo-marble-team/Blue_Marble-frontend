@@ -13,7 +13,6 @@ interface BuyModalProps {
   open: boolean
   cityName?: string
   purchaseCostText?: string
-  tollText?: string
   isUpgrade?: boolean
   currentLevel?: number
   onPass?: () => void
@@ -22,13 +21,11 @@ interface BuyModalProps {
 
 const DEFAULT_CITY_NAME = '대구'
 const DEFAULT_PURCHASE_COST_TEXT = '6칸'
-const DEFAULT_TOLL_TEXT = '6칸'
 
 const BuyModal: React.FC<BuyModalProps> = ({
   open,
   cityName = DEFAULT_CITY_NAME,
   purchaseCostText = DEFAULT_PURCHASE_COST_TEXT,
-  tollText = DEFAULT_TOLL_TEXT,
   isUpgrade = false,
   currentLevel = 0,
   onPass,
@@ -54,7 +51,7 @@ const BuyModal: React.FC<BuyModalProps> = ({
           {isUpgrade ? '도시 업그레이드' : '도시 구매'}
         </h2>
 
-        <p className="text-center text-[36px] font-extrabold leading-[1.3] text-[#5A6D8A]">
+        <p className="text-center text-[36px] font-extrabold leading-[1.3] text-[#5A6D8A] mb-10 mt-4">
           <span className="text-[#245FE5]">{cityName}</span>{' '}
           <span>({purchaseCostText})을(를)</span>
           <br />
@@ -69,10 +66,6 @@ const BuyModal: React.FC<BuyModalProps> = ({
           ) : (
             <span>구매하시겠습니까?</span>
           )}
-        </p>
-
-        <p className="mb-10 mt-4 text-center text-[32px] font-bold leading-[1.35] text-[#5A6D8A]">
-          건설 후 통행료는 {tollText} 입니다
         </p>
 
         <div className="flex items-center justify-center gap-4">

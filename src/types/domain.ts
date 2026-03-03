@@ -2,6 +2,9 @@ export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5
 
 export type TileType =
   | 'start'
+  | 'island'
+  | 'travel'
+  | 'go_to_island'
   | 'property'
   | 'chance'
   | 'jail'
@@ -10,7 +13,6 @@ export type TileType =
   | 'penalty'
   | 'airport'
   | 'card'
-  | 'corner'
   | 'city'
   | 'event'
   | 'ai'
