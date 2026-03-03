@@ -34,6 +34,9 @@ const GamePage: React.FC = () => {
     turnTimeoutSec,
     turnTimerKey,
     players: storePlayers,
+    setGameState,
+    setCurrentTurn,
+    updatePlayer,
   } = useGameStore()
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
@@ -80,14 +83,55 @@ const GamePage: React.FC = () => {
 
   const handlePlayersChange = (updated: PlayerState[]) => {
     setBoardPlayers(updated)
+
+    if (!USE_GAME_SOCKET_MOCK || storePlayers.length === 0) {
+      return
+    }
+
+    setGameState({
+      players: updated.map((player, index) => {
+        const storePlayer = storePlayers[index]
+
+        return {
+          id: storePlayer?.id ?? String(player.id),
+          nickname: player.name,
+          position: player.pos,
+          balance: player.money,
+          owned_tiles: storePlayer?.owned_tiles ?? [],
+          is_in_jail: storePlayer?.is_in_jail ?? false,
+          jail_turn_count: storePlayer?.jail_turn_count ?? 0,
+          is_bankrupt: storePlayer?.is_bankrupt ?? false,
+          color: player.color,
+          avatar: storePlayer?.avatar,
+        }
+      }),
+    })
   }
 
   const handleCurPlayerChange = (idx: number) => {
     setBoardCurPlayer(idx)
+
+    if (!USE_GAME_SOCKET_MOCK) {
+      return
+    }
+
+    const nextTurnPlayer = storePlayers[idx]
+    if (nextTurnPlayer) {
+      setCurrentTurn(nextTurnPlayer.id)
+    }
   }
 
-  const handleBankrupt = () => {
-    // Add store update here if needed
+  const handleBankrupt = (playerIdx: number) => {
+    if (!USE_GAME_SOCKET_MOCK) {
+      return
+    }
+
+    const bankruptPlayer = storePlayers[playerIdx]
+    if (!bankruptPlayer) {
+      return
+    }
+
+    updatePlayer(bankruptPlayer.id, { is_bankrupt: true })
   }
 
   useEffect(() => {
