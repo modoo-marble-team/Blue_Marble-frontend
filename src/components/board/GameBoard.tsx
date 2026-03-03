@@ -1,4 +1,10 @@
-import { useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import {
+  useRef,
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from 'react'
 import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
@@ -163,8 +169,14 @@ interface GameBoardProps {
   roomId?: string | null
   players: PlayerState[]
   curPlayer: number
+  tiles?: Array<{
+    index: number
+    owner_id?: string | null
+    building: number
+  }>
   onPlayersChange: (players: PlayerState[]) => void
   onCurPlayerChange: (idx: number) => void
+  onTileOwnersChange?: (tileOwners: Record<number, TileOwner>) => void
   onBankrupt?: (playerIdx: number) => void
 }
 
@@ -232,8 +244,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       roomId = null,
       players,
       curPlayer,
+      tiles = [],
       onPlayersChange,
       onCurPlayerChange,
+      onTileOwnersChange,
       onBankrupt,
     },
     ref
@@ -252,6 +266,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const bankruptSetRef = useRef<Set<number>>(new Set())
     const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
     const tileOwnersRef = useRef<Record<number, TileOwner>>({})
+
+    useEffect(() => {
+      if (tiles.length === 0) {
+        tileOwnersRef.current = {}
+        setTileOwners({})
+        return
+      }
+
+      const nextOwners: Record<number, TileOwner> = {}
+
+      tiles.forEach((tile) => {
+        if (!tile.owner_id) {
+          return
+        }
+
+        const ownerPlayer = playersRef.current.find(
+          (player) => String(player.id) === String(tile.owner_id)
+        )
+
+        if (!ownerPlayer) {
+          return
+        }
+
+        nextOwners[tile.index] = {
+          ownerId: ownerPlayer.id,
+          ownerColor: ownerPlayer.color,
+          level: toBoardBuildingLevel(tile, true),
+        }
+      })
+
+      tileOwnersRef.current = nextOwners
+      setTileOwners(nextOwners)
+    }, [tiles])
 
     function getPlayerIdByIndex(playerIdx: number) {
       return playersRef.current[playerIdx]?.id ?? playerIdx
@@ -379,6 +426,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         const merged = { ...tileOwnersRef.current, ...nextOwners }
         tileOwnersRef.current = merged
         setTileOwners(merged)
+        onTileOwnersChange?.(merged)
       }
 
       const nextTurnRaw = payload.current_turn ?? payload.currentTurn
@@ -432,6 +480,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setTileOwners((prev) => {
         const next = updater(prev)
         tileOwnersRef.current = next
+        onTileOwnersChange?.(next)
         return next
       })
     }
