@@ -120,7 +120,6 @@ describe('useDirectMessageController', () => {
 
     expect(sendDirectMessageSocketMock).toHaveBeenCalledWith({
       receiverId: 'user-2',
-      receiverNickname: '로비 유저',
       message: '안녕하세요',
     })
     expect(result.current.directMessagesByUserId['user-2']).toHaveLength(1)
