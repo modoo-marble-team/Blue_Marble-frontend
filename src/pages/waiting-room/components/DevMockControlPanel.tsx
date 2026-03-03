@@ -4,8 +4,10 @@ import {
   mockDevAddWaitingRoomParticipant,
   mockDevGetWaitingRoomSnapshot,
   mockDevRemoveWaitingRoomParticipant,
+  mockDevResetWaitingRoom,
   mockDevSeedStartCondition,
   mockDevSetAllNonHostReady,
+  mockDevTransferWaitingRoomHost,
 } from '../mockGateway'
 import type { WaitingRoomSnapshot } from '../types'
 
@@ -16,6 +18,7 @@ const IS_DEV_MOCK_CONTROL_ENABLED =
 interface DevMockControlPanelProps {
   roomId: string
   currentUserId: string
+  currentNickname: string
   onApplySnapshot: (snapshot: WaitingRoomSnapshot) => void
   onError: (message: string) => void
 }
@@ -24,6 +27,7 @@ interface DevMockControlPanelProps {
 export function DevMockControlPanel({
   roomId,
   currentUserId,
+  currentNickname,
   onApplySnapshot,
   onError,
 }: DevMockControlPanelProps) {
@@ -127,6 +131,32 @@ export function DevMockControlPanel({
           className="col-span-2 rounded-lg border border-ui-border bg-white px-2 py-1.5 text-xs font-semibold text-ui-text-main disabled:opacity-50"
         >
           non-host 준비 해제
+        </button>
+
+        <button
+          type="button"
+          disabled={isDisabled}
+          onClick={() => {
+            runAction('transfer-host', () =>
+              mockDevTransferWaitingRoomHost(roomId)
+            )
+          }}
+          className="col-span-2 rounded-lg border border-ui-border bg-white px-2 py-1.5 text-xs font-semibold text-ui-text-main disabled:opacity-50"
+        >
+          방장 넘기기
+        </button>
+
+        <button
+          type="button"
+          disabled={isDisabled}
+          onClick={() => {
+            runAction('reset-room', () =>
+              mockDevResetWaitingRoom(roomId, currentUserId, currentNickname)
+            )
+          }}
+          className="col-span-2 rounded-lg border border-ui-danger-border bg-ui-danger-bg px-2 py-1.5 text-xs font-semibold text-ui-danger disabled:opacity-50"
+        >
+          방 초기화
         </button>
       </div>
     </aside>
