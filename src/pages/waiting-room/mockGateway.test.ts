@@ -93,3 +93,97 @@ describe('mockGateway DEV control', () => {
     expect(lobbyRoom?.status).toBe('waiting')
   })
 })
+
+describe('mockGateway waiting-room action sequence', () => {
+  it('non-host 준비 토글은 상태를 반전한다', async () => {
+    const gateway = await loadMockGateway()
+
+    const firstToggle = await gateway.mockToggleWaitingReady({
+      roomId: 'room-5',
+      userId: 'room-5-user-2',
+    })
+    expect(firstToggle.isReady).toBe(true)
+
+    const secondToggle = await gateway.mockToggleWaitingReady({
+      roomId: 'room-5',
+      userId: 'room-5-user-2',
+    })
+    expect(secondToggle.isReady).toBe(false)
+  })
+
+  it('host 준비 토글은 HOST_CANNOT_TOGGLE_READY 에러를 반환한다', async () => {
+    const gateway = await loadMockGateway()
+
+    try {
+      await gateway.mockToggleWaitingReady({
+        roomId: 'room-5',
+        userId: 'room-5-user-1',
+      })
+      throw new Error('expected error')
+    } catch (error) {
+      expectGatewayErrorCode(error, 'HOST_CANNOT_TOGGLE_READY')
+    }
+  })
+
+  it('시작 조건 미충족 상태에서 host 시작 요청은 READY_CONDITION_NOT_MET 에러를 반환한다', async () => {
+    const gateway = await loadMockGateway()
+
+    try {
+      await gateway.mockStartWaitingGame({
+        roomId: 'room-5',
+        userId: 'room-5-user-1',
+      })
+      throw new Error('expected error')
+    } catch (error) {
+      expectGatewayErrorCode(error, 'READY_CONDITION_NOT_MET')
+    }
+  })
+
+  it('host가 아닌 사용자의 시작 요청은 ONLY_HOST_CAN_START 에러를 반환한다', async () => {
+    const gateway = await loadMockGateway()
+
+    try {
+      await gateway.mockStartWaitingGame({
+        roomId: 'room-5',
+        userId: 'room-5-user-2',
+      })
+      throw new Error('expected error')
+    } catch (error) {
+      expectGatewayErrorCode(error, 'ONLY_HOST_CAN_START')
+    }
+  })
+
+  it('퇴장 후 같은 사용자가 다시 퇴장하면 ALREADY_LEFT_ROOM 에러를 반환한다', async () => {
+    const gateway = await loadMockGateway()
+
+    await gateway.mockLeaveWaitingRoom({
+      roomId: 'room-5',
+      userId: 'room-5-user-2',
+    })
+
+    try {
+      await gateway.mockLeaveWaitingRoom({
+        roomId: 'room-5',
+        userId: 'room-5-user-2',
+      })
+      throw new Error('expected error')
+    } catch (error) {
+      expectGatewayErrorCode(error, 'ALREADY_LEFT_ROOM')
+    }
+  })
+
+  it('마지막 인원이 퇴장하면 방이 삭제되어 로비 목록에서 제거된다', async () => {
+    const gateway = await loadMockGateway()
+
+    await gateway.mockLeaveWaitingRoom({
+      roomId: 'room-4',
+      userId: 'room-4-user-1',
+    })
+
+    const removedRoom = gateway
+      .getMockLobbyRooms()
+      .find((room) => room.id === 'room-4')
+
+    expect(removedRoom).toBeUndefined()
+  })
+})
