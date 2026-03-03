@@ -14,21 +14,32 @@ const DEFAULT_DESCRIPTION =
   '\uC790\uB3D9\uC73C\uB85C \uD134\uC774 \uC885\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4'
 const DEFAULT_CONFIRM_LABEL = '\uD655\uC778'
 
-const DiceIcon: React.FC = () => (
-  <svg
-    width="75"
-    height="75"
-    viewBox="0 0 75 75"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden="true"
-  >
-    <path
-      d="M16.3826 74.1027L74.1027 57.7201L57.72 -1.4408e-05L-7.87476e-05 16.3826L16.3826 74.1027Z"
-      fill="#0F172B"
+const DiceIcon: React.FC = () => {
+  const renderPip = (className: string, color = '#202633') => (
+    <span
+      className={`absolute h-2.5 w-2.5 rounded-full ${className}`}
+      style={{ backgroundColor: color }}
     />
-  </svg>
-)
+  )
+
+  return (
+    <div className="relative h-27 w-33" aria-hidden="true">
+      <div className="absolute left-0 top-5 h-18 w-18 rotate-[-14deg] rounded-[28px] bg-[linear-gradient(145deg,#FCFCFC_0%,#E3E3E3_100%)] shadow-[0_12px_20px_rgba(0,0,0,0.16)]">
+        {renderPip('left-3.5 top-3.5')}
+        {renderPip('right-3.5 bottom-3.5')}
+        {renderPip('left-3.5 bottom-3.5')}
+        {renderPip('right-3.5 top-1/2 -translate-y-1/2', '#EF5350')}
+      </div>
+
+      <div className="absolute right-0 top-1 h-18 w-18 rotate-[18deg] rounded-[28px] bg-[linear-gradient(145deg,#FCFCFC_0%,#DCDCDC_100%)] shadow-[0_12px_20px_rgba(0,0,0,0.16)]">
+        {renderPip('left-3.5 top-3.5', '#EF5350')}
+        {renderPip('left-3.5 bottom-3.5')}
+        {renderPip('right-3.5 top-3.5')}
+        {renderPip('right-3.5 bottom-3.5')}
+      </div>
+    </div>
+  )
+}
 
 const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
   open,
@@ -48,7 +59,7 @@ const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
           <DiceIcon />
         </div>
 
-        <h2 className="text-center text-[50px] font-black tracking-tight text-[#1F2A44]">
+        <h2 className="text-center text-[35px] font-black tracking-tight text-[#1F2A44]">
           {title}
         </h2>
 
