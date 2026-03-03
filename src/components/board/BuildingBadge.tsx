@@ -5,11 +5,20 @@ interface BuildingBadgeProps {
   ownerColor?: string
 }
 
+const RED_THEME = { folder: 'redbuildingIcon', prefix: 'red' }
+const BLUE_THEME = { folder: 'bluebuildingIcon', prefix: 'blue' }
+const GREEN_THEME = { folder: 'greenbuildingIcon', prefix: 'green' }
+const YELLOW_THEME = { folder: 'yellowbuildingIcon', prefix: 'yellow' }
+
 const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
-  '#EF5350': { folder: 'redbuildingIcon', prefix: 'red' },
-  '#42A5F5': { folder: 'bluebuildingIcon', prefix: 'blue' },
-  '#66BB6A': { folder: 'greenbuildingIcon', prefix: 'green' },
-  '#FFD15B': { folder: 'yellowbuildingIcon', prefix: 'yellow' },
+  '#EF5350': RED_THEME,
+  '#EF4444': RED_THEME,
+  '#42A5F5': BLUE_THEME,
+  '#3B82F6': BLUE_THEME,
+  '#66BB6A': GREEN_THEME,
+  '#22C55E': GREEN_THEME,
+  '#FFD15B': YELLOW_THEME,
+  '#EAB308': YELLOW_THEME,
 }
 
 const BUILDING_SUFFIX: Record<number, string> = {
@@ -24,16 +33,12 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
   if (!level || level < 1 || level > 5) return null
 
   const normalizedColor = ownerColor?.trim().toUpperCase() ?? ''
-  const theme = COLOR_TO_THEME[normalizedColor] ?? {
-    folder: 'redbuildingIcon',
-    prefix: 'red',
-  }
+  const theme = COLOR_TO_THEME[normalizedColor] ?? RED_THEME
   const suffix = BUILDING_SUFFIX[level]
+
   if (!suffix) return null
 
   const src = `/${theme.folder}/${theme.prefix}${suffix}`
-
-  console.log('ownerColor:', ownerColor, '→ theme:', theme.prefix)
 
   return (
     <div
@@ -58,7 +63,7 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
           display: 'block',
         }}
         onError={(e) => {
-          console.error('❌ 이미지 로드 실패:', src)
+          console.error('Failed to load building icon:', src)
           e.currentTarget.style.display = 'none'
           const fallback = e.currentTarget
             .nextElementSibling as HTMLElement | null
