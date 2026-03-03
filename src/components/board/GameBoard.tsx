@@ -24,10 +24,32 @@ import {
   BuildingLevel,
 } from './board.constants'
 import '../../styles/board.css'
+import { formatWon } from '../../lib/utils'
 
-const PURCHASE_COST = 60
-const UPGRADE_COST = 30
-const TOLL_COST = 30
+// cost helpers are computed per-tile based on price
+
+function getPurchaseCost(tileId: number): number {
+  return TILES[tileId]?.price ?? 0
+}
+
+function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
+  if (currentLevel === 0) return price * 0.5
+  if (currentLevel === 1) return price * 0.5
+  if (currentLevel === 2) return price * 0.5
+  if (currentLevel === 3) return price * 1.0
+  if (currentLevel === 4) return price * 1.5
+  return 0
+}
+
+function calcToll(price: number, level: BuildingLevel): number {
+  if (level === 0) return price
+  if (level === 1) return price * 2
+  if (level === 2) return price * 3
+  if (level === 3) return price * 5
+  if (level === 4) return price * 7
+  if (level === 5) return price * 10
+  return price
+}
 
 const USE_GAME_SOCKET_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
@@ -392,7 +414,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       open: false,
       tileId: null,
       ownerName: '',
-      tollText: `${TOLL_COST}M`,
+      tollText: '',
     })
     const [aiModal, setAiModal] = useState<AIPenaltyModalState>({
       open: false,
@@ -532,10 +554,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
-            const newPos = (p.pos + total) % TILES.length
-            setStatus(
-              `${p.name} \u2192 ${TILES[newPos].name} (+${total}\uCE78)`
-            )
+            let newPos = (p.pos + total) % TILES.length
+            // 탈출칸 이동 처리
+            if (TILES[newPos].type === 'go_to_island') {
+              newPos = 8
+              setStatus(`${p.name} 무인도로 이동!`)
+            } else {
+              setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
+            }
             return { ...p, pos: newPos }
           })
           playersRef.current = movedPlayers
@@ -549,6 +575,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             if (tile.type === 'city') {
               const owner = tileOwnersRef.current[landedTileId]
               const activePlayer = movedPlayers[activeCurPlayer]
+              const price = tile.price ?? 0
+
               if (!owner) {
                 setBuyModal({
                   open: true,
@@ -569,11 +597,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 const ownerPlayer = playersRef.current.find(
                   (p) => p.id === owner.ownerId
                 )
+                const tollAmount = calcToll(price, owner.level)
                 setTollModal({
                   open: true,
                   tileId: landedTileId,
                   ownerName: ownerPlayer?.name ?? DEFAULT_OPPONENT_NAME,
-                  tollText: `${TOLL_COST}M`,
+                  tollText: formatWon(tollAmount),
                   onDoneCallback: onDone,
                 })
               }
@@ -611,9 +640,16 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       return '\uC694\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.'
     }
 
-    function getSellFallbackRefund(level: BuildingLevel) {
-      if (level <= 0) return 0
-      return PURCHASE_COST + Math.max(0, level - 1) * UPGRADE_COST
+    function getSellFallbackRefund(tileId: number, level: BuildingLevel) {
+      // calculate how much to refund when the server sync fails
+      // start with purchase price plus each upgrade cost up to current level
+      const basePrice = TILES[tileId]?.price ?? 0
+      if (level <= 0 || basePrice === 0) return 0
+      let refund = basePrice
+      for (let l = 1; l < level; l++) {
+        refund += getUpgradeCost(basePrice, l as BuildingLevel)
+      }
+      return refund
     }
 
     async function sellOwnedTileForPlayer(playerIdx: number) {
@@ -645,7 +681,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           delete next[tileId]
           return next
         })
-        applyMoney(playerIdx, +getSellFallbackRefund(owner.level))
+        applyMoney(playerIdx, +getSellFallbackRefund(tileId, owner.level))
       }
 
       return true
@@ -661,6 +697,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const active = curPlayerRef.current
       const activePlayerId = getPlayerIdByIndex(active)
       const activePlayerColor = getPlayerColorByIndex(active)
+      const price = getPurchaseCost(tileId)
 
       const actionResult = await gameApi.buyTile(roomId, { tile_index: tileId })
       if (!actionResult.ok) {
@@ -669,7 +706,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       setBuyModal({ open: false, tileId: null })
-      const bankrupt = applyMoney(active, -PURCHASE_COST, onDoneCallback)
+      const bankrupt = applyMoney(active, -price, onDoneCallback)
       if (!bankrupt) {
         updateTileOwners((prev) => ({
           ...prev,
@@ -697,6 +734,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
       const active = curPlayerRef.current
+      const owner = tileOwnersRef.current[tileId]
+      const price = getPurchaseCost(tileId)
+      const upgradeCost = owner ? getUpgradeCost(price, owner.level) : 0
 
       const actionResult = await gameApi.buildTile(roomId, {
         tile_index: tileId,
@@ -707,7 +747,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       setBuildModal({ open: false, tileId: null })
-      const bankrupt = applyMoney(active, -UPGRADE_COST, onDoneCallback)
+      const bankrupt = applyMoney(active, -upgradeCost, onDoneCallback)
       if (!bankrupt) {
         updateTileOwners((prev) => {
           const existing = prev[tileId]
@@ -737,25 +777,27 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         open: false,
         tileId: null,
         ownerName: '',
-        tollText: `${TOLL_COST}M`,
+        tollText: '',
       })
 
       if (tileId !== null) {
         const owner = tileOwnersRef.current[tileId]
+        const price = TILES[tileId]?.price ?? 0
+        const tollAmount = owner ? calcToll(price, owner.level) : 0
         if (owner) {
-          if (playersRef.current[active].money < TOLL_COST) {
+          if (playersRef.current[active].money < tollAmount) {
             const sold = await sellOwnedTileForPlayer(active)
             if (!sold) {
-              const bankrupt = applyMoney(active, -TOLL_COST, onDoneCallback)
+              const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
               if (!bankrupt) advanceTurn(onDoneCallback)
               return
             }
           }
           const ownerPlayerIndex = getPlayerIndexById(owner.ownerId)
           if (ownerPlayerIndex >= 0) {
-            applyMoney(ownerPlayerIndex, +TOLL_COST)
+            applyMoney(ownerPlayerIndex, +tollAmount)
           }
-          const bankrupt = applyMoney(active, -TOLL_COST, onDoneCallback)
+          const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
           if (!bankrupt) advanceTurn(onDoneCallback)
           return
         }
@@ -875,8 +917,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <BuyModal
           open={buyModal.open}
           cityName={buyTile?.name ?? ''}
-          purchaseCostText={`${PURCHASE_COST}M`}
-          tollText={`${TOLL_COST}M`}
+          purchaseCostText={formatWon(buyTile?.price ?? 0)}
           isUpgrade={false}
           currentLevel={0}
           onPass={handleBuyPass}
@@ -888,8 +929,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           upgradeStage={getUpgradeStage(currentLevel)}
           currentLevelLabel={LEVEL_LABEL[currentLevel]}
           nextLevelLabel={LEVEL_LABEL[Math.min(currentLevel + 1, 5)]}
-          buildCostText={`${UPGRADE_COST}M`}
-          nextTollText="60M"
+          buildCostText={formatWon(
+            getUpgradeCost(buildTile?.price ?? 0, currentLevel)
+          )}
+          nextTollText={formatWon(
+            calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
+          )}
           canBuild={currentLevel < 5}
           onCancel={handleBuildCancel}
           onConfirm={handleBuildConfirm}

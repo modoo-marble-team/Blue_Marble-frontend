@@ -1,6 +1,7 @@
 ﻿// PlayerPanel.tsx — isActive 일 때 파란 테두리 강조
 // 이미 구현되어 있다면 이 파일은 무시하세요.
 import React from 'react'
+import { formatWon } from '../../lib/utils'
 
 interface Player {
   id: string
@@ -62,11 +63,10 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({ player, isActive }) => {
 
         <div className="flex flex-col items-end">
           <span className="text-[17px] font-black text-[#1F2A44]">
-            {(player.money ?? 0).toLocaleString()}M
+            {formatWon(player.money ?? 0)}
           </span>
           <span className="text-[11px] text-[#8B9AB0]">
-            🏠 총자산{' '}
-            {(player.totalAssets ?? player.money ?? 0).toLocaleString()}M
+            🏠 총자산 {formatWon(player.totalAssets ?? player.money ?? 0)}
           </span>
         </div>
       </div>
