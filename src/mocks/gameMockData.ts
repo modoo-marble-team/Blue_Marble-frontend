@@ -198,7 +198,7 @@ export const mockPlayers: Player[] = [
   {
     id: 'mock-player-1',
     nickname: '\uD50C\uB808\uC774\uC5B4 1',
-    balance: 2000,
+    balance: 1000000000,
     position: 0,
     owned_tiles: [],
     is_in_jail: false,
@@ -210,7 +210,7 @@ export const mockPlayers: Player[] = [
   {
     id: 'player2',
     nickname: '\uD50C\uB808\uC774\uC5B4 2',
-    balance: 1800,
+    balance: 1000000000,
     position: 0,
     owned_tiles: [],
     is_in_jail: false,
@@ -222,7 +222,7 @@ export const mockPlayers: Player[] = [
   {
     id: 'player3',
     nickname: '\uD50C\uB808\uC774\uC5B4 3',
-    balance: 1500,
+    balance: 1000000000,
     position: 0,
     owned_tiles: [],
     is_in_jail: false,
@@ -234,7 +234,7 @@ export const mockPlayers: Player[] = [
   {
     id: 'player4',
     nickname: '\uD50C\uB808\uC774\uC5B4 4',
-    balance: 1400,
+    balance: 1000000000,
     position: 0,
     owned_tiles: [],
     is_in_jail: false,

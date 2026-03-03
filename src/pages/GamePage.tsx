@@ -16,6 +16,8 @@ import type { BuildingLevel } from '../types/domain'
 
 const USE_GAME_SOCKET_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const ALLOW_ALL_MOCK_TURNS =
+  import.meta.env.DEV && import.meta.env.VITE_ALLOW_ALL_MOCK_TURNS === 'true'
 
 const GAME_CHAT_TITLE = '\uC2E4\uC2DC\uAC04 \uCC44\uD305'
 const GAME_START_NOTICE =
@@ -68,7 +70,7 @@ const GamePage: React.FC = () => {
 
   const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
   const isMyTurn = USE_GAME_SOCKET_MOCK
-    ? boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
+    ? ALLOW_ALL_MOCK_TURNS || boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
     : normalizedCurrentTurn === null
       ? true
       : isMyTurnFromStore
