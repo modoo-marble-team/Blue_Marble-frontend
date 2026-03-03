@@ -57,6 +57,7 @@ export const gameApi = {
     }
   },
 
+  // GAME-001
   async buyTile(roomId: string, payload: { tile_index: number }) {
     try {
       const { data } = await apiClient.post(
@@ -69,6 +70,7 @@ export const gameApi = {
     }
   },
 
+  // GAME-002
   async buildTile(roomId: string, payload: { tile_index: number }) {
     try {
       const { data } = await apiClient.post(
@@ -81,6 +83,7 @@ export const gameApi = {
     }
   },
 
+  // GAME-003
   async sellTile(
     roomId: string,
     payload: { tile_index: number; level?: number }
@@ -96,6 +99,7 @@ export const gameApi = {
     }
   },
 
+  // GAME-004
   async syncState(roomId: string, options?: { reset?: boolean }) {
     return this.getState(roomId, options)
   },
