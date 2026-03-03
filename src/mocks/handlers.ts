@@ -1,5 +1,5 @@
 import { delay, http, HttpResponse } from 'msw'
-import { mockOnlineUsers } from '../features/presence/mockData'
+import { getMockOnlineUsersSnapshot } from '../features/presence/mockData'
 import type { LobbyRoomPayload, LobbyRoomStatus } from '../pages/lobby/types'
 import { getMockLobbyRooms } from '../pages/waiting-room/mockGateway'
 import { gameHandlers } from './handlers/game.handler'
@@ -59,6 +59,6 @@ export const handlers = [
   // 전체 온라인 유저 목록 endpoint 모킹
   http.get('/api/users/online', async () => {
     await delay(250)
-    return HttpResponse.json({ users: mockOnlineUsers })
+    return HttpResponse.json({ users: getMockOnlineUsersSnapshot() })
   }),
 ]

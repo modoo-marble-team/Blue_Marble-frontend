@@ -10,6 +10,7 @@ import {
 } from '../../components/header/profileMenu'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
+import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import type { LobbyRoomFilter } from './api'
@@ -307,6 +308,8 @@ function LobbyPage() {
           onSendMessage={sendDirectMessage}
         />
       ) : null}
+
+      <DevPresenceControlPanel users={users} currentUserId={session.userId} />
     </div>
   )
 }
