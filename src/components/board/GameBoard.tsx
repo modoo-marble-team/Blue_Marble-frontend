@@ -1,4 +1,4 @@
-import {
+﻿import {
   useRef,
   useState,
   useEffect,
@@ -542,6 +542,33 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         next = (next + 1) % playerCount
         tries++
       }
+
+      // ? ?? ?? (?? ?? ?? ??? ???? ?? ????)
+      const nextPlayer = playersRef.current[next]
+      if (
+        nextPlayer &&
+        (nextPlayer.skipTurns ?? 0) > 0 &&
+        tries < playerCount
+      ) {
+        // ?? ? 1? ?? ??)
+        const updatedPlayers = [...playersRef.current]
+        updatedPlayers[next] = {
+          ...nextPlayer,
+          skipTurns: nextPlayer.skipTurns! - 1,
+        }
+        playersRef.current = updatedPlayers
+        onPlayersChange(updatedPlayers)
+
+        // ?? ??? ???? ?? ?? ?? ??? ?? ? ?? ???
+        curPlayerRef.current = next
+        onCurPlayerChange(next)
+
+        setTimeout(() => {
+          advanceTurn(onDone)
+        }, 1500)
+        return
+      }
+
       curPlayerRef.current = next
       onCurPlayerChange(next)
       onDone?.()
@@ -605,15 +632,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             if (i !== activeCurPlayer) return p
 
             let newPos = (p.pos + total) % TILES.length
+            let newSkipTurns = p.skipTurns ?? 0
 
             if (TILES[newPos].type === 'go_to_island') {
               newPos = 8
-              setStatus(`${p.name} \uBB34\uC778\uB3C4\uB85C \uC774\uB3D9!`)
+              newSkipTurns += 1
+              setStatus(`${p.name} 무인도로 이동! (1턴 휴식)`)
             } else {
-              setStatus(`${p.name} -> ${TILES[newPos].name} (+${total}\uCE78)`)
+              setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
             }
 
-            return { ...p, pos: newPos }
+            return { ...p, pos: newPos, skipTurns: newSkipTurns }
           })
           playersRef.current = movedPlayers
           onPlayersChange([...movedPlayers])
@@ -857,7 +886,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleCardConfirm() {
-      const { onDoneCallback } = cardModal
+      const { onDoneCallback, variant } = cardModal
+
+      // 李ъ뒪 移대뱶(臾댁씤?????먯꽌 二쇱궗??1???ш린濡??뺥빐議뚯쓣 ?뚯쓽 ?덉떆 泥섎━
+      // ?ㅼ젣 寃뚯엫?먯꽌???쒕쾭?먯꽌 二쇰뒗 ?대깽??寃곌낵???곕씪 ?щ씪吏吏留??꾨줎????泥섎━ ?뺤씤??
+      if (variant === 'chance') {
+        const active = curPlayerRef.current
+        const activePlayer = playersRef.current[active]
+        const updatedPlayers = [...playersRef.current]
+        updatedPlayers[active] = {
+          ...activePlayer,
+          skipTurns: (activePlayer.skipTurns ?? 0) + 1,
+        }
+        playersRef.current = updatedPlayers
+        onPlayersChange(updatedPlayers)
+        setStatus(`${activePlayer.name} 二쇱궗??1???ш린!`)
+      }
+
       setCardModal({ open: false, variant: 'event' })
       advanceTurn(onDoneCallback)
     }
