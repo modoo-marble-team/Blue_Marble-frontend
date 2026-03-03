@@ -26,7 +26,7 @@ export const useGameState = (roomId: string | null) => {
     }
 
     const fetchGameState = async () => {
-      // 스토어가 비어 있을 때만 초기 상태를 1회 동기화
+      // 스토어가 비어 있을 때만 초기 상태를 1회 동기화한다.
       if (players.length > 0) return
 
       const result = await gameApi.getState(roomId, {
