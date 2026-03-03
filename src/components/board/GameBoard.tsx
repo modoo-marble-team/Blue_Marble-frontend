@@ -489,10 +489,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     function advanceTurn(onDone?: () => void) {
       let next = (curPlayerRef.current + 1) % INIT_PLAYERS.length
       let tries = 0
+
+      // 파산한 플레이어 건너뛰기
       while (bankruptSetRef.current.has(next) && tries < INIT_PLAYERS.length) {
         next = (next + 1) % INIT_PLAYERS.length
         tries++
       }
+
+      // 턴 스킵 처리 (남은 스킵 턴이 있으면 차감하고 다시 건너뛰기)
+      const nextPlayer = playersRef.current[next]
+      if (
+        nextPlayer &&
+        (nextPlayer.skipTurns ?? 0) > 0 &&
+        tries < INIT_PLAYERS.length
+      ) {
+        // 스킵 턴 1회 차감 반영
+        const updatedPlayers = [...playersRef.current]
+        updatedPlayers[next] = {
+          ...nextPlayer,
+          skipTurns: nextPlayer.skipTurns! - 1,
+        }
+        playersRef.current = updatedPlayers
+        onPlayersChange(updatedPlayers)
+
+        // 스킵된 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 후 바로 다시 턴 넘김
+        curPlayerRef.current = next
+        onCurPlayerChange(next)
+
+        setTimeout(() => {
+          advanceTurn(onDone)
+        }, 1500)
+        return
+      }
+
       curPlayerRef.current = next
       onCurPlayerChange(next)
       onDone?.()
@@ -555,14 +584,16 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
             let newPos = (p.pos + total) % TILES.length
+            let newSkipTurns = p.skipTurns ?? 0
             // 탈출칸 이동 처리
             if (TILES[newPos].type === 'go_to_island') {
               newPos = 8
-              setStatus(`${p.name} 무인도로 이동!`)
+              newSkipTurns += 1 // 무인도로 이동 시 1턴 휴식
+              setStatus(`${p.name} 무인도로 이동! (1턴 휴식)`)
             } else {
               setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
             }
-            return { ...p, pos: newPos }
+            return { ...p, pos: newPos, skipTurns: newSkipTurns }
           })
           playersRef.current = movedPlayers
           onPlayersChange([...movedPlayers])
@@ -806,7 +837,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleCardConfirm() {
-      const { onDoneCallback } = cardModal
+      const { onDoneCallback, variant } = cardModal
+
+      // 찬스 카드(무인도 등)에서 주사위 1턴 쉬기로 정해졌을 때의 예시 처리
+      // 실제 게임에서는 서버에서 주는 이벤트 결과에 따라 달라지지만 프론트 단 처리 확인용
+      if (variant === 'chance') {
+        const active = curPlayerRef.current
+        const activePlayer = playersRef.current[active]
+        const updatedPlayers = [...playersRef.current]
+        updatedPlayers[active] = {
+          ...activePlayer,
+          skipTurns: (activePlayer.skipTurns ?? 0) + 1,
+        }
+        playersRef.current = updatedPlayers
+        onPlayersChange(updatedPlayers)
+        setStatus(`${activePlayer.name} 주사위 1턴 쉬기!`)
+      }
+
       setCardModal({ open: false, variant: 'event' })
       advanceTurn(onDoneCallback)
     }

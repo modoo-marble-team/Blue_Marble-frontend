@@ -76,6 +76,9 @@ const GamePage: React.FC = () => {
   }
 
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
+  const currentPlayerState = boardPlayers[boardCurPlayer]
+  const isCurrentPlayerBankrupt = currentPlayerState?.money <= 0
+  const isCurrentPlayerSkipped = (currentPlayerState?.skipTurns ?? 0) > 0
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
@@ -117,30 +120,41 @@ const GamePage: React.FC = () => {
         </div>
 
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
-          {boardPlayers.map((bp, idx) => (
-            <PlayerPanel
-              key={bp.id}
-              player={{
-                id: String(bp.id),
-                name: bp.name ?? `Player ${bp.id + 1}`,
-                nickname: bp.name ?? `Player ${bp.id + 1}`,
-                color: bp.color,
-                money: bp.money,
-                totalAssets: bp.money,
-              }}
-              isActive={idx === boardCurPlayer}
-              isRichest={bp.money > 0 && bp.money === maxMoney}
-            />
-          ))}
+          {boardPlayers
+            .map((bp, idx) => ({ ...bp, originalIndex: idx }))
+            .sort((a, b) => {
+              const aBankrupt = a.money <= 0 ? 1 : 0
+              const bBankrupt = b.money <= 0 ? 1 : 0
+              if (aBankrupt !== bBankrupt) return aBankrupt - bBankrupt
+              return a.originalIndex - b.originalIndex
+            })
+            .map((bp) => (
+              <PlayerPanel
+                key={bp.id}
+                player={{
+                  id: String(bp.id),
+                  name: bp.name ?? `Player ${bp.id + 1}`,
+                  nickname: bp.name ?? `Player ${bp.id + 1}`,
+                  color: bp.color,
+                  money: bp.money,
+                  totalAssets: bp.money,
+                }}
+                isActive={bp.originalIndex === boardCurPlayer}
+                isRichest={bp.money > 0 && bp.money === maxMoney}
+                isBankrupt={bp.money <= 0}
+              />
+            ))}
         </div>
       </div>
 
       <div className="absolute bottom-10 right-10">
-        <RollButton
-          timeLeft={timeLeft}
-          isMyTurn={isMyTurn}
-          onRoll={() => diceRoll(roomId ?? null)}
-        />
+        {!isCurrentPlayerSkipped && !isCurrentPlayerBankrupt && (
+          <RollButton
+            timeLeft={timeLeft}
+            isMyTurn={isMyTurn}
+            onRoll={() => diceRoll(roomId ?? null)}
+          />
+        )}
       </div>
     </div>
   )
