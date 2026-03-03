@@ -9,15 +9,13 @@ import {
 } from '../../components/header/profileMenu'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
-import { DevRoomChatControlPanel } from '../../features/room-chat/DevRoomChatControlPanel'
 import { cn } from '../../lib/utils'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
 import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
-import { DevMockControlPanel } from './components/DevMockControlPanel'
+import { DevControlPanel } from './components/DevControlPanel'
 import { useWaitingRoomController } from './hooks'
 import type { GameStartEventPayload, WaitingRoomSnapshot } from './types'
 
@@ -324,32 +322,16 @@ function WaitingRoomPage() {
         />
       )}
 
-      <DevMockControlPanel
+      <DevControlPanel
         roomId={currentRoomId}
         currentUserId={session.userId}
         currentNickname={session.nickname}
+        users={users}
+        roomPlayers={room?.players ?? []}
         onApplySnapshot={applyRoomSnapshot}
         onError={(message) => {
           toast.error(message)
         }}
-      />
-
-      <DevPresenceControlPanel
-        users={users}
-        currentUserId={session.userId}
-        className="left-[276px]"
-      />
-
-      <DevRoomChatControlPanel
-        roomId={currentRoomId}
-        senderOptions={(room?.players ?? []).map((player) => ({
-          id: player.id,
-          nickname: player.nickname,
-        }))}
-        preferredSenderId={
-          room?.players.find((player) => player.id !== session.userId)?.id
-        }
-        className="left-4 bottom-[220px]"
       />
 
       {dmTargetUser ? (
