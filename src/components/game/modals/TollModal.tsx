@@ -10,7 +10,7 @@ interface TollModalProps {
 }
 
 const DEFAULT_CITY_NAME = '대구'
-const DEFAULT_OWNER_NAME = 'GoormEE'
+const DEFAULT_OWNER_NAME = '플레이어 1'
 const DEFAULT_TOLL_TEXT = '30M'
 const DEFAULT_CONFIRM_LABEL = '확인하기'
 
@@ -48,7 +48,8 @@ const TollModal: React.FC<TollModalProps> = ({
         <p className="mb-10 mt-4 text-center text-[24px] font-bold leading-[1.35] text-[#5A6D8A]">
           <span className="text-[#245FE5]">{ownerName}</span>님에게
           <br />
-          <span className="text-[#EF5350]">{tollText}</span> 통행료를 지불합니다.
+          <span className="text-[#EF5350]">{tollText}</span> 통행료를
+          지불합니다.
         </p>
 
         <button

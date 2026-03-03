@@ -21,25 +21,25 @@ const DEFAULT_BACK_LABEL = '로비로 돌아가기'
 const DEFAULT_RESULTS: NonNullable<GameResultModalProps['results']> = [
   {
     id: 'p1',
-    nickname: 'GoormEE',
+    nickname: '플레이어 1',
     totalAssetText: '2,500M',
     ownedCityCountText: '8개',
   },
   {
     id: 'p2',
-    nickname: 'MarbleKing',
+    nickname: '플레이어 2',
     totalAssetText: '1,900M',
     ownedCityCountText: '6개',
   },
   {
     id: 'p3',
-    nickname: 'Player 3',
+    nickname: '플레이어 3',
     totalAssetText: '1,500M',
     ownedCityCountText: '5개',
   },
   {
     id: 'p4',
-    nickname: 'Player 4',
+    nickname: '플레이어 4',
     totalAssetText: '1,400M',
     ownedCityCountText: '4개',
   },
@@ -47,7 +47,7 @@ const DEFAULT_RESULTS: NonNullable<GameResultModalProps['results']> = [
 
 const GameResultModal: React.FC<GameResultModalProps> = ({
   open,
-  winnerName = 'GoormEE',
+  winnerName = '플레이어 1',
   title = DEFAULT_TITLE,
   subtitle,
   backToLobbyLabel = DEFAULT_BACK_LABEL,
