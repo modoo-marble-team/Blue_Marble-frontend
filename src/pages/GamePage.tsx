@@ -12,7 +12,10 @@ import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useTurn } from '../hooks/game/useTurn'
 import BoardGame, { BoardGameHandle } from '../components/board/LegacyBoardGame'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
-import type { BuildingLevel } from '../types/domain'
+import type { BuildingLevel, ChatMessage } from '../types/domain'
+import { socket } from '../lib/socket'
+import { sendWaitingRoomChat } from './waiting-room/socket'
+import type { ChatEventPayload } from './waiting-room/types'
 
 const USE_GAME_SOCKET_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
@@ -53,13 +56,24 @@ const mapStorePlayersToBoardPlayers = (
     }
   })
 
+// 채팅 이벤트 payload를 게임 채팅 메시지 모델로 정규화
+function mapGameChatEventToMessage(payload: ChatEventPayload): ChatMessage {
+  return {
+    id: `${payload.room_id}-${payload.sender_id}-${payload.sent_at}`,
+    sender_id: payload.sender_id,
+    sender_nickname: payload.sender_nickname,
+    content: payload.message,
+    timestamp: payload.sent_at,
+    type: 'talk',
+  }
+}
+
 const GamePage: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>()
   const session = useAuthStore((state) => state.session)
   const {
     currentTurn,
     messages,
-    addMessage,
     turnTimeoutSec,
     turnTimerKey,
     players: storePlayers,
@@ -99,14 +113,50 @@ const GamePage: React.FC = () => {
       ? true
       : isMyTurnFromStore
 
+  // 게임 채팅 이벤트를 구독해 메시지 목록을 실시간으로 동기화
+  useEffect(() => {
+    if (!roomId) {
+      return
+    }
+
+    const handleChat = (payload: ChatEventPayload) => {
+      // 다른 방 채팅 이벤트는 무시
+      if (payload.room_id !== roomId) {
+        return
+      }
+
+      const nextMessage = mapGameChatEventToMessage(payload)
+      const gameStore = useGameStore.getState()
+      const hasSameMessage = gameStore.messages.some(
+        (message) => message.id === nextMessage.id
+      )
+
+      // 동일 메시지 중복 반영 방지
+      if (hasSameMessage) {
+        return
+      }
+
+      gameStore.addMessage(nextMessage)
+    }
+
+    socket.on('chat', handleChat)
+
+    return () => {
+      socket.off('chat', handleChat)
+    }
+  }, [roomId])
+
   const handleSendMessage = (content: string) => {
-    addMessage({
-      id: Date.now().toString(),
-      sender_id: currentUserId ?? DEFAULT_GUEST_ID,
-      sender_nickname: currentNickname,
-      content,
-      timestamp: new Date().toISOString(),
-      type: 'talk',
+    // roomId가 없으면 채팅 전송을 생략
+    if (!roomId) {
+      return
+    }
+
+    sendWaitingRoomChat({
+      roomId,
+      senderId: currentUserId ?? DEFAULT_GUEST_ID,
+      senderNickname: currentNickname,
+      message: content,
     })
   }
 
