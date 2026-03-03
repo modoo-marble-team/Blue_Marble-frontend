@@ -72,7 +72,7 @@ const GamePage: React.FC = () => {
   }
 
   const handleBankrupt = () => {
-    // �ʿ� �� store ������Ʈ �߰�
+    // 필요 시 store 업데이트 추가
   }
 
   const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
