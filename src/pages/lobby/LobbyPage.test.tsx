@@ -1,8 +1,13 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../features/auth/store'
+import {
+  createAuthSessionFixture,
+  createLobbyRoomFixture,
+  createOnlineUserFixture,
+} from '../../test/fixtures'
+import { renderWithProviders } from '../../test/renderWithProviders'
 import LobbyPage from './LobbyPage'
 import type { GetLobbyRoomsParams } from './api'
 import type { LobbyRoom } from './types'
@@ -30,38 +35,31 @@ vi.mock('../../features/presence/useDirectMessageController', () => ({
 }))
 
 const MOCK_ROOMS: LobbyRoom[] = [
-  {
+  createLobbyRoomFixture({
     id: 'room-1',
     title: '초보 환영 방',
     status: 'waiting',
     currentPlayers: 2,
-    maxPlayers: 4,
-    isPrivate: false,
-  },
-  {
+  }),
+  createLobbyRoomFixture({
     id: 'room-2',
     title: '초보 비밀 방',
     status: 'waiting',
     currentPlayers: 3,
-    maxPlayers: 4,
     isPrivate: true,
-  },
-  {
+  }),
+  createLobbyRoomFixture({
     id: 'room-3',
     title: '친구 게임 중',
     status: 'playing',
     currentPlayers: 4,
-    maxPlayers: 4,
-    isPrivate: false,
-  },
-  {
+  }),
+  createLobbyRoomFixture({
     id: 'room-4',
     title: '고수 대기방',
     status: 'waiting',
     currentPlayers: 1,
-    maxPlayers: 4,
-    isPrivate: false,
-  },
+  }),
 ]
 
 // 테스트에서 로비 필터 조합 결과를 계산
@@ -87,11 +85,9 @@ function filterMockRooms(params: GetLobbyRoomsParams) {
 
 // 공통 렌더링 헬퍼
 function renderLobbyPage() {
-  return render(
-    <MemoryRouter>
-      <LobbyPage />
-    </MemoryRouter>
-  )
+  return renderWithProviders(<LobbyPage />, {
+    initialEntries: ['/lobby'],
+  })
 }
 
 describe('LobbyPage filter and toggle regression', () => {
@@ -100,15 +96,11 @@ describe('LobbyPage filter and toggle regression', () => {
 
     // 각 테스트 시작 시 로그인 세션을 고정
     useAuthStore.setState({
-      session: {
+      session: createAuthSessionFixture({
         accessToken: 'test-token',
         userId: 'user-1',
         nickname: '테스터',
-        profileImage: null,
-        isGuest: false,
-        needsNicknameSetup: false,
-        provider: 'kakao',
-      },
+      }),
     })
 
     useLobbyRoomsQueryMock.mockImplementation((params: GetLobbyRoomsParams) => {
@@ -121,20 +113,20 @@ describe('LobbyPage filter and toggle regression', () => {
 
     useOnlineUsersSocketMock.mockReturnValue({
       data: [
-        {
+        createOnlineUserFixture({
           id: 'user-1',
           nickname: '테스터',
           status: 'lobby',
           avatarText: '테',
           avatarBackground: '#dbeafe',
-        },
-        {
+        }),
+        createOnlineUserFixture({
           id: 'user-2',
           nickname: '상대방',
           status: 'in_room',
           avatarText: '상',
           avatarBackground: '#fde68a',
-        },
+        }),
       ],
       isLoading: false,
       isError: false,

@@ -2,6 +2,11 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useOnlineUsersSocket } from './useOnlineUsersSocket'
 import type { OnlineUsersEventPayload } from './types'
+import { createOnlineUserPayloadFixture } from '../../test/fixtures'
+import {
+  emitSocketEvent,
+  getSocketEventHandler,
+} from '../../test/socketEmitter'
 
 const {
   socketOnMock,
@@ -39,19 +44,6 @@ vi.mock('./onlineUsersSocket', () => ({
   ensureOnlineUsersSocketConnection: ensureOnlineUsersSocketConnectionMock,
 }))
 
-// 등록된 online_users 핸들러를 찾아 테스트에서 직접 호출
-function getRegisteredOnlineUsersHandler() {
-  const targetCall = socketOnMock.mock.calls.find(
-    (call) => call[0] === 'online_users'
-  )
-
-  if (!targetCall) {
-    return null
-  }
-
-  return targetCall[1] as (payload: OnlineUsersEventPayload) => void
-}
-
 describe('useOnlineUsersSocket', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -63,7 +55,11 @@ describe('useOnlineUsersSocket', () => {
 
   it('실소켓 모드에서 초기 REST 스냅샷을 반영한다', async () => {
     getOnlineUsersSnapshotMock.mockResolvedValue([
-      { id: 'user-1', nickname: 'Goorm', status: 'lobby' },
+      createOnlineUserPayloadFixture({
+        id: 'user-1',
+        nickname: 'Goorm',
+        status: 'lobby',
+      }),
     ])
 
     const { result } = renderHook(() => useOnlineUsersSocket())
@@ -90,12 +86,21 @@ describe('useOnlineUsersSocket', () => {
       expect(result.current.isLoading).toBe(false)
     })
 
-    const handler = getRegisteredOnlineUsersHandler()
+    const handler = getSocketEventHandler<OnlineUsersEventPayload>(
+      socketOnMock,
+      'online_users'
+    )
     expect(handler).not.toBeNull()
 
     act(() => {
-      handler?.({
-        users: [{ id: 'user-2', nickname: '  alpha ', status: 'in_room' }],
+      emitSocketEvent(socketOnMock, 'online_users', {
+        users: [
+          createOnlineUserPayloadFixture({
+            id: 'user-2',
+            nickname: '  alpha ',
+            status: 'in_room',
+          }),
+        ],
       })
     })
 
