@@ -38,6 +38,14 @@ const AI_PENALTY_RESULTS = [
   '\uB2E4\uC74C \uC774\uB3D9\uC5D0\uC11C \uCD94\uAC00\uB85C 2\uCE78 \uC804\uC9C4\uD569\uB2C8\uB2E4.',
   '\uB2E4\uC74C \uD134 \uC8FC\uC0AC\uC704 \uACB0\uACFC\uC5D0\uC11C 1\uC744 \uCD94\uAC00\uB85C \uBC1B\uC2B5\uB2C8\uB2E4.',
 ] as const
+const BOARD_TITLE = '\uBE14\uB8E8\uB9C8\uBE14'
+const BANKRUPT_DESCRIPTION =
+  '\uAC8C\uC784\uC5D0\uC11C \uD0C8\uB77D\uD588\uC2B5\uB2C8\uB2E4.'
+const DEFAULT_OPPONENT_NAME = '\uC0C1\uB300\uBC29'
+const GAME_START_STATUS = '\uAC8C\uC784 \uC2DC\uC791!'
+const ROOM_ID_REQUIRED_MESSAGE =
+  '\uAC8C\uC784 \uBC29 \uC2DD\uBCC4\uC790\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
+const DICE_ICON = '\uD83C\uDFB2'
 
 const LEVEL_LABEL: Record<number, string> = {
   0: '\uBBF8\uAD6C\uB9E4',
@@ -211,7 +219,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
-    const [status, setStatus] = useState('\\uAC8C\\uC784 \\uC2DC\\uC791!')
+    const [status, setStatus] = useState(GAME_START_STATUS)
     const lock = useRef(false)
 
     const curPlayerRef = useRef(curPlayer)
@@ -346,7 +354,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
         })
 
-        // ???棺??짆?쏆춾????ㅺ컼??? merge ????筌먦끉裕????Β?????ㅻ깹鸚???ш끽維????????? ???怨룹쓱
         const merged = { ...tileOwnersRef.current, ...nextOwners }
         tileOwnersRef.current = merged
         setTileOwners(merged)
@@ -472,21 +479,32 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     async function handleAITile(onDone?: () => void) {
       setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
 
-      const fallbackDescription =
-        AI_PENALTY_RESULTS[
-          Math.floor(Math.random() * AI_PENALTY_RESULTS.length)
-        ]
+      if (USE_GAME_SOCKET_MOCK) {
+        const fallbackDescription =
+          AI_PENALTY_RESULTS[
+            Math.floor(Math.random() * AI_PENALTY_RESULTS.length)
+          ]
 
-      window.setTimeout(
-        () => {
+        window.setTimeout(() => {
           setAiModal((prev) => ({
             ...prev,
             status: 'result',
             resultDescription: fallbackDescription,
           }))
-        },
-        USE_GAME_SOCKET_MOCK ? 500 : 900
-      )
+        }, 500)
+        return
+      }
+
+      window.setTimeout(() => {
+        setAiModal((prev) =>
+          prev.open
+            ? {
+                ...prev,
+                status: 'error',
+              }
+            : prev
+        )
+      }, 1500)
     }
     function rollDice(onDone?: () => void) {
       if (lock.current) return
@@ -515,7 +533,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           const movedPlayers = playersRef.current.map((p, i) => {
             if (i !== activeCurPlayer) return p
             const newPos = (p.pos + total) % TILES.length
-            setStatus(`${p.name} ??${TILES[newPos].name} (+${total}??`)
+            setStatus(
+              `${p.name} \u2192 ${TILES[newPos].name} (+${total}\uCE78)`
+            )
             return { ...p, pos: newPos }
           })
           playersRef.current = movedPlayers
@@ -552,7 +572,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 setTollModal({
                   open: true,
                   tileId: landedTileId,
-                  ownerName: ownerPlayer?.name ?? '\\uC0C1\\uB300\\uBC29',
+                  ownerName: ownerPlayer?.name ?? DEFAULT_OPPONENT_NAME,
                   tollText: `${TOLL_COST}M`,
                   onDoneCallback: onDone,
                 })
@@ -581,14 +601,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function toActionErrorMessage(statusCode: number) {
       if (statusCode === 401)
-        return '\\uB85C\\uADF8\\uC778\\uC774 \\uD544\\uC694\\uD569\\uB2C8\\uB2E4.'
+        return '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.'
       if (statusCode === 403)
-        return '\\uD604\\uC7AC \\uD134\\uC5D0\\uB294 \\uCC98\\uB9AC\\uD560 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
+        return '\uD604\uC7AC \uD134\uC5D0\uB294 \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
       if (statusCode === 404)
-        return '\\uB300\\uC0C1\\uC744 \\uCC3E\\uC744 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
+        return '\uB300\uC0C1\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
       if (statusCode === 409)
-        return '\\uC870\\uAC74\\uC774 \\uB9DE\\uC9C0 \\uC54A\\uC544 \\uCC98\\uB9AC\\uD560 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
-      return '\\uC694\\uCCAD \\uCC98\\uB9AC \\uC911 \\uC624\\uB958\\uAC00 \\uBC1C\\uC0DD\\uD588\\uC2B5\\uB2C8\\uB2E4.'
+        return '\uC870\uAC74\uC774 \uB9DE\uC9C0 \uC54A\uC544 \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
+      return '\uC694\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.'
     }
 
     function getSellFallbackRefund(level: BuildingLevel) {
@@ -635,9 +655,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { tileId, onDoneCallback } = buyModal
       if (tileId === null) return
       if (!roomId) {
-        setStatus(
-          '\\uB9E4\\uAC01 \\uD560 \\uD0C0\\uC77C\\uC744 \\uCC3E\\uC744 \\uC218 \\uC5C6\\uC2B5\\uB2C8\\uB2E4.'
-        )
+        setStatus(ROOM_ID_REQUIRED_MESSAGE)
         return
       }
       const active = curPlayerRef.current
@@ -657,11 +675,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           ...prev,
           [tileId]: {
             ownerId: activePlayerId,
-            ownerColor: activePlayerColor, // ?????源놁졆 ???????⑤９苑???繹먭퍓彛?
+            ownerColor: activePlayerColor,
             level: 1,
           },
         }))
-        // ??sync ??癰귙끋源????棺??짆?쏆춾???繹먭퍓彛?????????????뽮덫???袁⑸젻泳?
         advanceTurn(onDoneCallback)
       }
     }
@@ -676,9 +693,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { tileId, onDoneCallback } = buildModal
       if (tileId === null) return
       if (!roomId) {
-        setStatus(
-          '\\uAD6C\\uB9E4 \\uCC98\\uB9AC \\uC911 \\uC624\\uB958\\uAC00 \\uBC1C\\uC0DD\\uD588\\uC2B5\\uB2C8\\uB2E4.'
-        )
+        setStatus(ROOM_ID_REQUIRED_MESSAGE)
         return
       }
       const active = curPlayerRef.current
@@ -705,7 +720,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             },
           }
         })
-        // ??sync ??癰귙끋源????棺??짆?쏆춾???繹먭퍓彛?????????????뽮덫???袁⑸젻泳?
         advanceTurn(onDoneCallback)
       }
     }
@@ -849,8 +863,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           ))}
 
           <div className="board-center">
-            <span style={{ fontSize: 52 }}>??</span>
-            <span className="board-center__title">????</span>
+            <span style={{ fontSize: 52 }}>{DICE_ICON}</span>
+            <span className="board-center__title">{BOARD_TITLE}</span>
             <div className="board-dice-pair">
               <DiceFace value={dice1} rolling={rolling} />
               <DiceFace value={dice2} rolling={rolling} />
@@ -901,7 +915,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <BankruptModal
           open={bankruptModal.open}
           playerName={bankruptModal.playerName}
-          description="???? ??????."
+          description={BANKRUPT_DESCRIPTION}
           onConfirm={handleBankruptConfirm}
         />
       </div>
