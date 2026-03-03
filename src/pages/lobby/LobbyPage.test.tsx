@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../features/auth/store'
@@ -11,16 +11,37 @@ import { renderWithProviders } from '../../test/renderWithProviders'
 import LobbyPage from './LobbyPage'
 import type { GetLobbyRoomsParams } from './api'
 import type { LobbyRoom } from './types'
+import type { WaitingRoomSnapshot } from '../waiting-room/types'
 
 const {
   useLobbyRoomsQueryMock,
   useOnlineUsersSocketMock,
   useDirectMessageControllerMock,
+  navigateMock,
+  createWaitingRoomMock,
+  getWaitingRoomErrorMessageMock,
+  isJoinPasswordMismatchErrorMock,
+  joinWaitingRoomMock,
 } = vi.hoisted(() => ({
   useLobbyRoomsQueryMock: vi.fn(),
   useOnlineUsersSocketMock: vi.fn(),
   useDirectMessageControllerMock: vi.fn(),
+  navigateMock: vi.fn(),
+  createWaitingRoomMock: vi.fn(),
+  getWaitingRoomErrorMessageMock: vi.fn(),
+  isJoinPasswordMismatchErrorMock: vi.fn(),
+  joinWaitingRoomMock: vi.fn(),
 }))
+
+vi.mock('react-router-dom', async () => {
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  }
+})
 
 vi.mock('./hooks', () => ({
   useLobbyRoomsQuery: useLobbyRoomsQueryMock,
@@ -32,6 +53,13 @@ vi.mock('../../features/presence/useOnlineUsersSocket', () => ({
 
 vi.mock('../../features/presence/useDirectMessageController', () => ({
   useDirectMessageController: useDirectMessageControllerMock,
+}))
+
+vi.mock('../waiting-room/api', () => ({
+  createWaitingRoom: createWaitingRoomMock,
+  getWaitingRoomErrorMessage: getWaitingRoomErrorMessageMock,
+  isJoinPasswordMismatchError: isJoinPasswordMismatchErrorMock,
+  joinWaitingRoom: joinWaitingRoomMock,
 }))
 
 const MOCK_ROOMS: LobbyRoom[] = [
@@ -140,6 +168,24 @@ describe('LobbyPage filter and toggle regression', () => {
       closeDirectMessage: vi.fn(),
       sendDirectMessage: vi.fn(),
     })
+
+    createWaitingRoomMock.mockResolvedValue({
+      roomId: 'room-10',
+      roomTitle: '테스트 방',
+    })
+    getWaitingRoomErrorMessageMock.mockReturnValue('에러')
+    isJoinPasswordMismatchErrorMock.mockReturnValue(false)
+    joinWaitingRoomMock.mockResolvedValue({
+      roomId: 'room-2',
+      title: '초보 비밀 방',
+      status: 'waiting',
+      maxPlayers: 4,
+      isPrivate: true,
+      players: [
+        { id: 'user-1', nickname: '테스터', isReady: false, isHost: false },
+      ],
+      chatMessages: [],
+    } satisfies WaitingRoomSnapshot)
   })
 
   it('검색/탭/비밀방 토글 조합에 따라 조회 파라미터와 카드 목록이 함께 바뀐다', async () => {
@@ -201,5 +247,112 @@ describe('LobbyPage filter and toggle regression', () => {
     expect(
       screen.getByRole('button', { name: '접속자 목록 닫기' })
     ).toBeInTheDocument()
+  })
+
+  it('비밀방 입장하기 클릭 시 비밀번호 모달이 열리고 성공하면 대기방 이동이 호출된다', async () => {
+    const user = userEvent.setup()
+    renderLobbyPage()
+
+    const privateRoomCard = screen
+      .getByText('초보 비밀 방')
+      .closest('article') as HTMLElement
+
+    await user.click(
+      within(privateRoomCard).getByRole('button', { name: '입장하기' })
+    )
+
+    expect(
+      screen.getByRole('dialog', { name: '비밀방 입장' })
+    ).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText('비밀번호 입력'), '1234')
+    await user.click(screen.getByRole('button', { name: '입장' }))
+
+    await waitFor(() => {
+      expect(joinWaitingRoomMock).toHaveBeenCalledWith({
+        roomId: 'room-2',
+        userId: 'user-1',
+        nickname: '테스터',
+        fallbackTitle: '초보 비밀 방',
+        password: '1234',
+      })
+    })
+
+    expect(navigateMock).toHaveBeenCalledWith('/rooms/room-2', {
+      state: {
+        roomId: 'room-2',
+        roomTitle: '초보 비밀 방',
+        preJoinedSnapshot: expect.any(Object),
+      },
+    })
+  })
+
+  it('비밀번호 불일치면 모달이 유지되고 에러 표시 후 입력 변경 시 에러 상태가 초기화된다', async () => {
+    const user = userEvent.setup()
+    renderLobbyPage()
+
+    const privateRoomCard = screen
+      .getByText('초보 비밀 방')
+      .closest('article') as HTMLElement
+
+    isJoinPasswordMismatchErrorMock.mockReturnValue(true)
+    joinWaitingRoomMock.mockRejectedValue(new Error('ROOM_PASSWORD_MISMATCH'))
+
+    await user.click(
+      within(privateRoomCard).getByRole('button', { name: '입장하기' })
+    )
+
+    await user.type(screen.getByPlaceholderText('비밀번호 입력'), '1234')
+    await user.click(screen.getByRole('button', { name: '입장' }))
+
+    expect(
+      await screen.findByText('비밀번호가 올바르지 않습니다.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: '비밀방 입장' })
+    ).toBeInTheDocument()
+
+    const passwordInput = screen.getByPlaceholderText(
+      '비밀번호 입력'
+    ) as HTMLInputElement
+    await user.clear(passwordInput)
+    await user.type(passwordInput, '123')
+
+    expect(
+      screen.queryByText('비밀번호가 올바르지 않습니다.')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText('비밀번호 4자리를 입력해주세요')
+    ).toBeInTheDocument()
+  })
+
+  it('비밀방 입장 모달에서 취소하면 모달이 닫히고 재오픈 시 입력값이 초기화된다', async () => {
+    const user = userEvent.setup()
+    renderLobbyPage()
+
+    const privateRoomCard = screen
+      .getByText('초보 비밀 방')
+      .closest('article') as HTMLElement
+
+    await user.click(
+      within(privateRoomCard).getByRole('button', { name: '입장하기' })
+    )
+    await user.type(screen.getByPlaceholderText('비밀번호 입력'), '1234')
+    await user.click(screen.getByRole('button', { name: '취소' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '비밀방 입장' })
+      ).not.toBeInTheDocument()
+    })
+
+    await user.click(
+      within(privateRoomCard).getByRole('button', { name: '입장하기' })
+    )
+
+    const reopenedPasswordInput = screen.getByPlaceholderText(
+      '비밀번호 입력'
+    ) as HTMLInputElement
+    expect(reopenedPasswordInput.value).toBe('')
   })
 })
