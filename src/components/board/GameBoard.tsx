@@ -423,10 +423,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
         })
 
-        const merged = { ...tileOwnersRef.current, ...nextOwners }
-        tileOwnersRef.current = merged
-        setTileOwners(merged)
-        onTileOwnersChange?.(merged)
+        tileOwnersRef.current = nextOwners
+        setTileOwners(nextOwners)
+        onTileOwnersChange?.(nextOwners)
       }
 
       const nextTurnRaw = payload.current_turn ?? payload.currentTurn
