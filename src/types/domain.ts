@@ -83,7 +83,7 @@ export interface GameState {
   players: Player[]
   tiles: Tile[]
   messages: ChatMessage[]
-  // 프론트 내부 상태는 camelCase를 기준으로 관리한다.
+  // 프런트는 게임 상태를 camelCase 기준으로 관리한다.
   currentTurn: string | null
   round: number
   turnTimeoutSec: number
