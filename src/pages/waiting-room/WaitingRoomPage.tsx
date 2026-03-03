@@ -325,6 +325,7 @@ function WaitingRoomPage() {
       <DevMockControlPanel
         roomId={currentRoomId}
         currentUserId={session.userId}
+        currentNickname={session.nickname}
         onApplySnapshot={applyRoomSnapshot}
         onError={(message) => {
           toast.error(message)
