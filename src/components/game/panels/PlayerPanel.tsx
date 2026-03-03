@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatWon } from '../../../lib/utils'
 
 interface Player {
   id: string
@@ -102,7 +103,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
         <div className="flex items-center justify-between">
           <span className="text-[13px] text-[#8B9AB0]">보유금</span>
           <span className="text-[20px] font-black text-[#1F2A44]">
-            {money.toLocaleString()}M
+            {formatWon(money)}
           </span>
         </div>
 
@@ -113,7 +114,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
             <span>총자산</span>
           </span>
           <span className="text-[13px] text-[#B0BBC8]">
-            {totalAssets.toLocaleString()}M
+            {formatWon(totalAssets)}
           </span>
         </div>
       </div>
