@@ -1,53 +1,248 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import type {
-  Player,
-  Tile,
   ActiveModal,
-  GameResult,
-  GameState,
   ChatMessage,
+  GameAck,
+  GameError,
+  GamePatchEnvelope,
+  GameResult,
+  GameSnapshot,
+  GameState,
+  PendingGameAction,
+  Player,
+  PlayerId,
+  ServerEvent,
+  Tile,
 } from '../types/domain'
 
 interface GameActions {
   setGameState: (state: Partial<GameState>) => void
-  updatePlayer: (playerId: string, updates: Partial<Player>) => void
+  updatePlayer: (playerId: PlayerId, updates: Partial<Player>) => void
   updateTile: (tileIndex: number, updates: Partial<Tile>) => void
-  setCurrentTurn: (playerId: string) => void
+  setCurrentTurn: (playerId: PlayerId | null) => void
   setModal: (modal: ActiveModal) => void
   setGameResult: (result: GameResult) => void
   addMessage: (message: ChatMessage) => void
+  replaceFromSnapshot: (snapshot: GameSnapshot) => void
+  applyPatchEnvelope: (envelope: GamePatchEnvelope) => void
+  setPendingAction: (action: PendingGameAction | null) => void
+  resolveAck: (ack: GameAck) => void
+  setPrompt: (prompt: GameState['prompt']) => void
+  clearPrompt: (promptId?: string) => void
+  enqueueEvents: (events: ServerEvent[]) => void
+  consumeNextEvent: () => ServerEvent | null
+  setLastError: (error: GameError | null) => void
   resetGame: () => void
 }
 
+type GameStoreState = GameState & GameActions
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const normalizeTile = (tile: Tile): Tile => {
+  const ownerId =
+    tile.ownerId !== undefined ? tile.ownerId : (tile.owner_id ?? null)
+
+  return {
+    ...tile,
+    ownerId,
+    owner_id: ownerId,
+  }
+}
+
+const normalizePlayer = (player: Player): Player => ({
+  ...player,
+  state:
+    player.state ??
+    (player.is_bankrupt ? 'bankrupt' : player.is_in_jail ? 'island' : 'normal'),
+})
+
+const normalizeState = (state: Partial<GameState>): Partial<GameState> => {
+  const currentPlayerId =
+    state.currentPlayerId !== undefined
+      ? state.currentPlayerId
+      : (state.currentTurn ?? null)
+
+  const currentTurn =
+    state.currentTurn !== undefined ? state.currentTurn : currentPlayerId
+
+  return {
+    ...state,
+    currentPlayerId,
+    currentTurn,
+    tiles: state.tiles?.map(normalizeTile),
+    players: state.players?.map(normalizePlayer),
+    prompt: state.prompt ?? null,
+    pendingAction: state.pendingAction ?? null,
+    lastAck: state.lastAck ?? null,
+    lastError: state.lastError ?? null,
+    eventQueue: state.eventQueue ?? [],
+  }
+}
+
+const toPathSegments = (
+  path: string | Array<string | number>
+): Array<string | number> => {
+  if (Array.isArray(path)) {
+    return path
+  }
+
+  return path
+    .split('.')
+    .map((segment) =>
+      /^\d+$/.test(segment) ? Number.parseInt(segment, 10) : segment
+    )
+}
+
+const getTargetContainer = (
+  draft: Record<string, unknown>,
+  path: Array<string | number>
+) => {
+  const parentPath = path.slice(0, -1)
+  let cursor: unknown = draft
+
+  for (const segment of parentPath) {
+    if (Array.isArray(cursor) && typeof segment === 'number') {
+      cursor = cursor[segment]
+      continue
+    }
+
+    if (isRecord(cursor)) {
+      cursor = cursor[String(segment)]
+      continue
+    }
+
+    return null
+  }
+
+  return cursor
+}
+
+const setValueAtPath = (
+  draft: Record<string, unknown>,
+  path: Array<string | number>,
+  value: unknown
+) => {
+  const target = getTargetContainer(draft, path)
+  const key = path[path.length - 1]
+
+  if (key === undefined || target === null) {
+    return
+  }
+
+  if (Array.isArray(target) && typeof key === 'number') {
+    target[key] = value
+    return
+  }
+
+  if (isRecord(target)) {
+    target[String(key)] = value
+  }
+}
+
+const getValueAtPath = (
+  draft: Record<string, unknown>,
+  path: Array<string | number>
+) => {
+  let cursor: unknown = draft
+
+  for (const segment of path) {
+    if (Array.isArray(cursor) && typeof segment === 'number') {
+      cursor = cursor[segment]
+      continue
+    }
+
+    if (isRecord(cursor)) {
+      cursor = cursor[String(segment)]
+      continue
+    }
+
+    return undefined
+  }
+
+  return cursor
+}
+
+const removeValueAtPath = (
+  draft: Record<string, unknown>,
+  path: Array<string | number>,
+  index?: number,
+  value?: unknown
+) => {
+  const target = getValueAtPath(draft, path)
+
+  if (Array.isArray(target)) {
+    if (typeof index === 'number') {
+      target.splice(index, 1)
+      return
+    }
+
+    if (value !== undefined) {
+      const matchedIndex = target.findIndex((item) => item === value)
+      if (matchedIndex >= 0) {
+        target.splice(matchedIndex, 1)
+      }
+    }
+    return
+  }
+
+  const container = getTargetContainer(draft, path)
+  const key = path[path.length - 1]
+
+  if (key !== undefined && isRecord(container)) {
+    delete container[String(key)]
+  }
+}
+
 const INITIAL_STATE: GameState = {
+  roomId: null,
+  gameId: null,
+  revision: 0,
+  phase: 'waiting',
   players: [],
   tiles: [],
   messages: [],
   currentTurn: null,
+  currentPlayerId: null,
   round: 1,
   turnTimeoutSec: 30,
   turnTimerKey: 0,
   activeModal: null,
+  prompt: null,
+  pendingAction: null,
+  lastAck: null,
+  lastError: null,
+  eventQueue: [],
+  session: {
+    roomId: null,
+    gameId: null,
+    transport: null,
+    syncedAt: null,
+  },
   gameResult: null,
   isGameOver: false,
   winnerId: null,
 }
 
-export const useGameStore = create<GameState & GameActions>()(
-  immer((set) => ({
+export const useGameStore = create<GameStoreState>()(
+  immer<GameStoreState>((set, get) => ({
     ...INITIAL_STATE,
 
     setGameState: (state) =>
       set((draft) => {
-        Object.assign(draft, state)
+        Object.assign(draft, normalizeState(state))
       }),
 
     updatePlayer: (playerId, updates) =>
       set((draft) => {
-        const player = draft.players.find((p) => p.id === playerId)
+        const player = draft.players.find(
+          (p) => String(p.id) === String(playerId)
+        )
         if (player) {
           Object.assign(player, updates)
+          Object.assign(player, normalizePlayer(player))
         }
       }),
 
@@ -56,12 +251,14 @@ export const useGameStore = create<GameState & GameActions>()(
         const tile = draft.tiles.find((t) => t.index === tileIndex)
         if (tile) {
           Object.assign(tile, updates)
+          Object.assign(tile, normalizeTile(tile))
         }
       }),
 
     setCurrentTurn: (playerId) =>
       set((draft) => {
         draft.currentTurn = playerId
+        draft.currentPlayerId = playerId
       }),
 
     setModal: (modal) =>
@@ -77,6 +274,138 @@ export const useGameStore = create<GameState & GameActions>()(
     addMessage: (message) =>
       set((draft) => {
         draft.messages.push(message)
+      }),
+
+    replaceFromSnapshot: (snapshot) =>
+      set((draft) => {
+        Object.assign(draft, normalizeState(snapshot))
+        draft.session.roomId = snapshot.roomId ?? draft.session.roomId
+        draft.session.gameId = snapshot.gameId ?? draft.session.gameId
+        draft.session.transport = 'event-socket'
+        draft.session.syncedAt = new Date().toISOString()
+        draft.turnTimerKey = Date.now()
+      }),
+
+    applyPatchEnvelope: (envelope) =>
+      set((draft) => {
+        if (envelope.revision <= draft.revision) {
+          return
+        }
+
+        for (const operation of envelope.patch) {
+          const path = toPathSegments(operation.path)
+
+          switch (operation.op) {
+            case 'set':
+              setValueAtPath(
+                draft as unknown as Record<string, unknown>,
+                path,
+                operation.value
+              )
+              break
+            case 'inc': {
+              const currentValue = getValueAtPath(
+                draft as unknown as Record<string, unknown>,
+                path
+              )
+              if (typeof currentValue === 'number') {
+                setValueAtPath(
+                  draft as unknown as Record<string, unknown>,
+                  path,
+                  currentValue + operation.value
+                )
+              }
+              break
+            }
+            case 'push': {
+              const target = getValueAtPath(
+                draft as unknown as Record<string, unknown>,
+                path
+              )
+              if (Array.isArray(target)) {
+                target.push(operation.value)
+              }
+              break
+            }
+            case 'remove':
+              removeValueAtPath(
+                draft as unknown as Record<string, unknown>,
+                path,
+                operation.index,
+                operation.value
+              )
+              break
+          }
+        }
+
+        draft.revision = envelope.revision
+        draft.eventQueue.push(...(envelope.events ?? []))
+        Object.assign(draft, normalizeState(draft))
+      }),
+
+    setPendingAction: (action) =>
+      set((draft) => {
+        draft.pendingAction = action
+      }),
+
+    resolveAck: (ack) =>
+      set((draft) => {
+        draft.lastAck = ack
+        draft.lastError = ack.ok
+          ? null
+          : {
+              code: ack.errorCode ?? 'GAME_ACTION_REJECTED',
+              message: ack.message ?? '게임 액션이 거부되었습니다.',
+              actionId: ack.actionId,
+            }
+
+        if (draft.pendingAction?.actionId === ack.actionId) {
+          draft.pendingAction = null
+        }
+      }),
+
+    setPrompt: (prompt) =>
+      set((draft) => {
+        draft.prompt = prompt
+        draft.phase = prompt ? 'prompt' : draft.phase
+      }),
+
+    clearPrompt: (promptId) =>
+      set((draft) => {
+        if (!draft.prompt) {
+          return
+        }
+
+        if (promptId && draft.prompt.id !== promptId) {
+          return
+        }
+
+        draft.prompt = null
+      }),
+
+    enqueueEvents: (events) =>
+      set((draft) => {
+        draft.eventQueue.push(...events)
+      }),
+
+    consumeNextEvent: (): ServerEvent | null => {
+      const state = get()
+      const nextEvent = state.eventQueue[0] ?? null
+
+      if (!nextEvent) {
+        return null
+      }
+
+      set((draft) => {
+        draft.eventQueue.shift()
+      })
+
+      return nextEvent
+    },
+
+    setLastError: (error: GameError | null) =>
+      set((draft) => {
+        draft.lastError = error
       }),
 
     resetGame: () =>
