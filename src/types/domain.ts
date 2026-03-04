@@ -1,4 +1,9 @@
-export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5
+export type RoomId = string
+export type GameId = string
+export type PlayerId = number | string
+export type Money = number
+
+export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 export type TileType =
   | 'start'
@@ -16,6 +21,28 @@ export type TileType =
   | 'city'
   | 'event'
   | 'ai'
+
+export type TransportTileType =
+  | 'START'
+  | 'PROPERTY'
+  | 'CHANCE'
+  | 'MOVE_TO_ISLAND'
+  | 'ISLAND'
+
+export type GamePhase =
+  | 'waiting'
+  | 'rolling'
+  | 'moving'
+  | 'resolving'
+  | 'prompt'
+  | 'finished'
+
+export type PlayerStateType =
+  | 'normal'
+  | 'island'
+  | 'locked'
+  | 'bankrupt'
+  | 'disconnected'
 
 export interface Card {
   title: string
@@ -35,23 +62,27 @@ export interface ChatMessage {
 
 export interface Tile {
   index: number
-  owner_id?: string | null
+  ownerId?: PlayerId | null
+  owner_id?: PlayerId | null
   building: BuildingLevel
   name: string
   type: TileType
-  price?: number
+  transportType?: TransportTileType
+  price?: Money
   color?: string
 }
 
 export interface Player {
-  id: string
+  id: PlayerId
   nickname: string
   position: number
-  balance: number
+  balance: Money
   owned_tiles: number[]
   is_in_jail: boolean
   jail_turn_count: number
   is_bankrupt: boolean
+  state?: PlayerStateType
+  stateDuration?: number
   color: string
   avatar?: string
 }
@@ -68,9 +99,9 @@ export type ActiveModal =
 
 export type GameRanking = {
   rank: number
-  player_id: string
+  player_id: PlayerId
   nickname: string
-  final_assets: number
+  final_assets: Money
   is_winner: boolean
 }
 
@@ -79,17 +110,132 @@ export type GameResult = {
   rankings: GameRanking[]
 }
 
-export interface GameState {
+export interface GamePromptChoice {
+  id: string
+  label: string
+  value: string
+  description?: string
+}
+
+export interface GamePrompt {
+  id: string
+  type: string
+  playerId?: PlayerId | null
+  title?: string
+  message?: string
+  timeoutSec?: number
+  choices?: GamePromptChoice[]
+  payload?: Record<string, unknown>
+}
+
+export interface GamePromptResponse {
+  promptId: string
+  playerId?: PlayerId | null
+  value: string
+}
+
+export interface GameAck {
+  actionId: string
+  type?: string
+  ok: boolean
+  revision?: number
+  promptId?: string | null
+  message?: string
+  errorCode?: string
+  payload?: Record<string, unknown>
+}
+
+export interface GameError {
+  code: string
+  message: string
+  retryable?: boolean
+  actionId?: string
+}
+
+export interface ServerEvent {
+  id?: string
+  type: string
+  playerId?: PlayerId | null
+  tileIndex?: number | null
+  amount?: Money
+  payload?: Record<string, unknown>
+}
+
+export type GamePatchPath = string | Array<string | number>
+
+export type GamePatchOperation =
+  | {
+      op: 'set'
+      path: GamePatchPath
+      value: unknown
+    }
+  | {
+      op: 'inc'
+      path: GamePatchPath
+      value: number
+    }
+  | {
+      op: 'push'
+      path: GamePatchPath
+      value: unknown
+    }
+  | {
+      op: 'remove'
+      path: GamePatchPath
+      index?: number
+      value?: unknown
+    }
+
+export interface PendingGameAction {
+  actionId: string
+  type: string
+  requestedAt: number
+  payload?: Record<string, unknown>
+}
+
+export interface GameConnectionMeta {
+  roomId: RoomId | null
+  gameId: GameId | null
+  transport: 'legacy-rest' | 'legacy-socket' | 'event-socket' | null
+  syncedAt: string | null
+}
+
+export interface GameSnapshot {
+  roomId?: RoomId | null
+  gameId?: GameId | null
+  revision: number
+  phase: GamePhase
   players: Player[]
   tiles: Tile[]
-  messages: ChatMessage[]
-  // 프런트는 게임 상태를 camelCase 기준으로 관리한다.
-  currentTurn: string | null
+  currentPlayerId: PlayerId | null
+  currentTurn?: PlayerId | null
   round: number
   turnTimeoutSec: number
+  prompt?: GamePrompt | null
+  gameResult?: GameResult | null
+  isGameOver?: boolean
+  winnerId?: PlayerId | null
+}
+
+export interface GamePatchEnvelope {
+  revision: number
+  patch: GamePatchOperation[]
+  events?: ServerEvent[]
+}
+
+export interface GameState extends GameSnapshot {
+  messages: ChatMessage[]
+  // 기존 화면과의 호환을 위해 currentTurn alias를 유지한다.
+  currentTurn: PlayerId | null
   turnTimerKey: number
   activeModal: ActiveModal
+  prompt: GamePrompt | null
+  pendingAction: PendingGameAction | null
+  lastAck: GameAck | null
+  lastError: GameError | null
+  eventQueue: ServerEvent[]
+  session: GameConnectionMeta
   gameResult: GameResult | null
   isGameOver: boolean
-  winnerId: string | null
+  winnerId: PlayerId | null
 }
