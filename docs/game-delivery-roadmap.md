@@ -1,32 +1,39 @@
-# 게임 완료 로드맵 (새 이벤트 명세 기준 / 기존 명세 호환 포함, 2026-03-04)
+# 게임 완료 로드맵 (중앙 docs 기준 / 기존 명세 호환 포함, 2026-03-04)
 
-이 문서는 현재 프론트엔드 코드와 `이벤트 명세서.md`, `모두의마블_API명세서_v4.xlsx`,
+이 문서는 현재 프론트엔드 코드와 중앙 문서 저장소 `https://github.com/modoo-marble-team/docs`의
+`gamesocket.md`, `api.md`, `erd.md`, 그리고 기존 `모두의마블_API명세서_v4.xlsx`,
 `모두의마블_요구사항정의서_v8.xlsx`, `모두의마블_테이블명세서_v4.xlsx`를 함께 대조해서
 다시 작성한 실행 로드맵이다.
 
 중요한 전제는 아래와 같다.
 
-- `이벤트 명세서.md`는 앞으로 이행해야 할 **목표 런타임 계약**이다.
+- 중앙 docs의 `gamesocket.md`는 앞으로 이행해야 할 **게임 런타임 단일 계약**이다.
+- 중앙 docs의 `api.md`는 게임 영역에서 `gamesocket.md`를 우선 기준으로 삼고, REST를 로비/대기방 중심으로 제한한다.
 - API/요구사항/테이블 명세 v4는 현재 코드와 더 가까운 **레거시/현행 계약**이다.
 - 따라서 이 문서는 "새 명세로 바로 단절"이 아니라 "기존 계약을 유지하면서 새 명세로 이행"하는 기준 문서다.
 
 ## 1. 기준 문서
 
-- 요구사항 기준: `모두의마블_요구사항정의서_v8.xlsx`
-- API/데이터 기준: `모두의마블_API명세서_v4.xlsx`, `모두의마블_테이블명세서_v4.xlsx`
-- 실시간 게임 계약 기준: `이벤트 명세서.md`
+- 실시간 게임 계약 기준: 중앙 docs `gamesocket.md`
+- API/WebSocket 기준: 중앙 docs `api.md`
+- 데이터 기준: 중앙 docs `erd.md`
+- 요구사항/레거시 API 기준: `모두의마블_요구사항정의서_v8.xlsx`, `모두의마블_API명세서_v4.xlsx`, `모두의마블_테이블명세서_v4.xlsx`
 - 프론트 내부 기준: `docs/game-ownership.md`, `docs/game-ownership-corrected-table.md`
 
 ### 기준 우선순위
 
-1. **새 이벤트 명세서**
+1. **중앙 docs `gamesocket.md`**
    - 목표 구조(`game:action`, `game:ack`, `game:patch`, `game:prompt`) 정의
-2. **API/요구사항/테이블 명세**
-   - 현재 운영/저장 구조, 화폐 단위, room 식별자, 타일/건물 규칙 확인
-3. **현재 코드**
+   - 게임 영역의 단일 런타임 계약
+2. **중앙 docs `api.md` / `erd.md`**
+   - 게임은 `game:*` 소켓, 로비/대기방은 REST 중심이라는 경계 확인
+   - 게임 식별자, 공통 에러 포맷, 데이터 저장 구조 확인
+3. **기존 API/요구사항/테이블 명세**
+   - 현재 운영 제약, 레거시 payload, 호환 범위 확인
+4. **현재 코드**
    - 실제 구현 상태와 이행 비용 확인
 
-즉, 새 명세서가 목표 방향을 정하고, 기존 명세가 현재 제약을 설명한다.
+즉, 중앙 docs가 목표 방향을 정하고, 기존 명세가 현재 제약을 설명한다.
 
 ## 2. 명세 변경 핵심
 
@@ -43,37 +50,38 @@
 
 ### 2-1. roomId vs gameId
 
+- 중앙 docs `gamesocket.md`는 게임 이벤트를 `gameId` 기준 room(`game:{gameId}`)으로 정의한다.
 - 기존 API/테이블 명세는 `room_id` 기준이다.
-- 새 이벤트 명세는 `gameId` 기준 room(`game:{gameId}`)을 전제로 한다.
 
 현재 프론트 기준 정책:
 
-- 라우팅과 레거시 REST fallback은 **`roomId` 유지**
-- 새 이벤트 계층에서는 **`gameId`를 별도 보관**
-- FE-B는 이 둘의 매핑을 담당한다
+- 게임 소켓 이벤트의 canonical identifier는 **`gameId`**
+- 로비/대기방/레거시 fallback 경계에서는 **`roomId`** 가 남을 수 있다
+- FE-B는 `roomId -> gameId` 매핑과 점진 제거 전략을 담당한다
 
-즉, 이행 완료 전까지는 `roomId`와 `gameId`가 동시에 존재할 수 있다.
+즉, 이행 완료 전까지는 둘이 공존할 수 있지만, 신규 게임 흐름의 기준점은 `gameId`다.
 
 ### 2-2. 화폐 단위
 
 - 요구사항/API 명세 v4: **원(₩) 정수**
-- 새 이벤트 명세: 설명상 **만 단위 정수**를 가정
+- 중앙 docs `gamesocket.md`: 예시는 만 단위 정수를 쓰지만, 실제 단위는 **프로젝트 합의 단일 기준으로 고정**한다고 명시
+- 중앙 docs `api.md`: 프론트/백엔드가 동일 단위를 써야 한다고 명시
 
 현재 프론트 기준 정책:
 
-- 프론트 내부 canonical money unit은 **원 정수**를 유지한다.
-- 표시만 `억/만`으로 변환한다.
-- 새 이벤트 payload가 만 단위로 바뀌면 FE-B ingress/egress 변환기로 흡수한다.
+- 현재 프론트는 원 정수 중심 표현을 쓰고 있다.
+- 단, 앞으로는 프론트/백엔드 공통 canonical money unit을 명시적으로 확정해야 한다.
+- transport와 내부 표현이 다를 경우 FE-B mapper/adapter가 이를 흡수한다.
 
-즉, store/domain 내부에서 단위를 섞지 않는다.
+즉, store/domain 내부에서 단위를 섞지 않고, 중앙 docs 기준으로 하나의 canonical unit을 유지해야 한다.
 
 ### 2-3. TileType / BuildingLevel
 
 - 요구사항/현재 보드 기준 타일: `start`, `city`, `chance`, `event`, `ai`, `travel`, `island`, `go_to_island`
-- 새 이벤트 명세 기준 타일: `START`, `PROPERTY`, `CHANCE`, `MOVE_TO_ISLAND`, `ISLAND`
+- 중앙 docs `gamesocket.md` 기준 타일: `START`, `PROPERTY`, `EVENT`, `CHANCE`, `MOVE_TO_ISLAND`, `ISLAND`
 
 - API v4 build 레벨: 사실상 `0..5`
-- 새 이벤트 명세 build 레벨: `0..7`
+- 중앙 docs `gamesocket.md` build 레벨: `0..7`
 
 현재 프론트 기준 정책:
 
@@ -91,7 +99,7 @@
 
 - `src/services/game/game.api.ts`
   현재는 `buy`, `build`, `sell`, `state` REST 액션이 중심이다.
-  새 명세 기준으로는 게임 액션 전송을 socket 중심으로 재구성하고, REST는 제거하거나 **이행 중 레거시 fallback으로 격리**해야 한다.
+  중앙 docs `api.md` 기준으로 게임 로직은 `game:*` 소켓이 중심이므로, REST는 제거하거나 **이행 중 레거시 fallback으로 격리**해야 한다.
 
 - `src/hooks/game/useGameState.ts`
   현재는 진입 시 REST `getState`를 호출하고 기존 소켓 핸들러를 붙인다.
@@ -126,7 +134,7 @@
 
 기존 80/50 평가는 더 이상 유효하지 않다. 새 이벤트 명세 **이행 진행도** 기준으로 다시 보면 다음이 더 현실적이다.
 
-### FE-B: 55%
+### FE-B: 상태 구조 전환 완료, UI 연결 단계 진입
 
 완료된 축:
 
@@ -135,16 +143,15 @@
 - socket 연결 수명주기와 mock 흐름의 기본 토대 존재
 - 게임 API/에러 처리 래퍼와 연동 진입점 존재
 
-아직 비어 있는 축:
+현재 남은 핵심 축:
 
-- 새 이벤트 계약용 타입 재정의
-- `game:action`/`game:ack`/`game:patch`/`game:prompt` 중심 소켓 계층
-- revision 기반 patch 적용기
-- prompt 응답 흐름
-- REST 액션 의존 제거 또는 fallback 격리
-- roomId/gameId, money unit, tile/building enum 매핑기
+- `prompt`, `ack`, `error`, `pendingAction`의 실제 UI 연결
+- `game:prompt_response` 기반 입력 흐름 정리
+- REST 액션 의존 추가 축소 또는 fallback 격리
+- `gameId` 중심 식별자 정리
+- money unit, tile/building enum의 중앙 docs 기준 명시화
 
-### FE-C: 45%
+### FE-C: 보드 표현/연출 정리 단계
 
 완료된 축:
 
@@ -181,9 +188,13 @@
 
 ### 5-4. prompt/ack 기반 입력 UX 정리
 
+중앙 docs `gamesocket.md` 기준으로 **현재 FE-B의 다음 최우선 작업**이다.
+
 - 구매/건설/매각/무인도 이동/턴 종료를 prompt 또는 ack 기준으로 처리
 - 즉시 실패는 `game:ack.ok=false` 기준으로 에러 표시
 - `DiceTimerModal`을 실제 turn timeout 또는 prompt timeout과 연결
+- `pendingAction`을 버튼 비활성화/로딩과 연결
+- 기존 로컬 modal 분기를 `game:prompt` 소비 구조로 전환
 
 ### 5-5. mock 전환
 
@@ -239,6 +250,6 @@
 
 ## 9. 결론
 
-지금 가장 먼저 해야 할 일은 모달 추가가 아니라 게임 계약 계층을 새 이벤트 명세에 맞춰 다시 세우는 일이다.
-즉시 우선순위는 FE-B의 타입/store/socket/mock 전환이고, 그 다음 FE-C가 `GameBoard.tsx`를 시각 레이어로 축소하는 흐름이 맞다.
-단, 이 과정에서도 `roomId`, 원 단위 금액, 현재 보드 view model은 갑자기 제거하지 않고 compatibility layer로 안전하게 이행해야 한다.
+지금 가장 먼저 해야 할 일은 `game:*` 계약을 실제 UI 입력 흐름에 연결하는 일이다.
+즉시 우선순위는 FE-B의 `prompt/ack/error/pendingAction` UI 연결이고, 그 다음 FE-C가 `GameBoard.tsx`를 더 명확한 시각 레이어로 축소하는 흐름이 맞다.
+단, 이 과정에서도 `roomId`, money unit, 현재 보드 view model은 갑자기 제거하지 않고 compatibility layer로 안전하게 이행해야 한다.

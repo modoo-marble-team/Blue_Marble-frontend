@@ -1,8 +1,9 @@
 # 게임 이벤트 명세 전환 갭 분석
 
-이 문서는 `이벤트 명세서.md` 기준으로 현재 프론트엔드 코드에서 어디를 어떻게 고쳐야 하는지 파일 단위로 정리한 문서다.
+이 문서는 중앙 문서 저장소 `https://github.com/modoo-marble-team/docs`의 `gamesocket.md`,
+`api.md`, `erd.md` 기준으로 현재 프론트엔드 코드에서 어디를 어떻게 고쳐야 하는지 파일 단위로 정리한 문서다.
 단, 실제 이행 작업은 `모두의마블_API명세서_v4.xlsx`, `모두의마블_요구사항정의서_v8.xlsx`,
-`모두의마블_테이블명세서_v4.xlsx`의 제약을 동시에 고려해야 한다.
+`모두의마블_테이블명세서_v4.xlsx`의 레거시 제약도 동시에 고려해야 한다.
 
 ## 1. 핵심 결론
 
@@ -12,13 +13,14 @@
 - 실시간 반영: `game_start`, `turn_start`, `dice_rolled`, `player_moved` 등 개별 소켓 이벤트
 - 보드 계산: `GameBoard.tsx` 내부 로컬 계산과 상태 갱신
 
-새 명세는 아래 구조를 요구한다.
+중앙 docs는 아래 구조를 요구한다.
 
 - 액션: `game:action`
 - 동기화: `game:sync`
 - 상태 반영: `game:patch`
 - 개인 선택: `game:prompt` / `game:prompt_response`
 - 빠른 입력 결과: `game:ack`
+- 오류 보고: `game:error`
 
 즉, 현재 구조는 "이벤트 이름만 몇 개 바꾸는 수준"이 아니라 상태 흐름 자체를 재정렬해야 한다.
 
@@ -27,23 +29,23 @@
 ### 식별자
 
 - 구 명세: `room_id`
-- 새 이벤트 명세: `gameId`
+- 중앙 docs: `gameId`
 
 이행 기준:
 
-- URL/레거시 REST는 `roomId`
-- 새 이벤트 계층은 `gameId`
-- FE-B가 `roomId <-> gameId` 매핑을 관리
+- 게임 소켓 이벤트는 `gameId`를 canonical로 삼는다
+- URL/로비/대기방/레거시 REST는 `roomId`가 남을 수 있다
+- FE-B가 `roomId -> gameId` 매핑과 제거 전략을 관리한다
 
 ### 화폐 단위
 
 - 구 명세: 원 정수
-- 새 이벤트 명세: 설명상 만 단위 정수
+- 중앙 docs: 예시는 만 단위를 쓰지만, 실제 프로젝트 canonical unit을 하나로 고정해야 함
 
 이행 기준:
 
-- FE 내부 store/domain canonical money unit은 **원 정수**
-- transport 차이는 FE-B mapper로 흡수
+- 프론트/백엔드가 동일한 canonical unit을 공유해야 한다
+- 현재 프론트 구현과 transport 차이는 FE-B mapper/adapter가 흡수한다
 
 ### 타일 타입
 
@@ -76,7 +78,7 @@
 | `src/stores/game.store.ts`                       | 단순 set/update store라 revision, prompt, patch 적용 불가               | `applySnapshot`, `applyPatch`, `setAck`, `setPrompt`, `consumeEvents` 추가                                                  | FE-B                       |
 | `src/services/socket/game.handler.ts`            | 구 소켓 이벤트 구독과 `roll_dice`, `confirm_penalty` emit 사용          | `game:ack`, `game:patch`, `game:prompt`, `game:error` 구독과 `game:action`, `game:sync`, `game:prompt_response` emit로 교체 | FE-B                       |
 | `src/hooks/game/useGameState.ts`                 | mount 시 REST state 조회 중심                                           | mount/reconnect 시 `game:sync` 전송, snapshot 또는 patch 적용으로 전환                                                      | FE-B                       |
-| `src/services/game/game.api.ts`                  | `buyTile`, `buildTile`, `sellTile`, `syncState`가 핵심 액션 경로        | 게임 액션성 REST를 제거하거나 레거시 fallback으로 격리, roomId 기준 호환 계층 유지                                          | FE-B                       |
+| `src/services/game/game.api.ts`                  | `buyTile`, `buildTile`, `sellTile`, `syncState`가 핵심 액션 경로        | 중앙 docs 기준 게임 액션성 REST를 제거하거나 레거시 fallback으로 격리, roomId 기준 호환 계층 유지                           | FE-B                       |
 | `src/hooks/game/useDiceRoll.ts`                  | `emitRollDice` 또는 로컬 보드 fallback 사용                             | `ROLL_DICE`용 `game:action` 전송으로 단순화                                                                                 | FE-B                       |
 | `src/pages/GamePage.tsx`                         | `boardPlayers`, `boardCurPlayer` 로컬 상태와 store 이중화               | store selector 기반 조립으로 단순화, 보드에 상태 역주입 금지                                                                | FE-B 주도 / FE-C 협업      |
 | `src/components/board/GameBoard.tsx`             | 타일 소유권, 통행료, 파산, 턴 전환, API 호출을 직접 수행                | 렌더링과 연출만 담당하도록 축소, prompt 표시용 표면만 유지                                                                  | FE-C 주도 / FE-B 선행 필요 |
@@ -223,6 +225,7 @@
 - socket 계층 전환
 - mock 전환
 - prompt/ack/error 흐름 정의
+- 실제 UI에서 `prompt`, `ack`, `pendingAction`, `error`를 소비하는 연결
 
 ### FE-C가 그 다음 붙여야 하는 것
 
@@ -241,6 +244,42 @@
 6. `src/pages/GamePage.tsx`
 7. `src/components/board/GameBoard.tsx`
 8. `src/components/game/modals/*`
+
+## 5-1. 현재 상태(2026-03-04 기준)
+
+아래 항목은 이미 1차 반영이 끝난 상태다.
+
+- `src/types/domain.ts`
+  - `GameAck`, `GamePatchEnvelope`, `GamePrompt`, `ServerEvent`, `GamePhase` 등 도입
+- `src/stores/game.store.ts`
+  - snapshot/patch/ack/prompt/eventQueue 수용 구조 도입
+- `src/services/socket/game.handler.ts`
+  - `game:ack`, `game:patch`, `game:prompt`, `game:error` listener 추가
+  - `emitGameAction`, `emitGameSync`, `emitPromptResponse` 도입
+- `src/hooks/game/useGameState.ts`
+  - `game:sync` 우선, REST bootstrap fallback 병행
+- `src/mocks/handlers/game.handler.ts`
+  - event-socket mock flow 추가
+- `src/pages/GamePage.tsx`
+  - store 단일 상태 렌더 구조로 1차 정리
+- `src/components/board/GameBoard.tsx`
+  - 액션/동기화/거래 로직 helper/handler 분리 진행
+
+즉, 현재의 다음 실제 우선순위는 타입/store/socket 골격 재작성 자체가 아니라,
+`prompt/ack/error/pendingAction`을 실제 게임 UI와 연결하는 일이다.
+
+## 5-2. 현재 다음 우선순위
+
+중앙 docs 기준으로 현재 FE-B의 다음 우선순위는 아래다.
+
+1. `src/components/game/modals/*`, `src/pages/GamePage.tsx`, `src/components/board/GameBoard.tsx`
+   - `gameStore.prompt`를 실제 modal/overlay 열림 조건과 연결
+2. `src/services/socket/game.handler.ts`, `src/components/board/GameBoard.tsx`
+   - `emitPromptResponse`를 실제 사용자 응답 흐름과 연결
+3. `src/stores/game.store.ts`, `src/pages/GamePage.tsx`
+   - `pendingAction`, `lastAck`, `lastError`를 버튼 상태/에러 UI와 연결
+4. `src/services/game/game.api.ts`, `src/components/board/gameBoardActionHandlers.ts`
+   - 남아 있는 게임 REST fallback을 추가 축소하고 compatibility layer로 더 명확히 격리
 
 ## 6. 문서 사용법
 

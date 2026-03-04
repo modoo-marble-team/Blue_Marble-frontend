@@ -1,6 +1,7 @@
-# 게임 영역 파일 소유권 및 분업 기준 (이벤트 명세서 반영)
+# 게임 영역 파일 소유권 및 분업 기준 (중앙 docs 반영)
 
-이 문서는 새 `이벤트 명세서.md`를 목표 기준으로 삼되,
+이 문서는 중앙 문서 저장소 `https://github.com/modoo-marble-team/docs`의
+`gamesocket.md`, `api.md`, `erd.md`를 목표 기준으로 삼되,
 `모두의마블_API명세서_v4.xlsx`, `모두의마블_요구사항정의서_v8.xlsx`,
 `모두의마블_테이블명세서_v4.xlsx`와 충돌하는 영역은 호환 계층까지 포함해 FE-B/FE-C 책임을 다시 정리한 문서다.
 
@@ -9,7 +10,7 @@
 - FE-B는 게임 계약, 상태, socket, prompt, mock을 책임진다.
 - FE-B는 기존 계약과 새 계약 사이의 compatibility layer도 책임진다.
 - FE-C는 보드 렌더링, 애니메이션, 시각 상태 표현을 책임진다.
-- 새 명세에서 결과 계산은 서버 권위이므로, FE-C가 게임 결과를 계산하는 구조는 금지한다.
+- 중앙 docs 기준으로 결과 계산은 서버 권위이므로, FE-C가 게임 결과를 계산하는 구조는 금지한다.
 
 ## 2. FE-B 주 담당
 
@@ -30,9 +31,10 @@
 - `game:action`, `game:ack`, `game:patch`, `game:prompt`, `game:error`
 - snapshot/patch/revision 처리
 - prompt 응답과 timeout 처리
+- 실제 UI에서 `prompt`, `ack`, `pendingAction`, `error`를 소비하는 연결
 - mock과 실서버 계약 정렬
 - `roomId <-> gameId` 매핑
-- 원 단위 money와 새 transport 단위 간 변환
+- money canonical unit 정리와 transport 간 변환
 - 레거시 REST/socket fallback 유지와 제거 시점 관리
 
 ## 3. FE-C 주 담당
@@ -80,40 +82,45 @@
 
 ## 6. 진행도 재평가
 
-### FE-B 진행도: 55%
-
-이 수치는 "게임 UI가 어느 정도 있다"가 아니라 "새 이벤트 명세와 기존 계약의 차이를 흡수할 수 있는가" 기준이다.
+### FE-B 현재 단계
 
 완료된 것:
 
-- 게임 store 골격
-- 페이지/모달/턴 UI 기본 자산
-- socket 연결과 mock 기본 토대
+- 새 이벤트 계약용 타입/store/socket/mock 골격 반영
+- `GamePage.tsx`의 store 단일 상태 렌더 구조 1차 정리
+- `GameBoard.tsx` 내부 액션/동기화/거래 로직 분리 착수
 
 남은 것:
 
-- 새 타입 계약
-- patch/snapshot/revision store
-- prompt/ack 기반 입력 UX
-- 구 REST/구 이벤트 제거
-- mock 전환
-- roomId/gameId, money unit, tile/building enum mapper
+- `prompt/ack/error/pendingAction`의 실제 UI 연결
+- `game:prompt_response` 기반 사용자 응답 흐름 정리
+- 남아 있는 게임 REST fallback 추가 축소
+- `gameId` 중심 식별자 정리
+- money unit, tile/building enum 기준 문서와 코드의 최종 정렬
 
-### FE-C 진행도: 45%
+### FE-C 현재 단계
 
-완료된 것:
+핵심 남은 것:
 
-- 보드 배치와 기본 시각화
-- 말/타일/건물 렌더 뼈대
-
-남은 것:
-
-- store 단일 상태 렌더
-- event queue 기반 연출
-- `GameBoard.tsx` 로직 제거
+- 보드 표현/연출 레이어 정리
+- `eventQueue` 기반 이동/효과 재생
+- `GameBoard.tsx`의 로컬 게임 로직 추가 축소
 - 새 building/player state 시각 규칙 반영
 
-## 7. 작업 충돌 방지 규칙
+## 7. 현재 다음 우선순위
+
+중앙 docs와 현재 코드 상태 기준으로, FE-B의 다음 작업은 `prompt/ack` UI 연결이다.
+
+- `src/components/game/modals/*`
+  - `gameStore.prompt`를 실제 modal 열림 조건과 연결
+- `src/pages/GamePage.tsx`
+  - `pendingAction`, `lastAck`, `lastError`를 버튼/상태 문구/실패 메시지와 연결
+- `src/components/board/GameBoard.tsx`
+  - 기존 로컬 modal 분기를 `game:prompt` 소비 구조로 전환
+- `src/services/socket/game.handler.ts`
+  - `emitPromptResponse`가 실사용 UI 흐름에서 호출되도록 정리
+
+## 8. 작업 충돌 방지 규칙
 
 ### FE-B 작업 시
 
@@ -125,7 +132,7 @@
 - 새 socket 이벤트나 store 계약을 독자적으로 만들지 않는다.
 - 서버 권위 계산을 보드 내부에 다시 넣지 않는다.
 
-## 8. 최종 목표
+## 9. 최종 목표
 
 - FE-B: 새 이벤트 명세를 store와 socket 계층에서 안정적으로 흡수
 - FE-C: 그 상태를 보드에서 정확하고 자연스럽게 연출
