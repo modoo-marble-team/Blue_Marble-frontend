@@ -40,6 +40,11 @@ import {
   getBoardSellFallbackRefund,
   toBoardActionErrorMessage,
 } from './gameBoardActionUtils'
+import {
+  findSyncTurnIndex,
+  mapSyncPayloadPlayers,
+  mapSyncPayloadTileOwners,
+} from './gameBoardSyncUtils'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
@@ -360,53 +365,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const payload = syncResult.data as SyncStatePayload
       const payloadPlayers = payload.players ?? []
-      const prevById = new Map(
-        playersRef.current.map((player) => [String(player.id), player])
-      )
-      const serverToBoardId = new Map<string, number>()
+      let serverToBoardId = new Map<string, number>()
 
       if (payloadPlayers.length > 0) {
-        const nextById = new Map<string, PlayerState>()
-
-        payloadPlayers.forEach((player, idx) => {
-          const prevPlayer = prevById.get(String(player.id))
-          const parsedPlayerId =
-            typeof player.id === 'number'
-              ? player.id
-              : Number.parseInt(String(player.id), 10)
-          const boardPlayerId = Number.isNaN(parsedPlayerId)
-            ? (prevPlayer?.id ?? idx)
-            : parsedPlayerId
-
-          serverToBoardId.set(String(player.id), boardPlayerId)
-
-          nextById.set(String(player.id), {
-            id: boardPlayerId,
-            name:
-              player.nickname ??
-              player.name ??
-              prevPlayer?.name ??
-              `Player ${idx + 1}`,
-            color:
-              player.color ??
-              prevPlayer?.color ??
-              PLAYER_COLORS[idx % PLAYER_COLORS.length],
-            pos: player.position ?? player.pos ?? prevPlayer?.pos ?? 0,
-            money: player.balance ?? player.money ?? prevPlayer?.money ?? 0,
-          })
-        })
-
-        const orderedPlayers = playersRef.current.map((prevPlayer) => {
-          return nextById.get(String(prevPlayer.id)) ?? prevPlayer
-        })
-        const additionalPlayers = Array.from(nextById.values()).filter(
-          (nextPlayer) =>
-            !orderedPlayers.some(
-              (orderedPlayer) => orderedPlayer.id === nextPlayer.id
-            )
+        const mappedPlayers = mapSyncPayloadPlayers(
+          payloadPlayers,
+          playersRef.current
         )
-
-        const nextPlayers = [...orderedPlayers, ...additionalPlayers]
+        serverToBoardId = mappedPlayers.serverToBoardId
+        const { nextPlayers } = mappedPlayers
         playersRef.current = nextPlayers
         if (onPlayersChange) {
           onPlayersChange(nextPlayers)
@@ -416,40 +383,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (payload.tiles) {
-        const nextOwners: Record<number, TileOwner> = {}
-
-        payload.tiles.forEach((tile) => {
-          const tileIndex = tile.index ?? tile.id
-          const ownerRaw = tile.owner_id ?? tile.ownerId
-          if (
-            tileIndex === undefined ||
-            ownerRaw === null ||
-            ownerRaw === undefined
-          ) {
-            return
-          }
-
-          const mappedOwnerId = serverToBoardId.get(String(ownerRaw))
-          const parsedOwnerId =
-            typeof ownerRaw === 'number'
-              ? ownerRaw
-              : Number.parseInt(String(ownerRaw), 10)
-          const ownerId =
-            mappedOwnerId ??
-            (Number.isNaN(parsedOwnerId) ? null : parsedOwnerId)
-          if (ownerId === null) return
-
-          const ownerPlayer = playersRef.current.find(
-            (player) => String(player.id) === String(ownerId)
-          )
-          nextOwners[tileIndex] = {
-            ownerId,
-            ownerColor:
-              ownerPlayer?.color ??
-              PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
-            level: toBoardBuildingLevel(tile, true),
-          }
-        })
+        const nextOwners = mapSyncPayloadTileOwners(
+          payload.tiles,
+          playersRef.current,
+          serverToBoardId,
+          toBoardBuildingLevel
+        )
 
         tileOwnersRef.current = nextOwners
         setOptimisticTileOwners(nextOwners)
@@ -460,21 +399,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
       }
 
-      const nextTurnRaw = payload.current_turn ?? payload.currentTurn
-      if (nextTurnRaw !== undefined && nextTurnRaw !== null) {
-        const mappedTurnId = serverToBoardId.get(String(nextTurnRaw))
-        const nextTurnIndex = playersRef.current.findIndex(
-          (player) =>
-            player.id === mappedTurnId ||
-            String(player.id) === String(nextTurnRaw)
-        )
-        if (nextTurnIndex >= 0) {
-          curPlayerRef.current = nextTurnIndex
-          if (onCurPlayerChange) {
-            onCurPlayerChange(nextTurnIndex)
-          } else {
-            syncMockStoreCurrentTurn(nextTurnIndex)
-          }
+      const nextTurnIndex = findSyncTurnIndex(
+        payload.current_turn ?? payload.currentTurn,
+        playersRef.current,
+        serverToBoardId
+      )
+      if (nextTurnIndex >= 0) {
+        curPlayerRef.current = nextTurnIndex
+        if (onCurPlayerChange) {
+          onCurPlayerChange(nextTurnIndex)
+        } else {
+          syncMockStoreCurrentTurn(nextTurnIndex)
         }
       }
 
