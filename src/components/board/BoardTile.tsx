@@ -203,13 +203,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: isCity ? 'space-between' : 'center',
-              gap: 2,
+              justifyContent: isCity ? 'flex-start' : 'center',
               padding: isCity ? '8px 3px' : '2px 3px',
             }}
           >
-            <TileIcon tile={tile} size={isCity ? 12 : 28} />
-            {(!hasIcon || isCity) && (
+            {/* 도시명 */}
+            {isCity && (
               <span
                 style={{
                   fontSize: 8,
@@ -217,32 +216,69 @@ const BoardTile: React.FC<BoardTileProps> = ({
                   color: '#374151',
                   textAlign: 'center',
                   lineHeight: 1.2,
+                  marginTop: 6,
+                  marginBottom: 2,
                 }}
               >
                 {tile.name}
               </span>
             )}
-            {hasBuilding && (
-              <BuildingBadge
-                level={buildingLevel}
-                ownerColor={tileOwner?.ownerColor}
-              />
+
+            {/* 비도시: 아이콘+이름 중앙 */}
+            {!isCity && (
+              <>
+                {!hasIcon && (
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 800,
+                      color: '#374151',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {tile.name}
+                  </span>
+                )}
+                <TileIcon tile={tile} size={28} />
+              </>
             )}
-            {isCity && !tileOwner && (
-              <div
-                style={{
-                  backgroundColor: '#F1F5F9',
-                  color: '#64748B',
-                  fontSize: 7,
-                  fontWeight: 800,
-                  padding: '2px 5px',
-                  borderRadius: 8,
-                  marginTop: 'auto',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                }}
-              >
-                {formatWon(tile.price ?? 0)}
-              </div>
+
+            {/* 도시 특수 영역: 중앙(건물) & 하단(가격) */}
+            {isCity && (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flex: 1,
+                    width: '100%',
+                  }}
+                >
+                  {hasBuilding && (
+                    <BuildingBadge
+                      level={buildingLevel}
+                      ownerColor={tileOwner?.ownerColor}
+                    />
+                  )}
+                </div>
+                {!tileOwner && (
+                  <div
+                    style={{
+                      backgroundColor: '#EEF2F7',
+                      color: '#64748B',
+                      fontSize: 7,
+                      fontWeight: 900,
+                      padding: '3px 6px',
+                      borderRadius: 10,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                      letterSpacing: '-0.2px',
+                    }}
+                  >
+                    {formatWon(tile.price ?? 0)}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -315,13 +351,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: isCity ? 'space-between' : 'center',
-              gap: 2,
+              justifyContent: isCity ? 'flex-start' : 'center',
               padding: isCity ? '8px 3px' : '2px 3px',
             }}
           >
-            <TileIcon tile={tile} size={isCity ? 11 : 24} />
-            {(!hasIcon || isCity) && (
+            {/* 도시명 */}
+            {isCity && (
               <span
                 style={{
                   fontSize: 8,
@@ -330,32 +365,69 @@ const BoardTile: React.FC<BoardTileProps> = ({
                   textAlign: 'center',
                   lineHeight: 1.2,
                   whiteSpace: 'nowrap',
+                  marginTop: 6,
+                  marginBottom: 2,
                 }}
               >
                 {tile.name}
               </span>
             )}
-            {hasBuilding && (
-              <BuildingBadge
-                level={buildingLevel}
-                ownerColor={tileOwner?.ownerColor}
-              />
+
+            {/* 비도시: 아이콘+이름 중앙 */}
+            {!isCity && (
+              <>
+                {!hasIcon && (
+                  <span
+                    style={{
+                      fontSize: 8,
+                      fontWeight: 800,
+                      color: '#374151',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {tile.name}
+                  </span>
+                )}
+                <TileIcon tile={tile} size={24} />
+              </>
             )}
-            {isCity && !tileOwner && (
-              <div
-                style={{
-                  backgroundColor: '#F1F5F9',
-                  color: '#64748B',
-                  fontSize: 7,
-                  fontWeight: 800,
-                  padding: '2px 5px',
-                  borderRadius: 8,
-                  marginTop: 'auto',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                }}
-              >
-                {formatWon(tile.price ?? 0)}
-              </div>
+
+            {/* 도시 특수 영역: 중앙(건물) & 하단(가격) */}
+            {isCity && (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flex: 1,
+                    width: '100%',
+                  }}
+                >
+                  {hasBuilding && (
+                    <BuildingBadge
+                      level={buildingLevel}
+                      ownerColor={tileOwner?.ownerColor}
+                    />
+                  )}
+                </div>
+                {!tileOwner && (
+                  <div
+                    style={{
+                      backgroundColor: '#EEF2F7',
+                      color: '#64748B',
+                      fontSize: 7,
+                      fontWeight: 900,
+                      padding: '3px 6px',
+                      borderRadius: 10,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                      letterSpacing: '-0.2px',
+                    }}
+                  >
+                    {formatWon(tile.price ?? 0)}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
