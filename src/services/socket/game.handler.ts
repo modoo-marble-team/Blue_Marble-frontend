@@ -1,4 +1,10 @@
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { socket } from '../../lib/socket'
+import {
+  mockEmitGameAction,
+  mockEmitGameSync,
+  mockEmitPromptResponse,
+} from '../../mocks/handlers/game.handler'
 import { useGameStore } from '../../stores/game.store'
 import type {
   GameAck,
@@ -43,6 +49,7 @@ type PromptResponsePayload = GamePromptResponse & {
 }
 
 let teardownGameHandlersRef: Teardown | null = null
+const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 const createActionId = () => `game-action-${Date.now()}`
 
@@ -141,6 +148,17 @@ export const emitGameAction = ({
     })
   )
 
+  if (USE_GAME_SOCKET_MOCK) {
+    mockEmitGameAction({
+      actionId,
+      type,
+      roomId,
+      gameId,
+      payload,
+    })
+    return actionId
+  }
+
   socket.emit('game:action', {
     actionId,
     type,
@@ -153,6 +171,15 @@ export const emitGameAction = ({
 }
 
 export const emitGameSync = ({ roomId, gameId, reset }: GameSyncPayload) => {
+  if (USE_GAME_SOCKET_MOCK) {
+    mockEmitGameSync({
+      roomId,
+      gameId,
+      reset,
+    })
+    return
+  }
+
   socket.emit('game:sync', {
     roomId,
     gameId,
@@ -167,6 +194,15 @@ export const emitPromptResponse = ({
   roomId,
   gameId,
 }: PromptResponsePayload) => {
+  if (USE_GAME_SOCKET_MOCK) {
+    mockEmitPromptResponse({
+      promptId,
+      playerId,
+      value,
+    })
+    return
+  }
+
   socket.emit('game:prompt_response', {
     promptId,
     playerId,
