@@ -2,7 +2,7 @@ import { RefObject, useCallback } from 'react'
 import type { BoardGameHandle } from '../../components/board/GameBoard'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { socket } from '../../lib/socket'
-import { emitRollDice } from '../../services/socket/game.handler'
+import { emitGameAction } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
 
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
@@ -18,7 +18,10 @@ export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
 
       // Prefer server-authoritative roll via socket.
       if (!USE_GAME_SOCKET_MOCK && socket.connected && currentTurn) {
-        emitRollDice({ room_id: roomId })
+        emitGameAction({
+          type: 'ROLL_DICE',
+          roomId,
+        })
         return
       }
 
