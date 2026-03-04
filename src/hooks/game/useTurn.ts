@@ -1,7 +1,12 @@
-export const useTurn = (currentTurn: string | null, myId?: string | null) => {
+import type { PlayerId } from '../../types/domain'
+
+export const useTurn = (
+  currentTurn: PlayerId | null,
+  myId?: PlayerId | null
+) => {
   if (!currentTurn || !myId) {
     return false
   }
 
-  return currentTurn === myId
+  return String(currentTurn) === String(myId)
 }
