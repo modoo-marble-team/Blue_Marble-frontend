@@ -1,7 +1,14 @@
-# 게임 완료 로드맵 (이벤트 명세서 기준, 2026-03-04)
+# 게임 완료 로드맵 (새 이벤트 명세 기준 / 기존 명세 호환 포함, 2026-03-04)
 
-이 문서는 현재 프론트엔드 코드와 `이벤트 명세서.md`를 대조해서 다시 작성한 실행 로드맵이다.
-이전 로드맵의 진행도 수치는 구 소켓 이벤트와 REST 액션 구조를 전제로 한 값이었기 때문에 더 이상 기준으로 쓰지 않는다.
+이 문서는 현재 프론트엔드 코드와 `이벤트 명세서.md`, `모두의마블_API명세서_v4.xlsx`,
+`모두의마블_요구사항정의서_v8.xlsx`, `모두의마블_테이블명세서_v4.xlsx`를 함께 대조해서
+다시 작성한 실행 로드맵이다.
+
+중요한 전제는 아래와 같다.
+
+- `이벤트 명세서.md`는 앞으로 이행해야 할 **목표 런타임 계약**이다.
+- API/요구사항/테이블 명세 v4는 현재 코드와 더 가까운 **레거시/현행 계약**이다.
+- 따라서 이 문서는 "새 명세로 바로 단절"이 아니라 "기존 계약을 유지하면서 새 명세로 이행"하는 기준 문서다.
 
 ## 1. 기준 문서
 
@@ -9,6 +16,17 @@
 - API/데이터 기준: `모두의마블_API명세서_v4.xlsx`, `모두의마블_테이블명세서_v4.xlsx`
 - 실시간 게임 계약 기준: `이벤트 명세서.md`
 - 프론트 내부 기준: `docs/game-ownership.md`, `docs/game-ownership-corrected-table.md`
+
+### 기준 우선순위
+
+1. **새 이벤트 명세서**
+   - 목표 구조(`game:action`, `game:ack`, `game:patch`, `game:prompt`) 정의
+2. **API/요구사항/테이블 명세**
+   - 현재 운영/저장 구조, 화폐 단위, room 식별자, 타일/건물 규칙 확인
+3. **현재 코드**
+   - 실제 구현 상태와 이행 비용 확인
+
+즉, 새 명세서가 목표 방향을 정하고, 기존 명세가 현재 제약을 설명한다.
 
 ## 2. 명세 변경 핵심
 
@@ -21,6 +39,48 @@
 
 즉, 현재 프론트의 "REST 요청 + 개별 소켓 이벤트 조합 + 보드 로컬 계산" 구조는 새 기준과 직접 충돌한다.
 
+다만 기존 명세와 충돌하는 항목은 아래처럼 해석한다.
+
+### 2-1. roomId vs gameId
+
+- 기존 API/테이블 명세는 `room_id` 기준이다.
+- 새 이벤트 명세는 `gameId` 기준 room(`game:{gameId}`)을 전제로 한다.
+
+현재 프론트 기준 정책:
+
+- 라우팅과 레거시 REST fallback은 **`roomId` 유지**
+- 새 이벤트 계층에서는 **`gameId`를 별도 보관**
+- FE-B는 이 둘의 매핑을 담당한다
+
+즉, 이행 완료 전까지는 `roomId`와 `gameId`가 동시에 존재할 수 있다.
+
+### 2-2. 화폐 단위
+
+- 요구사항/API 명세 v4: **원(₩) 정수**
+- 새 이벤트 명세: 설명상 **만 단위 정수**를 가정
+
+현재 프론트 기준 정책:
+
+- 프론트 내부 canonical money unit은 **원 정수**를 유지한다.
+- 표시만 `억/만`으로 변환한다.
+- 새 이벤트 payload가 만 단위로 바뀌면 FE-B ingress/egress 변환기로 흡수한다.
+
+즉, store/domain 내부에서 단위를 섞지 않는다.
+
+### 2-3. TileType / BuildingLevel
+
+- 요구사항/현재 보드 기준 타일: `start`, `city`, `chance`, `event`, `ai`, `travel`, `island`, `go_to_island`
+- 새 이벤트 명세 기준 타일: `START`, `PROPERTY`, `CHANCE`, `MOVE_TO_ISLAND`, `ISLAND`
+
+- API v4 build 레벨: 사실상 `0..5`
+- 새 이벤트 명세 build 레벨: `0..7`
+
+현재 프론트 기준 정책:
+
+- FE 내부 view model은 현재 보드 규격을 유지한다.
+- 새 이벤트 계층과의 차이는 FE-B mapper가 흡수한다.
+- FE-C는 transport enum이 아니라 **정규화된 view model**만 받는다.
+
 ## 3. 현재 코드 기준 핵심 갭
 
 ### 구조 갭
@@ -31,7 +91,7 @@
 
 - `src/services/game/game.api.ts`
   현재는 `buy`, `build`, `sell`, `state` REST 액션이 중심이다.
-  새 명세 기준으로는 게임 액션 전송을 socket 중심으로 재구성하고, REST는 제거하거나 보조 용도로 축소해야 한다.
+  새 명세 기준으로는 게임 액션 전송을 socket 중심으로 재구성하고, REST는 제거하거나 **이행 중 레거시 fallback으로 격리**해야 한다.
 
 - `src/hooks/game/useGameState.ts`
   현재는 진입 시 REST `getState`를 호출하고 기존 소켓 핸들러를 붙인다.
@@ -54,6 +114,7 @@
 - `src/types/domain.ts`
   현재 `Player.id`, `currentTurn` 등이 문자열 중심이고, `BuildingLevel`은 `0..5`만 지원한다.
   새 명세 기준으로는 숫자 기반 ID, `revision`, `phase`, `playerState`, `BuildingLevel 0..7`, `TileType` 재정의가 필요하다.
+  동시에 `roomId <-> gameId`, `원 <-> 만단위`, `city <-> PROPERTY`를 잇는 compatibility layer도 필요하다.
 
 ### 목업 갭
 
@@ -63,7 +124,7 @@
 
 ## 4. 진행도 재평가
 
-기존 80/50 평가는 더 이상 유효하지 않다. 새 이벤트 명세를 기준으로 다시 보면 다음이 더 현실적이다.
+기존 80/50 평가는 더 이상 유효하지 않다. 새 이벤트 명세 **이행 진행도** 기준으로 다시 보면 다음이 더 현실적이다.
 
 ### FE-B: 55%
 
@@ -80,7 +141,8 @@
 - `game:action`/`game:ack`/`game:patch`/`game:prompt` 중심 소켓 계층
 - revision 기반 patch 적용기
 - prompt 응답 흐름
-- REST 액션 의존 제거
+- REST 액션 의존 제거 또는 fallback 격리
+- roomId/gameId, money unit, tile/building enum 매핑기
 
 ### FE-C: 45%
 
@@ -109,6 +171,7 @@
 - `src/services/socket/game.handler.ts`를 구 이벤트 구독형에서 새 이벤트 구독형으로 변경
 - emit 함수는 `emitGameAction`, `emitGameSync`, `emitPromptResponse` 형태로 재구성
 - `src/hooks/game/useGameState.ts`는 진입/재접속 시 `game:sync`를 보내도록 수정
+- `game:error`는 선택 이벤트이므로, 없을 때도 ack/patch만으로 복구 가능한 흐름으로 설계
 
 ### 5-3. patch/snapshot 적용기 구현
 
@@ -126,6 +189,7 @@
 
 - `src/mocks/handlers/game.handler.ts`를 새 계약으로 재작성
 - 한 턴 검증 시나리오를 `sync -> action -> ack -> patch -> prompt` 흐름으로 다시 정의
+- 단, 이행 완료 전까지는 레거시 REST fallback 시나리오도 최소 회귀 검증 범위에 남긴다
 
 ## 6. FE-C 우선 작업
 
@@ -177,3 +241,4 @@
 
 지금 가장 먼저 해야 할 일은 모달 추가가 아니라 게임 계약 계층을 새 이벤트 명세에 맞춰 다시 세우는 일이다.
 즉시 우선순위는 FE-B의 타입/store/socket/mock 전환이고, 그 다음 FE-C가 `GameBoard.tsx`를 시각 레이어로 축소하는 흐름이 맞다.
+단, 이 과정에서도 `roomId`, 원 단위 금액, 현재 보드 view model은 갑자기 제거하지 않고 compatibility layer로 안전하게 이행해야 한다.

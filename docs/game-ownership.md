@@ -1,11 +1,13 @@
 # 게임 영역 파일 소유권 및 분업 기준 (이벤트 명세서 반영)
 
-이 문서는 새 `이벤트 명세서.md` 기준으로 FE-B와 FE-C의 게임 영역 책임을 다시 정리한 문서다.
-기존 분업 문서는 구 소켓 이벤트 구조를 전제로 했기 때문에 이 문서로 대체한다.
+이 문서는 새 `이벤트 명세서.md`를 목표 기준으로 삼되,
+`모두의마블_API명세서_v4.xlsx`, `모두의마블_요구사항정의서_v8.xlsx`,
+`모두의마블_테이블명세서_v4.xlsx`와 충돌하는 영역은 호환 계층까지 포함해 FE-B/FE-C 책임을 다시 정리한 문서다.
 
 ## 1. 분업 원칙
 
 - FE-B는 게임 계약, 상태, socket, prompt, mock을 책임진다.
+- FE-B는 기존 계약과 새 계약 사이의 compatibility layer도 책임진다.
 - FE-C는 보드 렌더링, 애니메이션, 시각 상태 표현을 책임진다.
 - 새 명세에서 결과 계산은 서버 권위이므로, FE-C가 게임 결과를 계산하는 구조는 금지한다.
 
@@ -29,6 +31,9 @@
 - snapshot/patch/revision 처리
 - prompt 응답과 timeout 처리
 - mock과 실서버 계약 정렬
+- `roomId <-> gameId` 매핑
+- 원 단위 money와 새 transport 단위 간 변환
+- 레거시 REST/socket fallback 유지와 제거 시점 관리
 
 ## 3. FE-C 주 담당
 
@@ -51,6 +56,7 @@
 - store snapshot을 보드 view model로 바꾸는 기준
 - prompt를 어떤 UI 표면으로 보여줄지에 대한 계약
 - `playerState`, `buildingLevel`, `tileType`의 렌더 규칙
+- transport enum과 현재 보드 enum 간 매핑 결과
 
 ## 5. 현재 코드 기준 예외 구간
 
@@ -76,7 +82,7 @@
 
 ### FE-B 진행도: 55%
 
-이 수치는 "게임 UI가 어느 정도 있다"가 아니라 "새 이벤트 명세를 실제로 소화할 수 있는가" 기준이다.
+이 수치는 "게임 UI가 어느 정도 있다"가 아니라 "새 이벤트 명세와 기존 계약의 차이를 흡수할 수 있는가" 기준이다.
 
 완료된 것:
 
@@ -91,6 +97,7 @@
 - prompt/ack 기반 입력 UX
 - 구 REST/구 이벤트 제거
 - mock 전환
+- roomId/gameId, money unit, tile/building enum mapper
 
 ### FE-C 진행도: 45%
 
