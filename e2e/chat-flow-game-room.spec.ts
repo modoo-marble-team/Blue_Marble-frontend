@@ -22,6 +22,7 @@ test.describe('게임 채팅 플로우', () => {
 
     await expect(page).toHaveURL(/\/rooms\/room-\d+$/)
 
+    await page.getByRole('button', { name: 'DEV CONTROL 열기' }).click()
     await page.getByRole('button', { name: '시작조건' }).click()
     await page.getByRole('button', { name: /^시작$/ }).click()
 
