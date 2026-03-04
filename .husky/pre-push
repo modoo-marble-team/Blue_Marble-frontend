@@ -21,7 +21,7 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "push 전 E2E 검증을 시작합니다..."
-npm run e2e
+npm run e2e:ci
 if [ $? -ne 0 ]; then
   echo "e2e 실패. 오류를 수정한 후 다시 push 해주세요."
   exit 1
