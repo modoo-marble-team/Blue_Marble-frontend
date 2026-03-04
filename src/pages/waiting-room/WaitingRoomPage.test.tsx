@@ -231,7 +231,7 @@ describe('WaitingRoomPage interaction', () => {
     expect(screen.getByRole('button', { name: '준비하기' })).toBeEnabled()
   })
 
-  it('game_start 이벤트 수신 시 /game/:roomId로 이동하며 state(gameId, roomId)를 전달한다', () => {
+  it('game_start 이벤트 수신 시 /game/:gameId로 이동하며 state(gameId, roomId)를 전달한다', () => {
     renderWaitingRoomPage()
 
     act(() => {
@@ -246,7 +246,7 @@ describe('WaitingRoomPage interaction', () => {
       })
     })
 
-    expect(navigateMock).toHaveBeenCalledWith('/game/room-5', {
+    expect(navigateMock).toHaveBeenCalledWith('/game/game-123', {
       state: {
         gameId: 'game-123',
         roomId: 'room-5',

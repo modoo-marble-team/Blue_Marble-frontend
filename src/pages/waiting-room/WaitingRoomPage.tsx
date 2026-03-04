@@ -59,7 +59,7 @@ function WaitingRoomPage() {
 
   const handleGameStart = useCallback(
     (payload: GameStartEventPayload) => {
-      navigate(`/game/${currentRoomId}`, {
+      navigate(`/game/${payload.game_id}`, {
         state: {
           gameId: payload.game_id,
           roomId: currentRoomId,

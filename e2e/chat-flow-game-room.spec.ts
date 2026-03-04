@@ -19,7 +19,7 @@ test.describe('게임 채팅 플로우', () => {
     await page.getByRole('button', { name: '시작조건' }).click()
     await page.getByRole('button', { name: /^시작$/ }).click()
 
-    await expect(page).toHaveURL(/\/game\/room-\d+$/)
+    await expect(page).toHaveURL(/\/game\/game-room-\d+-\d+$/)
 
     await page.getByPlaceholder('메시지...').fill('게임 채팅 e2e')
     await page.getByPlaceholder('메시지...').press('Enter')
