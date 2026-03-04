@@ -12,12 +12,10 @@ const DIRECT_MESSAGE_EVENT_NAMES = {
 
 const USE_SOCKET_MOCK =
   import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
-const MOCK_REPLY_DELAY_MS = 700
 
 // DM 전송 함수 입력값 타입
 interface SendDirectMessageParams {
   receiverId: string
-  receiverNickname: string
   message: string
 }
 
@@ -59,14 +57,15 @@ function emitDirectMessageReceiveMock(
   })
 }
 
-// 목 자동응답 메시지를 길이 제한해 생성
-function buildMockReplyMessage(originalMessage: string) {
-  const shortMessage =
-    originalMessage.length > 18
-      ? `${originalMessage.slice(0, 18)}...`
-      : originalMessage
+// DEV 목 제어에서 DM 수신 이벤트를 수동 트리거
+export function emitDirectMessageReceiveMockForDev(
+  payload: DirectMessageReceiveSocketPayload
+) {
+  if (!USE_SOCKET_MOCK) {
+    return
+  }
 
-  return `확인했어요: ${shortMessage}`
+  emitDirectMessageReceiveMock(payload)
 }
 
 // DM 수신 이벤트를 구독하고 해제 함수를 반환
@@ -84,7 +83,6 @@ export function subscribeDirectMessageSocketEvents({
 // DM 메시지를 소켓으로 전송하거나 목 응답을 생성
 export function sendDirectMessage({
   receiverId,
-  receiverNickname,
   message,
 }: SendDirectMessageParams) {
   const normalizedMessage = message.trim()
@@ -94,17 +92,8 @@ export function sendDirectMessage({
     return
   }
 
-  // 목 모드에서는 일정 지연 후 자동 회신을 생성
+  // 목 모드에서는 송신 이벤트만 처리하고 수신은 DEV 제어 패널에서 주입
   if (USE_SOCKET_MOCK) {
-    window.setTimeout(() => {
-      emitDirectMessageReceiveMock({
-        sender_id: receiverId,
-        sender_nickname: receiverNickname,
-        message: buildMockReplyMessage(normalizedMessage),
-        sent_at: new Date().toISOString(),
-      })
-    }, MOCK_REPLY_DELAY_MS)
-
     return
   }
 

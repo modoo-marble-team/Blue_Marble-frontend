@@ -1,5 +1,5 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
-import { mockOnlineUsers } from './mockData'
+import { getMockOnlineUsersSnapshot } from './mockData'
 import type { OnlineUserPayload, OnlineUsersEventPayload } from './types'
 
 // 접속자 목록 소켓 이벤트 이름
@@ -30,12 +30,17 @@ function emitOnlineUsersMock(payloadUsers: OnlineUserPayload[]) {
   })
 }
 
+// 목 접속자 최신 스냅샷을 즉시 브로드캐스트
+export function emitMockOnlineUsersSnapshot() {
+  emitOnlineUsersMock(getMockOnlineUsersSnapshot())
+}
+
 // 목 모드에서 초기/주기 접속자 이벤트를 송신하고 클린업 함수를 반환
 export function startOnlineUsersMockBroadcast() {
-  emitOnlineUsersMock(mockOnlineUsers)
+  emitMockOnlineUsersSnapshot()
 
   const intervalId = setInterval(() => {
-    emitOnlineUsersMock(mockOnlineUsers)
+    emitMockOnlineUsersSnapshot()
   }, SOCKET_MOCK_INTERVAL_MS)
 
   return () => {

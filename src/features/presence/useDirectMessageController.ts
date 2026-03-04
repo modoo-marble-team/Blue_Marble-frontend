@@ -173,7 +173,6 @@ export function useDirectMessageController({
 
       sendDirectMessageSocket({
         receiverId: dmTargetUser.id,
-        receiverNickname: dmTargetUser.nickname,
         message,
       })
     },

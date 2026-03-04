@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import RoomChat from '../features/room-chat/RoomChat'
+import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
 import RollButton from '../components/game/controls/RollButton'
 import { useAuthStore } from '../features/auth/store'
 import { useGameStore } from '../stores/game.store'
@@ -324,6 +325,16 @@ const GamePage: React.FC = () => {
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt = currentPlayerState?.money <= 0
   const isCurrentPlayerSkipped = (currentPlayerState?.skipTurns ?? 0) > 0
+  const roomChatSenderOptions = useMemo(() => {
+    return storePlayers.map((player) => ({
+      id: player.id,
+      nickname: player.nickname,
+    }))
+  }, [storePlayers])
+  const preferredRoomChatSenderId =
+    roomChatSenderOptions.find(
+      (senderOption) => senderOption.id !== currentUserId
+    )?.id ?? roomChatSenderOptions[0]?.id
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
@@ -403,6 +414,12 @@ const GamePage: React.FC = () => {
           />
         )}
       </div>
+
+      <DevRoomChatControlPanel
+        roomId={roomId ?? ''}
+        senderOptions={roomChatSenderOptions}
+        preferredSenderId={preferredRoomChatSenderId}
+      />
     </div>
   )
 }

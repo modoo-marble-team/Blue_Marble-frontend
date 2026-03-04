@@ -15,7 +15,7 @@ import { cn } from '../../lib/utils'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
 import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
-import { DevMockControlPanel } from './components/DevMockControlPanel'
+import { DevControlPanel } from './components/DevControlPanel'
 import { useWaitingRoomController } from './hooks'
 import type { GameStartEventPayload, WaitingRoomSnapshot } from './types'
 
@@ -322,10 +322,12 @@ function WaitingRoomPage() {
         />
       )}
 
-      <DevMockControlPanel
+      <DevControlPanel
         roomId={currentRoomId}
         currentUserId={session.userId}
         currentNickname={session.nickname}
+        users={users}
+        roomPlayers={room?.players ?? []}
         onApplySnapshot={applyRoomSnapshot}
         onError={(message) => {
           toast.error(message)
