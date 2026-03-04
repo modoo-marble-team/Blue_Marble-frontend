@@ -1,6 +1,8 @@
 # 게임 이벤트 명세 전환 갭 분석
 
 이 문서는 `이벤트 명세서.md` 기준으로 현재 프론트엔드 코드에서 어디를 어떻게 고쳐야 하는지 파일 단위로 정리한 문서다.
+단, 실제 이행 작업은 `모두의마블_API명세서_v4.xlsx`, `모두의마블_요구사항정의서_v8.xlsx`,
+`모두의마블_테이블명세서_v4.xlsx`의 제약을 동시에 고려해야 한다.
 
 ## 1. 핵심 결론
 
@@ -20,22 +22,68 @@
 
 즉, 현재 구조는 "이벤트 이름만 몇 개 바꾸는 수준"이 아니라 상태 흐름 자체를 재정렬해야 한다.
 
+## 1-1. 충돌 지점과 문서 기준 해석
+
+### 식별자
+
+- 구 명세: `room_id`
+- 새 이벤트 명세: `gameId`
+
+이행 기준:
+
+- URL/레거시 REST는 `roomId`
+- 새 이벤트 계층은 `gameId`
+- FE-B가 `roomId <-> gameId` 매핑을 관리
+
+### 화폐 단위
+
+- 구 명세: 원 정수
+- 새 이벤트 명세: 설명상 만 단위 정수
+
+이행 기준:
+
+- FE 내부 store/domain canonical money unit은 **원 정수**
+- transport 차이는 FE-B mapper로 흡수
+
+### 타일 타입
+
+| 현재 보드/요구사항      | 새 이벤트 명세                            |
+| ----------------------- | ----------------------------------------- |
+| `city`                  | `PROPERTY`                                |
+| `chance`                | `CHANCE`                                  |
+| `go_to_island`          | `MOVE_TO_ISLAND`                          |
+| `island`                | `ISLAND`                                  |
+| `start`                 | `START`                                   |
+| `travel`, `ai`, `event` | 별도 확장 또는 compatibility mapping 필요 |
+
+### 건물 레벨
+
+| 출처           | 정의                        |
+| -------------- | --------------------------- |
+| API v4         | `0..5`에 가까운 레거시 구조 |
+| 새 이벤트 명세 | `0..7`                      |
+
+이행 기준:
+
+- transport 모델은 새 명세(`0..7`)를 목표로 설계
+- 현재 렌더/레거시 fallback은 compatibility mapping 유지
+
 ## 2. 수정 대상과 방법
 
-| 파일 | 현재 문제 | 수정 방향 | 담당 |
-| --- | --- | --- | --- |
-| `src/types/domain.ts` | ID 타입, tile type, building level, game state shape가 새 명세와 불일치 | snapshot/patch/ack/prompt/event 타입 추가, 숫자 ID와 `0..7` building level 반영 | FE-B |
-| `src/stores/game.store.ts` | 단순 set/update store라 revision, prompt, patch 적용 불가 | `applySnapshot`, `applyPatch`, `setAck`, `setPrompt`, `consumeEvents` 추가 | FE-B |
-| `src/services/socket/game.handler.ts` | 구 소켓 이벤트 구독과 `roll_dice`, `confirm_penalty` emit 사용 | `game:ack`, `game:patch`, `game:prompt`, `game:error` 구독과 `game:action`, `game:sync`, `game:prompt_response` emit로 교체 | FE-B |
-| `src/hooks/game/useGameState.ts` | mount 시 REST state 조회 중심 | mount/reconnect 시 `game:sync` 전송, snapshot 또는 patch 적용으로 전환 | FE-B |
-| `src/services/game/game.api.ts` | `buyTile`, `buildTile`, `sellTile`, `syncState`가 핵심 액션 경로 | 게임 액션성 REST를 제거하거나 레거시 fallback으로 격리 | FE-B |
-| `src/hooks/game/useDiceRoll.ts` | `emitRollDice` 또는 로컬 보드 fallback 사용 | `ROLL_DICE`용 `game:action` 전송으로 단순화 | FE-B |
-| `src/pages/GamePage.tsx` | `boardPlayers`, `boardCurPlayer` 로컬 상태와 store 이중화 | store selector 기반 조립으로 단순화, 보드에 상태 역주입 금지 | FE-B 주도 / FE-C 협업 |
-| `src/components/board/GameBoard.tsx` | 타일 소유권, 통행료, 파산, 턴 전환, API 호출을 직접 수행 | 렌더링과 연출만 담당하도록 축소, prompt 표시용 표면만 유지 | FE-C 주도 / FE-B 선행 필요 |
-| `src/components/game/modals/*` | 일부 모달은 존재하지만 서버 prompt와 연결되지 않음 | prompt type 기준 wrapper 또는 container 추가, ack/error/timeout 연결 | FE-B |
-| `src/mocks/handlers/game.handler.ts` | 구 REST + 구 소켓 이벤트 mock | 새 이벤트 명세를 흉내 내는 socket mock으로 재작성 | FE-B |
-| `src/test/socketEmitter.ts` | 테스트 유틸이 구 이벤트 네이밍에 묶였을 가능성 높음 | 새 이벤트 네이밍과 patch payload 지원하도록 수정 | FE-B |
-| `src/components/board/*`, `src/styles/board.css` | 렌더 레이어는 usable하지만 새 state shape 미반영 | 새 tile/player/building 표현과 animation 상태를 view model 기준으로 재정렬 | FE-C |
+| 파일                                             | 현재 문제                                                               | 수정 방향                                                                                                                   | 담당                       |
+| ------------------------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `src/types/domain.ts`                            | ID 타입, tile type, building level, game state shape가 새 명세와 불일치 | snapshot/patch/ack/prompt/event 타입 추가, 숫자 ID와 `0..7` building level 반영, compatibility mapper 타입 정의             | FE-B                       |
+| `src/stores/game.store.ts`                       | 단순 set/update store라 revision, prompt, patch 적용 불가               | `applySnapshot`, `applyPatch`, `setAck`, `setPrompt`, `consumeEvents` 추가                                                  | FE-B                       |
+| `src/services/socket/game.handler.ts`            | 구 소켓 이벤트 구독과 `roll_dice`, `confirm_penalty` emit 사용          | `game:ack`, `game:patch`, `game:prompt`, `game:error` 구독과 `game:action`, `game:sync`, `game:prompt_response` emit로 교체 | FE-B                       |
+| `src/hooks/game/useGameState.ts`                 | mount 시 REST state 조회 중심                                           | mount/reconnect 시 `game:sync` 전송, snapshot 또는 patch 적용으로 전환                                                      | FE-B                       |
+| `src/services/game/game.api.ts`                  | `buyTile`, `buildTile`, `sellTile`, `syncState`가 핵심 액션 경로        | 게임 액션성 REST를 제거하거나 레거시 fallback으로 격리, roomId 기준 호환 계층 유지                                          | FE-B                       |
+| `src/hooks/game/useDiceRoll.ts`                  | `emitRollDice` 또는 로컬 보드 fallback 사용                             | `ROLL_DICE`용 `game:action` 전송으로 단순화                                                                                 | FE-B                       |
+| `src/pages/GamePage.tsx`                         | `boardPlayers`, `boardCurPlayer` 로컬 상태와 store 이중화               | store selector 기반 조립으로 단순화, 보드에 상태 역주입 금지                                                                | FE-B 주도 / FE-C 협업      |
+| `src/components/board/GameBoard.tsx`             | 타일 소유권, 통행료, 파산, 턴 전환, API 호출을 직접 수행                | 렌더링과 연출만 담당하도록 축소, prompt 표시용 표면만 유지                                                                  | FE-C 주도 / FE-B 선행 필요 |
+| `src/components/game/modals/*`                   | 일부 모달은 존재하지만 서버 prompt와 연결되지 않음                      | prompt type 기준 wrapper 또는 container 추가, ack/error/timeout 연결                                                        | FE-B                       |
+| `src/mocks/handlers/game.handler.ts`             | 구 REST + 구 소켓 이벤트 mock                                           | 새 이벤트 명세를 흉내 내는 socket mock으로 재작성                                                                           | FE-B                       |
+| `src/test/socketEmitter.ts`                      | 테스트 유틸이 구 이벤트 네이밍에 묶였을 가능성 높음                     | 새 이벤트 네이밍과 patch payload 지원하도록 수정                                                                            | FE-B                       |
+| `src/components/board/*`, `src/styles/board.css` | 렌더 레이어는 usable하지만 새 state shape 미반영                        | 새 tile/player/building 표현과 animation 상태를 view model 기준으로 재정렬                                                  | FE-C                       |
 
 ## 3. 파일별 상세 작업
 
@@ -57,9 +105,11 @@
 기존 타입 중 바로 손봐야 하는 부분:
 
 - `BuildingLevel`은 `0 | 1 | 2 | 3 | 4 | 5 | 6 | 7`
-- `Player.id`는 숫자 기준으로 정리
-- `Tile.owner_id` 대신 새 스냅샷 구조와 맞는 `ownerId`
+- `Player.id`는 숫자 기준으로 정리하되, 레거시 문자열 ID에서 변환 경로를 둔다
+- `Tile.owner_id` 대신 새 스냅샷 구조와 맞는 `ownerId`를 canonical로 두고 레거시 alias를 흡수
 - `currentTurn` 중심 상태를 `turn`, `currentPlayerId`, `phase`, `revision` 중심으로 재구성
+- `roomId`, `gameId`를 모두 담을 수 있는 connection/session 메타 타입 추가
+- `Money`는 transport 단위와 관계없이 원 정수로 해석되는 타입/설명 유지
 
 ### 3-2. `src/stores/game.store.ts`
 
@@ -114,6 +164,7 @@
 - `getState`, `buyTile`, `buildTile`, `sellTile`, `syncState`를 레거시로 표시
 - 새 소켓 경로 전환 후 사용처 제거
 - 당장 삭제가 부담되면 `deprecated` 성격의 얇은 래퍼로 격리
+- 단, backend rollout 전까지는 `roomId` 기준 fallback이므로 FE-B 소유 범위에 둔다
 
 ### 3-5. `src/pages/GamePage.tsx`
 
@@ -161,6 +212,7 @@
 - 각 액션마다 `game:ack` 발행
 - 상태 확정 시 `game:patch` 발행
 - 필요 시 `game:prompt` 발행
+- 레거시 REST fallback 검증용 최소 핸들러는 별도 호환 계층으로 유지
 
 ## 4. FE-B / FE-C 분리 기준
 
@@ -193,4 +245,9 @@
 ## 6. 문서 사용법
 
 이 문서는 실제 코드 수정 전 체크리스트로 사용한다.
-파일을 건드릴 때는 "새 이벤트 명세를 수용하기 위한 변경인지" 아니면 "구 구조를 임시 연명하는 변경인지"를 먼저 구분해야 한다.
+파일을 건드릴 때는 아래 둘을 먼저 구분해야 한다.
+
+- 새 이벤트 명세를 수용하기 위한 변경인지
+- 기존 roomId/REST/원 단위 계약을 안전하게 유지하기 위한 호환 변경인지
+
+둘을 섞을 때는 반드시 mapper/adapter 계층을 명시적으로 둔다.
