@@ -474,14 +474,16 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     })
 
     function updateTileOwners(
-      updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>
+      updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>,
+      options?: { notifyParent?: boolean }
     ) {
-      setTileOwners((prev) => {
-        const next = updater(prev)
-        tileOwnersRef.current = next
+      const next = updater(tileOwnersRef.current)
+      tileOwnersRef.current = next
+      setTileOwners(next)
+
+      if (options?.notifyParent) {
         onTileOwnersChange?.(next)
-        return next
-      })
+      }
     }
 
     function applyMoney(
@@ -521,14 +523,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       bankruptSetRef.current.add(playerIdx)
       const bankruptPlayerId = getPlayerIdByIndex(playerIdx)
 
-      updateTileOwners((prev) => {
-        const next = { ...prev }
-        Object.keys(next).forEach((k) => {
-          if (next[Number(k)].ownerId === bankruptPlayerId)
-            delete next[Number(k)]
-        })
-        return next
-      })
+      updateTileOwners(
+        (prev) => {
+          const next = { ...prev }
+          Object.keys(next).forEach((k) => {
+            if (next[Number(k)].ownerId === bankruptPlayerId)
+              delete next[Number(k)]
+          })
+          return next
+        },
+        { notifyParent: true }
+      )
 
       onBankrupt?.(playerIdx)
       advanceTurn(onDoneCallback)
@@ -756,11 +761,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const synced = await syncBoardStateFromServer()
       if (!synced) {
-        updateTileOwners((prev) => {
-          const next = { ...prev }
-          delete next[tileId]
-          return next
-        })
+        updateTileOwners(
+          (prev) => {
+            const next = { ...prev }
+            delete next[tileId]
+            return next
+          },
+          { notifyParent: true }
+        )
         applyMoney(playerIdx, +getSellFallbackRefund(tileId, owner.level))
       }
 
@@ -788,14 +796,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuyModal({ open: false, tileId: null })
       const bankrupt = applyMoney(active, -price, onDoneCallback)
       if (!bankrupt) {
-        updateTileOwners((prev) => ({
-          ...prev,
-          [tileId]: {
-            ownerId: activePlayerId,
-            ownerColor: activePlayerColor,
-            level: 1,
-          },
-        }))
+        updateTileOwners(
+          (prev) => ({
+            ...prev,
+            [tileId]: {
+              ownerId: activePlayerId,
+              ownerColor: activePlayerColor,
+              level: 1,
+            },
+          }),
+          { notifyParent: true }
+        )
         advanceTurn(onDoneCallback)
       }
     }
@@ -829,17 +840,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuildModal({ open: false, tileId: null })
       const bankrupt = applyMoney(active, -upgradeCost, onDoneCallback)
       if (!bankrupt) {
-        updateTileOwners((prev) => {
-          const existing = prev[tileId]
-          if (!existing) return prev
-          return {
-            ...prev,
-            [tileId]: {
-              ...existing,
-              level: Math.min(existing.level + 1, 5) as BuildingLevel,
-            },
-          }
-        })
+        updateTileOwners(
+          (prev) => {
+            const existing = prev[tileId]
+            if (!existing) return prev
+            return {
+              ...prev,
+              [tileId]: {
+                ...existing,
+                level: Math.min(existing.level + 1, 5) as BuildingLevel,
+              },
+            }
+          },
+          { notifyParent: true }
+        )
         advanceTurn(onDoneCallback)
       }
     }
