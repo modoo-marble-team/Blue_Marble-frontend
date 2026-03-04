@@ -46,6 +46,9 @@ const buildGamePath = (roomId: string, action?: string) => {
 }
 
 export const gameApi = {
+  /**
+   * @deprecated Event socket rollout 동안 bootstrap/fallback 용도로만 유지한다.
+   */
   async getState(roomId: string, options?: { reset?: boolean }) {
     try {
       const { data } = await apiClient.get(buildGamePath(roomId), {
@@ -57,7 +60,9 @@ export const gameApi = {
     }
   },
 
-  // GAME-001
+  /**
+   * @deprecated 새 이벤트 명세 기준에서는 `game:action`으로 대체된다.
+   */
   async buyTile(roomId: string, payload: { tile_index: number }) {
     try {
       const { data } = await apiClient.post(
@@ -70,7 +75,9 @@ export const gameApi = {
     }
   },
 
-  // GAME-002
+  /**
+   * @deprecated 새 이벤트 명세 기준에서는 `game:action`으로 대체된다.
+   */
   async buildTile(roomId: string, payload: { tile_index: number }) {
     try {
       const { data } = await apiClient.post(
@@ -83,7 +90,9 @@ export const gameApi = {
     }
   },
 
-  // GAME-003
+  /**
+   * @deprecated 새 이벤트 명세 기준에서는 `game:action`으로 대체된다.
+   */
   async sellTile(
     roomId: string,
     payload: { tile_index: number; level?: number }
@@ -99,7 +108,9 @@ export const gameApi = {
     }
   },
 
-  // GAME-004
+  /**
+   * @deprecated `game:sync` 전환 완료 전까지 유지하는 레거시 별칭이다.
+   */
   async syncState(roomId: string, options?: { reset?: boolean }) {
     return this.getState(roomId, options)
   },
