@@ -1,12 +1,12 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { getMockOnlineUsersSnapshot } from './mockData'
 import type { OnlineUserPayload, OnlineUsersEventPayload } from './types'
 
 // 접속자 목록 소켓 이벤트 이름
 export const ONLINE_USERS_EVENT_NAME = 'online_users'
 const SOCKET_MOCK_INTERVAL_MS = 5_000
-const USE_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 // 테스트용 리스너 접근을 위한 socket 타입 확장
 interface SocketWithListeners {

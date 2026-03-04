@@ -15,11 +15,11 @@ import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
 import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
 import type { BuildingLevel, ChatMessage } from '../types/domain'
 import { socket } from '../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { sendWaitingRoomChat } from './waiting-room/socket'
 import type { ChatEventPayload } from './waiting-room/types'
 
-const USE_GAME_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 const ALLOW_ALL_MOCK_TURNS =
   import.meta.env.DEV && import.meta.env.VITE_ALLOW_ALL_MOCK_TURNS === 'true'
 

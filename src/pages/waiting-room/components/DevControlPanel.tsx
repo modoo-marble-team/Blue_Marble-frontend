@@ -19,9 +19,9 @@ import {
 } from '../mockGateway'
 import { sendWaitingRoomChat } from '../socket'
 import type { WaitingRoomPlayer, WaitingRoomSnapshot } from '../types'
+import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 
-const IS_DEV_CONTROL_ENABLED =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const IS_DEV_CONTROL_ENABLED = IS_SOCKET_MOCK_ENABLED
 
 type DevControlMode = 'room' | 'presence' | 'chat'
 

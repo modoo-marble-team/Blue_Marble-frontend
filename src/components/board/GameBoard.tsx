@@ -30,6 +30,7 @@ import {
   BuildingLevel,
 } from './board.constants'
 import '../../styles/board.css'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
 
 // cost helpers are computed per-tile based on price
@@ -57,8 +58,7 @@ function calcToll(price: number, level: BuildingLevel): number {
   return price
 }
 
-const USE_GAME_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 const AI_PENALTY_RESULTS = [
   '\uB2E4\uC74C \uD134 \uC2DC\uC791 \uC804\uAE4C\uC9C0 \uD1B5\uD589\uB8CC\uAC00 10M \uC99D\uAC00\uD569\uB2C8\uB2E4.',

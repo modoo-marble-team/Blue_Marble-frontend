@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Lock, X } from 'lucide-react'
+import {
+  ROOM_PASSWORD_LENGTH,
+  ROOM_PASSWORD_PATTERN,
+} from '../../constants/room'
 import { cn } from '../../lib/utils'
-
-// 비밀방 입장 비밀번호는 숫자 4자리 고정
-const PASSWORD_PATTERN = /^\d{4}$/
 
 // 비밀방 입장 모달 입력값 타입
 interface PrivateRoomJoinModalProps {
@@ -27,7 +28,7 @@ export function PrivateRoomJoinModal({
   onSubmit,
 }: PrivateRoomJoinModalProps) {
   const [isPasswordInputFocused, setIsPasswordInputFocused] = useState(false)
-  const isJoinDisabled = !PASSWORD_PATTERN.test(password) || isSubmitting
+  const isJoinDisabled = !ROOM_PASSWORD_PATTERN.test(password) || isSubmitting
   const shouldShowHelperMessage = isPasswordInputFocused || isPasswordInvalid
   const helperMessage = isPasswordInvalid
     ? '비밀번호가 올바르지 않습니다.'
@@ -109,14 +110,14 @@ export function PrivateRoomJoinModal({
             type="password"
             inputMode="numeric"
             pattern="[0-9]*"
-            maxLength={4}
+            maxLength={ROOM_PASSWORD_LENGTH}
             value={password}
             onFocus={() => setIsPasswordInputFocused(true)}
             onBlur={() => setIsPasswordInputFocused(false)}
             onChange={(event) => {
               const nextValue = event.target.value
                 .replace(/\D/g, '')
-                .slice(0, 4)
+                .slice(0, ROOM_PASSWORD_LENGTH)
               onPasswordChange(nextValue)
             }}
             placeholder="비밀번호 입력"

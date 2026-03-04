@@ -1,4 +1,5 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import {
   mockEnterWaitingRoomSocket,
   mockLeaveWaitingRoomSocket,
@@ -25,8 +26,7 @@ const WAITING_ROOM_EVENT_NAMES = {
   gameStart: 'game_start',
 } as const
 
-const USE_WAITING_ROOM_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_WAITING_ROOM_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 // 소켓 송신 함수 파라미터 타입
 interface EnterWaitingRoomSocketParams {

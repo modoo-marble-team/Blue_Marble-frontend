@@ -1,11 +1,11 @@
 import { RefObject, useCallback } from 'react'
 import type { BoardGameHandle } from '../../components/board/GameBoard'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { socket } from '../../lib/socket'
 import { emitRollDice } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
 
-const USE_GAME_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
   const currentTurn = useGameStore((state) => state.currentTurn)
