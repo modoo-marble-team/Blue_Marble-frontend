@@ -7,7 +7,14 @@ import eslintConfigPrettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   {
-    ignores: ['dist', '.vite', 'coverage', 'playwright-report', 'test-results'],
+    ignores: [
+      'dist',
+      '.vite',
+      'coverage',
+      'coverage-owner',
+      'playwright-report',
+      'test-results',
+    ],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:owner": "vitest run --config vitest.owner.config.ts --coverage",
     "e2e": "playwright test",
     "e2e:ci": "playwright test --grep-invert @game",
     "e2e:game": "playwright test --grep @game",
