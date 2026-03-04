@@ -21,7 +21,8 @@ export default defineConfig({
     command: 'npm run dev -- --host 127.0.0.1 --port 4173',
     env: {
       ...process.env,
-      VITE_USE_SOCKET_MOCK: 'true',
+      // 기본은 mock 모드로 CI 안정성을 유지하고, 필요 시 환경변수로 실소켓 모드 실행
+      VITE_USE_SOCKET_MOCK: process.env.VITE_USE_SOCKET_MOCK ?? 'true',
     },
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
