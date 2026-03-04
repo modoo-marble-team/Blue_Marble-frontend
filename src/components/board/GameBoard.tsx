@@ -807,7 +807,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }),
           { notifyParent: true }
         )
-        advanceTurn(onDoneCallback)
+        if (USE_GAME_SOCKET_MOCK) {
+          onDoneCallback?.()
+        } else {
+          advanceTurn(onDoneCallback)
+        }
       }
     }
 
@@ -854,7 +858,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           },
           { notifyParent: true }
         )
-        advanceTurn(onDoneCallback)
+        if (USE_GAME_SOCKET_MOCK) {
+          onDoneCallback?.()
+        } else {
+          advanceTurn(onDoneCallback)
+        }
       }
     }
 
