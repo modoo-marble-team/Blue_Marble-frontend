@@ -1,83 +1,51 @@
-﻿# FE-B / FE-C 분업표 (현재 코드 기준)
+# FE-B / FE-C 분업표 (이벤트 명세서 기준)
 
 ## 요약 표
 
-| 구분                | FE-B    | FE-C    | 비고                           |
-| ------------------- | ------- | ------- | ------------------------------ |
-| 게임 API 연동       | 주 담당 | 보조    | roomId 기반 계약 유지          |
-| 게임 socket 연동    | 주 담당 | 보조    | emit/handler/store 반영        |
-| 게임 store          | 주 담당 | 보조    | `game.store.ts` 기준           |
-| 게임 페이지 조립    | 주 담당 | 보조    | `GamePage.tsx`                 |
-| 게임 모달 UI        | 주 담당 | 보조    | `src/components/game/modals/*` |
-| 주사위/턴 제어 UI   | 주 담당 | 보조    | `RollButton`, timer 등         |
-| 보드 렌더링         | 보조    | 주 담당 | `src/components/board/*`       |
-| 말 이동/건물 시각화 | 보조    | 주 담당 | 렌더/애니메이션 중심           |
-| 보드 로컬 상태 정리 | 공동    | 공동    | 현재 가장 큰 정리 대상         |
-| 공용 타입           | 공동    | 공동    | `src/types/domain.ts`          |
+| 구분 | FE-B | FE-C | 비고 |
+| --- | --- | --- | --- |
+| 이벤트 명세 타입 정의 | 주 담당 | 보조 | `src/types/domain.ts` |
+| 게임 store / patch 적용기 | 주 담당 | 보조 | revision, snapshot, prompt 포함 |
+| 게임 socket emit/listener | 주 담당 | 보조 | `game:action`, `game:ack`, `game:patch` |
+| 게임 mock / 테스트 유틸 | 주 담당 | 보조 | 새 명세 기준 검증 |
+| 게임 페이지 조립 | 주 담당 | 보조 | `GamePage.tsx`에서 상태 단일화 |
+| 게임 모달 / prompt UI | 주 담당 | 보조 | prompt container 중심 |
+| 보드 렌더링 | 보조 | 주 담당 | `src/components/board/*` |
+| 말 이동 / 타일 / 건물 시각화 | 보조 | 주 담당 | store snapshot 기준 |
+| patch events 애니메이션 | 보조 | 주 담당 | 연출만 담당 |
+| `GameBoard.tsx` 로직 제거 | 공동 | 공동 | FE-B 선행, FE-C 마무리 |
 
 ## 진행도 요약
 
-| 파트 | 진행도 | 상태                                |
-| ---- | ------ | ----------------------------------- |
-| FE-B | 80%    | 연동/검증/남은 모달 정리 단계       |
-| FE-C | 50%    | 보드 구조 정리와 시각화 안정화 단계 |
+| 파트 | 진행도 | 상태 |
+| --- | --- | --- |
+| FE-B | 55% | 새 이벤트 계약으로 상태/소켓 계층을 다시 세워야 하는 단계 |
+| FE-C | 45% | 보드를 store 단일 렌더와 연출 레이어로 정리해야 하는 단계 |
 
-## FE-B 완료된 내용
+## FE-B 최우선 작업
 
-- game store 구축 및 기본 액션 정리
-- roomId 기반 게임 API 정합화
-- socket emit/handler 주요 경로 정리
-- mock 환경 분기 및 테스트 모드 추가
-- 주요 게임 모달 UI 구현
-  - 구매
-  - 건설
-  - 카드
-  - 통행료
-  - AI 패널티
-  - 파산
-  - 게임 결과
-  - 주사위 타이머
+- `src/types/domain.ts`를 새 이벤트 명세 기준으로 재정의
+- `src/stores/game.store.ts`에 snapshot/patch/revision/prompt/ack 구조 추가
+- `src/services/socket/game.handler.ts`를 새 이벤트 계약으로 교체
+- `src/hooks/game/useGameState.ts`에서 `game:sync` 기반 복구로 전환
+- `src/mocks/handlers/game.handler.ts`를 새 명세 mock으로 재작성
+- `src/pages/GamePage.tsx`의 보드 상태 write-back 제거
 
-## FE-B 남은 내용
+## FE-C 최우선 작업
 
-- 남은 모달 UI 구현
-  - 도시 인수 팝업
-  - 무인도 이동칸 팝업
-  - 도시 매각 팝업
-- mock 한 턴 전체 시나리오 최종 검증
-- 실서버 authoritative 흐름 최종 점검
-- `GameBoard.tsx` 안의 FE-B 로직 일부 정리
+- `GameBoard.tsx`에서 API 호출, 통행료 계산, 파산 처리 제거
+- store selector 기반 보드 렌더 구조 정리
+- `game:patch.events` 기반 이동/효과 애니메이션 계층 추가
+- 새 `buildingLevel`, `tileType`, `playerState` 표시 반영
 
-## FE-C 완료된 내용
+## 현재 가장 큰 리스크
 
-- 보드 전체 배치 구조
-- 타일 렌더링 기본 구성
-- 플레이어 말 기본 렌더링
-- 건물 배지/아이콘 렌더링 구조
-- `GameBoard` 기반 게임판 동작 뼈대
+- `GameBoard.tsx`가 아직 게임 엔진처럼 동작한다.
+- `GamePage.tsx`가 store와 board 로컬 상태를 이중 관리한다.
+- mock이 새 이벤트 명세와 다른 프로토콜을 사용한다.
+- 타입 계층이 새 숫자 ID / revision / snapshot 구조를 표현하지 못한다.
 
-## FE-C 남은 내용
+## 완료 판단 기준
 
-- `LegacyBoardGame` 의존 제거 또는 얇은 래퍼화 유지 판단
-- store 기준 단일 렌더 구조로 정리
-- 보드 로컬 상태 제거 범위 확정
-- 이동/건물/타일 소유 상태 렌더 안정화
-- 시각 피드백과 애니메이션 보강
-
-## FE-A 제외 범위
-
-아래는 FE-B/FE-C 작업 범위에서 제외한다.
-
-- 로비
-- 로그인
-- 랜딩
-- 메신저/채팅방 일반 기능
-- 프레즌스
-- 게임 외 room UI
-
-## 공동 확인 필요 항목
-
-- `src/types/domain.ts`
-- 게임 상태 payload shape
-- tile type 명칭 정합화
-- player id / roomId / currentTurn 계약
+- FE-B 완료: 새 이벤트 계약만으로 한 턴 전체 흐름이 돈다.
+- FE-C 완료: 보드가 store 하나만 보고 정확히 렌더되며, 연출과 실제 상태가 분리돼도 stale 하지 않다.
