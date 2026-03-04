@@ -702,7 +702,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     useImperativeHandle(ref, () => ({ rollDice }))
 
     const byTile: Record<number, PlayerState[]> = {}
-    players.forEach((p) => {
+    players.forEach((p, i) => {
+      if (bankruptSetRef.current.has(i)) return
       if (!byTile[p.pos]) byTile[p.pos] = []
       byTile[p.pos].push(p)
     })
