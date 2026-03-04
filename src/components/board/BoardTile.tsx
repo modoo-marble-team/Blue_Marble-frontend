@@ -228,7 +228,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 ownerColor={tileOwner?.ownerColor}
               />
             )}
-            {isCity && (
+            {isCity && !tileOwner && (
               <div
                 style={{
                   backgroundColor: '#F1F5F9',
@@ -341,7 +341,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 ownerColor={tileOwner?.ownerColor}
               />
             )}
-            {isCity && (
+            {isCity && !tileOwner && (
               <div
                 style={{
                   backgroundColor: '#F1F5F9',
