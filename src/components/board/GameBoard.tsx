@@ -174,8 +174,8 @@ interface GameBoardProps {
     owner_id?: string | number | null
     building: number
   }>
-  onPlayersChange: (players: PlayerState[]) => void
-  onCurPlayerChange: (idx: number) => void
+  onPlayersChange?: (players: PlayerState[]) => void
+  onCurPlayerChange?: (idx: number) => void
   onTileOwnersChange?: (tileOwners: Record<number, TileOwner>) => void
   onBankrupt?: (playerIdx: number) => void
 }
@@ -384,7 +384,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         const nextPlayers = [...orderedPlayers, ...additionalPlayers]
         playersRef.current = nextPlayers
-        onPlayersChange(nextPlayers)
+        onPlayersChange?.(nextPlayers)
       }
 
       if (payload.tiles) {
@@ -438,7 +438,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         )
         if (nextTurnIndex >= 0) {
           curPlayerRef.current = nextTurnIndex
-          onCurPlayerChange(nextTurnIndex)
+          onCurPlayerChange?.(nextTurnIndex)
         }
       }
 
@@ -496,7 +496,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return { ...p, money: Math.max(0, p.money + delta) }
       })
       playersRef.current = updated
-      onPlayersChange([...updated])
+      onPlayersChange?.([...updated])
 
       const isBankrupt = updated[playerIdx].money <= 0
       if (isBankrupt) {
@@ -562,11 +562,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: nextPlayer.skipTurns! - 1,
         }
         playersRef.current = updatedPlayers
-        onPlayersChange(updatedPlayers)
+        onPlayersChange?.(updatedPlayers)
 
         // 스킵 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 뒤 다시 턴을 넘긴다
         curPlayerRef.current = next
-        onCurPlayerChange(next)
+        onCurPlayerChange?.(next)
 
         setTimeout(() => {
           advanceTurn(onDone)
@@ -575,7 +575,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       curPlayerRef.current = next
-      onCurPlayerChange(next)
+      onCurPlayerChange?.(next)
       onDone?.()
     }
 
@@ -650,7 +650,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return { ...p, pos: newPos, skipTurns: newSkipTurns }
           })
           playersRef.current = movedPlayers
-          onPlayersChange([...movedPlayers])
+          onPlayersChange?.([...movedPlayers])
 
           const landedTileId = movedPlayers[activeCurPlayer].pos
 
@@ -921,7 +921,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: (activePlayer.skipTurns ?? 0) + 1,
         }
         playersRef.current = updatedPlayers
-        onPlayersChange(updatedPlayers)
+        onPlayersChange?.(updatedPlayers)
         setStatus(`${activePlayer.name} 주사위 1턴 쉬기!`)
       }
 
