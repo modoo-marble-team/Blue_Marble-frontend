@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { ensureDevControlPanelOpen } from './helpers/devPanel'
 import { loginAsGuest, resetSessionAndOpenHome } from './helpers/session'
 
-test.describe('게임 채팅 플로우', () => {
+test.describe('@game 게임 채팅 플로우', () => {
   test('게임 진입 후 채팅 1건을 전송해 메시지 목록에 표시한다', async ({
     page,
   }) => {

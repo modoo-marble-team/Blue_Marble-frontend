@@ -94,6 +94,11 @@ export function useWaitingRoomSocketSync({
         })
       },
       onGameStart: (payload) => {
+        // 다른 방 시작 이벤트는 무시
+        if (payload.room_id !== activeRoomId) {
+          return
+        }
+
         onGameStart(payload)
       },
     })
