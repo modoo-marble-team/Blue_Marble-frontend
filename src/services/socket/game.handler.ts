@@ -1,251 +1,198 @@
 import { socket } from '../../lib/socket'
 import { useGameStore } from '../../stores/game.store'
-import type { Card, GameResult, Player, Tile } from '../../types/domain'
+import type {
+  GameAck,
+  GameError,
+  GamePatchEnvelope,
+  GamePrompt,
+  GamePromptResponse,
+  GameSnapshot,
+  PendingGameAction,
+  RoomId,
+  GameId,
+} from '../../types/domain'
 
 type Teardown = () => void
 
-type GameStatePayload = {
-  players: Player[]
-  tiles: Tile[]
-  current_turn: string | null
-  round: number
-  timeout_sec?: number
+type SetupGameHandlersOptions = {
+  roomId?: RoomId | null
+  gameId?: GameId | null
 }
 
-type TurnStartPayload = {
-  player_id: string
-  round: number
-  timeout_sec: number
+type GamePatchPayload = GamePatchEnvelope & {
+  snapshot?: GameSnapshot
 }
 
-type DiceRolledPayload = {
-  player_id: string
-  dice: number[]
-  is_double: boolean
-  double_count: number
+type GameActionPayload = {
+  actionId?: string
+  type: string
+  roomId?: RoomId | null
+  gameId?: GameId | null
+  payload?: Record<string, unknown>
 }
 
-type PlayerMovedPayload = {
-  player_id: string
-  from_index: number
-  to_index: number
-  trigger: string
-  pass_go: boolean
-  pass_go_salary: number
+type GameSyncPayload = {
+  roomId?: RoomId | null
+  gameId?: GameId | null
+  reset?: boolean
 }
 
-type TilePurchasedPayload = {
-  player_id: string
-  tile_index: number
-  tile_name: string
-  price: number
-}
-
-type TollPaidPayload = {
-  payer_id: string
-  owner_id: string
-  tile_index: number
-  amount: number
-}
-
-type CardDrawnPayload = {
-  player_id: string
-  card: Card
-}
-
-type PlayerSentToJailPayload = {
-  player_id: string
-}
-
-type PlayerBankruptPayload = {
-  player_id: string
+type PromptResponsePayload = GamePromptResponse & {
+  roomId?: RoomId | null
+  gameId?: GameId | null
 }
 
 let teardownGameHandlersRef: Teardown | null = null
 
-const applyGameState = (payload: GameStatePayload) => {
-  const gameStore = useGameStore.getState()
-  gameStore.setGameState({
-    players: payload.players,
-    tiles: payload.tiles,
-    currentTurn: payload.current_turn,
-    round: payload.round,
-    turnTimeoutSec: payload.timeout_sec ?? gameStore.turnTimeoutSec,
-  })
-}
+const createActionId = () => `game-action-${Date.now()}`
 
-const appendOwnedTile = (player: Player, tileIndex: number) => {
-  if (player.owned_tiles.includes(tileIndex)) {
-    return player.owned_tiles
-  }
+const createPendingAction = (
+  action: Required<Pick<GameActionPayload, 'actionId' | 'type'>> &
+    Pick<GameActionPayload, 'payload'>
+): PendingGameAction => ({
+  actionId: action.actionId,
+  type: action.type,
+  requestedAt: Date.now(),
+  payload: action.payload,
+})
 
-  return [...player.owned_tiles, tileIndex]
-}
-
-export const setupGameHandlers = (): Teardown => {
+export const setupGameHandlers = (
+  options: SetupGameHandlersOptions = {}
+): Teardown => {
   teardownGameHandlersRef?.()
 
-  const gameStore = useGameStore.getState()
+  const handleGameAck = (ack: GameAck) => {
+    const gameStore = useGameStore.getState()
+    gameStore.resolveAck(ack)
 
-  const handleGameStart = ({
-    game_state,
-  }: {
-    game_state: GameStatePayload
-  }) => {
-    applyGameState(game_state)
-  }
-
-  const handleGameState = (state: GameStatePayload) => {
-    applyGameState(state)
-  }
-
-  const handleTurnStart = ({
-    player_id,
-    round,
-    timeout_sec,
-  }: TurnStartPayload) => {
-    gameStore.setGameState({
-      currentTurn: player_id,
-      round,
-      turnTimeoutSec: timeout_sec,
-      turnTimerKey: Date.now(),
-    })
-  }
-
-  const handleDiceRolled = ({ player_id, dice }: DiceRolledPayload) => {
-    // 보드 애니메이션 연결 전까지는 수신만 보장한다.
-    void player_id
-    void dice
-  }
-
-  const handlePlayerMoved = ({
-    player_id,
-    to_index,
-    pass_go,
-    pass_go_salary,
-  }: PlayerMovedPayload) => {
-    const state = useGameStore.getState()
-    const player = state.players.find((candidate) => candidate.id === player_id)
-
-    state.updatePlayer(player_id, {
-      position: to_index,
-      balance:
-        player && pass_go ? player.balance + pass_go_salary : player?.balance,
-    })
-  }
-
-  const handleTilePurchased = ({
-    player_id,
-    tile_index,
-    price,
-  }: TilePurchasedPayload) => {
-    const state = useGameStore.getState()
-    const player = state.players.find((candidate) => candidate.id === player_id)
-
-    state.updateTile(tile_index, { owner_id: player_id })
-
-    if (player) {
-      state.updatePlayer(player_id, {
-        balance: Math.max(0, player.balance - price),
-        owned_tiles: appendOwnedTile(player, tile_index),
-      })
-    }
-
-    state.setModal(null)
-  }
-
-  const handleTollPaid = ({ payer_id, owner_id, amount }: TollPaidPayload) => {
-    const state = useGameStore.getState()
-    const payer = state.players.find((player) => player.id === payer_id)
-    const owner = state.players.find((player) => player.id === owner_id)
-
-    if (payer) {
-      state.updatePlayer(payer_id, {
-        balance: Math.max(0, payer.balance - amount),
-      })
-    }
-
-    if (owner) {
-      state.updatePlayer(owner_id, {
-        balance: owner.balance + amount,
-      })
+    if (typeof ack.revision === 'number' && ack.revision > gameStore.revision) {
+      gameStore.setGameState({ revision: ack.revision })
     }
   }
 
-  const handleCardDrawn = ({ card }: CardDrawnPayload) => {
-    void card
-    gameStore.setModal('card')
-  }
+  const handleGamePatch = (payload: GamePatchPayload) => {
+    const gameStore = useGameStore.getState()
 
-  const handlePlayerSentToJail = ({ player_id }: PlayerSentToJailPayload) => {
-    gameStore.updatePlayer(player_id, { is_in_jail: true })
-  }
+    if (payload.snapshot) {
+      gameStore.replaceFromSnapshot(payload.snapshot)
+      return
+    }
 
-  const handlePlayerBankrupt = ({ player_id }: PlayerBankruptPayload) => {
-    gameStore.updatePlayer(player_id, { is_bankrupt: true })
-    gameStore.setModal('bankrupt')
-  }
-
-  const handleGameOver = (payload: GameResult) => {
-    const winner = payload.rankings.find((ranking) => ranking.is_winner)
-    gameStore.setGameState({
-      gameResult: payload,
-      isGameOver: true,
-      winnerId: winner?.player_id ?? null,
+    gameStore.applyPatchEnvelope({
+      revision: payload.revision,
+      patch: payload.patch,
+      events: payload.events,
     })
   }
 
-  const handleAIPenaltyLoading = () => {
-    gameStore.setModal('penalty')
+  const handleGamePrompt = (prompt: GamePrompt) => {
+    useGameStore.getState().setPrompt(prompt)
   }
 
-  const handleAIPenalty = () => {
-    gameStore.setModal('penalty')
+  const handleGameError = (error: GameError) => {
+    useGameStore.getState().setLastError(error)
   }
 
-  socket.on('game_start', handleGameStart)
-  socket.on('game_state', handleGameState)
-  socket.on('turn_start', handleTurnStart)
-  socket.on('dice_rolled', handleDiceRolled)
-  socket.on('player_moved', handlePlayerMoved)
-  socket.on('tile_purchased', handleTilePurchased)
-  socket.on('toll_paid', handleTollPaid)
-  socket.on('event_card_drawn', handleCardDrawn)
-  socket.on('chance_card_drawn', handleCardDrawn)
-  socket.on('player_sent_to_jail', handlePlayerSentToJail)
-  socket.on('player_bankrupt', handlePlayerBankrupt)
-  socket.on('game_over', handleGameOver)
-  socket.on('ai_penalty_loading', handleAIPenaltyLoading)
-  socket.on('ai_penalty', handleAIPenalty)
+  socket.on('game:ack', handleGameAck)
+  socket.on('game:patch', handleGamePatch)
+  socket.on('game:prompt', handleGamePrompt)
+  socket.on('game:error', handleGameError)
 
   const teardown = () => {
-    socket.off('game_start', handleGameStart)
-    socket.off('game_state', handleGameState)
-    socket.off('turn_start', handleTurnStart)
-    socket.off('dice_rolled', handleDiceRolled)
-    socket.off('player_moved', handlePlayerMoved)
-    socket.off('tile_purchased', handleTilePurchased)
-    socket.off('toll_paid', handleTollPaid)
-    socket.off('event_card_drawn', handleCardDrawn)
-    socket.off('chance_card_drawn', handleCardDrawn)
-    socket.off('player_sent_to_jail', handlePlayerSentToJail)
-    socket.off('player_bankrupt', handlePlayerBankrupt)
-    socket.off('game_over', handleGameOver)
-    socket.off('ai_penalty_loading', handleAIPenaltyLoading)
-    socket.off('ai_penalty', handleAIPenalty)
+    socket.off('game:ack', handleGameAck)
+    socket.off('game:patch', handleGamePatch)
+    socket.off('game:prompt', handleGamePrompt)
+    socket.off('game:error', handleGameError)
   }
 
   teardownGameHandlersRef = teardown
+
+  if (options.roomId || options.gameId) {
+    const gameStore = useGameStore.getState()
+    gameStore.setGameState({
+      roomId: options.roomId ?? gameStore.roomId,
+      gameId: options.gameId ?? gameStore.gameId,
+      session: {
+        ...gameStore.session,
+        roomId: options.roomId ?? gameStore.session.roomId,
+        gameId: options.gameId ?? gameStore.session.gameId,
+        transport: 'event-socket',
+      },
+    })
+  }
+
   return teardown
 }
 
-export const emitRollDice = (payload: { room_id: string }) => {
-  socket.emit('roll_dice', payload)
+export const emitGameAction = ({
+  actionId = createActionId(),
+  type,
+  roomId,
+  gameId,
+  payload,
+}: GameActionPayload) => {
+  const gameStore = useGameStore.getState()
+
+  gameStore.setPendingAction(
+    createPendingAction({
+      actionId,
+      type,
+      payload,
+    })
+  )
+
+  socket.emit('game:action', {
+    actionId,
+    type,
+    roomId,
+    gameId,
+    payload,
+  })
+
+  return actionId
 }
 
+export const emitGameSync = ({ roomId, gameId, reset }: GameSyncPayload) => {
+  socket.emit('game:sync', {
+    roomId,
+    gameId,
+    reset,
+  })
+}
+
+export const emitPromptResponse = ({
+  promptId,
+  playerId,
+  value,
+  roomId,
+  gameId,
+}: PromptResponsePayload) => {
+  socket.emit('game:prompt_response', {
+    promptId,
+    playerId,
+    value,
+    roomId,
+    gameId,
+  })
+}
+
+// Deprecated compatibility wrapper until all callers move to emitGameAction.
+export const emitRollDice = (payload: { room_id: string }) => {
+  emitGameAction({
+    type: 'ROLL_DICE',
+    roomId: payload.room_id,
+  })
+}
+
+// Deprecated compatibility wrapper until board prompt flow is migrated.
 export const emitConfirmPenalty = (payload: {
   room_id: string
   player_id: string
 }) => {
-  socket.emit('confirm_penalty', payload)
+  emitPromptResponse({
+    promptId: 'legacy-penalty-confirm',
+    playerId: payload.player_id,
+    value: 'confirm',
+    roomId: payload.room_id,
+  })
 }
