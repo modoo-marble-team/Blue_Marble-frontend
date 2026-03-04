@@ -5,6 +5,7 @@ import {
   PlayerState,
   getStripColor,
   TileOwner,
+  PLAYER_COLORS,
 } from './board.constants'
 import BuildingBadge from './BuildingBadge'
 import { formatWon } from '../../lib/utils'
@@ -62,10 +63,19 @@ export const PlayerToken: React.FC<TokenProps> = ({
 
 // ─── 플레이어 소유 색상 맵 ──────────────────────────────────────────
 const PLAYER_OWNER_STYLES: Record<string, { strip: string; bg: string }> = {
-  '#EF5350': { strip: '#FF0000', bg: '#FFCECF' },
+  '#EF5350': { strip: '#FF0000', bg: '#FFCECF' }, // 기존 빨강
+  '#EF4444': { strip: '#FF0000', bg: '#FFCECF' }, // Tailwind 빨강
+  '#FF0000': { strip: '#FF0000', bg: '#FFCECF' }, // 순수 빨강
   '#42A5F5': { strip: '#155DFC', bg: '#DCF1FF' },
+  '#3B82F6': { strip: '#155DFC', bg: '#DCF1FF' },
   '#66BB6A': { strip: '#00A63E', bg: '#DCFCE7' },
+  '#22C55E': { strip: '#00A63E', bg: '#DCFCE7' },
   '#FFD15B': { strip: '#F0B100', bg: '#F7ECAC' },
+  '#EAB308': { strip: '#F0B100', bg: '#F7ECAC' },
+  RED: { strip: '#FF0000', bg: '#FFCECF' },
+  BLUE: { strip: '#155DFC', bg: '#DCF1FF' },
+  GREEN: { strip: '#00A63E', bg: '#DCFCE7' },
+  YELLOW: { strip: '#F0B100', bg: '#F7ECAC' },
 }
 
 // ─── 아이콘 렌더링 헬퍼 ───────────────────────────────────────────
@@ -105,9 +115,16 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const hasIcon = !!(tile.svgIcon || tile.emoji)
 
   // 소유 색상 계산
+  // 소유 색상 계산 (데이터 결측 시 ID 기반 폴백)
+  const rawOwnerColor =
+    tileOwner?.ownerColor ||
+    PLAYER_COLORS[(tileOwner?.ownerId || 0) % PLAYER_COLORS.length]
+  const normalizedOwnerColor = (rawOwnerColor || '').trim().toUpperCase()
+
   const ownerStyle =
     isCity && tileOwner
-      ? (PLAYER_OWNER_STYLES[tileOwner.ownerColor] ?? null)
+      ? (PLAYER_OWNER_STYLES[normalizedOwnerColor] ??
+        PLAYER_OWNER_STYLES['#EF5350'])
       : null
   // city: 미구매=#CCCCCC, 구매 후=플레이어 색 / 비도시: 기존 로직
   const strip = isCity

@@ -1,21 +1,56 @@
 import React from 'react'
+import { PLAYER_COLORS } from './board.constants'
 
-interface BuildingBadgeProps {
+interface BuildingIconProps {
   level: number
+  ownerColor?: string
 }
 
-const BUILDING_ICON: Record<number, string> = {
-  1: '/BuildingIcon/house.svg',
-  2: '/BuildingIcon/Second%20house%20upgrade.svg',
-  3: '/BuildingIcon/Third%20house%20upgrade.svg',
-  4: '/BuildingIcon/hotel.svg',
-  5: '/BuildingIcon/landmark.svg',
+const RED_THEME = { folder: 'red-building-Icon', prefix: 'red' }
+const BLUE_THEME = { folder: 'blue-building-Icon', prefix: 'blue' }
+const GREEN_THEME = { folder: 'green-building-Icon', prefix: 'green' }
+const YELLOW_THEME = { folder: 'yellow-building-Icon', prefix: 'yellow' }
+
+const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
+  '#EF5350': RED_THEME,
+  '#EF4444': RED_THEME,
+  '#FF0000': RED_THEME,
+  RED: RED_THEME,
+  '#42A5F5': BLUE_THEME,
+  '#3B82F6': BLUE_THEME,
+  '#0000FF': BLUE_THEME,
+  BLUE: BLUE_THEME,
+  '#66BB6A': GREEN_THEME,
+  '#22C55E': GREEN_THEME,
+  '#00FF00': GREEN_THEME,
+  GREEN: GREEN_THEME,
+  '#FFD15B': YELLOW_THEME,
+  '#EAB308': YELLOW_THEME,
+  '#FFFF00': YELLOW_THEME,
+  YELLOW: YELLOW_THEME,
 }
 
-const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level }) => {
-  if (!level || level < 1) return null
+const BUILDING_SUFFIX: Record<number, string> = {
+  1: '-house.svg',
+  2: '-second-house-upgrade.svg',
+  3: '-third-house-upgrade.svg',
+  4: '-hotel.svg',
+  5: '-second-hotel-upgrade.svg',
+  6: '-third—hotel-upgrade.svg',
+  7: '-landmark.svg',
+}
 
-  const src = BUILDING_ICON[level]
+const BuildingIcon: React.FC<BuildingIconProps> = ({ level, ownerColor }) => {
+  if (!level || level < 1 || level > 7) return null
+
+  const rawPathColor = ownerColor || PLAYER_COLORS[0]
+  const normalizedColor = rawPathColor.trim().toUpperCase()
+  const theme = COLOR_TO_THEME[normalizedColor] ?? YELLOW_THEME
+  const suffix = BUILDING_SUFFIX[level]
+
+  if (!suffix) return null
+
+  const src = `/${theme.folder}/${theme.prefix}${suffix}`
 
   return (
     <div
@@ -53,7 +88,7 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level }) => {
           justifyContent: 'center',
           fontSize: 10,
           fontWeight: 700,
-          color: '#2b7fff',
+          color: ownerColor ?? '#2b7fff',
         }}
       >
         {level}
@@ -62,4 +97,4 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level }) => {
   )
 }
 
-export default BuildingBadge
+export default BuildingIcon

@@ -9,8 +9,8 @@
   | 'ai'
 export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
 
-// 0: 미구매, 1: 집1, 2: 집2, 3: 집3, 4: 호텔, 5: 랜드마크
-export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5
+// 0: 미구매, 1: 집1, 2: 집2, 3: 집3, 4: 호텔1, 5: 호텔2, 6: 호텔3, 7: 랜드마크
+export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 export interface TileOwner {
   ownerId: number
@@ -133,8 +133,10 @@ export function getBuildCost(
   if (currentLevel === 0) return basePrice * 0.5 // 집 1채
   if (currentLevel === 1) return basePrice * 0.5 // 집 2채
   if (currentLevel === 2) return basePrice * 0.5 // 집 3채
-  if (currentLevel === 3) return basePrice * 1.0 // 호텔
-  if (currentLevel === 4) return basePrice * 1.5 // 랜드마크
+  if (currentLevel === 3) return basePrice * 1.0 // 호텔 1
+  if (currentLevel === 4) return basePrice * 1.0 // 호텔 2
+  if (currentLevel === 5) return basePrice * 1.0 // 호텔 3
+  if (currentLevel === 6) return basePrice * 2.0 // 랜드마크
   return 0
 }
 
@@ -148,6 +150,8 @@ export function getTollCost(
   if (currentLevel === 2) return basePrice * 3
   if (currentLevel === 3) return basePrice * 5
   if (currentLevel === 4) return basePrice * 7
-  if (currentLevel === 5) return basePrice * 10
+  if (currentLevel === 5) return basePrice * 9
+  if (currentLevel === 6) return basePrice * 12
+  if (currentLevel === 7) return basePrice * 15
   return basePrice
 }
