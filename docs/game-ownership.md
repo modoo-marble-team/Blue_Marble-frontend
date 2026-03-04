@@ -1,145 +1,125 @@
-﻿# 게임 영역 파일 소유권 및 분업 기준
+# 게임 영역 파일 소유권 및 분업 기준 (이벤트 명세서 반영)
 
-이 문서는 현재 프로젝트 코드 기준으로 FE-B와 FE-C의 게임 영역 책임을 다시 정리한 기준 문서다.
-기존 문서의 인코딩 손상과 초기 추정 분업표는 이 문서로 대체한다.
+이 문서는 새 `이벤트 명세서.md` 기준으로 FE-B와 FE-C의 게임 영역 책임을 다시 정리한 문서다.
+기존 분업 문서는 구 소켓 이벤트 구조를 전제로 했기 때문에 이 문서로 대체한다.
 
-## 1. 분업 범위
+## 1. 분업 원칙
 
-### 포함 범위
+- FE-B는 게임 계약, 상태, socket, prompt, mock을 책임진다.
+- FE-C는 보드 렌더링, 애니메이션, 시각 상태 표현을 책임진다.
+- 새 명세에서 결과 계산은 서버 권위이므로, FE-C가 게임 결과를 계산하는 구조는 금지한다.
 
-- 게임 페이지 진입 이후의 화면과 상태
-- 게임 전용 store, socket, API 연동
-- 보드 렌더링, 말 이동, 타일 소유 상태, 건물 표시
-- 게임 전용 모달과 턴 제어 UI
+## 2. FE-B 주 담당
 
-### 제외 범위
-
-다음 영역은 게임 외 영역으로 보고 FE-A 담당으로 제외한다.
-
-- 로비
-- 로그인
-- 랜딩
-- 대기방 일반 UI
-- 메신저/채팅방 전반
-- 프레즌스, 방 목록, 일반 room 공용 UI
-
-## 2. 파일 소유권
-
-### FE-B 주 담당
-
-게임 로직, 상태 계약, 소켓/API 연동, 게임 전용 모달/컨트롤
-
-- `src/stores/game.store.ts`
-- `src/services/game/game.api.ts`
-- `src/services/socket/game.handler.ts`
-- `src/hooks/game/*`
-- `src/components/game/controls/*`
-- `src/components/game/modals/*`
-- `src/pages/GamePage.tsx`
-- `src/mocks/gameMockData.ts`
-- `src/mocks/handlers/game.handler.ts`
-
-### FE-C 주 담당
-
-게임 보드 렌더링, 타일/말/건물 시각화, 보드 레이아웃과 애니메이션
-
-- `src/components/board/*`
-- `src/game/phaserConfig.tsx`
-- `src/styles/board.css`
-
-### 공동 관리
-
-양쪽이 계약을 맞춰야 하는 공용 타입/도메인
+아래 영역은 FE-B가 주도한다.
 
 - `src/types/domain.ts`
+- `src/stores/game.store.ts`
+- `src/services/socket/game.handler.ts`
+- `src/services/game/game.api.ts`
+- `src/hooks/game/*`
+- `src/mocks/handlers/game.handler.ts`
+- `src/test/socketEmitter.ts`
+- `src/pages/GamePage.tsx`
+- `src/components/game/modals/*`
 
-## 3. 현재 코드 기준 실제 경계
+핵심 책임:
 
-### FE-B가 이미 깊게 들어가 있는 파일
+- `game:action`, `game:ack`, `game:patch`, `game:prompt`, `game:error`
+- snapshot/patch/revision 처리
+- prompt 응답과 timeout 처리
+- mock과 실서버 계약 정렬
 
-다음 파일은 원래 FE-C와 경계가 닿지만, 현재 구조상 FE-B 로직이 일부 들어가 있다.
+## 3. FE-C 주 담당
 
-- `src/components/board/GameBoard.tsx`
+아래 영역은 FE-C가 주도한다.
 
-사유:
+- `src/components/board/*`
+- `src/styles/board.css`
+- 보드 화면의 애니메이션/시각 피드백
 
-- 구매/건설/매각 API 호출
+핵심 책임:
+
+- 플레이어 말, 타일, 건물, 소유권 시각화
+- patch events 기반 이동/도착/효과 연출
+- snapshot/store 상태 기반 보드 렌더 안정화
+
+## 4. 공동 관리
+
+둘이 같이 맞춰야 하는 영역은 아래와 같다.
+
+- store snapshot을 보드 view model로 바꾸는 기준
+- prompt를 어떤 UI 표면으로 보여줄지에 대한 계약
+- `playerState`, `buildingLevel`, `tileType`의 렌더 규칙
+
+## 5. 현재 코드 기준 예외 구간
+
+### `src/components/board/GameBoard.tsx`
+
+이 파일은 현재 FE-B 책임과 FE-C 책임이 가장 많이 섞여 있다.
+
+현재 들어 있는 FE-B 성격의 책임:
+
+- REST 액션 호출
 - 통행료 계산
-- AI 패널티 처리
 - 파산 처리
-- 각종 모달 open/close 로직
+- 턴 전환
+- 타일 소유 상태의 로컬 진실 소스
 
 정리 원칙:
 
-- 단기적으로는 이 파일에서 FE-B 로직을 허용한다.
-- 중기적으로는 FE-B 로직을 hooks/store/services 쪽으로 빼고, FE-C는 렌더링 책임만 남기는 방향이 맞다.
+- FE-B가 먼저 연동 로직을 바깥으로 뺀다.
+- FE-C는 그 이후 `GameBoard.tsx`를 렌더/연출 중심 컴포넌트로 정리한다.
+- 당분간 이 파일은 공동 정리 대상으로 본다.
 
-## 4. 진행도 평가
+## 6. 진행도 재평가
 
-### FE-B 진행도: 80%
+### FE-B 진행도: 55%
 
-완료된 축:
+이 수치는 "게임 UI가 어느 정도 있다"가 아니라 "새 이벤트 명세를 실제로 소화할 수 있는가" 기준이다.
 
-- roomId 기반 API/소켓 계약 정합화
-- game store 구축
-- socket handler lifecycle 및 주요 이벤트 반영
-- mock/real 분기 일부 정리
-- 게임 전용 주요 모달 UI 다수 구현
-- mock 자금/전체 턴 테스트 모드 보강
+완료된 것:
 
-남은 핵심:
+- 게임 store 골격
+- 페이지/모달/턴 UI 기본 자산
+- socket 연결과 mock 기본 토대
 
-- mock 한 턴 전체 검증 마무리
-- 서버 authoritative 흐름으로 최종 정리
-- `GameBoard` 안의 FE-B 로직 일부 분리
-- 남은 게임 모달 3개 구현
+남은 것:
 
-### FE-C 진행도: 50%
+- 새 타입 계약
+- patch/snapshot/revision store
+- prompt/ack 기반 입력 UX
+- 구 REST/구 이벤트 제거
+- mock 전환
 
-완료된 축:
+### FE-C 진행도: 45%
 
-- 보드 기본 레이아웃
-- 타일/말/건물 렌더링 기본 구조
-- `GameBoard` 기반 플레이 가능 화면 뼈대
+완료된 것:
 
-남은 핵심:
+- 보드 배치와 기본 시각화
+- 말/타일/건물 렌더 뼈대
 
-- `LegacyBoardGame` 의존 정리
-- store 중심 보드 렌더 구조로 수렴
-- 보드 로컬 상태와 store 이중화 제거
-- 이동/건물/소유권 표시의 최종 안정화
+남은 것:
 
-## 5. 현재 프로젝트 기준 핵심 리스크
+- store 단일 상태 렌더
+- event queue 기반 연출
+- `GameBoard.tsx` 로직 제거
+- 새 building/player state 시각 규칙 반영
 
-1. `GamePage`가 여전히 로컬 보드 상태를 많이 들고 있다.
-
-- `boardPlayers`
-- `boardCurPlayer`
-
-2. `GameBoard.tsx` 안에 FE-B와 FE-C 책임이 섞여 있다.
-
-3. mock 흐름과 실제 서버 authoritative 흐름이 100% 같지 않다.
-
-4. FE-A 영역과 겹치는 공용 UI 파일을 잘못 수정하면 분업이 다시 깨진다.
-
-## 6. 수정 원칙
+## 7. 작업 충돌 방지 규칙
 
 ### FE-B 작업 시
 
-- FE-A 영역 파일은 수정하지 않는다.
-- 보드 렌더링 자체보다 계약, 상태, API, socket에 집중한다.
-- 보드 파일 수정이 필요하면 "게임 로직 보강" 범위로 최소화한다.
+- 보드 파일을 건드리더라도 계약 제거와 상태 이관까지만 한다.
+- 보드 스타일과 시각 디테일을 임의로 바꾸지 않는다.
 
 ### FE-C 작업 시
 
-- socket/API/store 계약을 새로 만들지 않는다.
-- FE-B가 만든 상태를 읽어서 렌더링하는 쪽으로 정리한다.
-- 임의 로컬 상태를 늘리지 않는다.
+- 새 socket 이벤트나 store 계약을 독자적으로 만들지 않는다.
+- 서버 권위 계산을 보드 내부에 다시 넣지 않는다.
 
-## 7. 최종 목표
+## 8. 최종 목표
 
-- FE-B: 게임 상태와 연동 책임을 안정적으로 제공
-- FE-C: 그 상태를 보드에서 정확하게 시각화
-- FE-A: 게임 외 영역을 완전히 분리 관리
-
-이 문서 기준으로 분업 충돌이 생기면, 코드 소유권은 "현재 실제 책임"을 우선으로 판단한다.
+- FE-B: 새 이벤트 명세를 store와 socket 계층에서 안정적으로 흡수
+- FE-C: 그 상태를 보드에서 정확하고 자연스럽게 연출
+- 둘 사이 경계는 "계약/상태"와 "표현/연출"로 나눈다
