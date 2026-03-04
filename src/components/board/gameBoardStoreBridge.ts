@@ -66,17 +66,23 @@ export function syncMockStoreTileOwners(
       if (!owner) {
         return {
           ...tile,
+          ownerId: null,
           owner_id: null,
           building: 0 as StoreBuildingLevel,
         }
       }
 
-      const ownerPlayer = storePlayers.find(
-        (player) => String(player.id) === String(owner.ownerId)
-      )
+      const ownerPlayer =
+        storePlayers.find(
+          (player) => String(player.id) === String(owner.ownerId)
+        ) ??
+        (typeof owner.ownerId === 'number'
+          ? storePlayers[owner.ownerId]
+          : undefined)
 
       return {
         ...tile,
+        ownerId: ownerPlayer?.id ?? String(owner.ownerId),
         owner_id: ownerPlayer?.id ?? String(owner.ownerId),
         building: toStoreBuildingLevel(owner.level - 1),
       }
