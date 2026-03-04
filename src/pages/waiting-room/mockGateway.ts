@@ -13,11 +13,9 @@ import type {
   WaitingRoomSnapshot,
 } from './types'
 
-// 목 게이트웨이 네트워크 지연/게임 초기값/비밀방 기본 비밀번호
+// 목 게이트웨이 네트워크 지연/비밀방 기본 비밀번호
 const MOCK_NETWORK_DELAY_MS = 220
 const DEFAULT_ROOM_PASSWORD = '1234'
-const GAME_START_BALANCE = 1_000_000_000
-const GAME_PLAYER_COLORS = ['#FF6B6B', '#4F86F7', '#F8B500', '#2CCF9A']
 const DEV_BOT_NICKNAME_PREFIX = '테스터봇'
 const ROOM_PRIVATE_PASSWORDS: Record<string, string> = {
   'room-2': DEFAULT_ROOM_PASSWORD,
@@ -259,26 +257,11 @@ function findRoomOrThrow(roomId: string) {
   return room
 }
 
-// 게임 시작 소켓 payload를 목 게임 상태와 함께 생성
+// 게임 시작 소켓 payload를 명세 필수 필드(game_id, room_id)로 생성
 function createGameStartPayload(room: MockRoom): GameStartEventPayload {
   return {
     game_id: `game-${room.id}-${Date.now()}`,
-    game_state: {
-      players: room.players.map((player, index) => ({
-        id: player.id,
-        nickname: player.nickname,
-        position: 0,
-        balance: GAME_START_BALANCE,
-        owned_tiles: [],
-        is_in_jail: false,
-        jail_turn_count: 0,
-        is_bankrupt: false,
-        color: GAME_PLAYER_COLORS[index % GAME_PLAYER_COLORS.length],
-      })),
-      tiles: [],
-      current_turn: room.players[0]?.id ?? null,
-      round: 1,
-    },
+    room_id: room.id,
   }
 }
 

@@ -62,11 +62,11 @@ function WaitingRoomPage() {
       navigate(`/game/${payload.game_id}`, {
         state: {
           gameId: payload.game_id,
-          roomId: currentRoomId,
+          roomId: payload.room_id,
         },
       })
     },
-    [currentRoomId, navigate]
+    [navigate]
   )
 
   const {

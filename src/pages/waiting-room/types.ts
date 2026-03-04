@@ -1,4 +1,3 @@
-import type { Player, Tile } from '../../types/domain'
 import type { LobbyRoomStatus } from '../lobby/types'
 
 // 대기방 플레이어 화면 모델
@@ -154,9 +153,10 @@ export interface LobbyUpdatedEventPayload {
 // 게임 시작 이벤트 payload 타입
 export interface GameStartEventPayload {
   game_id: string
-  game_state: {
-    players: Player[]
-    tiles: Tile[]
+  room_id: string
+  game_state?: {
+    players: unknown[]
+    tiles: unknown[]
     current_turn: string | null
     round: number
   }

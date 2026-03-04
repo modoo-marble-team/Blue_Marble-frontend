@@ -237,12 +237,7 @@ describe('WaitingRoomPage interaction', () => {
     act(() => {
       gameStartHandlerRef.current?.({
         game_id: 'game-123',
-        game_state: {
-          players: [],
-          tiles: [],
-          current_turn: null,
-          round: 1,
-        },
+        room_id: 'room-5',
       })
     })
 
