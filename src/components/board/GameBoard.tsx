@@ -15,6 +15,7 @@ import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import { emitConfirmPenalty } from '../../services/socket/game.handler'
 import { gameApi } from '../../services/game/game.api'
+import { useGameStore } from '../../stores/game.store'
 import {
   TILES,
   TOP_ROW,
@@ -30,6 +31,7 @@ import {
   TileOwner,
   BuildingLevel,
 } from './board.constants'
+import type { BuildingLevel as StoreBuildingLevel } from '../../types/domain'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
@@ -284,6 +286,9 @@ function buildTileOwnersFromProps(
   return nextOwners
 }
 
+const toStoreBuildingLevel = (level: number): StoreBuildingLevel =>
+  Math.min(Math.max(level, 0), 5) as StoreBuildingLevel
+
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     {
@@ -321,6 +326,101 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tileOwners =
       optimisticTileOwners === null ? derivedTileOwners : optimisticTileOwners
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
+
+    function syncMockStorePlayers(nextPlayers: PlayerState[]) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        return
+      }
+
+      const { players: storePlayers, setGameState } = useGameStore.getState()
+      if (storePlayers.length === 0) {
+        return
+      }
+
+      setGameState({
+        players: nextPlayers.map((player, index) => {
+          const storePlayer = storePlayers[index]
+
+          return {
+            id: storePlayer?.id ?? String(player.id),
+            nickname: player.name,
+            position: player.pos,
+            balance: player.money,
+            owned_tiles: storePlayer?.owned_tiles ?? [],
+            is_in_jail: storePlayer?.is_in_jail ?? false,
+            jail_turn_count: storePlayer?.jail_turn_count ?? 0,
+            is_bankrupt: storePlayer?.is_bankrupt ?? false,
+            color: player.color,
+            avatar: storePlayer?.avatar,
+          }
+        }),
+      })
+    }
+
+    function syncMockStoreCurrentTurn(playerIdx: number) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        return
+      }
+
+      const { players: storePlayers, setCurrentTurn } = useGameStore.getState()
+      const nextTurnPlayer = storePlayers[playerIdx]
+      if (nextTurnPlayer) {
+        setCurrentTurn(nextTurnPlayer.id)
+      }
+    }
+
+    function syncMockStoreBankrupt(playerIdx: number) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        return
+      }
+
+      const { players: storePlayers, updatePlayer } = useGameStore.getState()
+      const bankruptPlayer = storePlayers[playerIdx]
+      if (bankruptPlayer) {
+        updatePlayer(bankruptPlayer.id, { is_bankrupt: true })
+      }
+    }
+
+    function syncMockStoreTileOwners(
+      nextTileOwners: Record<number, TileOwner>
+    ) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        return
+      }
+
+      const {
+        tiles: storeTiles,
+        players: storePlayers,
+        setGameState,
+      } = useGameStore.getState()
+
+      if (storeTiles.length === 0) {
+        return
+      }
+
+      setGameState({
+        tiles: storeTiles.map((tile) => {
+          const owner = nextTileOwners[tile.index]
+          if (!owner) {
+            return {
+              ...tile,
+              owner_id: null,
+              building: 0 as StoreBuildingLevel,
+            }
+          }
+
+          const ownerPlayer = storePlayers.find(
+            (player) => String(player.id) === String(owner.ownerId)
+          )
+
+          return {
+            ...tile,
+            owner_id: ownerPlayer?.id ?? String(owner.ownerId),
+            building: toStoreBuildingLevel(owner.level - 1),
+          }
+        }),
+      })
+    }
 
     useEffect(() => {
       setOptimisticTileOwners(null)
@@ -398,7 +498,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         const nextPlayers = [...orderedPlayers, ...additionalPlayers]
         playersRef.current = nextPlayers
-        onPlayersChange?.(nextPlayers)
+        if (onPlayersChange) {
+          onPlayersChange(nextPlayers)
+        } else {
+          syncMockStorePlayers(nextPlayers)
+        }
       }
 
       if (payload.tiles) {
@@ -439,7 +543,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         tileOwnersRef.current = nextOwners
         setOptimisticTileOwners(nextOwners)
-        onTileOwnersChange?.(nextOwners)
+        if (onTileOwnersChange) {
+          onTileOwnersChange(nextOwners)
+        } else {
+          syncMockStoreTileOwners(nextOwners)
+        }
       }
 
       const nextTurnRaw = payload.current_turn ?? payload.currentTurn
@@ -452,7 +560,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         )
         if (nextTurnIndex >= 0) {
           curPlayerRef.current = nextTurnIndex
-          onCurPlayerChange?.(nextTurnIndex)
+          if (onCurPlayerChange) {
+            onCurPlayerChange(nextTurnIndex)
+          } else {
+            syncMockStoreCurrentTurn(nextTurnIndex)
+          }
         }
       }
 
@@ -496,7 +608,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setOptimisticTileOwners(next)
 
       if (options?.notifyParent) {
-        onTileOwnersChange?.(next)
+        if (onTileOwnersChange) {
+          onTileOwnersChange(next)
+        } else {
+          syncMockStoreTileOwners(next)
+        }
       }
     }
 
@@ -510,7 +626,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return { ...p, money: Math.max(0, p.money + delta) }
       })
       playersRef.current = updated
-      onPlayersChange?.([...updated])
+      if (onPlayersChange) {
+        onPlayersChange([...updated])
+      } else {
+        syncMockStorePlayers(updated)
+      }
 
       const isBankrupt = updated[playerIdx].money <= 0
       if (isBankrupt) {
@@ -549,7 +669,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         { notifyParent: true }
       )
 
-      onBankrupt?.(playerIdx)
+      if (onBankrupt) {
+        onBankrupt(playerIdx)
+      } else {
+        syncMockStoreBankrupt(playerIdx)
+      }
       advanceTurn(onDoneCallback)
     }
 
@@ -576,11 +700,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: nextPlayer.skipTurns! - 1,
         }
         playersRef.current = updatedPlayers
-        onPlayersChange?.(updatedPlayers)
+        if (onPlayersChange) {
+          onPlayersChange(updatedPlayers)
+        } else {
+          syncMockStorePlayers(updatedPlayers)
+        }
 
         // 스킵 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 뒤 다시 턴을 넘긴다
         curPlayerRef.current = next
-        onCurPlayerChange?.(next)
+        if (onCurPlayerChange) {
+          onCurPlayerChange(next)
+        } else {
+          syncMockStoreCurrentTurn(next)
+        }
 
         setTimeout(() => {
           advanceTurn(onDone)
@@ -589,7 +721,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       curPlayerRef.current = next
-      onCurPlayerChange?.(next)
+      if (onCurPlayerChange) {
+        onCurPlayerChange(next)
+      } else {
+        syncMockStoreCurrentTurn(next)
+      }
       onDone?.()
     }
 
@@ -664,7 +800,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return { ...p, pos: newPos, skipTurns: newSkipTurns }
           })
           playersRef.current = movedPlayers
-          onPlayersChange?.([...movedPlayers])
+          if (onPlayersChange) {
+            onPlayersChange([...movedPlayers])
+          } else {
+            syncMockStorePlayers(movedPlayers)
+          }
 
           const landedTileId = movedPlayers[activeCurPlayer].pos
 
@@ -935,7 +1075,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: (activePlayer.skipTurns ?? 0) + 1,
         }
         playersRef.current = updatedPlayers
-        onPlayersChange?.(updatedPlayers)
+        if (onPlayersChange) {
+          onPlayersChange(updatedPlayers)
+        } else {
+          syncMockStorePlayers(updatedPlayers)
+        }
         setStatus(`${activePlayer.name} 주사위 1턴 쉬기!`)
       }
 
