@@ -28,12 +28,32 @@
 npm run lint
 npm run test
 npm run test:coverage
-npm run e2e
+npm run test:coverage:owner
+npm run e2e:ci
 npm run build
 ```
 
 - 로컬 pre-push 훅에서도 같은 순서로 검증한다
-- CI에서도 동일 게이트(`lint + test + coverage + e2e + build`)를 실행한다
+- CI 게이트는 `lint + test + coverage + e2e:ci + build`를 실행한다
+- 게임 E2E는 `npm run e2e:game`으로 분리 실행한다
+- 내 파트 전용 커버리지는 `npm run test:coverage:owner`로 측정한다
+  - 범위: `lobby`, `waiting-room`, `presence`, `room-chat`
+  - 리포트 경로: `coverage-owner/index.html`
+
+## 2.1 게이트 정책
+
+- `quality-gate`는 머지 차단용 필수 게이트다
+- `owner-coverage`는 담당 모듈 품질 추적용 보조 게이트다
+- `owner-coverage`는 초기에는 non-blocking으로 운영하고, 팀 합의 시 blocking으로 전환한다
+- 게임 E2E는 `E2E Game` 워크플로우로 분리해 수동/야간 실행한다
+
+## 2.2 WIP 예외 운영 규칙
+
+- 커버리지 또는 테스트에서 WIP 예외를 두려면 반드시 이슈 번호를 남긴다
+- 예외는 임시이며 PR 본문에 복귀 조건과 만료 시점을 명시한다
+- 복귀 조건은 기능 완료 기준으로 작성한다
+- 예시 복귀 조건: `게임 액션/패치 계약 반영 + game E2E 2개 이상 green`
+- 예외가 해소되면 해당 제외 설정과 주석을 같은 PR에서 제거한다
 
 ## 3. flaky 대응 규칙
 
@@ -81,7 +101,7 @@ await waitFor(() => {
 - [ ] 변경된 기능에 대응하는 테스트가 최소 1개 이상 추가/수정되었는가
 - [ ] 성공 케이스와 실패(예외) 케이스를 최소 1개씩 검증했는가
 - [ ] 비동기 로직을 `waitFor`/`findBy*`로 안정적으로 검증했는가
-- [ ] 로컬에서 `lint`, `test`, `test:coverage`, `e2e`, `build`를 통과했는가
+- [ ] 로컬에서 `lint`, `test`, `test:coverage`, `e2e:ci`, `build`를 통과했는가
 - [ ] 테스트 코드가 구현 상세가 아니라 사용자 행위/도메인 규칙을 검증하는가
 
 ## 5. 작성 원칙

@@ -5,6 +5,7 @@ node_modules
 dist
 .vite
 coverage
+coverage-owner
 tsconfig.tsbuildinfo
 playwright-report
 test-results

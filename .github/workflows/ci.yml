@@ -7,7 +7,7 @@ on:
       - develop
 
 jobs:
-  build:
+  quality-gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,3 +52,26 @@ jobs:
           path: |
             playwright-report
             test-results
+
+  owner-coverage:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Owner Coverage
+        run: npm run test:coverage:owner
+
+      - name: Upload Owner Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-owner-report
+          path: coverage-owner
