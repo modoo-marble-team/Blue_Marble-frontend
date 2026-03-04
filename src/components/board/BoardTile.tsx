@@ -60,6 +60,14 @@ export const PlayerToken: React.FC<TokenProps> = ({
   )
 }
 
+// ─── 플레이어 소유 색상 맵 ──────────────────────────────────────────
+const PLAYER_OWNER_STYLES: Record<string, { strip: string; bg: string }> = {
+  '#EF5350': { strip: '#FF0000', bg: '#FFCECF' },
+  '#42A5F5': { strip: '#155DFC', bg: '#DCF1FF' },
+  '#66BB6A': { strip: '#00A63E', bg: '#DCFCE7' },
+  '#FFD15B': { strip: '#F0B100', bg: '#F7ECAC' },
+}
+
 // ─── 아이콘 렌더링 헬퍼 ───────────────────────────────────────────
 function TileIcon({ tile, size = 12 }: { tile: TileData; size?: number }) {
   if (tile.svgIcon) {
@@ -92,11 +100,24 @@ const BoardTile: React.FC<BoardTileProps> = ({
   tileOwner,
 }) => {
   const isCity = tile.type === 'city'
-  const strip = getStripColor(tile)
   const buildingLevel = tileOwner?.level ?? 0
   const hasBuilding = isCity && buildingLevel >= 1
-  const stripOffset = strip ? 7 : 0
   const hasIcon = !!(tile.svgIcon || tile.emoji)
+
+  // 소유 색상 계산
+  const ownerStyle =
+    isCity && tileOwner
+      ? (PLAYER_OWNER_STYLES[tileOwner.ownerColor] ?? null)
+      : null
+  // city: 미구매=#CCCCCC, 구매 후=플레이어 색 / 비도시: 기존 로직
+  const strip = isCity
+    ? ownerStyle
+      ? ownerStyle.strip
+      : '#CCCCCC'
+    : getStripColor(tile)
+  const tileBg = ownerStyle ? ownerStyle.bg : '#FFFFFF'
+  const outerBorderColor = ownerStyle ? ownerStyle.strip : '#E2E8F0'
+  const stripOffset = strip ? 7 : 0
 
   // ── 코너 ─────────────────────────────────────────────────────────
   if (['start', 'island', 'travel', 'go_to_island'].includes(tile.type)) {
@@ -147,7 +168,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
         style={{
           width: '100%',
           height: '100%',
-          backgroundColor: '#E2E8F0',
+          backgroundColor: outerBorderColor,
           borderRadius: 13,
           padding: 2,
           boxSizing: 'border-box',
@@ -159,7 +180,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
           style={{
             width: '100%',
             height: '100%',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: tileBg,
             borderRadius: 9,
             display: 'flex',
             flexDirection: 'column',
@@ -261,7 +282,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
           width: '70px',
           height: '90px',
           transform: `translate(-50%, -50%) ${rotation}`,
-          backgroundColor: '#E2E8F0',
+          backgroundColor: outerBorderColor,
           borderRadius: 13,
           padding: 2,
           boxSizing: 'border-box' as const,
@@ -271,7 +292,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
           style={{
             width: '100%',
             height: '100%',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: tileBg,
             borderRadius: 9,
             display: 'flex',
             flexDirection: 'column',
