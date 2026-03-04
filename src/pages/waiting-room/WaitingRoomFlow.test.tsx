@@ -8,6 +8,10 @@ import { renderWithProviders } from '../../test/renderWithProviders'
 import LobbyPage from '../lobby/LobbyPage'
 import WaitingRoomPage from './WaitingRoomPage'
 
+vi.mock('../../config/env', () => ({
+  IS_SOCKET_MOCK_ENABLED: true,
+}))
+
 const {
   useLobbyRoomsQueryMock,
   useOnlineUsersSocketMock,

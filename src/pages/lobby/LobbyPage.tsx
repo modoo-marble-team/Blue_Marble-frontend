@@ -19,15 +19,8 @@ import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
 import { RoomGrid } from './RoomGrid'
 import { PrivateRoomJoinModal } from './PrivateRoomJoinModal'
-import { CreateRoomModal, type CreateRoomFormValues } from './CreateRoomModal'
-import {
-  createWaitingRoom,
-  getWaitingRoomErrorMessage,
-  isJoinPasswordMismatchError,
-  joinWaitingRoom,
-} from '../waiting-room/api'
-import type { LobbyRoom } from './types'
-import type { WaitingRoomSnapshot } from '../waiting-room/types'
+import { CreateRoomModal } from './CreateRoomModal'
+import { useLobbyRoomActions } from './useLobbyRoomActions'
 
 // 로비 화면 상태 관리와 방/접속자/DM 상호작용 통합 처리
 function LobbyPage() {
@@ -39,16 +32,22 @@ function LobbyPage() {
   const [roomFilter, setRoomFilter] = useState<LobbyRoomFilter>('ALL')
   const [excludePrivateRoom, setExcludePrivateRoom] = useState(false)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
-  const [isCreateRoomModalOpen, setIsCreateRoomModalOpen] = useState(false)
-  const [isCreateRoomPending, setIsCreateRoomPending] = useState(false)
-  const [selectedPrivateRoom, setSelectedPrivateRoom] =
-    useState<LobbyRoom | null>(null)
-  const [privateRoomPassword, setPrivateRoomPassword] = useState('')
-  const [isPrivateRoomJoinPending, setIsPrivateRoomJoinPending] =
-    useState(false)
-  const [isPrivateRoomPasswordInvalid, setIsPrivateRoomPasswordInvalid] =
-    useState(false)
   const isAllowedSession = useRequireActiveSession(session)
+  const {
+    isCreateRoomModalOpen,
+    isCreateRoomPending,
+    selectedPrivateRoom,
+    privateRoomPassword,
+    isPrivateRoomJoinPending,
+    isPrivateRoomPasswordInvalid,
+    openCreateRoomModal,
+    closeCreateRoomModal,
+    joinRoom,
+    closePrivateRoomModal,
+    changePrivateRoomPassword,
+    submitCreateRoom,
+    submitPrivateRoomJoin,
+  } = useLobbyRoomActions({ session })
 
   const {
     data: rooms = [],
@@ -91,117 +90,6 @@ function LobbyPage() {
     navigate('/my-page')
   }
 
-  function handleOpenCreateRoomModal() {
-    setIsCreateRoomModalOpen(true)
-  }
-
-  // 방 생성 요청 중에는 모달 닫기를 막아 중복 동작 방지
-  function handleCloseCreateRoomModal() {
-    if (isCreateRoomPending) {
-      return
-    }
-
-    setIsCreateRoomModalOpen(false)
-  }
-
-  // 비밀방은 비밀번호 모달을 열고, 일반방은 바로 입장 처리
-  function handleJoinRoom(room: LobbyRoom) {
-    if (room.isPrivate) {
-      setSelectedPrivateRoom(room)
-      setPrivateRoomPassword('')
-      setIsPrivateRoomPasswordInvalid(false)
-      return
-    }
-
-    handleEnterWaitingRoom(room)
-  }
-
-  function handleClosePrivateRoomModal() {
-    setSelectedPrivateRoom(null)
-    setPrivateRoomPassword('')
-    setIsPrivateRoomPasswordInvalid(false)
-  }
-
-  // 대기방 페이지로 이동하면서 roomId/title/snapshot을 전달
-  function handleEnterWaitingRoom(
-    room: LobbyRoom,
-    preJoinedSnapshot?: WaitingRoomSnapshot
-  ) {
-    navigate(`/rooms/${room.id}`, {
-      state: {
-        roomId: room.id,
-        roomTitle: room.title,
-        preJoinedSnapshot,
-      },
-    })
-  }
-
-  // 방 생성 API를 호출하고 성공 시 생성된 대기방으로 이동
-  async function handleSubmitCreateRoom(values: CreateRoomFormValues) {
-    // 세션이 없으면 생성 요청을 보내지 않음
-    if (!session) {
-      return
-    }
-
-    setIsCreateRoomPending(true)
-
-    try {
-      const createdRoom = await createWaitingRoom({
-        title: values.title,
-        isPrivate: values.isPrivate,
-        password: values.password,
-        hostUserId: session.userId,
-        hostNickname: session.nickname,
-      })
-
-      setIsCreateRoomModalOpen(false)
-      navigate(`/rooms/${createdRoom.roomId}`, {
-        state: {
-          roomId: createdRoom.roomId,
-          roomTitle: createdRoom.roomTitle,
-          preJoinedSnapshot: createdRoom.preJoinedSnapshot,
-        },
-      })
-    } catch (error) {
-      toast.error(getWaitingRoomErrorMessage(error, '방 생성에 실패했습니다.'))
-    } finally {
-      setIsCreateRoomPending(false)
-    }
-  }
-
-  // 비밀방 비밀번호 검증 입장 요청 처리
-  async function handleSubmitPrivateRoomJoin() {
-    if (!selectedPrivateRoom || !session) {
-      return
-    }
-
-    setIsPrivateRoomJoinPending(true)
-
-    try {
-      const joinedRoomSnapshot = await joinWaitingRoom({
-        roomId: selectedPrivateRoom.id,
-        userId: session.userId,
-        nickname: session.nickname,
-        fallbackTitle: selectedPrivateRoom.title,
-        password: privateRoomPassword,
-      })
-
-      handleEnterWaitingRoom(selectedPrivateRoom, joinedRoomSnapshot)
-      handleClosePrivateRoomModal()
-    } catch (error) {
-      // 비밀번호 불일치 에러는 인풋 에러 상태를 별도 표시
-      if (isJoinPasswordMismatchError(error)) {
-        setIsPrivateRoomPasswordInvalid(true)
-      }
-
-      toast.error(
-        getWaitingRoomErrorMessage(error, '비밀방 입장에 실패했습니다.')
-      )
-    } finally {
-      setIsPrivateRoomJoinPending(false)
-    }
-  }
-
   // 리다이렉트 대상 세션 상태면 화면 렌더링 생략
   if (!isAllowedSession || !session) {
     return null
@@ -233,7 +121,7 @@ function LobbyPage() {
             onSearchKeywordChange={setSearchRoom}
             onRoomFilterChange={setRoomFilter}
             onExcludePrivateRoomChange={setExcludePrivateRoom}
-            onCreateRoom={handleOpenCreateRoomModal}
+            onCreateRoom={openCreateRoomModal}
           />
 
           <RoomGrid
@@ -241,7 +129,7 @@ function LobbyPage() {
             isLoading={isRoomsLoading}
             isError={isRoomsError}
             isUserListOpen={isUserListOpen}
-            onJoinRoom={handleJoinRoom}
+            onJoinRoom={joinRoom}
           />
         </section>
 
@@ -263,15 +151,10 @@ function LobbyPage() {
           password={privateRoomPassword}
           isSubmitting={isPrivateRoomJoinPending}
           isPasswordInvalid={isPrivateRoomPasswordInvalid}
-          onPasswordChange={(password) => {
-            setPrivateRoomPassword(password)
-            if (isPrivateRoomPasswordInvalid) {
-              setIsPrivateRoomPasswordInvalid(false)
-            }
-          }}
-          onClose={handleClosePrivateRoomModal}
+          onPasswordChange={changePrivateRoomPassword}
+          onClose={closePrivateRoomModal}
           onSubmit={() => {
-            void handleSubmitPrivateRoomJoin()
+            void submitPrivateRoomJoin()
           }}
         />
       ) : null}
@@ -280,9 +163,9 @@ function LobbyPage() {
         <CreateRoomModal
           defaultRoomTitle={`${session.nickname}님의 방`}
           isSubmitting={isCreateRoomPending}
-          onClose={handleCloseCreateRoomModal}
+          onClose={closeCreateRoomModal}
           onSubmit={(values) => {
-            void handleSubmitCreateRoom(values)
+            void submitCreateRoom(values)
           }}
         />
       ) : null}
