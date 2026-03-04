@@ -1,4 +1,5 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import type {
   DirectMessageReceiveSocketPayload,
   DirectMessageSendSocketPayload,
@@ -10,8 +11,7 @@ const DIRECT_MESSAGE_EVENT_NAMES = {
   receive: 'dm_receive',
 } as const
 
-const USE_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 // DM 전송 함수 입력값 타입
 interface SendDirectMessageParams {

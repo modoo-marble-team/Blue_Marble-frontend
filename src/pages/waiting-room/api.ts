@@ -1,5 +1,6 @@
 import { apiClient } from '../../lib/axios'
 import { parseApiError } from '../../lib/apiError'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import {
   mockCreateWaitingRoom,
   mockJoinWaitingRoom,
@@ -22,8 +23,7 @@ import type {
 // 대기방 기본 제목/정원과 모드 전환 플래그
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
 const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
-const USE_WAITING_ROOM_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_WAITING_ROOM_MOCK = IS_SOCKET_MOCK_ENABLED
 // 비밀번호 불일치로 간주할 서버 에러 코드 집합
 const JOIN_PASSWORD_MISMATCH_ERROR_CODES = new Set([
   'ROOM_PASSWORD_MISMATCH',

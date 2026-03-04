@@ -1,4 +1,5 @@
 import { socket } from '../../lib/socket'
+import { ROOM_PASSWORD_PATTERN } from '../../constants/room'
 import { mockLobbyRooms } from '../lobby/mockData'
 import type { LobbyRoom, LobbyRoomStatus } from '../lobby/types'
 import type {
@@ -436,7 +437,7 @@ export async function mockCreateWaitingRoom({
   }
 
   // 비밀방이면 숫자 4자리 비밀번호를 강제
-  if (isPrivate && !/^\d{4}$/.test(password ?? '')) {
+  if (isPrivate && !ROOM_PASSWORD_PATTERN.test(password ?? '')) {
     throw new WaitingRoomMockError(400, '비밀번호는 숫자 4자리여야 합니다.', {
       code: 'INVALID_ROOM_PASSWORD',
       detail: '비밀번호는 숫자 4자리여야 합니다.',

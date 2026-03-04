@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { gameApi } from '../../services/game/game.api'
 import { setupGameHandlers } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
 
-const USE_GAME_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 export const useGameState = (roomId: string | null) => {
   const { setGameState, players } = useGameStore()

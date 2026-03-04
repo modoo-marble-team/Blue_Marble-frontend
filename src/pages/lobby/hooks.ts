@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { getLobbyRooms, type GetLobbyRoomsParams } from './api'
 
 const LOBBY_QUERY_STALE_TIME_MS = 20_000
 const LOBBY_UPDATED_EVENT = 'lobby_updated'
-const USE_SOCKET_MOCK =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const USE_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 // 로비 방 목록 조회와 소켓 기반 갱신을 함께 처리
 export function useLobbyRoomsQuery(params: GetLobbyRoomsParams) {

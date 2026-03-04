@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Lock, X } from 'lucide-react'
+import {
+  ROOM_PASSWORD_LENGTH,
+  ROOM_PASSWORD_PATTERN,
+} from '../../constants/room'
 import { cn } from '../../lib/utils'
 
-// 비밀방 비밀번호는 숫자 4자리만 허용
-const ROOM_PASSWORD_PATTERN = /^\d{4}$/
 // 방 제목 최대 글자수 제한
 const ROOM_TITLE_MAX_LENGTH = 16
 
@@ -184,12 +186,12 @@ export function CreateRoomModal({
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
-              maxLength={4}
+              maxLength={ROOM_PASSWORD_LENGTH}
               value={roomPassword}
               onChange={(event) => {
                 const nextValue = event.target.value
                   .replace(/\D/g, '')
-                  .slice(0, 4)
+                  .slice(0, ROOM_PASSWORD_LENGTH)
                 setRoomPassword(nextValue)
               }}
               placeholder="비밀번호 (4자리)"

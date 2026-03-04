@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { cn } from '../../lib/utils'
 import { sendWaitingRoomChat } from '../../pages/waiting-room/socket'
 
-const IS_DEV_ROOM_CHAT_CONTROL_ENABLED =
-  import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false'
+const IS_DEV_ROOM_CHAT_CONTROL_ENABLED = IS_SOCKET_MOCK_ENABLED
 
 // DEV 채팅 제어 패널에서 사용할 발신자 정보 타입
 interface RoomChatSenderOption {
