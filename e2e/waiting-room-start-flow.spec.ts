@@ -31,6 +31,6 @@ test.describe('대기방 시작 플로우', () => {
     await expect(startButton).toBeEnabled()
 
     await startButton.click()
-    await expect(page).toHaveURL(/\/game\/room-\d+$/)
+    await expect(page).toHaveURL(/\/game\/game-room-\d+-\d+$/)
   })
 })

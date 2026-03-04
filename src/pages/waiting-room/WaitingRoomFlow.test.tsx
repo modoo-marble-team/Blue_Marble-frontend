@@ -36,9 +36,9 @@ vi.mock('../../features/presence/useDirectMessageController', () => ({
 
 // game route 도착 여부 확인용 스텁 페이지
 function GamePageStub() {
-  const { roomId } = useParams<{ roomId: string }>()
+  const { gameId } = useParams<{ gameId: string }>()
 
-  return <div>게임 화면: {roomId}</div>
+  return <div>게임 화면: {gameId}</div>
 }
 
 // 로비→대기방→게임 라우트 흐름 테스트용 렌더 헬퍼
@@ -47,7 +47,7 @@ function renderWaitingRoomFlow() {
     <Routes>
       <Route path="/lobby" element={<LobbyPage />} />
       <Route path="/rooms/:roomId" element={<WaitingRoomPage />} />
-      <Route path="/game/:roomId" element={<GamePageStub />} />
+      <Route path="/game/:gameId" element={<GamePageStub />} />
     </Routes>,
     {
       initialEntries: ['/lobby'],
