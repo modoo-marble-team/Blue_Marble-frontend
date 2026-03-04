@@ -1,6 +1,6 @@
 import { delay, http, HttpResponse } from 'msw'
 import { socket } from '../../lib/socket'
-import { BuildingLevel, Player, Tile } from '../../types/domain'
+import { BuildingLevel, Player, PlayerId, Tile } from '../../types/domain'
 import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
 const MOCK_PLAYER_ID = 'mock-player-1'
@@ -21,7 +21,7 @@ type GameStateResponse = {
   players: Player[]
   tiles: Tile[]
   messages: typeof mockMessages
-  currentTurn: string
+  currentTurn: PlayerId
   round: number
 }
 
@@ -86,7 +86,7 @@ const emitTurnStart = () => {
 
 const getCurrentPlayer = () =>
   mockGameState.players.find(
-    (player) => player.id === mockGameState.currentTurn
+    (player) => String(player.id) === String(mockGameState.currentTurn)
   )
 
 const getTileByIndex = (tileIndex: number) =>
@@ -125,9 +125,9 @@ const getSellRefund = (tile: Tile, requestedLevel?: number) => {
   }
 }
 
-const getNextActivePlayerId = (currentPlayerId: string) => {
+const getNextActivePlayerId = (currentPlayerId: PlayerId) => {
   const currentIndex = mockGameState.players.findIndex(
-    (player) => player.id === currentPlayerId
+    (player) => String(player.id) === String(currentPlayerId)
   )
 
   if (currentIndex < 0) {
@@ -173,7 +173,7 @@ export const gameHandlers = [
       })
 
       const currentPlayer = mockGameState.players.find(
-        (player) => player.id === player_id
+        (player) => String(player.id) === String(player_id)
       )
       const fromIndex = currentPlayer?.position ?? 0
       const toIndex = (fromIndex + total) % mockGameState.tiles.length
@@ -279,7 +279,7 @@ export const gameHandlers = [
       )
     }
 
-    if (tile.owner_id !== player.id) {
+    if (String(tile.owner_id) !== String(player.id)) {
       return buildErrorResponse(
         '\uBCF8\uC778 \uC18C\uC720 \uD0C0\uC77C\uB9CC \uAC74\uC124\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
         403
@@ -331,7 +331,7 @@ export const gameHandlers = [
       )
     }
 
-    if (tile.owner_id !== player.id) {
+    if (String(tile.owner_id) !== String(player.id)) {
       return buildErrorResponse(
         '\uBCF8\uC778 \uC18C\uC720 \uD0C0\uC77C\uB9CC \uB9E4\uAC01\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
         403
