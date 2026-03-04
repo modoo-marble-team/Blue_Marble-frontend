@@ -1,6 +1,17 @@
 import { delay, http, HttpResponse } from 'msw'
 import { socket } from '../../lib/socket'
-import { BuildingLevel, Player, PlayerId, Tile } from '../../types/domain'
+import type {
+  BuildingLevel,
+  GameAck,
+  GameError,
+  GamePatchEnvelope,
+  GamePrompt,
+  GamePromptResponse,
+  GameSnapshot,
+  Player,
+  PlayerId,
+  Tile,
+} from '../../types/domain'
 import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
 const MOCK_PLAYER_ID = 'mock-player-1'
@@ -17,12 +28,33 @@ type TileActionRequestBody = {
   level?: number
 }
 
+type SocketWithListeners = {
+  listeners: (name: string) => Array<(eventPayload: unknown) => void>
+}
+
 type GameStateResponse = {
   players: Player[]
   tiles: Tile[]
   messages: typeof mockMessages
   currentTurn: PlayerId
   round: number
+  revision: number
+  phase: GameSnapshot['phase']
+  prompt: GamePrompt | null
+}
+
+type MockGameActionPayload = {
+  actionId?: string
+  type: string
+  roomId?: string | null
+  gameId?: string | null
+  payload?: Record<string, unknown>
+}
+
+type MockGameSyncPayload = {
+  roomId?: string | null
+  gameId?: string | null
+  reset?: boolean
 }
 
 const clonePlayers = () => structuredClone(mockPlayers)
@@ -35,6 +67,9 @@ const createInitialGameState = (): GameStateResponse => ({
   messages: cloneMessages(),
   currentTurn: MOCK_PLAYER_ID,
   round: 1,
+  revision: 1,
+  phase: 'waiting',
+  prompt: null,
 })
 
 const mockGameState: GameStateResponse = createInitialGameState()
@@ -46,7 +81,13 @@ const resetMockGameState = () => {
   mockGameState.messages = initialState.messages
   mockGameState.currentTurn = initialState.currentTurn
   mockGameState.round = initialState.round
+  mockGameState.revision = initialState.revision
+  mockGameState.phase = initialState.phase
+  mockGameState.prompt = initialState.prompt
 }
+
+const getMockGameId = (roomId?: string | null, gameId?: string | null) =>
+  gameId ?? (roomId ? `game-${roomId}` : 'game-mock-room')
 
 const buildStateResponse = () => ({
   players: structuredClone(mockGameState.players),
@@ -54,19 +95,38 @@ const buildStateResponse = () => ({
   messages: structuredClone(mockGameState.messages),
   currentTurn: mockGameState.currentTurn,
   round: mockGameState.round,
+  revision: mockGameState.revision,
+})
+
+const buildSnapshot = (
+  roomId?: string | null,
+  gameId?: string | null
+): GameSnapshot => ({
+  roomId: roomId ?? null,
+  gameId: getMockGameId(roomId, gameId),
+  revision: mockGameState.revision,
+  phase: mockGameState.phase,
+  players: structuredClone(mockGameState.players),
+  tiles: structuredClone(mockGameState.tiles),
+  currentPlayerId: mockGameState.currentTurn,
+  currentTurn: mockGameState.currentTurn,
+  round: mockGameState.round,
+  turnTimeoutSec: MOCK_TURN_TIMEOUT_SEC,
+  prompt: mockGameState.prompt,
+  gameResult: null,
+  isGameOver: false,
+  winnerId: null,
 })
 
 const emitSocketEvent = (eventName: string, payload: unknown) => {
-  const socketWithListeners = socket as unknown as {
-    listeners: (name: string) => Array<(eventPayload: unknown) => void>
-  }
+  const socketWithListeners = socket as unknown as SocketWithListeners
 
   socketWithListeners.listeners(eventName).forEach((listener) => {
     listener(payload)
   })
 }
 
-const emitGameState = () => {
+const emitLegacyGameState = () => {
   emitSocketEvent('game_state', {
     players: structuredClone(mockGameState.players),
     tiles: structuredClone(mockGameState.tiles),
@@ -76,12 +136,31 @@ const emitGameState = () => {
   })
 }
 
-const emitTurnStart = () => {
+const emitLegacyTurnStart = () => {
   emitSocketEvent('turn_start', {
     player_id: mockGameState.currentTurn,
     round: mockGameState.round,
     timeout_sec: MOCK_TURN_TIMEOUT_SEC,
   })
+}
+
+const emitGameAck = (ack: GameAck) => {
+  emitSocketEvent('game:ack', ack)
+}
+
+const emitGamePatch = (
+  payload: GamePatchEnvelope & { snapshot?: GameSnapshot }
+) => {
+  emitSocketEvent('game:patch', payload)
+}
+
+const emitGamePrompt = (prompt: GamePrompt) => {
+  mockGameState.prompt = prompt
+  emitSocketEvent('game:prompt', prompt)
+}
+
+const emitGameError = (error: GameError) => {
+  emitSocketEvent('game:error', error)
 }
 
 const getCurrentPlayer = () =>
@@ -152,8 +231,397 @@ const advanceMockTurn = () => {
   mockGameState.currentTurn = getNextActivePlayerId(mockGameState.currentTurn)
 }
 
+const nextRevision = () => {
+  mockGameState.revision += 1
+  return mockGameState.revision
+}
+
 const buildErrorResponse = (message: string, status: number) =>
   HttpResponse.json({ message }, { status })
+
+const emitSnapshotPatch = (
+  roomId?: string | null,
+  gameId?: string | null,
+  events?: GamePatchEnvelope['events']
+) => {
+  emitGamePatch({
+    revision: mockGameState.revision,
+    patch: [],
+    events,
+    snapshot: buildSnapshot(roomId, gameId),
+  })
+}
+
+const handleRollDiceAction = (
+  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
+    Pick<MockGameActionPayload, 'roomId' | 'gameId'>
+) => {
+  const currentPlayer = getCurrentPlayer()
+
+  if (!currentPlayer) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '현재 턴 플레이어를 찾을 수 없습니다.',
+      errorCode: 'PLAYER_NOT_FOUND',
+    })
+    return
+  }
+
+  const dice1 = Math.floor(Math.random() * 6) + 1
+  const dice2 = Math.floor(Math.random() * 6) + 1
+  const total = dice1 + dice2
+  const fromIndex = currentPlayer.position
+  const toIndex = (fromIndex + total) % mockGameState.tiles.length
+  const passGo = fromIndex + total >= mockGameState.tiles.length
+
+  currentPlayer.position = toIndex
+  if (passGo) {
+    currentPlayer.balance += MOCK_PASS_GO_SALARY
+  }
+
+  advanceMockTurn()
+  mockGameState.phase = 'rolling'
+  const revision = nextRevision()
+
+  emitGameAck({
+    actionId: action.actionId,
+    type: action.type,
+    ok: true,
+    revision,
+  })
+
+  emitSnapshotPatch(action.roomId, action.gameId, [
+    {
+      type: 'ROLL_DICE',
+      playerId: currentPlayer.id,
+      payload: {
+        dice: [dice1, dice2],
+        total,
+      },
+    },
+    {
+      type: 'MOVE_PLAYER',
+      playerId: currentPlayer.id,
+      tileIndex: toIndex,
+      amount: passGo ? MOCK_PASS_GO_SALARY : undefined,
+      payload: {
+        fromIndex,
+        toIndex,
+        passGo,
+      },
+    },
+  ])
+}
+
+const handleBuyPropertyAction = (
+  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
+    Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
+) => {
+  const tileIndex = Number(action.payload?.tile_index)
+  const player = getCurrentPlayer()
+  const tile = getTileByIndex(tileIndex)
+
+  if (!player || !isOwnableTile(tile)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '구매할 수 없는 타일입니다.',
+      errorCode: 'TILE_NOT_OWNABLE',
+    })
+    return
+  }
+
+  if (tile.owner_id) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '이미 소유된 타일입니다.',
+      errorCode: 'TILE_ALREADY_OWNED',
+    })
+    return
+  }
+
+  const price = tile.price ?? 0
+  if (player.balance < price) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '보유 금액이 부족합니다.',
+      errorCode: 'INSUFFICIENT_BALANCE',
+    })
+    return
+  }
+
+  player.balance -= price
+  tile.owner_id = player.id
+  tile.ownerId = player.id
+  tile.building = 0
+  ensureOwnedTiles(player, tileIndex)
+  const revision = nextRevision()
+
+  emitGameAck({
+    actionId: action.actionId,
+    type: action.type,
+    ok: true,
+    revision,
+  })
+
+  emitSnapshotPatch(action.roomId, action.gameId, [
+    {
+      type: 'BUY_PROPERTY',
+      playerId: player.id,
+      tileIndex,
+      amount: price,
+    },
+  ])
+}
+
+const handleBuildPropertyAction = (
+  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
+    Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
+) => {
+  const tileIndex = Number(action.payload?.tile_index)
+  const player = getCurrentPlayer()
+  const tile = getTileByIndex(tileIndex)
+
+  if (!player || !isOwnableTile(tile)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '건설할 수 없는 타일입니다.',
+      errorCode: 'TILE_NOT_BUILDABLE',
+    })
+    return
+  }
+
+  if (String(tile.owner_id) !== String(player.id)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '본인 소유 타일만 건설할 수 있습니다.',
+      errorCode: 'FORBIDDEN_BUILD',
+    })
+    return
+  }
+
+  if (tile.building >= 5) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '최대 단계까지 건설했습니다.',
+      errorCode: 'MAX_BUILDING_LEVEL',
+    })
+    return
+  }
+
+  if (player.balance < MOCK_BUILD_COST) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '건설 비용이 부족합니다.',
+      errorCode: 'INSUFFICIENT_BALANCE',
+    })
+    return
+  }
+
+  player.balance -= MOCK_BUILD_COST
+  tile.building = (tile.building + 1) as BuildingLevel
+  const revision = nextRevision()
+
+  emitGameAck({
+    actionId: action.actionId,
+    type: action.type,
+    ok: true,
+    revision,
+  })
+
+  emitSnapshotPatch(action.roomId, action.gameId, [
+    {
+      type: 'BUILD_PROPERTY',
+      playerId: player.id,
+      tileIndex,
+      amount: MOCK_BUILD_COST,
+      payload: { buildingLevel: tile.building },
+    },
+  ])
+}
+
+const handleSellPropertyAction = (
+  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
+    Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
+) => {
+  const tileIndex = Number(action.payload?.tile_index)
+  const level =
+    typeof action.payload?.level === 'number' ? action.payload.level : undefined
+  const player = getCurrentPlayer()
+  const tile = getTileByIndex(tileIndex)
+
+  if (!player || !isOwnableTile(tile)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '매각할 수 없는 타일입니다.',
+      errorCode: 'TILE_NOT_SELLABLE',
+    })
+    return
+  }
+
+  if (String(tile.owner_id) !== String(player.id)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      message: '본인 소유 타일만 매각할 수 있습니다.',
+      errorCode: 'FORBIDDEN_SELL',
+    })
+    return
+  }
+
+  const { refund, nextBuilding, releaseOwnership } = getSellRefund(tile, level)
+  player.balance += refund
+  tile.building = nextBuilding
+
+  if (releaseOwnership) {
+    tile.owner_id = null
+    tile.ownerId = null
+    removeOwnedTile(player, tileIndex)
+  }
+
+  const revision = nextRevision()
+
+  emitGameAck({
+    actionId: action.actionId,
+    type: action.type,
+    ok: true,
+    revision,
+  })
+
+  emitSnapshotPatch(action.roomId, action.gameId, [
+    {
+      type: 'SELL_PROPERTY',
+      playerId: player.id,
+      tileIndex,
+      amount: refund,
+      payload: {
+        buildingLevel: tile.building,
+        releaseOwnership,
+      },
+    },
+  ])
+}
+
+export const mockEmitGameSync = ({
+  roomId,
+  gameId,
+  reset,
+}: MockGameSyncPayload) => {
+  if (reset) {
+    resetMockGameState()
+  }
+
+  setTimeout(() => {
+    emitSnapshotPatch(roomId, gameId)
+  }, 0)
+}
+
+export const mockEmitGameAction = ({
+  actionId = `mock-action-${Date.now()}`,
+  type,
+  roomId,
+  gameId,
+  payload,
+}: MockGameActionPayload) => {
+  const action = {
+    actionId,
+    type,
+    roomId,
+    gameId,
+    payload,
+  }
+
+  setTimeout(() => {
+    switch (type) {
+      case 'ROLL_DICE':
+        handleRollDiceAction(action)
+        break
+      case 'BUY_PROPERTY':
+        handleBuyPropertyAction(action)
+        break
+      case 'BUILD_PROPERTY':
+        handleBuildPropertyAction(action)
+        break
+      case 'SELL_PROPERTY':
+        handleSellPropertyAction(action)
+        break
+      case 'REQUEST_BUY_PROPERTY_PROMPT': {
+        emitGamePrompt({
+          id: `prompt-buy-${Date.now()}`,
+          type: 'buy',
+          playerId: mockGameState.currentTurn,
+          title: '도시 구매',
+          message: '이 도시를 구매하시겠습니까?',
+          timeoutSec: MOCK_TURN_TIMEOUT_SEC,
+          payload,
+        })
+        break
+      }
+      default:
+        emitGameError({
+          code: 'UNSUPPORTED_GAME_ACTION',
+          message: `지원하지 않는 게임 액션입니다: ${type}`,
+          actionId,
+        })
+        emitGameAck({
+          actionId,
+          type,
+          ok: false,
+          message: '지원하지 않는 게임 액션입니다.',
+          errorCode: 'UNSUPPORTED_GAME_ACTION',
+        })
+    }
+  }, 0)
+
+  return actionId
+}
+
+export const mockEmitPromptResponse = (response: GamePromptResponse) => {
+  if (mockGameState.prompt?.id !== response.promptId) {
+    emitGameError({
+      code: 'PROMPT_NOT_FOUND',
+      message: '유효하지 않은 prompt 응답입니다.',
+    })
+    return
+  }
+
+  mockGameState.prompt = null
+  const revision = nextRevision()
+
+  emitGameAck({
+    actionId: `prompt-response-${Date.now()}`,
+    type: 'PROMPT_RESPONSE',
+    ok: true,
+    revision,
+    promptId: response.promptId,
+  })
+
+  emitSnapshotPatch(undefined, undefined, [
+    {
+      type: 'PROMPT_RESPONSE',
+      playerId: response.playerId,
+      payload: { value: response.value },
+    },
+  ])
+}
 
 export const gameHandlers = [
   http.post('/api/game/:roomId/roll-dice', async ({ request }) => {
@@ -195,7 +663,7 @@ export const gameHandlers = [
           pass_go: passGo,
           pass_go_salary: MOCK_PASS_GO_SALARY,
         })
-        emitGameState()
+        emitLegacyGameState()
       }, 800)
     }, 100)
 
@@ -244,6 +712,7 @@ export const gameHandlers = [
 
     player.balance -= price
     tile.owner_id = player.id
+    tile.ownerId = player.id
     tile.building = 0
     ensureOwnedTiles(player, tile_index)
     advanceMockTurn()
@@ -255,8 +724,8 @@ export const gameHandlers = [
         tile_name: tile.name,
         price,
       })
-      emitGameState()
-      emitTurnStart()
+      emitLegacyGameState()
+      emitLegacyTurnStart()
     }, 0)
 
     await delay(150)
@@ -305,8 +774,8 @@ export const gameHandlers = [
     advanceMockTurn()
 
     setTimeout(() => {
-      emitGameState()
-      emitTurnStart()
+      emitLegacyGameState()
+      emitLegacyTurnStart()
     }, 0)
 
     await delay(150)
@@ -348,11 +817,12 @@ export const gameHandlers = [
 
     if (releaseOwnership) {
       tile.owner_id = null
+      tile.ownerId = null
       removeOwnedTile(player, tile_index)
     }
 
     setTimeout(() => {
-      emitGameState()
+      emitLegacyGameState()
     }, 0)
 
     await delay(150)

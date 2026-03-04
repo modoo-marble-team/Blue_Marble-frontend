@@ -60,26 +60,48 @@ const normalizePlayer = (player: Player): Player => ({
 })
 
 const normalizeState = (state: Partial<GameState>): Partial<GameState> => {
-  const currentPlayerId =
-    state.currentPlayerId !== undefined
-      ? state.currentPlayerId
-      : (state.currentTurn ?? null)
+  const normalizedState: Partial<GameState> = { ...state }
 
-  const currentTurn =
-    state.currentTurn !== undefined ? state.currentTurn : currentPlayerId
+  if ('currentPlayerId' in state || 'currentTurn' in state) {
+    const currentPlayerId =
+      state.currentPlayerId !== undefined
+        ? state.currentPlayerId
+        : (state.currentTurn ?? null)
 
-  return {
-    ...state,
-    currentPlayerId,
-    currentTurn,
-    tiles: state.tiles?.map(normalizeTile),
-    players: state.players?.map(normalizePlayer),
-    prompt: state.prompt ?? null,
-    pendingAction: state.pendingAction ?? null,
-    lastAck: state.lastAck ?? null,
-    lastError: state.lastError ?? null,
-    eventQueue: state.eventQueue ?? [],
+    normalizedState.currentPlayerId = currentPlayerId
+    normalizedState.currentTurn =
+      state.currentTurn !== undefined ? state.currentTurn : currentPlayerId
   }
+
+  if ('tiles' in state) {
+    normalizedState.tiles = state.tiles?.map(normalizeTile) ?? []
+  }
+
+  if ('players' in state) {
+    normalizedState.players = state.players?.map(normalizePlayer) ?? []
+  }
+
+  if ('prompt' in state) {
+    normalizedState.prompt = state.prompt ?? null
+  }
+
+  if ('pendingAction' in state) {
+    normalizedState.pendingAction = state.pendingAction ?? null
+  }
+
+  if ('lastAck' in state) {
+    normalizedState.lastAck = state.lastAck ?? null
+  }
+
+  if ('lastError' in state) {
+    normalizedState.lastError = state.lastError ?? null
+  }
+
+  if ('eventQueue' in state) {
+    normalizedState.eventQueue = state.eventQueue ?? []
+  }
+
+  return normalizedState
 }
 
 const toPathSegments = (
