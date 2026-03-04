@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../../features/auth/store'
 import {
   createProfileMenuItems,
@@ -47,6 +48,7 @@ function WaitingRoomPage() {
   const session = useAuthStore((state) => state.session)
   const clearSession = useAuthStore((state) => state.clearSession)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
+  const isAllowedSession = useRequireActiveSession(session)
 
   const locationState = location.state as WaitingRoomLocationState | null
   const isSameRoomState = locationState?.roomId === currentRoomId
@@ -114,24 +116,12 @@ function WaitingRoomPage() {
     },
   })
 
-  // URL/세션 상태 검증 후 잘못된 진입을 리다이렉트
+  // roomId 파라미터가 없으면 로비로 복귀
   useEffect(() => {
     if (!currentRoomId) {
       navigate('/lobby', { replace: true })
-      return
     }
-
-    // 비로그인 사용자는 홈으로 이동
-    if (!session) {
-      navigate('/', { replace: true })
-      return
-    }
-
-    // 닉네임 미설정 사용자는 닉네임 설정 화면으로 이동
-    if (session.needsNicknameSetup) {
-      navigate('/nickname-setup', { replace: true })
-    }
-  }, [currentRoomId, navigate, session])
+  }, [currentRoomId, navigate])
 
   // 대기방 로딩 에러를 토스트로 표시
   useEffect(() => {
@@ -201,7 +191,7 @@ function WaitingRoomPage() {
   }, [handleStartGame])
 
   // 리다이렉트 대상 상태에서는 화면 렌더링 생략
-  if (!session || session.needsNicknameSetup) {
+  if (!isAllowedSession || !session) {
     return null
   }
   if (!currentRoomId) {

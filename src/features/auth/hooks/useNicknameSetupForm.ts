@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useRequireNicknameSetupSession } from './useRequireNicknameSetupSession'
 import {
   mockCheckNicknameAvailability,
   mockSetNickname,
@@ -17,6 +18,7 @@ export function useNicknameSetupForm() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
   const updateNickname = useAuthStore((state) => state.updateNickname)
+  const shouldRender = useRequireNicknameSetupSession(session)
 
   const [nickname, setNickname] = useState('')
   const [submitMessage, setSubmitMessage] = useState<string | null>(null)
@@ -27,20 +29,6 @@ export function useNicknameSetupForm() {
     boolean | null
   >(null)
   const [showValidationMessage, setShowValidationMessage] = useState(false)
-
-  // 세션 상태에 따라 접근 경로를 홈/로비로 정리
-  useEffect(() => {
-    // 세션이 없으면 닉네임 설정 페이지 접근 차단
-    if (!session) {
-      navigate('/', { replace: true })
-      return
-    }
-
-    // 이미 닉네임 설정이 끝났으면 로비로 이동
-    if (!session.needsNicknameSetup) {
-      navigate('/lobby', { replace: true })
-    }
-  }, [navigate, session])
 
   // 입력값이 바뀔 때마다 로컬 형식 검증 결과 계산
   const nicknameValidation = useMemo(
@@ -193,7 +181,7 @@ export function useNicknameSetupForm() {
   }
 
   return {
-    shouldRender: Boolean(session && session.needsNicknameSetup),
+    shouldRender,
     nickname,
     helperFeedback,
     isSubmitting,
