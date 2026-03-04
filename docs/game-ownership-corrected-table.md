@@ -1,4 +1,4 @@
-# FE-B / FE-C 분업표 (이벤트 명세서 기준)
+# FE-B / FE-C 분업표 (중앙 docs 기준)
 
 ## 요약 표
 
@@ -18,35 +18,32 @@
 
 ## 진행도 요약
 
-| 파트 | 진행도 | 상태                                                      |
-| ---- | ------ | --------------------------------------------------------- |
-| FE-B | 55%    | 새 이벤트 계약 + 레거시 호환 계층을 함께 세워야 하는 단계 |
-| FE-C | 45%    | 보드를 store 단일 렌더와 연출 레이어로 정리해야 하는 단계 |
+| 파트 | 진행도  | 상태                                                        |
+| ---- | ------- | ----------------------------------------------------------- |
+| FE-B | 진행 중 | 타입/store/socket/mock 골격 정리 후 prompt/ack UI 연결 단계 |
+| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄여야 하는 단계          |
 
-## FE-B 최우선 작업
+## FE-B 현재 최우선 작업
 
-- `src/types/domain.ts`를 새 이벤트 명세 기준으로 재정의
-- `src/stores/game.store.ts`에 snapshot/patch/revision/prompt/ack 구조 추가
-- `src/services/socket/game.handler.ts`를 새 이벤트 계약으로 교체
-- `src/hooks/game/useGameState.ts`에서 `game:sync` 기반 복구로 전환
-- `src/mocks/handlers/game.handler.ts`를 새 명세 mock으로 재작성
-- `src/pages/GamePage.tsx`의 보드 상태 write-back 제거
-- `roomId/gameId`, money unit, tile/building enum mapper 명시화
+- `src/components/game/modals/*`를 `gameStore.prompt`와 연결
+- `src/pages/GamePage.tsx`에서 `pendingAction`, `lastAck`, `lastError`를 실제 UI 상태와 연결
+- `src/components/board/GameBoard.tsx`의 로컬 modal 분기를 `game:prompt` 소비 구조로 전환
+- `src/services/socket/game.handler.ts`의 `emitPromptResponse`를 실사용 UI 흐름과 연결
+- 남아 있는 게임 REST fallback을 compatibility layer로 더 명확히 격리
 
-## FE-C 최우선 작업
+## FE-C 현재 최우선 작업
 
-- `GameBoard.tsx`에서 API 호출, 통행료 계산, 파산 처리 제거
-- store selector 기반 보드 렌더 구조 정리
-- `game:patch.events` 기반 이동/효과 애니메이션 계층 추가
+- `GameBoard.tsx`에서 남아 있는 로컬 게임 로직 추가 축소
+- `eventQueue` 기반 이동/효과 애니메이션 계층 추가
+- store selector 기반 보드 렌더 구조 추가 정리
 - 새 `buildingLevel`, `tileType`, `playerState` 표시 반영
 
 ## 현재 가장 큰 리스크
 
-- `GameBoard.tsx`가 아직 게임 엔진처럼 동작한다.
-- `GamePage.tsx`가 store와 board 로컬 상태를 이중 관리한다.
-- mock이 새 이벤트 명세와 다른 프로토콜을 사용한다.
-- 타입 계층이 새 숫자 ID / revision / snapshot 구조를 표현하지 못한다.
-- 새 이벤트 명세와 기존 API v4 사이의 식별자/화폐 단위/enum 차이가 아직 문서와 코드 모두에 남아 있다.
+- `prompt`, `ack`, `pendingAction`이 store에는 있지만 실제 UI 소비가 아직 불완전하다.
+- `GameBoard.tsx`가 여전히 일부 게임 엔진 성격 로직을 들고 있다.
+- 게임 REST fallback이 장기화되면 중앙 docs 기준과 실제 런타임이 다시 벌어질 수 있다.
+- `gameId`, money unit, tile/building enum 기준이 문서와 코드에서 완전히 수렴하지 않았다.
 
 ## 완료 판단 기준
 
