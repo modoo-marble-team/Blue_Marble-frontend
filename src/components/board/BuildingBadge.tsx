@@ -1,38 +1,50 @@
 import React from 'react'
+import { PLAYER_COLORS } from './board.constants'
 
 interface BuildingBadgeProps {
   level: number
   ownerColor?: string
 }
 
-const RED_THEME = { folder: 'redbuildingIcon', prefix: 'red' }
-const BLUE_THEME = { folder: 'bluebuildingIcon', prefix: 'blue' }
-const GREEN_THEME = { folder: 'greenbuildingIcon', prefix: 'green' }
-const YELLOW_THEME = { folder: 'yellowbuildingIcon', prefix: 'yellow' }
+const RED_THEME = { folder: 'red-building-Icon', prefix: 'red' }
+const BLUE_THEME = { folder: 'blue-building-Icon', prefix: 'blue' }
+const GREEN_THEME = { folder: 'green-building-Icon', prefix: 'green' }
+const YELLOW_THEME = { folder: 'yellow-building-Icon', prefix: 'yellow' }
 
 const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
   '#EF5350': RED_THEME,
   '#EF4444': RED_THEME,
+  '#FF0000': RED_THEME,
+  RED: RED_THEME,
   '#42A5F5': BLUE_THEME,
   '#3B82F6': BLUE_THEME,
+  '#0000FF': BLUE_THEME,
+  BLUE: BLUE_THEME,
   '#66BB6A': GREEN_THEME,
   '#22C55E': GREEN_THEME,
+  '#00FF00': GREEN_THEME,
+  GREEN: GREEN_THEME,
   '#FFD15B': YELLOW_THEME,
   '#EAB308': YELLOW_THEME,
+  '#FFFF00': YELLOW_THEME,
+  YELLOW: YELLOW_THEME,
 }
 
 const BUILDING_SUFFIX: Record<number, string> = {
-  1: 'house.svg',
-  2: 'second%20house%20upgrade.svg',
-  3: 'third%20house%20upgrade.svg',
-  4: 'hotel.svg',
-  5: 'landmark.svg',
+  1: '-house.svg',
+  2: '-second-house-upgrade.svg',
+  3: '-third-house-upgrade.svg',
+  4: '-hotel.svg',
+  5: '-second-hotel-upgrade.svg',
+  6: '-third—hotel-upgrade.svg',
+  7: '-landmark.svg',
 }
 
 const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
-  if (!level || level < 1 || level > 5) return null
+  if (!level || level < 1 || level > 7) return null
 
-  const normalizedColor = ownerColor?.trim().toUpperCase() ?? ''
+  const rawPathColor = ownerColor || PLAYER_COLORS[0]
+  const normalizedColor = rawPathColor.trim().toUpperCase()
   const theme = COLOR_TO_THEME[normalizedColor] ?? RED_THEME
   const suffix = BUILDING_SUFFIX[level]
 

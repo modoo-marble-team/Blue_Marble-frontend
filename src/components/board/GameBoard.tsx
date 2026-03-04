@@ -59,7 +59,9 @@ function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
   if (currentLevel === 1) return price * 0.5
   if (currentLevel === 2) return price * 0.5
   if (currentLevel === 3) return price * 1.0
-  if (currentLevel === 4) return price * 1.5
+  if (currentLevel === 4) return price * 1.0
+  if (currentLevel === 5) return price * 1.0
+  if (currentLevel === 6) return price * 2.0
   return 0
 }
 
@@ -69,7 +71,9 @@ function calcToll(price: number, level: BuildingLevel): number {
   if (level === 2) return price * 3
   if (level === 3) return price * 5
   if (level === 4) return price * 7
-  if (level === 5) return price * 10
+  if (level === 5) return price * 9
+  if (level === 6) return price * 12
+  if (level === 7) return price * 15
   return price
 }
 
@@ -92,17 +96,19 @@ const DICE_ICON = '\uD83C\uDFB2'
 
 const LEVEL_LABEL: Record<number, string> = {
   0: '\uBBF8\uAD6C\uB9E4',
-  1: '\uAC74\uBB3C 1\uB2E8\uACC4',
-  2: '\uAC74\uBB3C 2\uB2E8\uACC4',
-  3: '\uAC74\uBB3C 3\uB2E8\uACC4',
-  4: '\uD638\uD154',
-  5: '\uB79C\uB4DC\uB9C8\uD06C',
+  1: '\uC9D1 1\uB2E8\uACC4',
+  2: '\uC9D1 2\uB2E8\uACC4',
+  3: '\uC9D1 3\uB2E8\uACC4',
+  4: '\uD638\uD154 1\uB2E8\uACC4',
+  5: '\uD638\uD154 2\uB2E8\uACC4',
+  6: '\uD638\uD154 3\uB2E8\uACC4',
+  7: '\uB79C\uB4DC\uB9C8\uD06C',
 }
 
 function getUpgradeStage(
   level: BuildingLevel
 ): 'building-to-hotel' | 'hotel-to-landmark' {
-  return level < 4 ? 'building-to-hotel' : 'hotel-to-landmark'
+  return level < 6 ? 'building-to-hotel' : 'hotel-to-landmark'
 }
 
 const DOTS: Record<number, [number, number][]> = {
@@ -201,10 +207,10 @@ function toBoardBuildingLevel(
 ) {
   if (!hasOwner) return 0 as BuildingLevel
   if (typeof tile.level === 'number') {
-    return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
+    return Math.min(Math.max(tile.level, 1), 7) as BuildingLevel
   }
   const buildingLevel = typeof tile.building === 'number' ? tile.building : 0
-  return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
+  return Math.min(Math.max(buildingLevel + 1, 1), 7) as BuildingLevel
 }
 
 function buildTileOwnersFromProps(
@@ -608,7 +614,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   onDoneCallback: onDone,
                 })
               } else if (owner.ownerId === activePlayer.id) {
-                if (owner.level < 5) {
+                if (owner.level < 7) {
                   setBuildModal({
                     open: true,
                     tileId: landedTileId,
@@ -796,14 +802,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           cityName={buildTile?.name ?? ''}
           upgradeStage={getUpgradeStage(currentLevel)}
           currentLevelLabel={LEVEL_LABEL[currentLevel]}
-          nextLevelLabel={LEVEL_LABEL[Math.min(currentLevel + 1, 5)]}
+          nextLevelLabel={LEVEL_LABEL[Math.min(currentLevel + 1, 7)]}
           buildCostText={formatWon(
             getUpgradeCost(buildTile?.price ?? 0, currentLevel)
           )}
           nextTollText={formatWon(
             calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
           )}
-          canBuild={currentLevel < 5}
+          canBuild={currentLevel < 7}
           onCancel={() => handleBuildCancel(buildModal)}
           onConfirm={() => handleBuildConfirm(buildModal)}
         />
