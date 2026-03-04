@@ -187,7 +187,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
               padding: isCity ? '8px 3px' : '2px 3px',
             }}
           >
-            <TileIcon tile={tile} size={12} />
+            <TileIcon tile={tile} size={isCity ? 12 : 28} />
             {(!hasIcon || isCity) && (
               <span
                 style={{
@@ -299,7 +299,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
               padding: isCity ? '8px 3px' : '2px 3px',
             }}
           >
-            <TileIcon tile={tile} size={11} />
+            <TileIcon tile={tile} size={isCity ? 11 : 24} />
             {(!hasIcon || isCity) && (
               <span
                 style={{
