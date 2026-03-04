@@ -336,13 +336,15 @@ const GamePage: React.FC = () => {
   const isCurrentPlayerSkipped = (currentPlayerState?.skipTurns ?? 0) > 0
   const roomChatSenderOptions = useMemo(() => {
     return storePlayers.map((player) => ({
-      id: player.id,
+      id: String(player.id),
       nickname: player.nickname,
     }))
   }, [storePlayers])
+  const currentUserIdForChat =
+    currentUserId == null ? undefined : String(currentUserId)
   const preferredRoomChatSenderId =
     roomChatSenderOptions.find(
-      (senderOption) => senderOption.id !== currentUserId
+      (senderOption) => senderOption.id !== currentUserIdForChat
     )?.id ?? roomChatSenderOptions[0]?.id
 
   return (
