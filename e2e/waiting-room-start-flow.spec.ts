@@ -33,6 +33,7 @@ test.describe('대기방 시작 플로우', () => {
     await page.getByPlaceholder('메시지 입력...').press('Enter')
     await expect(page.getByText('E2E 채팅 메시지')).toBeVisible()
 
+    await page.getByRole('button', { name: 'DEV CONTROL 열기' }).click()
     await page.getByRole('button', { name: '시작조건' }).click()
     await expect(startButton).toBeEnabled()
 
