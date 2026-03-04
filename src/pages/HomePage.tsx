@@ -10,8 +10,9 @@ import {
   Zap,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useRedirectAuthenticatedToLobby } from '../features/auth/hooks/useRedirectAuthenticatedToLobby'
 import { mockGuestLogin, mockKakaoLogin } from '../features/auth/mockApi'
 import { useAuthStore } from '../features/auth/store'
 
@@ -46,20 +47,7 @@ function HomePage() {
   const [isKakaoLoading, setIsKakaoLoading] = useState(false)
   const [isGuestLoading, setIsGuestLoading] = useState(false)
 
-  // 세션이 이미 유효하면 홈 대신 로비로 리다이렉트
-  useEffect(() => {
-    // 비로그인 상태에서는 홈 화면 유지
-    if (!session) {
-      return
-    }
-
-    // 닉네임 설정이 필요한 경우에는 홈에서 이동시키지 않음
-    if (session.needsNicknameSetup) {
-      return
-    }
-
-    navigate('/lobby', { replace: true })
-  }, [navigate, session])
+  useRedirectAuthenticatedToLobby(session)
 
   const isAnyLoading = isKakaoLoading || isGuestLoading
 

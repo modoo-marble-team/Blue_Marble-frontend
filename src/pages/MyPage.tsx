@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { ArrowLeft, Gamepad2, Shield, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useRequireActiveSession } from '../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../features/auth/store'
 import { useMyPageProfileQuery } from '../features/auth/hooks/useMyPageProfileQuery'
 import { getAvatarText } from '../components/header/profileMenu'
@@ -34,21 +35,8 @@ const myPageStatsCardMeta = [
 function MyPage() {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
+  const isAllowedSession = useRequireActiveSession(session)
   const { data: profile, isLoading, isError } = useMyPageProfileQuery(session)
-
-  // 세션 상태에 따라 홈/닉네임 설정 페이지로 진입 차단
-  useEffect(() => {
-    // 비로그인이면 홈으로 이동
-    if (!session) {
-      navigate('/', { replace: true })
-      return
-    }
-
-    // 닉네임 미설정 사용자는 먼저 설정 화면으로 이동
-    if (session.needsNicknameSetup) {
-      navigate('/nickname-setup', { replace: true })
-    }
-  }, [navigate, session])
 
   // 프로필 이미지가 없을 때 사용할 아바타 텍스트 계산
   const fallbackAvatarText = useMemo(() => {
@@ -56,7 +44,7 @@ function MyPage() {
   }, [session?.nickname])
 
   // 리다이렉트 조건에서는 화면을 렌더링하지 않음
-  if (!session || session.needsNicknameSetup) {
+  if (!isAllowedSession || !session) {
     return null
   }
 

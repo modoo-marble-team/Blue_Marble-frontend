@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
+import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../../features/auth/store'
 import {
   createProfileMenuItems,
@@ -47,20 +48,7 @@ function LobbyPage() {
     useState(false)
   const [isPrivateRoomPasswordInvalid, setIsPrivateRoomPasswordInvalid] =
     useState(false)
-
-  // 세션 유효성에 따라 홈 또는 닉네임 설정 페이지로 이동
-  useEffect(() => {
-    // 로그인 세션이 없으면 홈으로 이동
-    if (!session) {
-      navigate('/', { replace: true })
-      return
-    }
-
-    // 닉네임 미설정 세션은 닉네임 설정 페이지로 이동
-    if (session.needsNicknameSetup) {
-      navigate('/nickname-setup', { replace: true })
-    }
-  }, [navigate, session])
+  const isAllowedSession = useRequireActiveSession(session)
 
   const {
     data: rooms = [],
@@ -215,7 +203,7 @@ function LobbyPage() {
   }
 
   // 리다이렉트 대상 세션 상태면 화면 렌더링 생략
-  if (!session || session.needsNicknameSetup) {
+  if (!isAllowedSession || !session) {
     return null
   }
 
