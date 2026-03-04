@@ -2,6 +2,7 @@ import {
   useRef,
   useState,
   useEffect,
+  useMemo,
   forwardRef,
   useImperativeHandle,
 } from 'react'
@@ -13,7 +14,6 @@ import TollModal from '../game/modals/TollModal'
 import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import { emitConfirmPenalty } from '../../services/socket/game.handler'
-import { gameApi } from '../../services/game/game.api'
 import {
   TILES,
   TOP_ROW,
@@ -29,6 +29,21 @@ import {
   TileOwner,
   BuildingLevel,
 } from './board.constants'
+import {
+  syncMockStoreBankrupt,
+  syncMockStoreCurrentTurn,
+  syncMockStorePlayers,
+  syncMockStoreTileOwners,
+} from './gameBoardStoreBridge'
+import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
+import type {
+  AIPenaltyModalState,
+  BankruptModalState,
+  BuildModalState,
+  BuyModalState,
+  CardModalState,
+  TollModalState,
+} from './gameBoard.types'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
@@ -174,68 +189,55 @@ interface GameBoardProps {
     owner_id?: string | number | null
     building: number
   }>
-  onPlayersChange: (players: PlayerState[]) => void
-  onCurPlayerChange: (idx: number) => void
+  onPlayersChange?: (players: PlayerState[]) => void
+  onCurPlayerChange?: (idx: number) => void
   onTileOwnersChange?: (tileOwners: Record<number, TileOwner>) => void
   onBankrupt?: (playerIdx: number) => void
 }
 
-interface BuyModalState {
-  open: boolean
-  tileId: number | null
-  onDoneCallback?: () => void
-}
-interface BuildModalState {
-  open: boolean
-  tileId: number | null
-  onDoneCallback?: () => void
-}
-interface CardModalState {
-  open: boolean
-  variant: 'event' | 'chance'
-  onDoneCallback?: () => void
-}
-interface TollModalState {
-  open: boolean
-  tileId: number | null
-  ownerName: string
-  tollText: string
-  onDoneCallback?: () => void
-}
-interface AIPenaltyModalState {
-  open: boolean
-  status: 'loading' | 'result' | 'error'
-  resultDescription?: string
-  onDoneCallback?: () => void
-}
-interface BankruptModalState {
-  open: boolean
-  playerIdx: number
-  playerName: string
-  onDoneCallback?: () => void
+function toBoardBuildingLevel(
+  tile: { building?: number; level?: number },
+  hasOwner: boolean
+) {
+  if (!hasOwner) return 0 as BuildingLevel
+  if (typeof tile.level === 'number') {
+    return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
+  }
+  const buildingLevel = typeof tile.building === 'number' ? tile.building : 0
+  return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
 }
 
-type SyncStatePayload = {
-  players?: Array<{
-    id: string | number
-    nickname?: string
-    name?: string
-    position?: number
-    pos?: number
-    balance?: number
-    money?: number
-    color?: string
-  }>
-  tiles?: Array<{
-    index?: number
-    id?: number
+function buildTileOwnersFromProps(
+  tiles: Array<{
+    index: number
     owner_id?: string | number | null
-    ownerId?: string | number | null
-    building?: number
-    level?: number
-  }>
-  current_turn?: string | number | null
-  currentTurn?: string | number | null
+    building: number
+  }>,
+  players: PlayerState[]
+) {
+  const nextOwners: Record<number, TileOwner> = {}
+
+  tiles.forEach((tile) => {
+    if (!tile.owner_id) {
+      return
+    }
+
+    const ownerPlayer = players.find(
+      (player) => String(player.id) === String(tile.owner_id)
+    )
+
+    if (!ownerPlayer) {
+      return
+    }
+
+    nextOwners[tile.index] = {
+      ownerId: ownerPlayer.id,
+      ownerColor: ownerPlayer.color,
+      level: toBoardBuildingLevel(tile, true),
+    }
+  })
+
+  return nextOwners
 }
 
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
@@ -264,41 +266,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     playersRef.current = players
 
     const bankruptSetRef = useRef<Set<number>>(new Set())
-    const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
-    const tileOwnersRef = useRef<Record<number, TileOwner>>({})
+    const [optimisticTileOwners, setOptimisticTileOwners] = useState<Record<
+      number,
+      TileOwner
+    > | null>(null)
+    const derivedTileOwners = useMemo(
+      () => buildTileOwnersFromProps(tiles, players),
+      [tiles, players]
+    )
+    const tileOwners =
+      optimisticTileOwners === null ? derivedTileOwners : optimisticTileOwners
+    const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
 
     useEffect(() => {
-      if (tiles.length === 0) {
-        tileOwnersRef.current = {}
-        setTileOwners({})
-        return
-      }
-
-      const nextOwners: Record<number, TileOwner> = {}
-
-      tiles.forEach((tile) => {
-        if (!tile.owner_id) {
-          return
-        }
-
-        const ownerPlayer = playersRef.current.find(
-          (player) => String(player.id) === String(tile.owner_id)
-        )
-
-        if (!ownerPlayer) {
-          return
-        }
-
-        nextOwners[tile.index] = {
-          ownerId: ownerPlayer.id,
-          ownerColor: ownerPlayer.color,
-          level: toBoardBuildingLevel(tile, true),
-        }
-      })
-
-      tileOwnersRef.current = nextOwners
-      setTileOwners(nextOwners)
-    }, [tiles])
+      setOptimisticTileOwners(null)
+      tileOwnersRef.current = derivedTileOwners
+    }, [derivedTileOwners])
 
     function getPlayerIdByIndex(playerIdx: number) {
       return playersRef.current[playerIdx]?.id ?? playerIdx
@@ -313,136 +296,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function getPlayerIndexById(playerId: number) {
       return playersRef.current.findIndex((player) => player.id === playerId)
-    }
-
-    function toBoardBuildingLevel(
-      tile: { building?: number; level?: number },
-      hasOwner: boolean
-    ) {
-      if (!hasOwner) return 0 as BuildingLevel
-      if (typeof tile.level === 'number') {
-        return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
-      }
-      const buildingLevel =
-        typeof tile.building === 'number' ? tile.building : 0
-      return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
-    }
-
-    async function syncBoardStateFromServer() {
-      if (!roomId) return false
-
-      const syncResult = await gameApi.syncState(roomId)
-      if (!syncResult.ok) return false
-
-      const payload = syncResult.data as SyncStatePayload
-      const payloadPlayers = payload.players ?? []
-      const prevById = new Map(
-        playersRef.current.map((player) => [String(player.id), player])
-      )
-      const serverToBoardId = new Map<string, number>()
-
-      if (payloadPlayers.length > 0) {
-        const nextById = new Map<string, PlayerState>()
-
-        payloadPlayers.forEach((player, idx) => {
-          const prevPlayer = prevById.get(String(player.id))
-          const parsedPlayerId =
-            typeof player.id === 'number'
-              ? player.id
-              : Number.parseInt(String(player.id), 10)
-          const boardPlayerId = Number.isNaN(parsedPlayerId)
-            ? (prevPlayer?.id ?? idx)
-            : parsedPlayerId
-
-          serverToBoardId.set(String(player.id), boardPlayerId)
-
-          nextById.set(String(player.id), {
-            id: boardPlayerId,
-            name:
-              player.nickname ??
-              player.name ??
-              prevPlayer?.name ??
-              `Player ${idx + 1}`,
-            color:
-              player.color ??
-              prevPlayer?.color ??
-              PLAYER_COLORS[idx % PLAYER_COLORS.length],
-            pos: player.position ?? player.pos ?? prevPlayer?.pos ?? 0,
-            money: player.balance ?? player.money ?? prevPlayer?.money ?? 0,
-          })
-        })
-
-        const orderedPlayers = playersRef.current.map((prevPlayer) => {
-          return nextById.get(String(prevPlayer.id)) ?? prevPlayer
-        })
-        const additionalPlayers = Array.from(nextById.values()).filter(
-          (nextPlayer) =>
-            !orderedPlayers.some(
-              (orderedPlayer) => orderedPlayer.id === nextPlayer.id
-            )
-        )
-
-        const nextPlayers = [...orderedPlayers, ...additionalPlayers]
-        playersRef.current = nextPlayers
-        onPlayersChange(nextPlayers)
-      }
-
-      if (payload.tiles) {
-        const nextOwners: Record<number, TileOwner> = {}
-
-        payload.tiles.forEach((tile) => {
-          const tileIndex = tile.index ?? tile.id
-          const ownerRaw = tile.owner_id ?? tile.ownerId
-          if (
-            tileIndex === undefined ||
-            ownerRaw === null ||
-            ownerRaw === undefined
-          ) {
-            return
-          }
-
-          const mappedOwnerId = serverToBoardId.get(String(ownerRaw))
-          const parsedOwnerId =
-            typeof ownerRaw === 'number'
-              ? ownerRaw
-              : Number.parseInt(String(ownerRaw), 10)
-          const ownerId =
-            mappedOwnerId ??
-            (Number.isNaN(parsedOwnerId) ? null : parsedOwnerId)
-          if (ownerId === null) return
-
-          const ownerPlayer = playersRef.current.find(
-            (player) => String(player.id) === String(ownerId)
-          )
-          nextOwners[tileIndex] = {
-            ownerId,
-            ownerColor:
-              ownerPlayer?.color ??
-              PLAYER_COLORS[ownerId % PLAYER_COLORS.length],
-            level: toBoardBuildingLevel(tile, true),
-          }
-        })
-
-        tileOwnersRef.current = nextOwners
-        setTileOwners(nextOwners)
-        onTileOwnersChange?.(nextOwners)
-      }
-
-      const nextTurnRaw = payload.current_turn ?? payload.currentTurn
-      if (nextTurnRaw !== undefined && nextTurnRaw !== null) {
-        const mappedTurnId = serverToBoardId.get(String(nextTurnRaw))
-        const nextTurnIndex = playersRef.current.findIndex(
-          (player) =>
-            player.id === mappedTurnId ||
-            String(player.id) === String(nextTurnRaw)
-        )
-        if (nextTurnIndex >= 0) {
-          curPlayerRef.current = nextTurnIndex
-          onCurPlayerChange(nextTurnIndex)
-        }
-      }
-
-      return true
     }
 
     const [buyModal, setBuyModal] = useState<BuyModalState>({
@@ -479,10 +332,38 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     ) {
       const next = updater(tileOwnersRef.current)
       tileOwnersRef.current = next
-      setTileOwners(next)
+      setOptimisticTileOwners(next)
 
       if (options?.notifyParent) {
-        onTileOwnersChange?.(next)
+        if (onTileOwnersChange) {
+          onTileOwnersChange(next)
+        } else {
+          syncMockStoreTileOwners(next)
+        }
+      }
+    }
+
+    function publishPlayers(nextPlayers: PlayerState[]) {
+      if (onPlayersChange) {
+        onPlayersChange(nextPlayers)
+      } else {
+        syncMockStorePlayers(nextPlayers)
+      }
+    }
+
+    function publishCurrentTurn(nextTurnIndex: number) {
+      if (onCurPlayerChange) {
+        onCurPlayerChange(nextTurnIndex)
+      } else {
+        syncMockStoreCurrentTurn(nextTurnIndex)
+      }
+    }
+
+    function publishTileOwners(nextOwners: Record<number, TileOwner>) {
+      if (onTileOwnersChange) {
+        onTileOwnersChange(nextOwners)
+      } else {
+        syncMockStoreTileOwners(nextOwners)
       }
     }
 
@@ -496,7 +377,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return { ...p, money: Math.max(0, p.money + delta) }
       })
       playersRef.current = updated
-      onPlayersChange([...updated])
+      if (onPlayersChange) {
+        onPlayersChange([...updated])
+      } else {
+        syncMockStorePlayers(updated)
+      }
 
       const isBankrupt = updated[playerIdx].money <= 0
       if (isBankrupt) {
@@ -515,6 +400,40 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
       return false
     }
+
+    const {
+      handleBuy,
+      handleBuyPass,
+      handleBuildConfirm,
+      handleBuildCancel,
+      handleTollConfirm,
+    } = createGameBoardActionHandlers({
+      roomId,
+      useGameSocketMock: USE_GAME_SOCKET_MOCK,
+      roomIdRequiredMessage: ROOM_ID_REQUIRED_MESSAGE,
+      setStatus,
+      setOptimisticTileOwners,
+      setBuyModal,
+      setBuildModal,
+      setTollModal,
+      playersRef,
+      curPlayerRef,
+      tileOwnersRef,
+      publishPlayers,
+      publishCurrentTurn,
+      publishTileOwners,
+      getPlayerIdByIndex,
+      getPlayerColorByIndex,
+      getPlayerIndexById,
+      toBoardBuildingLevel,
+      getPurchaseCost,
+      getUpgradeCost,
+      calcToll,
+      getTilePrice: (tileId) => TILES[tileId]?.price ?? 0,
+      updateTileOwners,
+      applyMoney,
+      advanceTurn,
+    })
 
     function handleBankruptConfirm() {
       const { playerIdx, onDoneCallback } = bankruptModal
@@ -535,7 +454,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         { notifyParent: true }
       )
 
-      onBankrupt?.(playerIdx)
+      if (onBankrupt) {
+        onBankrupt(playerIdx)
+      } else {
+        syncMockStoreBankrupt(playerIdx)
+      }
       advanceTurn(onDoneCallback)
     }
 
@@ -562,11 +485,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: nextPlayer.skipTurns! - 1,
         }
         playersRef.current = updatedPlayers
-        onPlayersChange(updatedPlayers)
+        if (onPlayersChange) {
+          onPlayersChange(updatedPlayers)
+        } else {
+          syncMockStorePlayers(updatedPlayers)
+        }
 
         // 스킵 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 뒤 다시 턴을 넘긴다
         curPlayerRef.current = next
-        onCurPlayerChange(next)
+        if (onCurPlayerChange) {
+          onCurPlayerChange(next)
+        } else {
+          syncMockStoreCurrentTurn(next)
+        }
 
         setTimeout(() => {
           advanceTurn(onDone)
@@ -575,7 +506,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       curPlayerRef.current = next
-      onCurPlayerChange(next)
+      if (onCurPlayerChange) {
+        onCurPlayerChange(next)
+      } else {
+        syncMockStoreCurrentTurn(next)
+      }
       onDone?.()
     }
 
@@ -650,7 +585,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return { ...p, pos: newPos, skipTurns: newSkipTurns }
           })
           playersRef.current = movedPlayers
-          onPlayersChange([...movedPlayers])
+          if (onPlayersChange) {
+            onPlayersChange([...movedPlayers])
+          } else {
+            syncMockStorePlayers(movedPlayers)
+          }
 
           const landedTileId = movedPlayers[activeCurPlayer].pos
 
@@ -713,200 +652,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 70)
     }
 
-    function toActionErrorMessage(statusCode: number) {
-      if (statusCode === 401)
-        return '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.'
-      if (statusCode === 403)
-        return '\uD604\uC7AC \uD134\uC5D0\uB294 \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-      if (statusCode === 404)
-        return '\uB300\uC0C1\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-      if (statusCode === 409)
-        return '\uC870\uAC74\uC774 \uB9DE\uC9C0 \uC54A\uC544 \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-      return '\uC694\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.'
-    }
-
-    function getSellFallbackRefund(tileId: number, level: BuildingLevel) {
-      // calculate how much to refund when the server sync fails
-      // start with purchase price plus each upgrade cost up to current level
-      const basePrice = TILES[tileId]?.price ?? 0
-      if (level <= 0 || basePrice === 0) return 0
-      let refund = basePrice
-      for (let l = 1; l < level; l++) {
-        refund += getUpgradeCost(basePrice, l as BuildingLevel)
-      }
-      return refund
-    }
-
-    async function sellOwnedTileForPlayer(playerIdx: number) {
-      const playerId = getPlayerIdByIndex(playerIdx)
-      const ownedTileEntries = Object.entries(tileOwnersRef.current)
-        .filter(([, owner]) => owner.ownerId === playerId)
-        .sort(([, a], [, b]) => b.level - a.level)
-
-      if (ownedTileEntries.length === 0) return false
-
-      const [tileIdText, owner] = ownedTileEntries[0]
-      const tileId = Number(tileIdText)
-      if (!roomId) return false
-
-      const sellResult = await gameApi.sellTile(roomId, {
-        tile_index: tileId,
-        level: owner.level,
-      })
-
-      if (!sellResult.ok) {
-        setStatus(toActionErrorMessage(sellResult.status))
-        return false
-      }
-
-      const synced = await syncBoardStateFromServer()
-      if (!synced) {
-        updateTileOwners(
-          (prev) => {
-            const next = { ...prev }
-            delete next[tileId]
-            return next
-          },
-          { notifyParent: true }
-        )
-        applyMoney(playerIdx, +getSellFallbackRefund(tileId, owner.level))
-      }
-
-      return true
-    }
-
-    async function handleBuy() {
-      const { tileId, onDoneCallback } = buyModal
-      if (tileId === null) return
-      if (!roomId) {
-        setStatus(ROOM_ID_REQUIRED_MESSAGE)
-        return
-      }
-      const active = curPlayerRef.current
-      const activePlayerId = getPlayerIdByIndex(active)
-      const activePlayerColor = getPlayerColorByIndex(active)
-      const price = getPurchaseCost(tileId)
-
-      const actionResult = await gameApi.buyTile(roomId, { tile_index: tileId })
-      if (!actionResult.ok) {
-        setStatus(toActionErrorMessage(actionResult.status))
-        return
-      }
-
-      setBuyModal({ open: false, tileId: null })
-      const bankrupt = applyMoney(active, -price, onDoneCallback)
-      if (!bankrupt) {
-        updateTileOwners(
-          (prev) => ({
-            ...prev,
-            [tileId]: {
-              ownerId: activePlayerId,
-              ownerColor: activePlayerColor,
-              level: 1,
-            },
-          }),
-          { notifyParent: true }
-        )
-        if (USE_GAME_SOCKET_MOCK) {
-          onDoneCallback?.()
-        } else {
-          advanceTurn(onDoneCallback)
-        }
-      }
-    }
-
-    function handleBuyPass() {
-      const { onDoneCallback } = buyModal
-      setBuyModal({ open: false, tileId: null })
-      advanceTurn(onDoneCallback)
-    }
-
-    async function handleBuildConfirm() {
-      const { tileId, onDoneCallback } = buildModal
-      if (tileId === null) return
-      if (!roomId) {
-        setStatus(ROOM_ID_REQUIRED_MESSAGE)
-        return
-      }
-      const active = curPlayerRef.current
-      const owner = tileOwnersRef.current[tileId]
-      const price = getPurchaseCost(tileId)
-      const upgradeCost = owner ? getUpgradeCost(price, owner.level) : 0
-
-      const actionResult = await gameApi.buildTile(roomId, {
-        tile_index: tileId,
-      })
-      if (!actionResult.ok) {
-        setStatus(toActionErrorMessage(actionResult.status))
-        return
-      }
-
-      setBuildModal({ open: false, tileId: null })
-      const bankrupt = applyMoney(active, -upgradeCost, onDoneCallback)
-      if (!bankrupt) {
-        updateTileOwners(
-          (prev) => {
-            const existing = prev[tileId]
-            if (!existing) return prev
-            return {
-              ...prev,
-              [tileId]: {
-                ...existing,
-                level: Math.min(existing.level + 1, 5) as BuildingLevel,
-              },
-            }
-          },
-          { notifyParent: true }
-        )
-        if (USE_GAME_SOCKET_MOCK) {
-          onDoneCallback?.()
-        } else {
-          advanceTurn(onDoneCallback)
-        }
-      }
-    }
-
-    function handleBuildCancel() {
-      const { onDoneCallback } = buildModal
-      setBuildModal({ open: false, tileId: null })
-      advanceTurn(onDoneCallback)
-    }
-
-    async function handleTollConfirm() {
-      const { tileId, onDoneCallback } = tollModal
-      const active = curPlayerRef.current
-      setTollModal({
-        open: false,
-        tileId: null,
-        ownerName: '',
-        tollText: '',
-      })
-
-      if (tileId !== null) {
-        const owner = tileOwnersRef.current[tileId]
-        const price = TILES[tileId]?.price ?? 0
-        const tollAmount = owner ? calcToll(price, owner.level) : 0
-        if (owner) {
-          if (playersRef.current[active].money < tollAmount) {
-            const sold = await sellOwnedTileForPlayer(active)
-            if (!sold) {
-              const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
-              if (!bankrupt) advanceTurn(onDoneCallback)
-              return
-            }
-          }
-          const ownerPlayerIndex = getPlayerIndexById(owner.ownerId)
-          if (ownerPlayerIndex >= 0) {
-            applyMoney(ownerPlayerIndex, +tollAmount)
-          }
-          const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
-          if (!bankrupt) advanceTurn(onDoneCallback)
-          return
-        }
-      }
-      advanceTurn(onDoneCallback)
-    }
-
     function handleCardConfirm() {
       const { onDoneCallback, variant } = cardModal
 
@@ -921,7 +666,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: (activePlayer.skipTurns ?? 0) + 1,
         }
         playersRef.current = updatedPlayers
-        onPlayersChange(updatedPlayers)
+        if (onPlayersChange) {
+          onPlayersChange(updatedPlayers)
+        } else {
+          syncMockStorePlayers(updatedPlayers)
+        }
         setStatus(`${activePlayer.name} 주사위 1턴 쉬기!`)
       }
 
@@ -1038,8 +787,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           purchaseCostText={formatWon(buyTile?.price ?? 0)}
           isUpgrade={false}
           currentLevel={0}
-          onPass={handleBuyPass}
-          onBuy={handleBuy}
+          onPass={() => handleBuyPass(buyModal)}
+          onBuy={() => handleBuy(buyModal)}
         />
         <BuildModal
           open={buildModal.open}
@@ -1054,8 +803,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
           )}
           canBuild={currentLevel < 5}
-          onCancel={handleBuildCancel}
-          onConfirm={handleBuildConfirm}
+          onCancel={() => handleBuildCancel(buildModal)}
+          onConfirm={() => handleBuildConfirm(buildModal)}
         />
         <CardModal
           open={cardModal.open}
@@ -1067,7 +816,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           cityName={tollTile?.name}
           ownerName={tollModal.ownerName}
           tollText={tollModal.tollText}
-          onConfirm={handleTollConfirm}
+          onConfirm={() => handleTollConfirm(tollModal)}
         />
         <AIPenaltyModal
           open={aiModal.open}

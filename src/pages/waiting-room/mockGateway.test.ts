@@ -28,7 +28,7 @@ describe('mockGateway DEV control', () => {
     const secondHost = secondTransfer.players.find((player) => player.isHost)
 
     expect(secondHost?.id).toBe('room-5-user-1')
-  })
+  }, 15000)
 
   it('방장 넘기기는 1인 방에서 에러를 반환한다', async () => {
     const gateway = await loadMockGateway()

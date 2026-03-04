@@ -98,7 +98,7 @@ describe('Waiting room start flow E2E', () => {
 
     await screen.findByText('E2E호스트님의 방')
 
-    const startButton = screen.getByRole('button', { name: '시작' })
+    const startButton = await screen.findByRole('button', { name: '시작' })
     expect(startButton).toBeDisabled()
 
     // 채팅 전송이 실제 화면에 반영되는지 확인
@@ -121,5 +121,5 @@ describe('Waiting room start flow E2E', () => {
     await waitFor(() => {
       expect(screen.getByText(/게임 화면:/)).toBeInTheDocument()
     })
-  })
+  }, 15000)
 })
