@@ -45,6 +45,12 @@ import {
   mapSyncPayloadPlayers,
   mapSyncPayloadTileOwners,
 } from './gameBoardSyncUtils'
+import {
+  createBoardPurchasedTileOwner,
+  findBoardSellTarget,
+  getBoardTollAmount,
+  upgradeBoardTileOwner,
+} from './gameBoardTransactionUtils'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
@@ -714,14 +720,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     async function sellOwnedTileForPlayer(playerIdx: number) {
       const playerId = getPlayerIdByIndex(playerIdx)
-      const ownedTileEntries = Object.entries(tileOwnersRef.current)
-        .filter(([, owner]) => owner.ownerId === playerId)
-        .sort(([, a], [, b]) => b.level - a.level)
+      const sellTarget = findBoardSellTarget(tileOwnersRef.current, playerId)
+      if (!sellTarget) return false
 
-      if (ownedTileEntries.length === 0) return false
-
-      const [tileIdText, owner] = ownedTileEntries[0]
-      const tileId = Number(tileIdText)
+      const { tileId, owner } = sellTarget
       if (!roomId) return false
 
       const sellResult = await gameApi.sellTile(roomId, {
@@ -774,11 +776,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         updateTileOwners(
           (prev) => ({
             ...prev,
-            [tileId]: {
-              ownerId: activePlayerId,
-              ownerColor: activePlayerColor,
-              level: 1,
-            },
+            [tileId]: createBoardPurchasedTileOwner(
+              activePlayerId,
+              activePlayerColor
+            ),
           }),
           { notifyParent: true }
         )
@@ -819,20 +820,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuildModal({ open: false, tileId: null })
       const bankrupt = applyMoney(active, -upgradeCost, onDoneCallback)
       if (!bankrupt) {
-        updateTileOwners(
-          (prev) => {
-            const existing = prev[tileId]
-            if (!existing) return prev
-            return {
-              ...prev,
-              [tileId]: {
-                ...existing,
-                level: Math.min(existing.level + 1, 5) as BuildingLevel,
-              },
-            }
-          },
-          { notifyParent: true }
-        )
+        updateTileOwners((prev) => upgradeBoardTileOwner(prev, tileId), {
+          notifyParent: true,
+        })
         if (USE_GAME_SOCKET_MOCK) {
           onDoneCallback?.()
         } else {
@@ -860,7 +850,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (tileId !== null) {
         const owner = tileOwnersRef.current[tileId]
         const price = TILES[tileId]?.price ?? 0
-        const tollAmount = owner ? calcToll(price, owner.level) : 0
+        const tollAmount = getBoardTollAmount(price, owner, calcToll)
         if (owner) {
           if (playersRef.current[active].money < tollAmount) {
             const sold = await sellOwnedTileForPlayer(active)
