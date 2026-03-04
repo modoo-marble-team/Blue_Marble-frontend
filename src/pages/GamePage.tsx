@@ -1,21 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { useLocation, useParams } from 'react-router-dom'
-import PlayerPanel from '../components/game/panels/PlayerPanel'
-import RoomChat from '../features/room-chat/RoomChat'
-import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
+import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
+import type { PlayerState } from '../components/board/board.constants'
 import RollButton from '../components/game/controls/RollButton'
+import PlayerPanel from '../components/game/panels/PlayerPanel'
+import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/store'
-import { useGameStore } from '../stores/game.store'
+import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
+import RoomChat from '../features/room-chat/RoomChat'
+import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useGameState } from '../hooks/game/useGameState'
 import { useGameTimer } from '../hooks/game/useGameTimer'
-import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useTurn } from '../hooks/game/useTurn'
-import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
-import { INIT_PLAYERS, PlayerState } from '../components/board/board.constants'
-import type { BuildingLevel, ChatMessage } from '../types/domain'
 import { socket } from '../lib/socket'
-import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
+import { useGameStore } from '../stores/game.store'
+import type { BuildingLevel, ChatMessage } from '../types/domain'
+import {
+  findBoardCurrentPlayerIndex,
+  mapStorePlayersToBoardPlayers,
+  mapStoreTilesToBoardTiles,
+} from './game/gameViewModel'
 import { sendWaitingRoomChat } from './waiting-room/socket'
 import type { ChatEventPayload } from './waiting-room/types'
 
@@ -23,41 +28,16 @@ const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 const ALLOW_ALL_MOCK_TURNS =
   import.meta.env.DEV && import.meta.env.VITE_ALLOW_ALL_MOCK_TURNS === 'true'
 
-const GAME_CHAT_TITLE = '\uC2E4\uC2DC\uAC04 \uCC44\uD305'
-const GAME_START_NOTICE =
-  '\uAC8C\uC784 \uC2DC\uC791! \uC21C\uC11C\uB97C \uC815\uD588\uC2B5\uB2C8\uB2E4.'
+const GAME_CHAT_TITLE = '실시간 채팅'
+const GAME_START_NOTICE = '게임 시작! 순서를 정했습니다.'
 const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
-const DEFAULT_MOCK_NICKNAME = '\uD50C\uB808\uC774\uC5B4 1'
+const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
 
 const toStoreBuildingLevel = (level: number): BuildingLevel =>
   Math.min(Math.max(level, 0), 5) as BuildingLevel
 
-const mapStorePlayersToBoardPlayers = (
-  storePlayers: Array<{
-    nickname: string
-    position: number
-    balance: number
-    color?: string
-  }>
-) =>
-  INIT_PLAYERS.map((initialPlayer, index) => {
-    const storePlayer = storePlayers[index]
-    if (!storePlayer) {
-      return initialPlayer
-    }
-
-    return {
-      ...initialPlayer,
-      name: storePlayer.nickname || initialPlayer.name,
-      color: storePlayer.color || initialPlayer.color,
-      pos: storePlayer.position,
-      money: storePlayer.balance,
-    }
-  })
-
-// 채팅 이벤트 payload를 게임 채팅 메시지 모델로 정규화
 function mapGameChatEventToMessage(payload: ChatEventPayload): ChatMessage {
   return {
     id: `${payload.room_id}-${payload.sender_id}-${payload.sent_at}`,
@@ -78,7 +58,6 @@ const GamePage: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>()
   const location = useLocation()
   const locationState = location.state as GamePageLocationState | null
-  // URL은 gameId를 사용하고, room API 호출에는 전달받은 roomId를 우선 사용
   const activeRoomId = locationState?.roomId ?? gameId ?? null
   const session = useAuthStore((state) => state.session)
   const {
@@ -97,10 +76,6 @@ const GamePage: React.FC = () => {
     resetSignal: turnTimerKey,
   })
   const boardRef = useRef<BoardGameHandle>(null)
-  const hasHydratedMockBoardRef = useRef(false)
-
-  const [boardPlayers, setBoardPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
-  const [boardCurPlayer, setBoardCurPlayer] = useState(0)
 
   useGameState(activeRoomId)
 
@@ -116,6 +91,18 @@ const GamePage: React.FC = () => {
       ? currentUserId
       : currentTurn
 
+  const boardPlayers = useMemo(
+    () => mapStorePlayersToBoardPlayers(storePlayers),
+    [storePlayers]
+  )
+  const boardCurPlayer = useMemo(
+    () => findBoardCurrentPlayerIndex(storePlayers, normalizedCurrentTurn),
+    [normalizedCurrentTurn, storePlayers]
+  )
+  const normalizedTilesForBoard = useMemo(
+    () => mapStoreTilesToBoardTiles(storeTiles, storePlayers, boardPlayers),
+    [boardPlayers, storePlayers, storeTiles]
+  )
   const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
   const isMyTurn = USE_GAME_SOCKET_MOCK
     ? ALLOW_ALL_MOCK_TURNS || boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
@@ -123,14 +110,12 @@ const GamePage: React.FC = () => {
       ? true
       : isMyTurnFromStore
 
-  // 게임 채팅 이벤트를 구독해 메시지 목록을 실시간으로 동기화
   useEffect(() => {
     if (!activeRoomId) {
       return
     }
 
     const handleChat = (payload: ChatEventPayload) => {
-      // 다른 방 채팅 이벤트는 무시
       if (payload.room_id !== activeRoomId) {
         return
       }
@@ -141,7 +126,6 @@ const GamePage: React.FC = () => {
         (message) => message.id === nextMessage.id
       )
 
-      // 동일 메시지 중복 반영 방지
       if (hasSameMessage) {
         return
       }
@@ -157,7 +141,6 @@ const GamePage: React.FC = () => {
   }, [activeRoomId])
 
   const handleSendMessage = (content: string) => {
-    // roomId가 없으면 채팅 전송을 생략
     if (!activeRoomId) {
       return
     }
@@ -173,8 +156,6 @@ const GamePage: React.FC = () => {
   const diceRoll = useDiceRoll(boardRef)
 
   const handlePlayersChange = (updated: PlayerState[]) => {
-    setBoardPlayers(updated)
-
     if (!USE_GAME_SOCKET_MOCK || storePlayers.length === 0) {
       return
     }
@@ -200,8 +181,6 @@ const GamePage: React.FC = () => {
   }
 
   const handleCurPlayerChange = (idx: number) => {
-    setBoardCurPlayer(idx)
-
     if (!USE_GAME_SOCKET_MOCK) {
       return
     }
@@ -267,79 +246,18 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const normalizedTilesForBoard = useMemo(() => {
-    if (storeTiles.length === 0) {
-      return storeTiles
-    }
-
-    return storeTiles.map((tile) => {
-      if (!tile.owner_id) {
-        return tile
-      }
-
-      const ownerStoreIndex = storePlayers.findIndex(
-        (player) => String(player.id) === String(tile.owner_id)
-      )
-
-      if (ownerStoreIndex < 0) {
-        return tile
-      }
-
-      const boardOwner = boardPlayers[ownerStoreIndex]
-      if (!boardOwner) {
-        return tile
-      }
-
-      return {
-        ...tile,
-        owner_id: boardOwner.id,
-      }
-    })
-  }, [boardPlayers, storePlayers, storeTiles])
-
-  useEffect(() => {
-    hasHydratedMockBoardRef.current = false
-  }, [activeRoomId])
-
-  useEffect(() => {
-    if (storePlayers.length === 0) {
-      return
-    }
-
-    const shouldHydrateBoardPlayers =
-      !USE_GAME_SOCKET_MOCK || !hasHydratedMockBoardRef.current
-
-    if (shouldHydrateBoardPlayers) {
-      setBoardPlayers(mapStorePlayersToBoardPlayers(storePlayers))
-
-      if (USE_GAME_SOCKET_MOCK) {
-        hasHydratedMockBoardRef.current = true
-      }
-    }
-
-    if (!normalizedCurrentTurn) {
-      return
-    }
-
-    const nextTurnIndex = storePlayers.findIndex(
-      (player) => player.id === normalizedCurrentTurn
-    )
-
-    if (nextTurnIndex >= 0) {
-      setBoardCurPlayer(nextTurnIndex)
-    }
-  }, [normalizedCurrentTurn, storePlayers])
-
-  const maxMoney = Math.max(...boardPlayers.map((p) => p.money))
+  const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt = currentPlayerState?.money <= 0
   const isCurrentPlayerSkipped = (currentPlayerState?.skipTurns ?? 0) > 0
-  const roomChatSenderOptions = useMemo(() => {
-    return storePlayers.map((player) => ({
-      id: String(player.id),
-      nickname: player.nickname,
-    }))
-  }, [storePlayers])
+  const roomChatSenderOptions = useMemo(
+    () =>
+      storePlayers.map((player) => ({
+        id: String(player.id),
+        nickname: player.nickname,
+      })),
+    [storePlayers]
+  )
   const currentUserIdForChat =
     currentUserId == null ? undefined : String(currentUserId)
   const preferredRoomChatSenderId =
@@ -390,27 +308,30 @@ const GamePage: React.FC = () => {
 
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {boardPlayers
-            .map((bp, idx) => ({ ...bp, originalIndex: idx }))
-            .sort((a, b) => {
-              const aBankrupt = a.money <= 0 ? 1 : 0
-              const bBankrupt = b.money <= 0 ? 1 : 0
-              if (aBankrupt !== bBankrupt) return aBankrupt - bBankrupt
-              return a.originalIndex - b.originalIndex
+            .map((player, index) => ({ ...player, originalIndex: index }))
+            .sort((left, right) => {
+              const leftBankrupt = left.money <= 0 ? 1 : 0
+              const rightBankrupt = right.money <= 0 ? 1 : 0
+              if (leftBankrupt !== rightBankrupt) {
+                return leftBankrupt - rightBankrupt
+              }
+
+              return left.originalIndex - right.originalIndex
             })
-            .map((bp) => (
+            .map((player) => (
               <PlayerPanel
-                key={bp.id}
+                key={player.id}
                 player={{
-                  id: String(bp.id),
-                  name: bp.name ?? `Player ${bp.id + 1}`,
-                  nickname: bp.name ?? `Player ${bp.id + 1}`,
-                  color: bp.color,
-                  money: bp.money,
-                  totalAssets: bp.money,
+                  id: String(player.id),
+                  name: player.name ?? `Player ${player.id + 1}`,
+                  nickname: player.name ?? `Player ${player.id + 1}`,
+                  color: player.color,
+                  money: player.money,
+                  totalAssets: player.money,
                 }}
-                isActive={bp.originalIndex === boardCurPlayer}
-                isRichest={bp.money > 0 && bp.money === maxMoney}
-                isBankrupt={bp.money <= 0}
+                isActive={player.originalIndex === boardCurPlayer}
+                isRichest={player.money > 0 && player.money === maxMoney}
+                isBankrupt={player.money <= 0}
               />
             ))}
         </div>
