@@ -16,15 +16,31 @@ interface Player {
 interface PlayerPanelProps {
   player: Player
   isActive: boolean
+  timeLeft?: number
 }
 
-const PlayerPanel: React.FC<PlayerPanelProps> = ({ player, isActive }) => {
+const PlayerPanel: React.FC<PlayerPanelProps> = ({
+  player,
+  isActive,
+  timeLeft = 0,
+}) => {
+  const isUrgent = isActive && timeLeft <= 10 && timeLeft > 0
+
   return (
     <div
       style={{
-        border: isActive ? '2.5px solid #3B82F6' : '2.5px solid transparent',
-        boxShadow: isActive ? '0 0 0 3px rgba(147,197,253,0.5)' : 'none',
+        border: isActive
+          ? isUrgent
+            ? '2.5px solid #EF5350'
+            : '2.5px solid #3B82F6'
+          : '2.5px solid transparent',
+        boxShadow: isActive
+          ? isUrgent
+            ? '0 0 10px rgba(239, 83, 80, 0.5)'
+            : '0 0 0 3px rgba(147,197,253,0.5)'
+          : 'none',
         borderRadius: 20,
+
         transition: 'border 0.2s ease, box-shadow 0.2s ease',
       }}
       className="relative rounded-[20px] bg-white px-5 py-4 shadow-sm"

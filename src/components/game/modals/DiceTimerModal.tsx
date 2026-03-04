@@ -31,7 +31,7 @@ const DiceIcon: React.FC = () => {
         {renderPip('right-3.5 top-1/2 -translate-y-1/2', '#EF5350')}
       </div>
 
-      <div className="absolute right-0 top-1 h-18 w-18 rotate-[18deg] rounded-[28px] bg-[linear-gradient(145deg,#FCFCFC_0%,#DCDCDC_100%)] shadow-[0_12px_20px_rgba(0,0,0,0.16)]">
+      <div className="absolute right-0 top-1 h-18 w-18 rotate-18deg rounded-[28px] bg-[linear-gradient(145deg,#FCFCFC_0%,#DCDCDC_100%)] shadow-[0_12px_20px_rgba(0,0,0,0.16)]">
         {renderPip('left-3.5 top-3.5', '#EF5350')}
         {renderPip('left-3.5 bottom-3.5')}
         {renderPip('right-3.5 top-3.5')}
