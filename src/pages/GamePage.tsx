@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useParams } from 'react-router-dom'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import RoomChat from '../features/room-chat/RoomChat'
 import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
@@ -69,8 +69,17 @@ function mapGameChatEventToMessage(payload: ChatEventPayload): ChatMessage {
   }
 }
 
+interface GamePageLocationState {
+  roomId?: string
+  gameId?: string
+}
+
 const GamePage: React.FC = () => {
-  const { roomId } = useParams<{ roomId: string }>()
+  const { gameId } = useParams<{ gameId: string }>()
+  const location = useLocation()
+  const locationState = location.state as GamePageLocationState | null
+  // URL은 gameId를 사용하고, room API 호출에는 전달받은 roomId를 우선 사용
+  const activeRoomId = locationState?.roomId ?? gameId ?? null
   const session = useAuthStore((state) => state.session)
   const {
     currentTurn,
@@ -93,7 +102,7 @@ const GamePage: React.FC = () => {
   const [boardPlayers, setBoardPlayers] = useState<PlayerState[]>(INIT_PLAYERS)
   const [boardCurPlayer, setBoardCurPlayer] = useState(0)
 
-  useGameState(roomId ?? null)
+  useGameState(activeRoomId)
 
   const currentUserId =
     session?.userId ?? (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_PLAYER_ID : null)
@@ -116,13 +125,13 @@ const GamePage: React.FC = () => {
 
   // 게임 채팅 이벤트를 구독해 메시지 목록을 실시간으로 동기화
   useEffect(() => {
-    if (!roomId) {
+    if (!activeRoomId) {
       return
     }
 
     const handleChat = (payload: ChatEventPayload) => {
       // 다른 방 채팅 이벤트는 무시
-      if (payload.room_id !== roomId) {
+      if (payload.room_id !== activeRoomId) {
         return
       }
 
@@ -145,16 +154,16 @@ const GamePage: React.FC = () => {
     return () => {
       socket.off('chat', handleChat)
     }
-  }, [roomId])
+  }, [activeRoomId])
 
   const handleSendMessage = (content: string) => {
     // roomId가 없으면 채팅 전송을 생략
-    if (!roomId) {
+    if (!activeRoomId) {
       return
     }
 
     sendWaitingRoomChat({
-      roomId,
+      roomId: activeRoomId,
       senderId: currentUserId ?? DEFAULT_GUEST_ID,
       senderNickname: currentNickname,
       message: content,
@@ -290,7 +299,7 @@ const GamePage: React.FC = () => {
 
   useEffect(() => {
     hasHydratedMockBoardRef.current = false
-  }, [roomId])
+  }, [activeRoomId])
 
   useEffect(() => {
     if (storePlayers.length === 0) {
@@ -365,7 +374,7 @@ const GamePage: React.FC = () => {
           >
             <BoardGame
               ref={boardRef}
-              roomId={roomId ?? ''}
+              roomId={activeRoomId ?? ''}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
               tiles={normalizedTilesForBoard}
@@ -410,13 +419,13 @@ const GamePage: React.FC = () => {
           <RollButton
             timeLeft={timeLeft}
             isMyTurn={isMyTurn}
-            onRoll={() => diceRoll(roomId ?? null)}
+            onRoll={() => diceRoll(activeRoomId)}
           />
         )}
       </div>
 
       <DevRoomChatControlPanel
-        roomId={roomId ?? ''}
+        roomId={activeRoomId ?? ''}
         senderOptions={roomChatSenderOptions}
         preferredSenderId={preferredRoomChatSenderId}
       />
