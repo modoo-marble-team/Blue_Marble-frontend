@@ -1,20 +1,13 @@
 import { expect, test } from '@playwright/test'
+import { ensureDevControlPanelOpen } from './helpers/devPanel'
+import { loginAsGuest, resetSessionAndOpenHome } from './helpers/session'
 
 test.describe('대기방 시작 플로우', () => {
   test('게스트 로그인 후 방 생성 -> 시작조건 충족 -> 게임 화면 이동', async ({
     page,
   }) => {
-    await page.goto('/')
-
-    // 이전 실행 세션이 남아 있으면 홈 진입이 달라질 수 있어 초기화
-    await page.evaluate(() => {
-      window.localStorage.clear()
-      window.sessionStorage.clear()
-    })
-    await page.reload()
-
-    await page.getByRole('button', { name: '게스트로 시작' }).click()
-    await expect(page).toHaveURL(/\/lobby$/)
+    await resetSessionAndOpenHome(page)
+    await loginAsGuest(page)
 
     await page.getByRole('button', { name: '방 만들기' }).click()
     await expect(page.getByRole('dialog', { name: '방 만들기' })).toBeVisible()
@@ -33,7 +26,7 @@ test.describe('대기방 시작 플로우', () => {
     await page.getByPlaceholder('메시지 입력...').press('Enter')
     await expect(page.getByText('E2E 채팅 메시지')).toBeVisible()
 
-    await page.getByRole('button', { name: 'DEV CONTROL 열기' }).click()
+    await ensureDevControlPanelOpen(page)
     await page.getByRole('button', { name: '시작조건' }).click()
     await expect(startButton).toBeEnabled()
 
