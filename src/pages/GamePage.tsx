@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from 'react'
 import { Settings } from 'lucide-react'
 import { useLocation, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
-import type { PlayerState } from '../components/board/board.constants'
 import RollButton from '../components/game/controls/RollButton'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
@@ -15,7 +14,7 @@ import { useGameTimer } from '../hooks/game/useGameTimer'
 import { useTurn } from '../hooks/game/useTurn'
 import { socket } from '../lib/socket'
 import { useGameStore } from '../stores/game.store'
-import type { BuildingLevel, ChatMessage } from '../types/domain'
+import type { ChatMessage } from '../types/domain'
 import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
@@ -34,9 +33,6 @@ const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
-
-const toStoreBuildingLevel = (level: number): BuildingLevel =>
-  Math.min(Math.max(level, 0), 5) as BuildingLevel
 
 function mapGameChatEventToMessage(payload: ChatEventPayload): ChatMessage {
   return {
@@ -67,9 +63,6 @@ const GamePage: React.FC = () => {
     turnTimerKey,
     players: storePlayers,
     tiles: storeTiles,
-    setGameState,
-    setCurrentTurn,
-    updatePlayer,
   } = useGameStore()
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
@@ -155,97 +148,6 @@ const GamePage: React.FC = () => {
 
   const diceRoll = useDiceRoll(boardRef)
 
-  const handlePlayersChange = (updated: PlayerState[]) => {
-    if (!USE_GAME_SOCKET_MOCK || storePlayers.length === 0) {
-      return
-    }
-
-    setGameState({
-      players: updated.map((player, index) => {
-        const storePlayer = storePlayers[index]
-
-        return {
-          id: storePlayer?.id ?? String(player.id),
-          nickname: player.name,
-          position: player.pos,
-          balance: player.money,
-          owned_tiles: storePlayer?.owned_tiles ?? [],
-          is_in_jail: storePlayer?.is_in_jail ?? false,
-          jail_turn_count: storePlayer?.jail_turn_count ?? 0,
-          is_bankrupt: storePlayer?.is_bankrupt ?? false,
-          color: player.color,
-          avatar: storePlayer?.avatar,
-        }
-      }),
-    })
-  }
-
-  const handleCurPlayerChange = (idx: number) => {
-    if (!USE_GAME_SOCKET_MOCK) {
-      return
-    }
-
-    const nextTurnPlayer = storePlayers[idx]
-    if (nextTurnPlayer) {
-      setCurrentTurn(nextTurnPlayer.id)
-    }
-  }
-
-  const handleBankrupt = (playerIdx: number) => {
-    if (!USE_GAME_SOCKET_MOCK) {
-      return
-    }
-
-    const bankruptPlayer = storePlayers[playerIdx]
-    if (!bankruptPlayer) {
-      return
-    }
-
-    updatePlayer(bankruptPlayer.id, { is_bankrupt: true })
-  }
-
-  const handleTileOwnersChange = (
-    nextTileOwners: Record<
-      number,
-      {
-        ownerId: number
-        level: number
-      }
-    >
-  ) => {
-    if (!USE_GAME_SOCKET_MOCK || storeTiles.length === 0) {
-      return
-    }
-
-    setGameState({
-      tiles: storeTiles.map((tile) => {
-        const owner = nextTileOwners[tile.index]
-        if (!owner) {
-          return {
-            ...tile,
-            owner_id: null,
-            building: 0 as BuildingLevel,
-          }
-        }
-
-        const ownerBoardIndex = boardPlayers.findIndex(
-          (player) => player.id === owner.ownerId
-        )
-        const ownerPlayer =
-          (ownerBoardIndex >= 0 ? storePlayers[ownerBoardIndex] : undefined) ??
-          storePlayers.find(
-            (player) => String(player.id) === String(owner.ownerId)
-          )
-
-        return {
-          ...tile,
-          owner_id: ownerPlayer?.id ?? String(owner.ownerId),
-          building: toStoreBuildingLevel(owner.level - 1),
-        }
-      }),
-    })
-  }
-
   const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt = currentPlayerState?.money <= 0
@@ -298,10 +200,6 @@ const GamePage: React.FC = () => {
               players={boardPlayers}
               curPlayer={boardCurPlayer}
               tiles={normalizedTilesForBoard}
-              onPlayersChange={handlePlayersChange}
-              onCurPlayerChange={handleCurPlayerChange}
-              onTileOwnersChange={handleTileOwnersChange}
-              onBankrupt={handleBankrupt}
             />
           </div>
         </div>
