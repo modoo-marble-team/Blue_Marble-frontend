@@ -2,6 +2,7 @@ import {
   useRef,
   useState,
   useEffect,
+  useMemo,
   forwardRef,
   useImperativeHandle,
 } from 'react'
@@ -238,6 +239,51 @@ type SyncStatePayload = {
   currentTurn?: string | number | null
 }
 
+function toBoardBuildingLevel(
+  tile: { building?: number; level?: number },
+  hasOwner: boolean
+) {
+  if (!hasOwner) return 0 as BuildingLevel
+  if (typeof tile.level === 'number') {
+    return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
+  }
+  const buildingLevel = typeof tile.building === 'number' ? tile.building : 0
+  return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
+}
+
+function buildTileOwnersFromProps(
+  tiles: Array<{
+    index: number
+    owner_id?: string | number | null
+    building: number
+  }>,
+  players: PlayerState[]
+) {
+  const nextOwners: Record<number, TileOwner> = {}
+
+  tiles.forEach((tile) => {
+    if (!tile.owner_id) {
+      return
+    }
+
+    const ownerPlayer = players.find(
+      (player) => String(player.id) === String(tile.owner_id)
+    )
+
+    if (!ownerPlayer) {
+      return
+    }
+
+    nextOwners[tile.index] = {
+      ownerId: ownerPlayer.id,
+      ownerColor: ownerPlayer.color,
+      level: toBoardBuildingLevel(tile, true),
+    }
+  })
+
+  return nextOwners
+}
+
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     {
@@ -264,41 +310,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     playersRef.current = players
 
     const bankruptSetRef = useRef<Set<number>>(new Set())
-    const [tileOwners, setTileOwners] = useState<Record<number, TileOwner>>({})
-    const tileOwnersRef = useRef<Record<number, TileOwner>>({})
+    const [optimisticTileOwners, setOptimisticTileOwners] = useState<Record<
+      number,
+      TileOwner
+    > | null>(null)
+    const derivedTileOwners = useMemo(
+      () => buildTileOwnersFromProps(tiles, players),
+      [tiles, players]
+    )
+    const tileOwners =
+      optimisticTileOwners === null ? derivedTileOwners : optimisticTileOwners
+    const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
 
     useEffect(() => {
-      if (tiles.length === 0) {
-        tileOwnersRef.current = {}
-        setTileOwners({})
-        return
-      }
-
-      const nextOwners: Record<number, TileOwner> = {}
-
-      tiles.forEach((tile) => {
-        if (!tile.owner_id) {
-          return
-        }
-
-        const ownerPlayer = playersRef.current.find(
-          (player) => String(player.id) === String(tile.owner_id)
-        )
-
-        if (!ownerPlayer) {
-          return
-        }
-
-        nextOwners[tile.index] = {
-          ownerId: ownerPlayer.id,
-          ownerColor: ownerPlayer.color,
-          level: toBoardBuildingLevel(tile, true),
-        }
-      })
-
-      tileOwnersRef.current = nextOwners
-      setTileOwners(nextOwners)
-    }, [tiles])
+      setOptimisticTileOwners(null)
+      tileOwnersRef.current = derivedTileOwners
+    }, [derivedTileOwners])
 
     function getPlayerIdByIndex(playerIdx: number) {
       return playersRef.current[playerIdx]?.id ?? playerIdx
@@ -313,19 +340,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function getPlayerIndexById(playerId: number) {
       return playersRef.current.findIndex((player) => player.id === playerId)
-    }
-
-    function toBoardBuildingLevel(
-      tile: { building?: number; level?: number },
-      hasOwner: boolean
-    ) {
-      if (!hasOwner) return 0 as BuildingLevel
-      if (typeof tile.level === 'number') {
-        return Math.min(Math.max(tile.level, 1), 5) as BuildingLevel
-      }
-      const buildingLevel =
-        typeof tile.building === 'number' ? tile.building : 0
-      return Math.min(Math.max(buildingLevel + 1, 1), 5) as BuildingLevel
     }
 
     async function syncBoardStateFromServer() {
@@ -424,7 +438,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         })
 
         tileOwnersRef.current = nextOwners
-        setTileOwners(nextOwners)
+        setOptimisticTileOwners(nextOwners)
         onTileOwnersChange?.(nextOwners)
       }
 
@@ -479,7 +493,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     ) {
       const next = updater(tileOwnersRef.current)
       tileOwnersRef.current = next
-      setTileOwners(next)
+      setOptimisticTileOwners(next)
 
       if (options?.notifyParent) {
         onTileOwnersChange?.(next)
