@@ -1,8 +1,37 @@
 #!/usr/bin/env sh
+echo "push 전 lint 검증을 시작합니다..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "lint 실패. 오류를 수정한 후 다시 push 해주세요."
+  exit 1
+fi
+
+echo "push 전 unit/integration 테스트 검증을 시작합니다..."
+npm run test
+if [ $? -ne 0 ]; then
+  echo "test 실패. 오류를 수정한 후 다시 push 해주세요."
+  exit 1
+fi
+
+echo "push 전 커버리지 검증을 시작합니다..."
+npm run test:coverage
+if [ $? -ne 0 ]; then
+  echo "coverage 실패. 오류를 수정한 후 다시 push 해주세요."
+  exit 1
+fi
+
+echo "push 전 E2E 검증을 시작합니다..."
+npm run e2e
+if [ $? -ne 0 ]; then
+  echo "e2e 실패. 오류를 수정한 후 다시 push 해주세요."
+  exit 1
+fi
+
 echo "push 전 빌드 검증을 시작합니다..."
 npm run build
 if [ $? -ne 0 ]; then
-  echo "빌드 오류가 발생했습니다. 코드를 수정한 후 다시 push 해주세요."
+  echo "build 실패. 오류를 수정한 후 다시 push 해주세요."
   exit 1
 fi
-echo "빌드 검증 완료. push를 진행합니다."
+
+echo "모든 pre-push 검증 통과. push를 진행합니다."
