@@ -36,6 +36,10 @@ import {
   syncMockStorePlayers,
   syncMockStoreTileOwners,
 } from './gameBoardStoreBridge'
+import {
+  getBoardSellFallbackRefund,
+  toBoardActionErrorMessage,
+} from './gameBoardActionUtils'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
@@ -773,30 +777,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 70)
     }
 
-    function toActionErrorMessage(statusCode: number) {
-      if (statusCode === 401)
-        return '\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.'
-      if (statusCode === 403)
-        return '\uD604\uC7AC \uD134\uC5D0\uB294 \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-      if (statusCode === 404)
-        return '\uB300\uC0C1\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-      if (statusCode === 409)
-        return '\uC870\uAC74\uC774 \uB9DE\uC9C0 \uC54A\uC544 \uCC98\uB9AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-      return '\uC694\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.'
-    }
-
-    function getSellFallbackRefund(tileId: number, level: BuildingLevel) {
-      // calculate how much to refund when the server sync fails
-      // start with purchase price plus each upgrade cost up to current level
-      const basePrice = TILES[tileId]?.price ?? 0
-      if (level <= 0 || basePrice === 0) return 0
-      let refund = basePrice
-      for (let l = 1; l < level; l++) {
-        refund += getUpgradeCost(basePrice, l as BuildingLevel)
-      }
-      return refund
-    }
-
     async function sellOwnedTileForPlayer(playerIdx: number) {
       const playerId = getPlayerIdByIndex(playerIdx)
       const ownedTileEntries = Object.entries(tileOwnersRef.current)
@@ -815,7 +795,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       })
 
       if (!sellResult.ok) {
-        setStatus(toActionErrorMessage(sellResult.status))
+        setStatus(toBoardActionErrorMessage(sellResult.status))
         return false
       }
 
@@ -829,7 +809,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           },
           { notifyParent: true }
         )
-        applyMoney(playerIdx, +getSellFallbackRefund(tileId, owner.level))
+        applyMoney(playerIdx, +getBoardSellFallbackRefund(tileId, owner.level))
       }
 
       return true
@@ -849,7 +829,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const actionResult = await gameApi.buyTile(roomId, { tile_index: tileId })
       if (!actionResult.ok) {
-        setStatus(toActionErrorMessage(actionResult.status))
+        setStatus(toBoardActionErrorMessage(actionResult.status))
         return
       }
 
@@ -897,7 +877,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         tile_index: tileId,
       })
       if (!actionResult.ok) {
-        setStatus(toActionErrorMessage(actionResult.status))
+        setStatus(toBoardActionErrorMessage(actionResult.status))
         return
       }
 
