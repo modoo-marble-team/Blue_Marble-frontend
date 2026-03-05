@@ -1,6 +1,9 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
-import { getMockOnlineUsersSnapshot } from './mockData'
+import {
+  getMockOnlineUsersSnapshot,
+  subscribeMockOnlineUsersChange,
+} from './mockData'
 import type { OnlineUserPayload, OnlineUsersEventPayload } from './types'
 
 // 접속자 목록 소켓 이벤트 이름
@@ -39,11 +42,16 @@ export function emitMockOnlineUsersSnapshot() {
 export function startOnlineUsersMockBroadcast() {
   emitMockOnlineUsersSnapshot()
 
+  const unsubscribe = subscribeMockOnlineUsersChange((users) => {
+    emitOnlineUsersMock(users)
+  })
+
   const intervalId = setInterval(() => {
     emitMockOnlineUsersSnapshot()
   }, SOCKET_MOCK_INTERVAL_MS)
 
   return () => {
+    unsubscribe()
     clearInterval(intervalId)
   }
 }
