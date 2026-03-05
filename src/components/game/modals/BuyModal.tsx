@@ -8,12 +8,17 @@ interface BuyModalProps {
   purchaseCostText?: string
   isUpgrade?: boolean
   currentLevel?: number
+  passLabel?: string
+  buyLabel?: string
+  isSubmitting?: boolean
   onPass?: () => void
   onBuy?: () => void
 }
 
 const DEFAULT_CITY_NAME = '대구'
 const DEFAULT_PURCHASE_COST_TEXT = '6칸'
+const DEFAULT_PASS_LABEL = '패스'
+const DEFAULT_BUY_LABEL = '구매하기'
 
 const BuyModal: React.FC<BuyModalProps> = ({
   open,
@@ -21,6 +26,9 @@ const BuyModal: React.FC<BuyModalProps> = ({
   purchaseCostText = DEFAULT_PURCHASE_COST_TEXT,
   isUpgrade = false,
   currentLevel = 0,
+  passLabel = DEFAULT_PASS_LABEL,
+  buyLabel = DEFAULT_BUY_LABEL,
+  isSubmitting = false,
   onPass,
   onBuy,
 }) => {
@@ -65,18 +73,19 @@ const BuyModal: React.FC<BuyModalProps> = ({
           <button
             type="button"
             onClick={onPass}
-            className="h-18.5 w-39.5 rounded-[22px] bg-[#E6EBF3] text-[34px] font-black tracking-tight text-[#5E708D] transition-colors hover:bg-[#DDE4EE]"
+            disabled={isSubmitting}
+            className="h-18.5 w-39.5 rounded-[22px] bg-[#E6EBF3] text-[34px] font-black tracking-tight text-[#5E708D] transition-colors hover:bg-[#DDE4EE] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            패스
+            {passLabel}
           </button>
 
           <button
             type="button"
             onClick={onBuy}
-            disabled={isUpgrade && !canUpgrade}
-            className="h-18.5 w-46.5 rounded-[22px] bg-[#245FE5] text-[34px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1] disabled:opacity-40"
+            disabled={isSubmitting || (isUpgrade && !canUpgrade)}
+            className="h-18.5 w-46.5 rounded-[22px] bg-[#245FE5] text-[34px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {isUpgrade ? '업그레이드' : '구매하기'}
+            {isUpgrade ? '업그레이드' : buyLabel}
           </button>
         </div>
       </div>
