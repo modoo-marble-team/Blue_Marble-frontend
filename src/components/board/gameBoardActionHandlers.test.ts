@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import { gameApi } from '../../services/game/game.api'
-import type { PlayerState, TileOwner } from './board.constants'
+import type { BuildingLevel, PlayerState, TileOwner } from './board.constants'
 
 vi.mock('../../services/socket/game.handler', () => ({
   emitGameAction: vi.fn(),
@@ -53,7 +53,7 @@ describe('createGameBoardActionHandlers', () => {
       getPlayerIdByIndex: vi.fn((idx: number) => idx),
       getPlayerColorByIndex: vi.fn(() => '#EF5350'),
       getPlayerIndexById: vi.fn((id: number) => id),
-      toBoardBuildingLevel: vi.fn(() => 0),
+      toBoardBuildingLevel: vi.fn(() => 0 as BuildingLevel),
       getPurchaseCost: vi.fn(() => 100),
       getUpgradeCost: vi.fn(() => 50),
       calcToll: vi.fn(() => 100),
