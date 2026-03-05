@@ -1,0 +1,26 @@
+{
+  "sourceFile": "src/components/game/modals/BuyModal.tsx",
+  "activeCommit": 0,
+  "commits": [
+    {
+      "activePatchIndex": 2,
+      "patches": [
+        {
+          "date": 1772685036359,
+          "content": "Index: \n===================================================================\n--- \n+++ \n"
+        },
+        {
+          "date": 1772685042092,
+          "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,8 +1,8 @@\n import React from 'react'\n \n const LEVEL_LABEL: Record<number, string> = {\n-  0: 'chwl',\n+  0: '토지',\n   1: '집 1채',\n   2: '집 2채',\n   3: '집 3채',\n   4: '호텔',\n"
+        },
+        {
+          "date": 1772685049576,
+          "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,12 +1,12 @@\n import React from 'react'\n \n const LEVEL_LABEL: Record<number, string> = {\n   0: '토지',\n-  1: '집 1채',\n-  2: '집 2채',\n-  3: '집 3채',\n-  4: '호텔',\n+  1: '집 x1',\n+  2: '집 x2',\n+  3: '집 x3',\n+  4: '호텔 ',\n   5: '랜드마크',\n }\n \n interface BuyModalProps {\n"
+        }
+      ],
+      "date": 1772685036359,
+      "name": "Commit-0",
+      "content": "import React from 'react'\n\nconst LEVEL_LABEL: Record<number, string> = {\n  0: 'chwl',\n  1: '집 1채',\n  2: '집 2채',\n  3: '집 3채',\n  4: '호텔',\n  5: '랜드마크',\n}\n\ninterface BuyModalProps {\n  open: boolean\n  cityName?: string\n  purchaseCostText?: string\n  isUpgrade?: boolean\n  currentLevel?: number\n  onPass?: () => void\n  onBuy?: () => void\n}\n\nconst DEFAULT_CITY_NAME = '대구'\nconst DEFAULT_PURCHASE_COST_TEXT = '6칸'\n\nconst BuyModal: React.FC<BuyModalProps> = ({\n  open,\n  cityName = DEFAULT_CITY_NAME,\n  purchaseCostText = DEFAULT_PURCHASE_COST_TEXT,\n  isUpgrade = false,\n  currentLevel = 0,\n  onPass,\n  onBuy,\n}) => {\n  if (!open) {\n    return null\n  }\n\n  const nextLevel = Math.min(currentLevel + 1, 5)\n  const canUpgrade = currentLevel < 5\n\n  return (\n    <div className=\"fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm\">\n      <div className=\"w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-11 shadow-2xl\">\n        <div className=\"mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF] text-[44px]\">\n          <span role=\"img\" aria-label=\"도시\">\n            🏠\n          </span>\n        </div>\n\n        <h2 className=\"mb-4 text-center text-[54px] font-black tracking-tight text-[#1F2A44]\">\n          {isUpgrade ? '도시 업그레이드' : '도시 구매'}\n        </h2>\n\n        <p className=\"text-center text-[36px] font-extrabold leading-[1.3] text-[#5A6D8A] mb-10 mt-4\">\n          <span className=\"text-[#245FE5]\">{cityName}</span>{' '}\n          <span>({purchaseCostText})을(를)</span>\n          <br />\n          {isUpgrade ? (\n            <span>\n              {LEVEL_LABEL[currentLevel]} →{' '}\n              <span className=\"text-[#245FE5]\">{LEVEL_LABEL[nextLevel]}</span>\n              {!canUpgrade && (\n                <span className=\"text-[#EF5350]\"> (최대 레벨)</span>\n              )}\n            </span>\n          ) : (\n            <span>구매하시겠습니까?</span>\n          )}\n        </p>\n\n        <div className=\"flex items-center justify-center gap-4\">\n          <button\n            type=\"button\"\n            onClick={onPass}\n            className=\"h-18.5 w-39.5 rounded-[22px] bg-[#E6EBF3] text-[34px] font-black tracking-tight text-[#5E708D] transition-colors hover:bg-[#DDE4EE]\"\n          >\n            패스\n          </button>\n\n          <button\n            type=\"button\"\n            onClick={onBuy}\n            disabled={isUpgrade && !canUpgrade}\n            className=\"h-18.5 w-46.5 rounded-[22px] bg-[#245FE5] text-[34px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1] disabled:opacity-40\"\n          >\n            {isUpgrade ? '업그레이드' : '구매하기'}\n          </button>\n        </div>\n      </div>\n    </div>\n  )\n}\n\nexport default BuyModal\n"
+    }
+  ]
+}

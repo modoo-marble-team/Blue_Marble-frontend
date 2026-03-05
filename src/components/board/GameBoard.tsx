@@ -14,6 +14,7 @@ import TollModal from '../game/modals/TollModal'
 import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import DiceTimerModal from '../game/modals/DiceTimerModal'
+import GameResultModal from '../game/modals/GameResultModal'
 
 import {
   TILES,
@@ -46,6 +47,7 @@ import type {
   BuyModalState,
   CardModalState,
   TollModalState,
+  GameResultModalState,
 } from './gameBoard.types'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
@@ -86,12 +88,6 @@ const AI_PENALTY_RESULTS = [
 const DEFAULT_OPPONENT_NAME = '상대방'
 const GAME_START_STATUS = '게임 시작!'
 const ROOM_ID_REQUIRED_MESSAGE = '게임 방 식별자를 찾을 수 없습니다.'
-
-function getUpgradeStage(
-  level: BuildingLevel
-): 'building-to-hotel' | 'hotel-to-landmark' {
-  return level < 6 ? 'building-to-hotel' : 'hotel-to-landmark'
-}
 
 const DOTS: Record<number, [number, number][]> = {
   1: [[50, 50]],
@@ -341,7 +337,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     })
     const [cardModal, setCardModal] = useState<CardModalState>({
       open: false,
-      variant: 'event',
+      variant: 'EVENT',
     })
     const [tollModal, setTollModal] = useState<TollModalState>({
       open: false,
@@ -358,6 +354,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       playerIdx: -1,
       playerName: '',
     })
+    const [gameResultModal, setGameResultModal] =
+      useState<GameResultModalState>({
+        open: false,
+      })
 
     function updateTileOwners(
       updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>,
@@ -464,6 +464,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn,
     })
 
+    function getPlayerResults() {
+      const allPlayers = playersRef.current
+      const owners = tileOwnersRef.current
+
+      const results = allPlayers.map((p, idx) => {
+        let propertyValue = 0
+        let cityCount = 0
+        Object.entries(owners).forEach(([tileId, owner]) => {
+          if (String(owner.ownerId) === String(p.id)) {
+            const tile = TILES[Number(tileId)]
+            propertyValue += tile.price ?? 0
+            cityCount++
+          }
+        })
+
+        return {
+          id: String(p.id),
+          nickname: p.name || `Player ${idx + 1}`,
+          money: p.money,
+          totalAsset: p.money + propertyValue,
+          ownedCityCount: cityCount,
+          isBankrupt: bankruptSetRef.current.has(idx),
+        }
+      })
+
+      // Sort by total asset descending
+      return results.sort((a, b) => {
+        if (a.isBankrupt && !b.isBankrupt) return 1
+        if (!a.isBankrupt && b.isBankrupt) return -1
+        return b.totalAsset - a.totalAsset
+      })
+    }
+
     function handleBankruptConfirm() {
       const { playerIdx, onDoneCallback } = bankruptModal
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
@@ -488,6 +521,21 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       } else {
         syncMockStoreBankrupt(playerIdx)
       }
+
+      // Check for Game Over: Only one player not bankrupt
+      const playerCount = playersRef.current.length || INIT_PLAYERS.length
+      const remainingPlayers = []
+      for (let i = 0; i < playerCount; i++) {
+        if (!bankruptSetRef.current.has(i)) {
+          remainingPlayers.push(i)
+        }
+      }
+
+      if (remainingPlayers.length <= 1) {
+        setGameResultModal({ open: true })
+        return // Stop the game
+      }
+
       advanceTurn(onDoneCallback)
     }
 
@@ -674,7 +722,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (tile.type === 'CHANCE' || tile.type === 'EVENT') {
         setCardModal({
           open: true,
-          variant: tile.type === 'CHANCE' ? 'chance' : 'event',
+          variant: tile.type === 'CHANCE' ? 'CHANCE' : 'EVENT',
           onDoneCallback: onDone,
         })
         return
@@ -812,9 +860,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={() => handleBuildConfirm(buildModal)}
           onCancel={() => handleBuildCancel(buildModal)}
           cityName={buildTile?.name ?? ''}
-          upgradeStage={getUpgradeStage(currentLevel)}
+          nextLevel={(currentLevel + 1) as BuildingLevel}
           buildCostText={formatWon(
-            getUpgradeCost(buildTile?.price ?? 0, currentLevel)
+            getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
+          )}
+          nextTollText={formatWon(
+            calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
           )}
         />
         <TollModal
@@ -828,8 +879,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={cardModal.open}
           variant={cardModal.variant}
           onConfirm={() => {
-            setCardModal({ open: false, variant: 'event' })
-            advanceTurn(cardModal.onDoneCallback)
+            setCardModal((prev) => ({ ...prev, open: false }))
+            cardModal.onDoneCallback?.()
           }}
         />
         <AIPenaltyModal
@@ -853,6 +904,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <DiceTimerModal
           open={showTimerModal}
           onConfirm={() => setShowTimerModal(false)}
+        />
+        <GameResultModal
+          open={gameResultModal.open}
+          winnerName={
+            getPlayerResults().find((r) => !r.isBankrupt)?.nickname ?? '승리자'
+          }
+          results={getPlayerResults().map((r) => ({
+            id: r.id,
+            nickname: r.nickname,
+            totalAssetText: formatWon(r.totalAsset),
+            ownedCityCountText: `${r.ownedCityCount}개`,
+          }))}
+          onBackToLobby={() => {
+            setGameResultModal({ open: false })
+            window.location.href = '/' // Redirect to home/lobby
+          }}
         />
       </div>
     )

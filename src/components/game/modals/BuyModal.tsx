@@ -1,13 +1,6 @@
 import React from 'react'
 
-const LEVEL_LABEL: Record<number, string> = {
-  0: '없음',
-  1: '집 1채',
-  2: '집 2채',
-  3: '집 3채',
-  4: '호텔',
-  5: '랜드마크',
-}
+import { LEVEL_LABELS, LEVEL_MODAL_ICONS } from '../../board/board.constants'
 
 interface BuyModalProps {
   open: boolean
@@ -35,20 +28,20 @@ const BuyModal: React.FC<BuyModalProps> = ({
     return null
   }
 
-  const nextLevel = Math.min(currentLevel + 1, 5)
-  const canUpgrade = currentLevel < 5
+  const nextLevel = Math.min(currentLevel + 1, 7)
+  const canUpgrade = currentLevel < 7
+
+  const iconSrc = LEVEL_MODAL_ICONS[currentLevel] || '/BuyModal-land.svg'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-11 shadow-2xl">
-        <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF] text-[44px]">
-          <span role="img" aria-label="도시">
-            🏠
-          </span>
+        <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF]">
+          <img src={iconSrc} alt="도시" className="w-14 h-14 object-contain" />
         </div>
 
         <h2 className="mb-4 text-center text-[54px] font-black tracking-tight text-[#1F2A44]">
-          {isUpgrade ? '도시 업그레이드' : '도시 구매'}
+          {isUpgrade ? '도시 업그레이드' : '토지 구매'}
         </h2>
 
         <p className="text-center text-[36px] font-extrabold leading-[1.3] text-[#5A6D8A] mb-10 mt-4">
@@ -57,8 +50,8 @@ const BuyModal: React.FC<BuyModalProps> = ({
           <br />
           {isUpgrade ? (
             <span>
-              {LEVEL_LABEL[currentLevel]} →{' '}
-              <span className="text-[#245FE5]">{LEVEL_LABEL[nextLevel]}</span>
+              {LEVEL_LABELS[currentLevel]} →{' '}
+              <span className="text-[#245FE5]">{LEVEL_LABELS[nextLevel]}</span>
               {!canUpgrade && (
                 <span className="text-[#EF5350]"> (최대 레벨)</span>
               )}

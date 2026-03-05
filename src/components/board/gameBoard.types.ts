@@ -12,7 +12,7 @@ export interface BuildModalState {
 
 export interface CardModalState {
   open: boolean
-  variant: 'event' | 'chance'
+  variant: 'EVENT' | 'CHANCE'
   onDoneCallback?: () => void
 }
 
@@ -36,6 +36,10 @@ export interface BankruptModalState {
   playerIdx: number
   playerName: string
   onDoneCallback?: () => void
+}
+
+export interface GameResultModalState {
+  open: boolean
 }
 
 export type SyncStatePayload = {

@@ -7,20 +7,10 @@ import {
   TileOwner,
   PLAYER_COLORS,
   STRAIGHT_SIZE,
+  LEVEL_LABELS,
 } from './board.constants'
 import BuildingBadge from './BuildingBadge'
 import { formatWon } from '../../lib/utils'
-
-const LEVEL_LABELS: Record<number, string> = {
-  0: '토지',
-  1: '집 x1',
-  2: '집 x2',
-  3: '집 x3',
-  4: '호텔 x1',
-  5: '호텔 x2',
-  6: '호텔 x3',
-  7: '랜드마크',
-}
 
 // ─── PlayerToken ─────────────────────────────────────────────────
 interface TokenProps {
