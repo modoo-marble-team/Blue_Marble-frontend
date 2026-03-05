@@ -4,7 +4,9 @@ interface DiceTimerModalProps {
   open: boolean
   title?: string
   description?: string
+  timeLeftSec?: number | null
   confirmLabel?: string
+  isSubmitting?: boolean
   onConfirm?: () => void
 }
 
@@ -45,7 +47,9 @@ const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
   open,
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
+  timeLeftSec = null,
   confirmLabel = DEFAULT_CONFIRM_LABEL,
+  isSubmitting = false,
   onConfirm,
 }) => {
   if (!open) {
@@ -66,11 +70,17 @@ const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
         <p className="mb-10 mt-5 text-center text-[22px] font-bold leading-[1.35] text-[#5A6D8A]">
           {description}
         </p>
+        {typeof timeLeftSec === 'number' && (
+          <p className="mb-8 text-center text-[18px] font-extrabold text-[#245FE5]">
+            남은 시간: {Math.max(0, Math.ceil(timeLeftSec))}초
+          </p>
+        )}
 
         <button
           type="button"
           onClick={onConfirm}
-          className="mx-auto flex h-15 w-full max-w-102 items-center justify-center rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-[0_12px_24px_rgba(36,95,229,0.3)] transition-colors hover:bg-[#1F56D1]"
+          disabled={isSubmitting}
+          className="mx-auto flex h-15 w-full max-w-102 items-center justify-center rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-[0_12px_24px_rgba(36,95,229,0.3)] transition-colors hover:bg-[#1F56D1] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {confirmLabel}
         </button>
