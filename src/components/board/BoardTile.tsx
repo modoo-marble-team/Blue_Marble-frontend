@@ -347,86 +347,94 @@ const BoardTile: React.FC<BoardTileProps> = ({
         boxSizing: 'border-box',
         position: 'relative',
         overflow: 'hidden',
-        display: 'flex',
-        flexDirection: isLeft ? 'row-reverse' : 'row',
       }}
     >
-      {strip && (
-        <div
-          style={{
-            width: 14,
-            height: '100%',
-            backgroundColor: strip,
-            borderRadius: isLeft ? '0 7px 7px 0' : '7px 0 0 7px',
-          }}
-        />
-      )}
       <div
         style={{
-          flex: 1,
+          width: '100%',
+          height: '100%',
           backgroundColor: tileBg,
           borderRadius: 9,
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          position: 'relative',
+          flexDirection: isLeft ? 'row-reverse' : 'row',
+          overflow: 'hidden',
         }}
       >
+        {strip && (
+          <div
+            style={{
+              width: 14,
+              height: '100%',
+              backgroundColor: strip,
+              flexShrink: 0,
+            }}
+          />
+        )}
         <div
           style={{
-            transform: isLeft ? 'rotate(90deg)' : 'rotate(-90deg)',
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            width: STRAIGHT_SIZE,
+            justifyContent: 'center',
+            position: 'relative',
           }}
         >
-          {isProperty && (
-            <>
-              <span style={{ fontSize: 8, fontWeight: 800, marginBottom: 2 }}>
-                {tile.name}
-              </span>
-              <div
-                style={{ height: 30, display: 'flex', alignItems: 'center' }}
-              >
-                {hasBuilding && (
-                  <BuildingBadge
-                    level={buildingLevel}
-                    ownerColor={tileOwner?.ownerColor}
-                    isUrgent={isUrgent}
-                  />
-                )}
-              </div>
-              <div
-                style={{
-                  backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
-                  color: tileOwner ? '#1E293B' : '#64748B',
-                  fontSize: 7,
-                  fontWeight: 900,
-                  padding: '2px 5px',
-                  borderRadius: 10,
-                  visibility:
-                    tileOwner && buildingLevel === 0 ? 'hidden' : 'visible',
-                  marginTop: 4,
-                }}
-              >
-                {tileOwner
-                  ? LEVEL_LABELS[buildingLevel]
-                  : formatWon(tile.price ?? 0)}
-              </div>
-            </>
-          )}
-          {!isProperty && (
-            <>
-              <TileIcon tile={tile} size={28} />
-              {tile.name && !isSpecial && (
-                <span style={{ fontSize: 8, fontWeight: 800, marginTop: 4 }}>
+          <div
+            style={{
+              transform: isLeft ? 'rotate(90deg)' : 'rotate(-90deg)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              width: STRAIGHT_SIZE,
+            }}
+          >
+            {isProperty && (
+              <>
+                <span style={{ fontSize: 8, fontWeight: 800, marginBottom: 2 }}>
                   {tile.name}
                 </span>
-              )}
-            </>
-          )}
+                <div
+                  style={{ height: 30, display: 'flex', alignItems: 'center' }}
+                >
+                  {hasBuilding && (
+                    <BuildingBadge
+                      level={buildingLevel}
+                      ownerColor={tileOwner?.ownerColor}
+                      isUrgent={isUrgent}
+                    />
+                  )}
+                </div>
+                <div
+                  style={{
+                    backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
+                    color: tileOwner ? '#1E293B' : '#64748B',
+                    fontSize: 7,
+                    fontWeight: 900,
+                    padding: '2px 5px',
+                    borderRadius: 10,
+                    visibility:
+                      tileOwner && buildingLevel === 0 ? 'hidden' : 'visible',
+                    marginTop: 4,
+                  }}
+                >
+                  {tileOwner
+                    ? LEVEL_LABELS[buildingLevel]
+                    : formatWon(tile.price ?? 0)}
+                </div>
+              </>
+            )}
+            {!isProperty && (
+              <>
+                <TileIcon tile={tile} size={28} />
+                {tile.name && !isSpecial && (
+                  <span style={{ fontSize: 8, fontWeight: 800, marginTop: 4 }}>
+                    {tile.name}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
       {tokens.map((p, i) => (
