@@ -38,6 +38,7 @@ npm run build
 - 게임 E2E는 `npm run e2e:game`으로 분리 실행한다
 - 내 파트 전용 커버리지는 `npm run test:coverage:owner`로 측정한다
   - 범위: `lobby`, `waiting-room`, `presence`, `room-chat`
+  - 제외: DEV 전용 제어 패널, `types.ts`, test/d.ts 파일
   - 리포트 경로: `coverage-owner/index.html`
 
 ## 2.1 게이트 정책

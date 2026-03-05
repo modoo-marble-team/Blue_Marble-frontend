@@ -32,7 +32,14 @@ export default defineConfig({
         'src/features/presence/**/*.{ts,tsx}',
         'src/features/room-chat/**/*.{ts,tsx}',
       ],
-      exclude: ['**/*.test.ts', '**/*.test.tsx', '**/*.d.ts'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/*.d.ts',
+        '**/types.ts',
+        'src/pages/waiting-room/components/DevControlPanel.tsx',
+        'src/features/room-chat/DevRoomChatControlPanel.tsx',
+      ],
     },
   },
 })
