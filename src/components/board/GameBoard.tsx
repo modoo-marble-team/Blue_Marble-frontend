@@ -56,6 +56,7 @@ import type {
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
+import type { GamePrompt } from '../../types/domain'
 
 function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
   if (currentLevel === 0) return price * 0.5
@@ -172,6 +173,9 @@ interface GameBoardProps {
   roomId?: string | null
   players: PlayerState[]
   curPlayer: number
+  activePrompt?: GamePrompt | null
+  promptSubmittingChoice?: string | null
+  onPromptChoice?: (choice: string) => void
   tiles?: Array<{
     index: number
     owner_id?: string | number | null
