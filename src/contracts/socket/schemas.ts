@@ -39,12 +39,31 @@ export const sendChatEventSchema = z.object({
   message: z.string().trim().min(1),
 })
 
+export const toggleReadyEventSchema = z.object({
+  room_id: z.string().min(1),
+})
+
+export const startGameEventSchema = z.object({
+  room_id: z.string().min(1),
+})
+
 export const chatEventSchema = z.object({
   room_id: z.string().min(1),
   sender_id: z.string().min(1),
   sender_nickname: z.string().min(1),
   message: z.string().trim().min(1),
   sent_at: z.string().datetime(),
+})
+
+export const playerReadyEventSchema = z.object({
+  player_id: z.string().min(1),
+  is_ready: z.boolean(),
+  all_ready: z.boolean(),
+})
+
+export const hostChangedEventSchema = z.object({
+  new_host_id: z.string().min(1),
+  new_host_nickname: z.string().min(1),
 })
 
 export const gameStartEventSchema = z.object({
@@ -57,7 +76,11 @@ export const eventPayloadSchemas = {
   [SOCKET_EVENTS.enterRoom]: enterRoomEventSchema,
   [SOCKET_EVENTS.leaveRoom]: leaveRoomEventSchema,
   [SOCKET_EVENTS.sendChat]: sendChatEventSchema,
+  [SOCKET_EVENTS.toggleReady]: toggleReadyEventSchema,
+  [SOCKET_EVENTS.startGame]: startGameEventSchema,
   [SOCKET_EVENTS.chat]: chatEventSchema,
+  [SOCKET_EVENTS.playerReady]: playerReadyEventSchema,
+  [SOCKET_EVENTS.hostChanged]: hostChangedEventSchema,
   [SOCKET_EVENTS.directMessageSend]: directMessageSendEventSchema,
   [SOCKET_EVENTS.directMessageReceive]: directMessageReceiveEventSchema,
   [SOCKET_EVENTS.gameStart]: gameStartEventSchema,

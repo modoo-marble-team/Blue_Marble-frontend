@@ -4,6 +4,8 @@ export const SOCKET_EVENTS = {
   enterRoom: 'enter_room',
   leaveRoom: 'leave_room',
   sendChat: 'send_chat',
+  toggleReady: 'toggle_ready',
+  startGame: 'start_game',
   chat: 'chat',
   playerReady: 'player_ready',
   hostChanged: 'host_changed',
@@ -62,12 +64,31 @@ export interface SendChatEventPayload {
   message: string
 }
 
+export interface ToggleReadyEventPayload {
+  room_id: string
+}
+
+export interface StartGameEventPayload {
+  room_id: string
+}
+
 export interface ChatEventPayload {
   room_id: string
   sender_id: string
   sender_nickname: string
   message: string
   sent_at: string
+}
+
+export interface PlayerReadyEventPayload {
+  player_id: string
+  is_ready: boolean
+  all_ready: boolean
+}
+
+export interface HostChangedEventPayload {
+  new_host_id: string
+  new_host_nickname: string
 }
 
 export interface GameStartEventPayload {
