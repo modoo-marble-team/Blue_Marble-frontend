@@ -146,7 +146,6 @@
 - `src/pages/GamePage.tsx`: store 단일 소스 + `gameViewModel` mapper로 board 데이터 조립 + `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결
 - `src/components/board/gameBoardActionHandlers.ts`: BUY/SELL/END_TURN non-mock 경로를 `emitGameAction`으로 전환
 - `src/components/board/gameBoardActionHandlers.ts`: mock BUY/BUILD 성공 시 턴 고정 버그 수정(자동 턴 전환 보장)
-- `src/components/board/gameBoardActionHandlers.test.ts`: mock BUY/BUILD 성공 후 `advanceTurn` 호출 테스트 추가
 
 남은 핵심 축 — **명세 불일치 (코드 수정 전 반드시 선행)**:
 
@@ -241,7 +240,6 @@
 - ~~`store.prompt.type` → `modals/*`, `GameBoard.tsx` 분기 연결~~ ✅ 완료 (non-mock)
 - ~~`DiceTimerModal` → `game:prompt.timeoutSec` 기반으로 연결~~ ✅ 완료
 - `gameBoardActionHandlers.ts`: BUILD/sync 레거시 호출 제거 및 prompt.type 기반 액션 확정
-- `gameBoardActionHandlers.test.ts`: mock/실서버 모드 혼합 회귀 시나리오 보강
 
 ### 5-5. mock 검증 흐름 정비
 
