@@ -6,6 +6,7 @@ import {
   getStripColor,
   TileOwner,
   PLAYER_COLORS,
+  STRAIGHT_SIZE,
 } from './board.constants'
 import BuildingBadge from './BuildingBadge'
 import { formatWon } from '../../lib/utils'
@@ -153,7 +154,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const isProperty = tile.type === 'PROPERTY'
   const buildingLevel = tileOwner?.level ?? 0
   const hasBuilding = isProperty && buildingLevel >= 1
-  const hasIcon = !!(tile.svgIcon || tile.emoji)
 
   // 소유 색상 계산
   const ownerIdx =
@@ -169,75 +169,69 @@ const BoardTile: React.FC<BoardTileProps> = ({
       ? (PLAYER_OWNER_STYLES[normalizedOwnerColor] ??
         PLAYER_OWNER_STYLES['#EF5350'])
       : null
-  // PROPERTY: 미구매=#CCCCCC, 구매 후=플레이어 색 / 비도시: 기존 로직
+  // PROPERTY: 소유 시 플레이어 색 / 미구매/비도시: 시각 규격 반영
   const strip = isProperty
     ? ownerStyle
       ? ownerStyle.strip
-      : '#CCCCCC'
+      : null // 미구매 건물은 줄 없음
     : getStripColor(tile)
   const tileBg = ownerStyle ? ownerStyle.bg : '#FFFFFF'
   const outerBorderColor = ownerStyle ? ownerStyle.strip : '#E2E8F0'
-  const stripOffset = strip ? 7 : 0
 
   // 턴 진행 중인 플레이어가 위치한 칸이고 시간이 10초 이하일 때 애니메이션 강조
   const isUrgent = isActivePlayerTile && timeLeft <= 10 && timeLeft > 0
 
-  // ── 코너 ─────────────────────────────────────────────────────────
-  if (
-    ['START', 'ISLAND', 'EVENT', 'MOVE_TO_ISLAND', 'CHANCE'].includes(tile.type)
-  ) {
-    // CHANCE, EVENT tiles usually appear in the middle rows, but can be corner-like if needed.
-    // However, START, ISLAND, MOVE_TO_ISLAND are definitely corners.
-    const isCorner =
-      ['START', 'ISLAND', 'MOVE_TO_ISLAND'].includes(tile.type) ||
-      dir === 'corner'
-    if (isCorner || !isProperty) {
-      return (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: '#FFFFFF',
-            border: isUrgent ? '3px solid #EF5350' : '2.5px solid #2B7FFF',
-            borderRadius: 18,
-            boxShadow: isUrgent
-              ? '0 0 15px rgba(239, 83, 80, 0.6)'
-              : '0 0 0 5px rgba(190,219,255,0.65)',
+  // ── 실제 코너 (START, ISLAND, MOVE_TO_ISLAND) ─────────────────────
+  const isActualCorner = ['START', 'ISLAND', 'MOVE_TO_ISLAND'].includes(
+    tile.type
+  )
 
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            position: 'relative',
-            boxSizing: 'border-box',
-            overflow: 'visible',
+  if (isActualCorner || dir === 'corner') {
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#FFFFFF',
+          border: isUrgent ? '3px solid #EF5350' : '2.5px solid #2B7FFF',
+          borderRadius: 18,
+          boxShadow: isUrgent
+            ? '0 0 15px rgba(239, 83, 80, 0.6)'
+            : '0 0 0 5px rgba(190,219,255,0.65)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 4,
+          position: 'relative',
+          boxSizing: 'border-box',
+          overflow: 'visible',
+        }}
+      >
+        <TileIcon tile={tile} size={28} />
+        <span
+          style={{
+            fontSize: 9,
+            fontWeight: 800,
+            color: '#374151',
+            textAlign: 'center',
+            lineHeight: 1.3,
+            whiteSpace: 'pre-wrap',
+            padding: '0 4px',
           }}
         >
-          <TileIcon tile={tile} size={28} />
-          <span
-            style={{
-              fontSize: 9,
-              fontWeight: 800,
-              color: '#374151',
-              textAlign: 'center',
-              lineHeight: 1.3,
-              whiteSpace: 'pre-wrap',
-              padding: '0 4px',
-            }}
-          >
-            {tile.name}
-          </span>
-          {tokens.map((p, i) => (
-            <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
-          ))}
-        </div>
-      )
-    }
+          {tile.name}
+        </span>
+        {tokens.map((p, i) => (
+          <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
+        ))}
+      </div>
+    )
   }
 
-  // ── 상단 / 하단 ───────────────────────────────────────────────────
+  // ── 상단 / 하단 (중간 칸들) ─────────────────────────────────────────
   if (dir === 'top' || dir === 'bottom') {
+    const isSpecial = ['CHANCE', 'EVENT', 'AI'].includes(tile.type)
     return (
       <div
         style={{
@@ -245,7 +239,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
           height: '100%',
           backgroundColor: isUrgent ? '#EF5350' : outerBorderColor,
           borderRadius: 13,
-
           padding: 2,
           boxSizing: 'border-box',
           position: 'relative',
@@ -259,7 +252,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
             backgroundColor: tileBg,
             borderRadius: 9,
             display: 'flex',
-            flexDirection: 'column',
+            flexDirection: 'column', // 상단/하단 모두 줄이 위에 오도록 column 고정
             overflow: 'hidden',
           }}
         >
@@ -283,7 +276,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
               padding: isProperty ? '8px 3px' : '2px 3px',
             }}
           >
-            {/* 도시명 */}
             {isProperty && (
               <span
                 style={{
@@ -300,187 +292,20 @@ const BoardTile: React.FC<BoardTileProps> = ({
               </span>
             )}
 
-            {/* 비도시: 아이콘+이름 중앙 */}
             {!isProperty && (
               <>
-                {!hasIcon && (
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 800,
-                      color: '#374151',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {tile.name}
-                  </span>
-                )}
                 <TileIcon tile={tile} size={28} />
-              </>
-            )}
-
-            {/* PROPERTY 특수 영역: 중앙(건물) & 하단(가격) */}
-            {isProperty && (
-              <>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flex: 1,
-                    width: '100%',
-                  }}
-                >
-                  {hasBuilding && (
-                    <BuildingBadge
-                      level={buildingLevel}
-                      ownerColor={tileOwner?.ownerColor}
-                      isUrgent={isUrgent}
-                    />
-                  )}
-                </div>
-                {!tileOwner && (
-                  <div
-                    style={{
-                      backgroundColor: '#EEF2F7',
-                      color: '#64748B',
-                      fontSize: 7,
-                      fontWeight: 900,
-                      padding: '3px 6px',
-                      borderRadius: 10,
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                      letterSpacing: '-0.2px',
-                    }}
-                  >
-                    {formatWon(tile.price ?? 0)}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {tokens.map((p, i) => (
-          <PlayerToken
-            key={p.id}
-            player={p}
-            idx={i}
-            total={tokens.length}
-            stripOffset={stripOffset}
-          />
-        ))}
-      </div>
-    )
-  }
-
-  // ── 좌측 / 우측 ───────────────────────────────────────────────────
-  const isLeft = dir === 'left'
-  const rotation = isLeft ? 'rotate(90deg)' : 'rotate(-90deg)'
-
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: 13,
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          width: '70px',
-          height: '90px',
-          transform: `translate(-50%, -50%) ${rotation}`,
-          backgroundColor: outerBorderColor,
-          borderRadius: 13,
-          padding: 2,
-          boxSizing: 'border-box' as const,
-        }}
-      >
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: tileBg,
-            borderRadius: 9,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-          }}
-        >
-          {strip && (
-            <div
-              style={{
-                height: 14,
-                backgroundColor: strip,
-                flexShrink: 0,
-                borderRadius: '7px 7px 0 0',
-              }}
-            />
-          )}
-          <div
-            style={{
-              flex: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: isProperty ? 'flex-start' : 'center',
-              padding: isProperty ? '8px 3px' : '2px 3px',
-            }}
-          >
-            {/* 도시명 */}
-            {isProperty && (
-              <span
-                style={{
-                  fontSize: 8,
-                  fontWeight: 800,
-                  color: '#374151',
-                  textAlign: 'center',
-                  lineHeight: 1.2,
-                  whiteSpace: 'nowrap',
-                  marginTop: 6,
-                  marginBottom: 2,
-                }}
-              >
-                {tile.name}
-              </span>
-            )}
-
-            {/* 비도시: 아이콘+이름 중앙 */}
-            {!isProperty && (
-              <>
-                {!hasIcon && (
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 800,
-                      color: '#374151',
-                      textAlign: 'center',
-                    }}
-                  >
+                {tile.name && !isSpecial && (
+                  <span style={{ fontSize: 8, fontWeight: 800, marginTop: 4 }}>
                     {tile.name}
                   </span>
                 )}
-                <TileIcon tile={tile} size={24} />
               </>
             )}
 
-            {/* PROPERTY 특수 영역: 중앙(건물) & 하단(가격/레벨) */}
             {isProperty && (
               <>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flex: 1,
-                    width: '100%',
-                  }}
-                >
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
                   {hasBuilding && (
                     <BuildingBadge
                       level={buildingLevel}
@@ -489,7 +314,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     />
                   )}
                 </div>
-
                 <div
                   style={{
                     backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
@@ -498,9 +322,9 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     fontWeight: 900,
                     padding: '2px 5px',
                     borderRadius: 10,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                    letterSpacing: '-0.2px',
                     marginBottom: 4,
+                    visibility:
+                      tileOwner && buildingLevel === 0 ? 'hidden' : 'visible',
                   }}
                 >
                   {tileOwner
@@ -511,8 +335,110 @@ const BoardTile: React.FC<BoardTileProps> = ({
             )}
           </div>
         </div>
+        {tokens.map((p, i) => (
+          <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
+        ))}
       </div>
+    )
+  }
 
+  // ── 좌측 / 우측 (중간 칸들) ─────────────────────────────────────────
+  const isLeft = dir === 'left'
+  const isSpecial = ['CHANCE', 'EVENT', 'AI'].includes(tile.type)
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        backgroundColor: outerBorderColor,
+        borderRadius: 13,
+        padding: 2,
+        boxSizing: 'border-box',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: isLeft ? 'row-reverse' : 'row',
+      }}
+    >
+      {strip && (
+        <div
+          style={{
+            width: 14,
+            height: '100%',
+            backgroundColor: strip,
+            borderRadius: isLeft ? '0 7px 7px 0' : '7px 0 0 7px',
+          }}
+        />
+      )}
+      <div
+        style={{
+          flex: 1,
+          backgroundColor: tileBg,
+          borderRadius: 9,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            transform: isLeft ? 'rotate(90deg)' : 'rotate(-90deg)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: STRAIGHT_SIZE,
+          }}
+        >
+          {isProperty && (
+            <>
+              <span style={{ fontSize: 8, fontWeight: 800, marginBottom: 2 }}>
+                {tile.name}
+              </span>
+              <div
+                style={{ height: 30, display: 'flex', alignItems: 'center' }}
+              >
+                {hasBuilding && (
+                  <BuildingBadge
+                    level={buildingLevel}
+                    ownerColor={tileOwner?.ownerColor}
+                    isUrgent={isUrgent}
+                  />
+                )}
+              </div>
+              <div
+                style={{
+                  backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
+                  color: tileOwner ? '#1E293B' : '#64748B',
+                  fontSize: 7,
+                  fontWeight: 900,
+                  padding: '2px 5px',
+                  borderRadius: 10,
+                  visibility:
+                    tileOwner && buildingLevel === 0 ? 'hidden' : 'visible',
+                  marginTop: 4,
+                }}
+              >
+                {tileOwner
+                  ? LEVEL_LABELS[buildingLevel]
+                  : formatWon(tile.price ?? 0)}
+              </div>
+            </>
+          )}
+          {!isProperty && (
+            <>
+              <TileIcon tile={tile} size={28} />
+              {tile.name && !isSpecial && (
+                <span style={{ fontSize: 8, fontWeight: 800, marginTop: 4 }}>
+                  {tile.name}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
       {tokens.map((p, i) => (
         <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
       ))}
