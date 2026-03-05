@@ -22,6 +22,8 @@ export function getBoardSellFallbackRefund(
     else if (currentLevel === 2) refund += basePrice * 0.5
     else if (currentLevel === 3) refund += basePrice * 0.5
     else if (currentLevel === 4) refund += basePrice * 1.0
+    else if (currentLevel === 5) refund += basePrice * 1.0
+    else if (currentLevel === 6) refund += basePrice * 2.0
   }
 
   return refund
