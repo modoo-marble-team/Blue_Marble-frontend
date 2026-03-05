@@ -186,4 +186,36 @@ describe('mockGateway waiting-room action sequence', () => {
 
     expect(removedRoom).toBeUndefined()
   })
+
+  it('입장과 퇴장 시 접속자 목록 상태가 in_room -> lobby로 동기화된다', async () => {
+    const gateway = await loadMockGateway()
+    const presence = await import('../../features/presence/mockData')
+    const userId = 'presence-sync-user'
+    const nickname = '동기화테스터'
+
+    await gateway.mockJoinWaitingRoom({
+      roomId: 'room-5',
+      userId,
+      nickname,
+    })
+
+    const joinedUser = presence
+      .getMockOnlineUsersSnapshot()
+      .find((user) => user.id === userId)
+
+    expect(joinedUser).toBeTruthy()
+    expect(joinedUser?.status).toBe('in_room')
+
+    await gateway.mockLeaveWaitingRoom({
+      roomId: 'room-5',
+      userId,
+    })
+
+    const leftUser = presence
+      .getMockOnlineUsersSnapshot()
+      .find((user) => user.id === userId)
+
+    expect(leftUser).toBeTruthy()
+    expect(leftUser?.status).toBe('lobby')
+  })
 })

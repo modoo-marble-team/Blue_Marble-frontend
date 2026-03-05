@@ -1,5 +1,6 @@
 import { socket } from '../../lib/socket'
 import { ROOM_PASSWORD_PATTERN } from '../../constants/room'
+import { setMockOnlineUserStatus } from '../../features/presence/mockData'
 import { mockLobbyRooms } from '../lobby/mockData'
 import type { LobbyRoom, LobbyRoomStatus } from '../lobby/types'
 import type {
@@ -293,6 +294,16 @@ function createTalkChatPayload(
   }
 }
 
+// 대기방 참가자 상태를 접속자 저장소에 일괄 반영
+function syncRoomPlayersPresenceStatus(
+  room: MockRoom,
+  status: 'lobby' | 'in_room' | 'playing'
+) {
+  room.players.forEach((player) => {
+    setMockOnlineUserStatus(player.id, status, player.nickname)
+  })
+}
+
 interface MockJoinRoomParams {
   roomId: string
   userId: string
@@ -367,6 +378,11 @@ export async function mockJoinWaitingRoom({
 
   // 이미 입장한 사용자는 현재 스냅샷 그대로 반환
   if (existingPlayer) {
+    setMockOnlineUserStatus(
+      existingPlayer.id,
+      'in_room',
+      existingPlayer.nickname
+    )
     return toWaitingRoomSnapshot(room)
   }
 
@@ -384,6 +400,7 @@ export async function mockJoinWaitingRoom({
     is_ready: false,
     is_host: false,
   })
+  setMockOnlineUserStatus(userId, 'in_room', nickname)
 
   emitLobbyUpdated(room, 'status_changed')
   return toWaitingRoomSnapshot(room)
@@ -448,6 +465,7 @@ export async function mockCreateWaitingRoom({
   }
 
   roomsStore.set(createdRoom.id, createdRoom)
+  syncRoomPlayersPresenceStatus(createdRoom, 'in_room')
   emitLobbyUpdated(createdRoom, 'created')
 
   return {
@@ -478,6 +496,7 @@ export async function mockLeaveWaitingRoom({
   }
 
   const [leftPlayer] = room.players.splice(targetPlayerIndex, 1)
+  setMockOnlineUserStatus(leftPlayer.id, 'lobby', leftPlayer.nickname)
   let newHostId: string | undefined
 
   // 마지막 인원이 나가면 방을 삭제
@@ -585,6 +604,7 @@ export async function mockStartWaitingGame({
 
   room.status = 'playing'
   const gameStartPayload = createGameStartPayload(room)
+  syncRoomPlayersPresenceStatus(room, 'playing')
 
   emitLobbyUpdated(room, 'status_changed')
   setTimeout(() => {
@@ -690,7 +710,9 @@ export function mockDevAddWaitingRoomParticipant(roomId: string) {
     })
   }
 
-  room.players.push(createDevBotPlayer(room.id))
+  const createdBot = createDevBotPlayer(room.id)
+  room.players.push(createdBot)
+  setMockOnlineUserStatus(createdBot.id, 'in_room', createdBot.nickname)
   emitLobbyUpdated(room, 'status_changed')
 
   return toWaitingRoomSnapshot(room)
@@ -741,7 +763,10 @@ export function mockDevRemoveWaitingRoomParticipant(
     })
   }
 
-  room.players.splice(removablePlayerIndex, 1)
+  const [removedPlayer] = room.players.splice(removablePlayerIndex, 1)
+  if (removedPlayer) {
+    setMockOnlineUserStatus(removedPlayer.id, 'lobby', removedPlayer.nickname)
+  }
   emitLobbyUpdated(room, 'status_changed')
 
   return toWaitingRoomSnapshot(room)
@@ -833,6 +858,9 @@ export function mockDevResetWaitingRoom(
   currentNickname: string
 ) {
   const room = findRoomOrThrow(roomId)
+  const removedPlayers = room.players.filter(
+    (player) => player.id !== currentUserId
+  )
   const currentPlayer = room.players.find(
     (player) => player.id === currentUserId
   )
@@ -850,6 +878,10 @@ export function mockDevResetWaitingRoom(
       is_host: true,
     },
   ]
+  removedPlayers.forEach((player) => {
+    setMockOnlineUserStatus(player.id, 'lobby', player.nickname)
+  })
+  setMockOnlineUserStatus(currentUserId, 'in_room', normalizedNickname)
   room.chat_messages = []
 
   // 멀티 클라이언트에서도 방장 표시가 즉시 맞도록 host_changed를 함께 발행
