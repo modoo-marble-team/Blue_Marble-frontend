@@ -42,6 +42,11 @@ export interface GameResultModalState {
   open: boolean
 }
 
+export interface GoToIslandModalState {
+  open: boolean
+  onDoneCallback?: () => void
+}
+
 export type SyncStatePayload = {
   players?: Array<{
     id: string | number

@@ -15,6 +15,7 @@ import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import DiceTimerModal from '../game/modals/DiceTimerModal'
 import GameResultModal from '../game/modals/GameResultModal'
+import GoToIslandModal from '../game/modals/GoToIslandModal'
 
 import {
   TILES,
@@ -48,6 +49,7 @@ import type {
   CardModalState,
   TollModalState,
   GameResultModalState,
+  GoToIslandModalState,
 } from './gameBoard.types'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
@@ -276,6 +278,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setLocalTimeLeft(DICE_TIMEOUT)
       setShowTimerModal(false)
 
+      // Close all other modals when turn changes
+      setBuyModal({ open: false, tileId: null })
+      setBuildModal({ open: false, tileId: null })
+      setCardModal({ open: false, variant: 'EVENT' })
+      setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
+      setAiModal({ open: false, status: 'loading' })
+      setGoToIslandModal({ open: false })
+
       const p = players[curPlayer]
       if (p) {
         if (p.state === 'island') {
@@ -356,6 +366,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     })
     const [gameResultModal, setGameResultModal] =
       useState<GameResultModalState>({
+        open: false,
+      })
+    const [goToIslandModal, setGoToIslandModal] =
+      useState<GoToIslandModalState>({
         open: false,
       })
 
@@ -665,6 +679,38 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 600)
     }
 
+    function handleGoToIslandConfirm() {
+      const { onDoneCallback } = goToIslandModal
+      setGoToIslandModal({ open: false })
+
+      const playerIdx = curPlayerRef.current
+      const updatedPlayers = [...playersRef.current]
+      const islandTile = TILES.find((t) => t.type === 'ISLAND')
+      if (islandTile) {
+        updatedPlayers[playerIdx] = {
+          ...updatedPlayers[playerIdx],
+          pos: islandTile.id,
+          skipTurns: 3,
+        }
+        playersRef.current = updatedPlayers
+        publishPlayers(updatedPlayers)
+      }
+      advanceTurn(onDoneCallback)
+    }
+
+    function handleDiceTimerConfirm() {
+      setShowTimerModal(false)
+      // Clear all other possible modals
+      setBuyModal({ open: false, tileId: null })
+      setBuildModal({ open: false, tileId: null })
+      setCardModal({ open: false, variant: 'EVENT' })
+      setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
+      setAiModal({ open: false, status: 'loading' })
+      setGoToIslandModal({ open: false })
+
+      advanceTurn()
+    }
+
     function handleArrival(tileId: number, onDone?: () => void) {
       const playerIdx = curPlayerRef.current
       const tile = TILES[tileId]
@@ -678,18 +724,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       if (tile.type === 'MOVE_TO_ISLAND') {
         setStatus('무인도로 이동!')
-        const updatedPlayers = [...playersRef.current]
-        const islandTile = TILES.find((t) => t.type === 'ISLAND')
-        if (islandTile) {
-          updatedPlayers[playerIdx] = {
-            ...updatedPlayers[playerIdx],
-            pos: islandTile.id,
-            skipTurns: 3,
-          }
-          playersRef.current = updatedPlayers
-          publishPlayers(updatedPlayers)
-        }
-        advanceTurn(onDone)
+        setGoToIslandModal({ open: true, onDoneCallback: onDone })
         return
       }
 
@@ -903,7 +938,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         />
         <DiceTimerModal
           open={showTimerModal}
-          onConfirm={() => setShowTimerModal(false)}
+          onConfirm={handleDiceTimerConfirm}
         />
         <GameResultModal
           open={gameResultModal.open}
@@ -920,6 +955,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             setGameResultModal({ open: false })
             window.location.href = '/' // Redirect to home/lobby
           }}
+        />
+        <GoToIslandModal
+          open={goToIslandModal.open}
+          onConfirm={handleGoToIslandConfirm}
         />
       </div>
     )
