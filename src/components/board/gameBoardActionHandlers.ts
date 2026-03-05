@@ -7,11 +7,6 @@ import {
   toBoardActionErrorMessage,
 } from './gameBoardActionUtils'
 import {
-  findSyncTurnIndex,
-  mapSyncPayloadPlayers,
-  mapSyncPayloadTileOwners,
-} from './gameBoardSyncUtils'
-import {
   createBoardPurchasedTileOwner,
   findBoardSellTarget,
   getBoardTollAmount,
@@ -20,7 +15,6 @@ import {
 import type {
   BuildModalState,
   BuyModalState,
-  SyncStatePayload,
   TollModalState,
 } from './gameBoard.types'
 
@@ -34,25 +28,15 @@ interface CreateGameBoardActionHandlersParams {
   useGameSocketMock: boolean
   roomIdRequiredMessage: string
   setStatus: Dispatch<SetStateAction<string>>
-  setOptimisticTileOwners: Dispatch<
-    SetStateAction<Record<number, TileOwner> | null>
-  >
   setBuyModal: Dispatch<SetStateAction<BuyModalState>>
   setBuildModal: Dispatch<SetStateAction<BuildModalState>>
   setTollModal: Dispatch<SetStateAction<TollModalState>>
   playersRef: MutableRefObject<PlayerState[]>
   curPlayerRef: MutableRefObject<number>
   tileOwnersRef: MutableRefObject<Record<number, TileOwner>>
-  publishPlayers: (players: PlayerState[]) => void
-  publishCurrentTurn: (playerIdx: number) => void
-  publishTileOwners: (tileOwners: Record<number, TileOwner>) => void
   getPlayerIdByIndex: (playerIdx: number) => number
   getPlayerColorByIndex: (playerIdx: number) => string
   getPlayerIndexById: (playerId: number) => number
-  toBoardBuildingLevel: (
-    tile: { building?: number; level?: number },
-    hasOwner: boolean
-  ) => BuildingLevel
   getPurchaseCost: (tileId: number) => number
   getUpgradeCost: (price: number, currentLevel: BuildingLevel) => number
   calcToll: (price: number, level: BuildingLevel) => number
@@ -74,20 +58,15 @@ export function createGameBoardActionHandlers(
     useGameSocketMock,
     roomIdRequiredMessage,
     setStatus,
-    setOptimisticTileOwners,
     setBuyModal,
     setBuildModal,
     setTollModal,
     playersRef,
     curPlayerRef,
     tileOwnersRef,
-    publishPlayers,
-    publishCurrentTurn,
-    publishTileOwners,
     getPlayerIdByIndex,
     getPlayerColorByIndex,
     getPlayerIndexById,
-    toBoardBuildingLevel,
     getPurchaseCost,
     getUpgradeCost,
     calcToll,
@@ -111,52 +90,6 @@ export function createGameBoardActionHandlers(
       roomId,
       payload,
     })
-    return true
-  }
-
-  async function syncBoardStateFromServer() {
-    if (!roomId) return false
-
-    const syncResult = await gameApi.syncState(roomId)
-    if (!syncResult.ok) return false
-
-    const payload = syncResult.data as SyncStatePayload
-    const payloadPlayers = payload.players ?? []
-    let serverToBoardId = new Map<string, number>()
-
-    if (payloadPlayers.length > 0) {
-      const mappedPlayers = mapSyncPayloadPlayers(
-        payloadPlayers,
-        playersRef.current
-      )
-      serverToBoardId = mappedPlayers.serverToBoardId
-      playersRef.current = mappedPlayers.nextPlayers
-      publishPlayers(mappedPlayers.nextPlayers)
-    }
-
-    if (payload.tiles) {
-      const nextOwners = mapSyncPayloadTileOwners(
-        payload.tiles,
-        playersRef.current,
-        serverToBoardId,
-        toBoardBuildingLevel
-      )
-
-      tileOwnersRef.current = nextOwners
-      setOptimisticTileOwners(nextOwners)
-      publishTileOwners(nextOwners)
-    }
-
-    const nextTurnIndex = findSyncTurnIndex(
-      payload.current_turn ?? payload.currentTurn,
-      playersRef.current,
-      serverToBoardId
-    )
-    if (nextTurnIndex >= 0) {
-      curPlayerRef.current = nextTurnIndex
-      publishCurrentTurn(nextTurnIndex)
-    }
-
     return true
   }
 
@@ -186,18 +119,44 @@ export function createGameBoardActionHandlers(
       return false
     }
 
-    const synced = await syncBoardStateFromServer()
-    if (!synced) {
-      updateTileOwners(
-        (prev) => {
-          const next = { ...prev }
+    const actionPayload =
+      typeof sellResult.data === 'object' && sellResult.data !== null
+        ? (sellResult.data as {
+            refund?: number
+            building?: number
+            owner_id?: string | number | null
+          })
+        : {}
+    const refund =
+      typeof actionPayload.refund === 'number'
+        ? actionPayload.refund
+        : getBoardSellFallbackRefund(tileId, owner.level)
+    const nextLevelRaw =
+      typeof actionPayload.building === 'number'
+        ? actionPayload.building
+        : Math.max(owner.level - 1, 0)
+    const nextLevel = Math.min(Math.max(nextLevelRaw, 0), 7) as BuildingLevel
+    const releaseOwnership =
+      actionPayload.owner_id === null || actionPayload.owner_id === undefined
+
+    updateTileOwners(
+      (prev) => {
+        const next = { ...prev }
+
+        if (releaseOwnership || nextLevel <= 0) {
           delete next[tileId]
           return next
-        },
-        { notifyParent: true }
-      )
-      applyMoney(playerIdx, +getBoardSellFallbackRefund(tileId, owner.level))
-    }
+        }
+
+        next[tileId] = {
+          ...owner,
+          level: nextLevel,
+        }
+        return next
+      },
+      { notifyParent: true }
+    )
+    applyMoney(playerIdx, +refund)
 
     return true
   }
@@ -269,8 +228,10 @@ export function createGameBoardActionHandlers(
   async function handleBuildConfirm(buildModal: BuildModalState) {
     const { tileId, onDoneCallback } = buildModal
     if (tileId === null) return
-    if (!roomId) {
-      setStatus(roomIdRequiredMessage)
+
+    if (!useGameSocketMock) {
+      setBuildModal({ open: false, tileId: null })
+      onDoneCallback?.()
       return
     }
 
@@ -278,14 +239,6 @@ export function createGameBoardActionHandlers(
     const owner = tileOwnersRef.current[tileId]
     const price = getPurchaseCost(tileId)
     const upgradeCost = owner ? getUpgradeCost(price, owner.level) : 0
-
-    const actionResult = await gameApi.buildTile(roomId, {
-      tile_index: tileId,
-    })
-    if (!actionResult.ok) {
-      setStatus(toBoardActionErrorMessage(actionResult.status))
-      return
-    }
 
     setBuildModal({ open: false, tileId: null })
     const bankrupt = applyMoney(active, -upgradeCost, onDoneCallback)
@@ -357,7 +310,6 @@ export function createGameBoardActionHandlers(
   }
 
   return {
-    syncBoardStateFromServer,
     sellOwnedTileForPlayer,
     handleBuy,
     handleBuyPass,
