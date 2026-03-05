@@ -694,7 +694,7 @@ export const gameHandlers = [
       )
     }
 
-    if (tile.building >= 5) {
+    if (tile.building >= 7) {
       return buildErrorResponse(
         '\uCD5C\uB300 \uB2E8\uACC4\uAE4C\uC9C0 \uAC74\uC124\uD588\uC2B5\uB2C8\uB2E4.',
         409

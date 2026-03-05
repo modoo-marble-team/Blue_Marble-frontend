@@ -74,22 +74,22 @@
 
 아래 표에서 **상태** 열 기준: ✅ 완료 / ⚠️ 명세 불일치 수정 필요 / ❌ 미구현
 
-| 파일                                                | 현재 상태                 | 남은 수정 방향                                                                                                       | 담당                       |
-| --------------------------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| `src/types/domain.ts`                               | ⚠️ 골격 완료, 불일치 있음 | `GamePromptResponse.value`→`choice`. `GameAck` error 구조 중첩화. `GamePatchEnvelope`에 `turn`, `gameId` 추가        | FE-B                       |
-| `src/stores/game.store.ts`                          | ✅ 완료                   | —                                                                                                                    | FE-B                       |
-| `src/services/socket/game.handler.ts`               | ⚠️ 골격 완료, 불일치 있음 | `emitGameSync` payload에 `knownRevision` 추가, `reset` 제거. `emitPromptResponse`: `value`→`choice`, `playerId` 제거 | FE-B                       |
-| `src/hooks/game/useGameState.ts`                    | ✅ 완료                   | —                                                                                                                    | FE-B                       |
-| `src/services/game/game.api.ts`                     | ⚠️ 레거시 격리 중         | deprecated 표시 완료. `gameBoardActionHandlers.ts` 호출부 → `emitGameAction` 전환 필요                               | FE-B                       |
-| `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료                   | —                                                                                                                    | FE-B                       |
-| `src/pages/GamePage.tsx`                            | ✅ 1차 완료               | `store.prompt`, `store.lastError`, `store.pendingAction` UI 연결 필요                                                | FE-B                       |
-| `src/components/board/GameBoard.tsx`                | ⚠️ 부분 정리              | `applyMoney`, `advanceTurn`, 통행료 계산, 파산 판정 제거. `store.prompt` 연결                                        | FE-C 주도 / FE-B 선행 필요 |
-| `src/components/game/modals/*`                      | ❌ prompt 미연결          | `store.prompt.type` 기준 모달 열림 조건 연결. `emitPromptResponse` 연결                                              | FE-B                       |
-| `src/mocks/handlers/game.handler.ts`                | ⚠️ 명세 불일치 다수       | 아래 2-1 참조                                                                                                        | FE-B                       |
-| `src/components/board/gameBoardStoreBridge.ts`      | ❌ 버그                   | `toStoreBuildingLevel` 상한 5→7                                                                                      | FE-C                       |
-| `src/components/board/gameBoardTransactionUtils.ts` | ❌ 버그                   | `upgradeBoardTileOwner` 상한 5→7                                                                                     | FE-C                       |
-| `src/components/board/gameBoardActionUtils.ts`      | ❌ 버그                   | `getBoardSellFallbackRefund` level 5, 6 케이스 추가                                                                  | FE-C                       |
-| `src/components/board/*` (렌더 레이어)              | ❌ 미구현                 | `store.eventQueue` 소비 연출. `playerState` 시각화                                                                   | FE-C                       |
+| 파일                                                | 현재 상태         | 남은 수정 방향                                                                         | 담당                       |
+| --------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------- | -------------------------- |
+| `src/types/domain.ts`                               | ✅ 완료           | —                                                                                      | FE-B                       |
+| `src/stores/game.store.ts`                          | ✅ 완료           | —                                                                                      | FE-B                       |
+| `src/services/socket/game.handler.ts`               | ✅ 완료           | —                                                                                      | FE-B                       |
+| `src/hooks/game/useGameState.ts`                    | ✅ 완료           | —                                                                                      | FE-B                       |
+| `src/services/game/game.api.ts`                     | ⚠️ 레거시 격리 중 | deprecated 표시 완료. `gameBoardActionHandlers.ts` 호출부 → `emitGameAction` 전환 필요 | FE-B                       |
+| `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료           | —                                                                                      | FE-B                       |
+| `src/pages/GamePage.tsx`                            | ✅ 1차 완료       | `store.prompt`, `store.lastError`, `store.pendingAction` UI 연결 필요                  | FE-B                       |
+| `src/components/board/GameBoard.tsx`                | ⚠️ 부분 정리      | `applyMoney`, `advanceTurn`, 통행료 계산, 파산 판정 제거. `store.prompt` 연결          | FE-C 주도 / FE-B 선행 필요 |
+| `src/components/game/modals/*`                      | ❌ prompt 미연결  | `store.prompt.type` 기준 모달 열림 조건 연결. `emitPromptResponse` 연결                | FE-B                       |
+| `src/mocks/handlers/game.handler.ts`                | ✅ 완료           | —                                                                                      | FE-B                       |
+| `src/components/board/gameBoardStoreBridge.ts`      | ❌ 버그           | `toStoreBuildingLevel` 상한 5→7                                                        | FE-C                       |
+| `src/components/board/gameBoardTransactionUtils.ts` | ❌ 버그           | `upgradeBoardTileOwner` 상한 5→7                                                       | FE-C                       |
+| `src/components/board/gameBoardActionUtils.ts`      | ❌ 버그           | `getBoardSellFallbackRefund` level 5, 6 케이스 추가                                    | FE-C                       |
+| `src/components/board/*` (렌더 레이어)              | ❌ 미구현         | `store.eventQueue` 소비 연출. `playerState` 시각화                                     | FE-C                       |
 
 ### 2-1. `src/mocks/handlers/game.handler.ts` 명세 불일치 상세
 
@@ -270,36 +270,19 @@
 - `src/hooks/game/useGameState.ts`: `game:sync` 우선, REST bootstrap fallback 병행
 - `src/pages/GamePage.tsx`: store 단일 소스, `gameViewModel` mapper로 board 데이터 조립
 
-### 명세 불일치 (수정 미완료)
+### 명세 불일치 (수정 완료 — 2026-03-05)
 
-아래 항목은 코드가 존재하지만 `gamesocket.md` 명세와 불일치 상태다.
+- `src/types/domain.ts`: `GamePromptResponse.choice`, `GameAck.error: { code, message }`, `GamePatchEnvelope.gameId/turn` ✅
+- `src/services/socket/game.handler.ts`: `emitGameSync` knownRevision 추가, `emitPromptResponse` choice 전환 ✅
+- `src/mocks/handlers/game.handler.ts`: `END_TURN` 핸들러 추가, `BUILD_PROPERTY` 제거, ServerEventType 명세 정렬, payload camelCase, `BuildingLevel` 상한 7 ✅
 
-**`src/types/domain.ts`**
-
-- `GamePromptResponse.value` → `choice` 로 변경 필요
-- `GameAck.errorCode` + `GameAck.message` 플랫 구조 → `GameAck.error: { code, message }` 중첩 구조
-- `GamePatchEnvelope`: `turn?: number`, `gameId?: GameId` 누락
-
-**`src/services/socket/game.handler.ts`**
-
-- `emitGameSync` payload: `knownRevision` 누락. 스펙 외 `reset` 포함
-- `emitPromptResponse`: `value` → `choice`. `playerId` 제거
-
-**`src/mocks/handlers/game.handler.ts`**
-
-- `BUILD_PROPERTY` 액션: 명세에 없음 → 제거
-- `END_TURN` 액션: 명세에 있지만 핸들러 없음 → 추가
-- `ServerEventType` 전체 명칭 불일치 (위 2-1 표 참조)
-- action payload snake_case → camelCase
-- `BuildingLevel` 상한 5 → 7
-
-### 버그 (수정 미완료)
+### 버그 (수정 미완료 — FE-C 담당)
 
 - `src/components/board/gameBoardStoreBridge.ts:6`: `toStoreBuildingLevel` 상한 5 (→ 7 필요)
 - `src/components/board/gameBoardTransactionUtils.ts`: `upgradeBoardTileOwner` 상한 5 (→ 7 필요)
 - `src/components/board/gameBoardActionUtils.ts`: `getBoardSellFallbackRefund` level 5, 6 누락
 
-### 구조 미구현
+### 구조 미구현 (FE-B 2단계)
 
 - `store.prompt` → 모달 연결 없음
 - `store.lastError` → 에러 UI 연결 없음
@@ -311,8 +294,8 @@
 
 **FE-B**
 
-1. `src/types/domain.ts`, `src/services/socket/game.handler.ts`: 명세 불일치 수정 (위 5-1 참조)
-2. `src/mocks/handlers/game.handler.ts`: 명세 불일치 수정 (위 2-1 표 기준)
+1. ~~`src/types/domain.ts`, `src/services/socket/game.handler.ts`: 명세 불일치 수정~~ ✅ 완료
+2. ~~`src/mocks/handlers/game.handler.ts`: 명세 불일치 수정~~ ✅ 완료
 3. `src/components/game/modals/*`, `src/pages/GamePage.tsx`, `src/components/board/GameBoard.tsx`: `store.prompt` → modal 연결. `store.lastError` → 에러 UI. `store.pendingAction` → 버튼 상태
 4. `src/components/board/gameBoardActionHandlers.ts`: REST 직접 호출 → `emitGameAction` 전환
 
