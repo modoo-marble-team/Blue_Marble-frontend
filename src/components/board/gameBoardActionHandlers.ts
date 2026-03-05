@@ -178,21 +178,10 @@ export function createGameBoardActionHandlers(
       return
     }
 
-    if (!roomId) {
-      setStatus(roomIdRequiredMessage)
-      return
-    }
-
     const active = curPlayerRef.current
     const activePlayerId = getPlayerIdByIndex(active)
     const activePlayerColor = getPlayerColorByIndex(active)
     const price = getPurchaseCost(tileId)
-
-    const actionResult = await gameApi.buyTile(roomId, { tile_index: tileId })
-    if (!actionResult.ok) {
-      setStatus(toBoardActionErrorMessage(actionResult.status))
-      return
-    }
 
     setBuyModal({ open: false, tileId: null })
     const bankrupt = applyMoney(active, -price, onDoneCallback)
