@@ -10,6 +10,7 @@ interface LoadedOnlineUsersSocketModule {
   socket: MockSocket
   connectSocketWithAuthIfNeededMock: ReturnType<typeof vi.fn>
   getMockOnlineUsersSnapshotMock: ReturnType<typeof vi.fn>
+  subscribeMockOnlineUsersChangeMock: ReturnType<typeof vi.fn>
   listenerMock: ReturnType<typeof vi.fn>
   module: typeof import('./onlineUsersSocket')
 }
@@ -42,6 +43,12 @@ async function loadOnlineUsersSocketModule(
   const getMockOnlineUsersSnapshotMock = vi.fn(() =>
     mockUsers.map((user) => ({ ...user }))
   )
+  const subscribeMockOnlineUsersChangeMock = vi.fn(
+    (listener: (users: OnlineUserPayload[]) => void) => {
+      void listener
+      return vi.fn()
+    }
+  )
 
   vi.doMock('../../lib/socket', () => ({
     socket,
@@ -50,6 +57,7 @@ async function loadOnlineUsersSocketModule(
 
   vi.doMock('./mockData', () => ({
     getMockOnlineUsersSnapshot: getMockOnlineUsersSnapshotMock,
+    subscribeMockOnlineUsersChange: subscribeMockOnlineUsersChangeMock,
   }))
 
   const module = await import('./onlineUsersSocket')
@@ -58,6 +66,7 @@ async function loadOnlineUsersSocketModule(
     socket,
     connectSocketWithAuthIfNeededMock,
     getMockOnlineUsersSnapshotMock,
+    subscribeMockOnlineUsersChangeMock,
     listenerMock,
     module,
   }
@@ -111,16 +120,14 @@ describe('onlineUsersSocket', () => {
         status: 'lobby',
       },
     ]
-    const { module, listenerMock } = await loadOnlineUsersSocketModule(
-      true,
-      false,
-      users
-    )
+    const { module, listenerMock, subscribeMockOnlineUsersChangeMock } =
+      await loadOnlineUsersSocketModule(true, false, users)
 
     const stopBroadcast = module.startOnlineUsersMockBroadcast()
 
     // 시작 시 즉시 1회 브로드캐스트
     expect(listenerMock).toHaveBeenCalledTimes(1)
+    expect(subscribeMockOnlineUsersChangeMock).toHaveBeenCalledTimes(1)
 
     vi.advanceTimersByTime(5_000)
     expect(listenerMock).toHaveBeenCalledTimes(2)
