@@ -6,6 +6,7 @@ interface TollModalProps {
   ownerName?: string
   tollText?: string
   confirmLabel?: string
+  isSubmitting?: boolean
   onConfirm?: () => void
 }
 
@@ -20,6 +21,7 @@ const TollModal: React.FC<TollModalProps> = ({
   ownerName = DEFAULT_OWNER_NAME,
   tollText = DEFAULT_TOLL_TEXT,
   confirmLabel = DEFAULT_CONFIRM_LABEL,
+  isSubmitting = false,
   onConfirm,
 }) => {
   if (!open) {
@@ -55,7 +57,8 @@ const TollModal: React.FC<TollModalProps> = ({
         <button
           type="button"
           onClick={onConfirm}
-          className="mx-auto flex h-15 w-full max-w-102 items-center justify-center rounded-[22px] bg-[#245FE5] text-[26px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1]"
+          disabled={isSubmitting}
+          className="mx-auto flex h-15 w-full max-w-102 items-center justify-center rounded-[22px] bg-[#245FE5] text-[26px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {confirmLabel}
         </button>
