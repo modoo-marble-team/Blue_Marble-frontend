@@ -28,7 +28,6 @@
 - `src/components/board/gameBoardActionHandlers.ts`의 BUILD/sync 레거시 호출 정리
 - prompt.type별 choice 표준(BUY/SKIP, BUILD/SKIP, PAY_TOLL, END_TURN)을 문서/목업과 최종 고정
 - 미매핑 prompt의 fallback 표면(오버레이) 유지 범위 확정
-- `src/components/board/gameBoardActionHandlers.test.ts`에 mode별 턴 전환 회귀 케이스 추가
 
 ## FE-C 현재 최우선 작업
 
