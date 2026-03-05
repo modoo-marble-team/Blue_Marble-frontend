@@ -34,10 +34,7 @@ export const useGameState = (roomId: string | null) => {
       // 같은 방에서 이미 상태를 들고 있으면 초기 동기화를 반복하지 않는다.
       if (!roomChanged && players.length > 0) return
 
-      emitGameSync({
-        roomId,
-        reset: USE_GAME_SOCKET_MOCK && roomChanged,
-      })
+      emitGameSync({ roomId })
 
       // mock/socket rollout 전까지는 REST snapshot을 bootstrap fallback으로 유지한다.
       const result = await gameApi.getState(roomId, {

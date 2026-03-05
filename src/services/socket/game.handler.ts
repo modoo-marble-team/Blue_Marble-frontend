@@ -40,7 +40,7 @@ type GameActionPayload = {
 type GameSyncPayload = {
   roomId?: RoomId | null
   gameId?: GameId | null
-  reset?: boolean
+  knownRevision?: number
 }
 
 type PromptResponsePayload = GamePromptResponse & {
@@ -170,45 +170,43 @@ export const emitGameAction = ({
   return actionId
 }
 
-export const emitGameSync = ({ roomId, gameId, reset }: GameSyncPayload) => {
+export const emitGameSync = ({
+  roomId,
+  gameId,
+  knownRevision,
+}: GameSyncPayload) => {
   if (USE_GAME_SOCKET_MOCK) {
     mockEmitGameSync({
       roomId,
       gameId,
-      reset,
+      knownRevision,
     })
     return
   }
 
   socket.emit('game:sync', {
-    roomId,
     gameId,
-    reset,
+    knownRevision,
   })
 }
 
 export const emitPromptResponse = ({
   promptId,
-  playerId,
-  value,
-  roomId,
+  choice,
   gameId,
 }: PromptResponsePayload) => {
   if (USE_GAME_SOCKET_MOCK) {
     mockEmitPromptResponse({
       promptId,
-      playerId,
-      value,
+      choice,
     })
     return
   }
 
   socket.emit('game:prompt_response', {
-    promptId,
-    playerId,
-    value,
-    roomId,
     gameId,
+    promptId,
+    choice,
   })
 }
 
@@ -216,19 +214,6 @@ export const emitPromptResponse = ({
 export const emitRollDice = (payload: { room_id: string }) => {
   emitGameAction({
     type: 'ROLL_DICE',
-    roomId: payload.room_id,
-  })
-}
-
-// Deprecated compatibility wrapper until board prompt flow is migrated.
-export const emitConfirmPenalty = (payload: {
-  room_id: string
-  player_id: string
-}) => {
-  emitPromptResponse({
-    promptId: 'legacy-penalty-confirm',
-    playerId: payload.player_id,
-    value: 'confirm',
     roomId: payload.room_id,
   })
 }

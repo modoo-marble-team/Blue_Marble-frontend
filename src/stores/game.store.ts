@@ -376,8 +376,8 @@ export const useGameStore = create<GameStoreState>()(
         draft.lastError = ack.ok
           ? null
           : {
-              code: ack.errorCode ?? 'GAME_ACTION_REJECTED',
-              message: ack.message ?? '게임 액션이 거부되었습니다.',
+              code: ack.error?.code ?? 'GAME_ACTION_REJECTED',
+              message: ack.error?.message ?? '게임 액션이 거부되었습니다.',
               actionId: ack.actionId,
             }
 

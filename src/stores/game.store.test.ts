@@ -187,8 +187,7 @@ describe('game store partial updates', () => {
     store.resolveAck({
       actionId: 'action-1',
       ok: false,
-      errorCode: 'GAME_ACTION_REJECTED',
-      message: 'rejected',
+      error: { code: 'GAME_ACTION_REJECTED', message: 'rejected' },
     })
     store.setPrompt(prompt)
     store.clearPrompt('other-prompt')
