@@ -22,6 +22,28 @@ export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
  */
 export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 
+export const LEVEL_LABELS: Record<number, string> = {
+  0: '토지',
+  1: '주택 x1',
+  2: '주택 x2',
+  3: '주택 x3',
+  4: '호텔 x1',
+  5: '호텔 x2',
+  6: '호텔 x3',
+  7: '랜드마크',
+}
+
+export const LEVEL_MODAL_ICONS: Record<number, string> = {
+  0: '/BuyModal-land.svg',
+  1: '/BuyModal-house.svg',
+  2: '/BuyModal-house.svg',
+  3: '/BuyModal-house.svg',
+  4: '/BuyModal-hotel.svg',
+  5: '/BuyModal-hotel.svg',
+  6: '/BuyModal-hotel.svg',
+  7: '/BuyModal-landmark.svg',
+}
+
 export interface TileOwner {
   ownerId: number
   ownerColor: string

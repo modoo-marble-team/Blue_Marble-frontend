@@ -1,6 +1,6 @@
 import React from 'react'
 
-type CardModalVariant = 'event' | 'chance'
+type CardModalVariant = 'EVENT' | 'CHANCE'
 
 interface CardModalProps {
   open: boolean
@@ -23,7 +23,7 @@ const DEFAULT_CONFIRM_LABEL = '확인하기'
 
 const CardModal: React.FC<CardModalProps> = ({
   open,
-  variant = 'event',
+  variant = 'EVENT',
   title,
   descriptionLine1,
   descriptionLine2,
@@ -36,13 +36,13 @@ const CardModal: React.FC<CardModalProps> = ({
   }
 
   const resolvedTitle =
-    title ?? (variant === 'event' ? DEFAULT_EVENT_TITLE : DEFAULT_CHANCE_TITLE)
+    title ?? (variant === 'EVENT' ? DEFAULT_EVENT_TITLE : DEFAULT_CHANCE_TITLE)
   const resolvedDescriptionLine1 =
     descriptionLine1 ??
-    (variant === 'event' ? DEFAULT_EVENT_DESC_1 : DEFAULT_CHANCE_DESC_1)
+    (variant === 'EVENT' ? DEFAULT_EVENT_DESC_1 : DEFAULT_CHANCE_DESC_1)
   const resolvedDescriptionLine2 =
     descriptionLine2 ??
-    (variant === 'event' ? DEFAULT_EVENT_DESC_2 : DEFAULT_CHANCE_DESC_2)
+    (variant === 'EVENT' ? DEFAULT_EVENT_DESC_2 : DEFAULT_CHANCE_DESC_2)
 
   const [prefixText, suffixText] = resolvedDescriptionLine2.split(highlightText)
   const hasHighlightText = resolvedDescriptionLine2.includes(highlightText)
@@ -51,15 +51,15 @@ const CardModal: React.FC<CardModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-11 pt-12 shadow-2xl">
         <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-[#FFF3E5]">
-          {variant === 'event' ? (
+          {variant === 'EVENT' ? (
             <img
-              src="/event-question.svg"
+              src="/chance-box.svg"
               alt="이벤트 카드 아이콘"
               className="h-24 w-24"
             />
           ) : (
             <img
-              src="/chance-box.svg"
+              src="/event-question.svg"
               alt="찬스 카드 아이콘"
               className="h-24 w-24"
             />
