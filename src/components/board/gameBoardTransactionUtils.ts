@@ -56,3 +56,22 @@ export function getBoardTollAmount(
 ) {
   return owner ? calcToll(price, owner.level) : 0
 }
+
+export function takeoverBoardTileOwner(
+  tileOwners: Record<number, TileOwner>,
+  tileId: number,
+  newOwnerId: number,
+  newOwnerColor: string
+) {
+  const existing = tileOwners[tileId]
+  if (!existing) return tileOwners
+
+  return {
+    ...tileOwners,
+    [tileId]: {
+      ...existing,
+      ownerId: newOwnerId,
+      ownerColor: newOwnerColor,
+    },
+  }
+}

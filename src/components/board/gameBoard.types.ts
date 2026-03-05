@@ -47,6 +47,14 @@ export interface GoToIslandModalState {
   onDoneCallback?: () => void
 }
 
+export interface CityAcquisitionModalState {
+  open: boolean
+  tileId: number | null
+  ownerName: string
+  purchaseCostText: string
+  onDoneCallback?: () => void
+}
+
 export type SyncStatePayload = {
   players?: Array<{
     id: string | number

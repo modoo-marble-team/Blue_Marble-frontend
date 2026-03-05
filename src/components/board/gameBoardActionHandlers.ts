@@ -1,6 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { gameApi } from '../../services/game/game.api'
-import { emitGameAction } from '../../services/socket/game.handler'
+import { formatWon } from '../../lib/utils'
 import type { PlayerState, TileOwner, BuildingLevel } from './board.constants'
 import {
   getBoardSellFallbackRefund,
@@ -16,12 +16,14 @@ import {
   findBoardSellTarget,
   getBoardTollAmount,
   upgradeBoardTileOwner,
+  takeoverBoardTileOwner,
 } from './gameBoardTransactionUtils'
 import type {
   BuildModalState,
   BuyModalState,
   SyncStatePayload,
   TollModalState,
+  CityAcquisitionModalState,
 } from './gameBoard.types'
 
 type UpdateTileOwners = (
@@ -40,6 +42,7 @@ interface CreateGameBoardActionHandlersParams {
   setBuyModal: Dispatch<SetStateAction<BuyModalState>>
   setBuildModal: Dispatch<SetStateAction<BuildModalState>>
   setTollModal: Dispatch<SetStateAction<TollModalState>>
+  setAcquisitionModal: Dispatch<SetStateAction<CityAcquisitionModalState>>
   playersRef: MutableRefObject<PlayerState[]>
   curPlayerRef: MutableRefObject<number>
   tileOwnersRef: MutableRefObject<Record<number, TileOwner>>
@@ -78,6 +81,7 @@ export function createGameBoardActionHandlers(
     setBuyModal,
     setBuildModal,
     setTollModal,
+    setAcquisitionModal,
     playersRef,
     curPlayerRef,
     tileOwnersRef,
@@ -96,23 +100,6 @@ export function createGameBoardActionHandlers(
     applyMoney,
     advanceTurn,
   } = params
-
-  function emitSocketAction(
-    type: string,
-    payload?: Record<string, unknown>
-  ): boolean {
-    if (!roomId) {
-      setStatus(roomIdRequiredMessage)
-      return false
-    }
-
-    emitGameAction({
-      type,
-      roomId,
-      payload,
-    })
-    return true
-  }
 
   async function syncBoardStateFromServer() {
     if (!roomId) return false
@@ -147,6 +134,13 @@ export function createGameBoardActionHandlers(
       publishTileOwners(nextOwners)
     }
 
+    setAcquisitionModal({
+      open: false,
+      tileId: null,
+      ownerName: '',
+      purchaseCostText: '',
+    })
+
     const nextTurnIndex = findSyncTurnIndex(
       payload.current_turn ?? payload.currentTurn,
       playersRef.current,
@@ -166,14 +160,6 @@ export function createGameBoardActionHandlers(
     if (!sellTarget) return false
 
     const { tileId, owner } = sellTarget
-
-    if (!useGameSocketMock) {
-      return emitSocketAction('SELL_PROPERTY', {
-        tileId,
-        buildingLevel: owner.level,
-      })
-    }
-
     if (!roomId) return false
 
     const sellResult = await gameApi.sellTile(roomId, {
@@ -205,20 +191,6 @@ export function createGameBoardActionHandlers(
   async function handleBuy(buyModal: BuyModalState) {
     const { tileId, onDoneCallback } = buyModal
     if (tileId === null) return
-
-    if (!useGameSocketMock) {
-      const emitted = emitSocketAction('BUY_PROPERTY', {
-        tileId,
-      })
-      if (!emitted) {
-        return
-      }
-
-      setBuyModal({ open: false, tileId: null })
-      onDoneCallback?.()
-      return
-    }
-
     if (!roomId) {
       setStatus(roomIdRequiredMessage)
       return
@@ -254,15 +226,6 @@ export function createGameBoardActionHandlers(
 
   function handleBuyPass(buyModal: BuyModalState) {
     setBuyModal({ open: false, tileId: null })
-
-    if (!useGameSocketMock) {
-      const emitted = emitSocketAction('END_TURN')
-      if (emitted) {
-        buyModal.onDoneCallback?.()
-      }
-      return
-    }
-
     advanceTurn(buyModal.onDoneCallback)
   }
 
@@ -299,15 +262,6 @@ export function createGameBoardActionHandlers(
 
   function handleBuildCancel(buildModal: BuildModalState) {
     setBuildModal({ open: false, tileId: null })
-
-    if (!useGameSocketMock) {
-      const emitted = emitSocketAction('END_TURN')
-      if (emitted) {
-        buildModal.onDoneCallback?.()
-      }
-      return
-    }
-
     advanceTurn(buildModal.onDoneCallback)
   }
 
@@ -320,14 +274,6 @@ export function createGameBoardActionHandlers(
       ownerName: '',
       tollText: '',
     })
-
-    if (!useGameSocketMock) {
-      const emitted = emitSocketAction('END_TURN')
-      if (emitted) {
-        onDoneCallback?.()
-      }
-      return
-    }
 
     if (tileId !== null) {
       const owner = tileOwnersRef.current[tileId]
@@ -348,7 +294,22 @@ export function createGameBoardActionHandlers(
           applyMoney(ownerPlayerIndex, +tollAmount)
         }
         const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
-        if (!bankrupt) advanceTurn(onDoneCallback)
+        if (!bankrupt) {
+          if (owner.level < 7) {
+            const ownerPlayer = playersRef.current.find(
+              (p) => String(p.id) === String(owner.ownerId)
+            )
+            setAcquisitionModal({
+              open: true,
+              tileId,
+              ownerName: ownerPlayer?.name ?? '상대방',
+              purchaseCostText: formatWon(price),
+              onDoneCallback,
+            })
+          } else {
+            advanceTurn(onDoneCallback)
+          }
+        }
         return
       }
     }
@@ -364,5 +325,56 @@ export function createGameBoardActionHandlers(
     handleBuildConfirm,
     handleBuildCancel,
     handleTollConfirm,
+    handleAcquisitionConfirm: async (
+      acquisitionModal: CityAcquisitionModalState
+    ) => {
+      const { tileId, onDoneCallback } = acquisitionModal
+      if (tileId === null) return
+      if (!roomId) {
+        setStatus(roomIdRequiredMessage)
+        return
+      }
+
+      const active = curPlayerRef.current
+      const activePlayerId = getPlayerIdByIndex(active)
+      const activePlayerColor = getPlayerColorByIndex(active)
+      const price = getPurchaseCost(tileId)
+
+      // 인수 API가 정의되지 않았으므로 현재는 낙관적 업데이트만 진행하거나
+      // 기존 API를 응용할 수 없으므로 목업 로직으로 처리
+      // 실제 구현 시에는 gameApi.acquireTile 등을 호출해야 함
+
+      setAcquisitionModal({
+        open: false,
+        tileId: null,
+        ownerName: '',
+        purchaseCostText: '',
+      })
+
+      const bankrupt = applyMoney(active, -price, onDoneCallback)
+      if (!bankrupt) {
+        updateTileOwners(
+          (prev) =>
+            takeoverBoardTileOwner(
+              prev,
+              tileId,
+              activePlayerId,
+              activePlayerColor
+            ),
+          { notifyParent: true }
+        )
+        if (useGameSocketMock) onDoneCallback?.()
+        else advanceTurn(onDoneCallback)
+      }
+    },
+    handleAcquisitionCancel: (acquisitionModal: CityAcquisitionModalState) => {
+      setAcquisitionModal({
+        open: false,
+        tileId: null,
+        ownerName: '',
+        purchaseCostText: '',
+      })
+      advanceTurn(acquisitionModal.onDoneCallback)
+    },
   }
 }
