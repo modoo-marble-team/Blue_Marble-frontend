@@ -9,6 +9,8 @@ import {
   type GameStartEventPayload,
   type HostChangedEventPayload,
   type PlayerReadyEventPayload,
+  isDirectMessageBlockedByStatus,
+  isWaitingRoomStartConditionMet,
   type SocketAck,
 } from '../src/contracts/socket'
 import {
@@ -174,16 +176,7 @@ function getOrCreateRoom(roomId: string) {
 }
 
 function canStartGame(room: MockRoom) {
-  if (room.players.length < 2) {
-    return false
-  }
-
-  const nonHostPlayers = room.players.filter((player) => !player.isHost)
-  if (nonHostPlayers.length === 0) {
-    return false
-  }
-
-  return nonHostPlayers.every((player) => player.isReady)
+  return isWaitingRoomStartConditionMet(room.players)
 }
 
 function emitHostChanged(io: Server, room: MockRoom, nextHost: MockRoomPlayer) {
@@ -607,6 +600,26 @@ function configureSocketHandlers(io: Server, socket: Socket) {
       const receiverSocketId = socketIdByUserId.get(validated.data.receiver_id)
       if (!receiverSocketId) {
         ackError(ack, '상대 사용자가 오프라인입니다.', 'RECEIVER_NOT_FOUND')
+        return
+      }
+
+      const receiver = connectedUsersBySocketId.get(receiverSocketId)
+      if (!receiver) {
+        ackError(
+          ack,
+          '상대 사용자 연결을 찾을 수 없습니다.',
+          'RECEIVER_NOT_FOUND'
+        )
+        return
+      }
+
+      // 게임 중 사용자와의 DM은 송수신 모두 차단
+      if (isDirectMessageBlockedByStatus(sender.status, receiver.status)) {
+        ackError(
+          ack,
+          '게임 중인 사용자와는 DM을 보낼 수 없습니다.',
+          'DM_BLOCKED_WHILE_PLAYING'
+        )
         return
       }
 

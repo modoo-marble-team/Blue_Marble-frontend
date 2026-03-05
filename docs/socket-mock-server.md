@@ -19,6 +19,7 @@ npm run socket:mock
 - `enter_room`, `leave_room` 검증 및 상태 갱신
 - `send_chat` 룸 브로드캐스트
 - `dm_send` -> `dm_receive` 전달
+- DM 정책: 송신자/수신자 중 `playing` 상태가 있으면 차단
 - `toggle_ready` 준비 상태 토글 + `player_ready` 브로드캐스트
 - `start_game` 시작 조건 검증 + `game_start` 브로드캐스트
 - 방장 퇴장 시 `host_changed` 브로드캐스트
@@ -48,3 +49,4 @@ npm run socket:mock
 - `HOST_CANNOT_TOGGLE_READY`
 - `ONLY_HOST_CAN_START`
 - `READY_CONDITION_NOT_MET`
+- `DM_BLOCKED_WHILE_PLAYING`
