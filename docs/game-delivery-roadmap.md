@@ -144,6 +144,7 @@
 - `src/hooks/game/useGameState.ts`: 진입 시 `game:sync` 우선, REST bootstrap fallback 병행
 - `src/mocks/handlers/game.handler.ts`: `game:ack` + `game:patch(snapshot)` 기반 event-socket mock 추가
 - `src/pages/GamePage.tsx`: store 단일 소스 + `gameViewModel` mapper로 board 데이터 조립 + `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결
+- `src/components/board/gameBoardActionHandlers.ts`: BUY/SELL/END_TURN non-mock 경로를 `emitGameAction`으로 전환
 
 남은 핵심 축 — **명세 불일치 (코드 수정 전 반드시 선행)**:
 
@@ -166,7 +167,7 @@
 - `GamePage.tsx`의 `store.prompt`/`emitPromptResponse`/`pendingAction`/`lastAck`/`lastError` 연결은 완료
 - `store.prompt.type` → `modals/*` 및 `GameBoard.tsx` 분기 연결은 아직 없음 (Buy/Build/Toll 흐름은 여전히 로컬/REST 혼재)
 - `DiceTimerModal` → `game:prompt.timeoutSec` 연동 없음
-- `gameBoardActionHandlers.ts`: `gameApi.buyTile`, `gameApi.buildTile`, `gameApi.sellTile` REST 직접 호출 유지 → 격리 필요
+- `gameBoardActionHandlers.ts`: BUILD/sync는 여전히 REST 레거시 경로 유지 → 최종 정리 필요
 
 ### FE-C: 골격 완료(약 30%), 버그 수정 + 시각 레이어 수렴 단계
 
@@ -237,7 +238,7 @@
 - ~~`store.pendingAction`/`store.lastAck` 버튼 상태 및 상태 배지 연결~~ ✅ 완료
 - `store.prompt.type` → `modals/*`, `GameBoard.tsx` 분기 연결
 - `DiceTimerModal` → `game:prompt.timeoutSec` 기반으로 연결
-- `gameBoardActionHandlers.ts`: REST 직접 호출(`gameApi.buyTile` 등) → `emitGameAction` 전환
+- `gameBoardActionHandlers.ts`: BUILD/sync 레거시 호출 제거 및 prompt.type 기반 액션 확정
 
 ### 5-5. mock 검증 흐름 정비
 
@@ -288,7 +289,7 @@ FE-B `store.eventQueue`가 채워지는 구조는 완료. FE-C가 소비 쪽을 
 
 1. **FE-B 5-1**: 명세 불일치 수정 (`GamePromptResponse`, `GameAck`, `GamePatchEnvelope`, `emitGameSync`, `emitPromptResponse`, mock)
 2. **FE-C 6-1**: 버그 3개 수정 (`gameBoardStoreBridge`, `gameBoardTransactionUtils`, `gameBoardActionUtils`)
-3. **FE-B 5-4**: `store.prompt.type` 기반 modal 연결 + `DiceTimerModal` timeout 연결 + REST → `emitGameAction` 전환
+3. **FE-B 5-4**: `store.prompt.type` 기반 modal 연결 + `DiceTimerModal` timeout 연결 + `gameBoardActionHandlers` BUILD/sync 레거시 제거
 4. **FE-C 6-2**: `GameBoard.tsx` 서버 계산 제거, 시각 레이어 수렴
 5. **FE-C 6-4**: `store.eventQueue` 기반 이동/연출 구현
 6. **FE-B + FE-C**: `game:prompt` 흐름과 `DiceTimerModal` timeout 흐름 공동 검증
