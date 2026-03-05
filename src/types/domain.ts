@@ -130,8 +130,7 @@ export interface GamePrompt {
 
 export interface GamePromptResponse {
   promptId: string
-  playerId?: PlayerId | null
-  value: string
+  choice: string
 }
 
 export interface GameAck {
@@ -140,8 +139,7 @@ export interface GameAck {
   ok: boolean
   revision?: number
   promptId?: string | null
-  message?: string
-  errorCode?: string
+  error?: { code: string; message: string }
   payload?: Record<string, unknown>
 }
 
@@ -218,7 +216,9 @@ export interface GameSnapshot {
 }
 
 export interface GamePatchEnvelope {
+  gameId?: GameId
   revision: number
+  turn?: number
   patch: GamePatchOperation[]
   events?: ServerEvent[]
 }

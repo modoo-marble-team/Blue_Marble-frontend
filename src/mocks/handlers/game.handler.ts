@@ -54,7 +54,7 @@ type MockGameActionPayload = {
 type MockGameSyncPayload = {
   roomId?: string | null
   gameId?: string | null
-  reset?: boolean
+  knownRevision?: number
 }
 
 const clonePlayers = () => structuredClone(mockPlayers)
@@ -152,11 +152,6 @@ const emitGamePatch = (
   payload: GamePatchEnvelope & { snapshot?: GameSnapshot }
 ) => {
   emitSocketEvent('game:patch', payload)
-}
-
-const emitGamePrompt = (prompt: GamePrompt) => {
-  mockGameState.prompt = prompt
-  emitSocketEvent('game:prompt', prompt)
 }
 
 const emitGameError = (error: GameError) => {
@@ -263,8 +258,10 @@ const handleRollDiceAction = (
       actionId: action.actionId,
       type: action.type,
       ok: false,
-      message: '현재 턴 플레이어를 찾을 수 없습니다.',
-      errorCode: 'PLAYER_NOT_FOUND',
+      error: {
+        code: 'PLAYER_NOT_FOUND',
+        message: '현재 턴 플레이어를 찾을 수 없습니다.',
+      },
     })
     return
   }
@@ -294,7 +291,7 @@ const handleRollDiceAction = (
 
   emitSnapshotPatch(action.roomId, action.gameId, [
     {
-      type: 'ROLL_DICE',
+      type: 'DICE_ROLLED',
       playerId: currentPlayer.id,
       payload: {
         dice: [dice1, dice2],
@@ -302,7 +299,7 @@ const handleRollDiceAction = (
       },
     },
     {
-      type: 'MOVE_PLAYER',
+      type: 'PLAYER_MOVED',
       playerId: currentPlayer.id,
       tileIndex: toIndex,
       amount: passGo ? MOCK_PASS_GO_SALARY : undefined,
@@ -319,7 +316,7 @@ const handleBuyPropertyAction = (
   action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
     Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
 ) => {
-  const tileIndex = Number(action.payload?.tile_index)
+  const tileIndex = Number(action.payload?.tileId)
   const player = getCurrentPlayer()
   const tile = getTileByIndex(tileIndex)
 
@@ -328,8 +325,10 @@ const handleBuyPropertyAction = (
       actionId: action.actionId,
       type: action.type,
       ok: false,
-      message: '구매할 수 없는 타일입니다.',
-      errorCode: 'TILE_NOT_OWNABLE',
+      error: {
+        code: 'TILE_NOT_OWNABLE',
+        message: '구매할 수 없는 타일입니다.',
+      },
     })
     return
   }
@@ -339,8 +338,7 @@ const handleBuyPropertyAction = (
       actionId: action.actionId,
       type: action.type,
       ok: false,
-      message: '이미 소유된 타일입니다.',
-      errorCode: 'TILE_ALREADY_OWNED',
+      error: { code: 'TILE_ALREADY_OWNED', message: '이미 소유된 타일입니다.' },
     })
     return
   }
@@ -351,8 +349,10 @@ const handleBuyPropertyAction = (
       actionId: action.actionId,
       type: action.type,
       ok: false,
-      message: '보유 금액이 부족합니다.',
-      errorCode: 'INSUFFICIENT_BALANCE',
+      error: {
+        code: 'INSUFFICIENT_BALANCE',
+        message: '보유 금액이 부족합니다.',
+      },
     })
     return
   }
@@ -373,84 +373,10 @@ const handleBuyPropertyAction = (
 
   emitSnapshotPatch(action.roomId, action.gameId, [
     {
-      type: 'BUY_PROPERTY',
+      type: 'BOUGHT_PROPERTY',
       playerId: player.id,
       tileIndex,
       amount: price,
-    },
-  ])
-}
-
-const handleBuildPropertyAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
-) => {
-  const tileIndex = Number(action.payload?.tile_index)
-  const player = getCurrentPlayer()
-  const tile = getTileByIndex(tileIndex)
-
-  if (!player || !isOwnableTile(tile)) {
-    emitGameAck({
-      actionId: action.actionId,
-      type: action.type,
-      ok: false,
-      message: '건설할 수 없는 타일입니다.',
-      errorCode: 'TILE_NOT_BUILDABLE',
-    })
-    return
-  }
-
-  if (String(tile.owner_id) !== String(player.id)) {
-    emitGameAck({
-      actionId: action.actionId,
-      type: action.type,
-      ok: false,
-      message: '본인 소유 타일만 건설할 수 있습니다.',
-      errorCode: 'FORBIDDEN_BUILD',
-    })
-    return
-  }
-
-  if (tile.building >= 5) {
-    emitGameAck({
-      actionId: action.actionId,
-      type: action.type,
-      ok: false,
-      message: '최대 단계까지 건설했습니다.',
-      errorCode: 'MAX_BUILDING_LEVEL',
-    })
-    return
-  }
-
-  if (player.balance < MOCK_BUILD_COST) {
-    emitGameAck({
-      actionId: action.actionId,
-      type: action.type,
-      ok: false,
-      message: '건설 비용이 부족합니다.',
-      errorCode: 'INSUFFICIENT_BALANCE',
-    })
-    return
-  }
-
-  player.balance -= MOCK_BUILD_COST
-  tile.building = (tile.building + 1) as BuildingLevel
-  const revision = nextRevision()
-
-  emitGameAck({
-    actionId: action.actionId,
-    type: action.type,
-    ok: true,
-    revision,
-  })
-
-  emitSnapshotPatch(action.roomId, action.gameId, [
-    {
-      type: 'BUILD_PROPERTY',
-      playerId: player.id,
-      tileIndex,
-      amount: MOCK_BUILD_COST,
-      payload: { buildingLevel: tile.building },
     },
   ])
 }
@@ -459,9 +385,11 @@ const handleSellPropertyAction = (
   action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
     Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
 ) => {
-  const tileIndex = Number(action.payload?.tile_index)
-  const level =
-    typeof action.payload?.level === 'number' ? action.payload.level : undefined
+  const tileIndex = Number(action.payload?.tileId)
+  const buildingLevel =
+    typeof action.payload?.buildingLevel === 'number'
+      ? action.payload.buildingLevel
+      : undefined
   const player = getCurrentPlayer()
   const tile = getTileByIndex(tileIndex)
 
@@ -470,8 +398,10 @@ const handleSellPropertyAction = (
       actionId: action.actionId,
       type: action.type,
       ok: false,
-      message: '매각할 수 없는 타일입니다.',
-      errorCode: 'TILE_NOT_SELLABLE',
+      error: {
+        code: 'TILE_NOT_SELLABLE',
+        message: '매각할 수 없는 타일입니다.',
+      },
     })
     return
   }
@@ -481,13 +411,18 @@ const handleSellPropertyAction = (
       actionId: action.actionId,
       type: action.type,
       ok: false,
-      message: '본인 소유 타일만 매각할 수 있습니다.',
-      errorCode: 'FORBIDDEN_SELL',
+      error: {
+        code: 'FORBIDDEN_SELL',
+        message: '본인 소유 타일만 매각할 수 있습니다.',
+      },
     })
     return
   }
 
-  const { refund, nextBuilding, releaseOwnership } = getSellRefund(tile, level)
+  const { refund, nextBuilding, releaseOwnership } = getSellRefund(
+    tile,
+    buildingLevel
+  )
   player.balance += refund
   tile.building = nextBuilding
 
@@ -508,7 +443,7 @@ const handleSellPropertyAction = (
 
   emitSnapshotPatch(action.roomId, action.gameId, [
     {
-      type: 'SELL_PROPERTY',
+      type: 'SOLD_PROPERTY',
       playerId: player.id,
       tileIndex,
       amount: refund,
@@ -520,15 +455,30 @@ const handleSellPropertyAction = (
   ])
 }
 
-export const mockEmitGameSync = ({
-  roomId,
-  gameId,
-  reset,
-}: MockGameSyncPayload) => {
-  if (reset) {
-    resetMockGameState()
-  }
+const handleEndTurnAction = (
+  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
+    Pick<MockGameActionPayload, 'roomId' | 'gameId'>
+) => {
+  advanceMockTurn()
+  mockGameState.phase = 'rolling'
+  const revision = nextRevision()
 
+  emitGameAck({
+    actionId: action.actionId,
+    type: action.type,
+    ok: true,
+    revision,
+  })
+
+  emitSnapshotPatch(action.roomId, action.gameId, [
+    {
+      type: 'TURN_ENDED',
+      playerId: mockGameState.currentTurn,
+    },
+  ])
+}
+
+export const mockEmitGameSync = ({ roomId, gameId }: MockGameSyncPayload) => {
   setTimeout(() => {
     emitSnapshotPatch(roomId, gameId)
   }, 0)
@@ -557,24 +507,12 @@ export const mockEmitGameAction = ({
       case 'BUY_PROPERTY':
         handleBuyPropertyAction(action)
         break
-      case 'BUILD_PROPERTY':
-        handleBuildPropertyAction(action)
-        break
       case 'SELL_PROPERTY':
         handleSellPropertyAction(action)
         break
-      case 'REQUEST_BUY_PROPERTY_PROMPT': {
-        emitGamePrompt({
-          id: `prompt-buy-${Date.now()}`,
-          type: 'buy',
-          playerId: mockGameState.currentTurn,
-          title: '도시 구매',
-          message: '이 도시를 구매하시겠습니까?',
-          timeoutSec: MOCK_TURN_TIMEOUT_SEC,
-          payload,
-        })
+      case 'END_TURN':
+        handleEndTurnAction(action)
         break
-      }
       default:
         emitGameError({
           code: 'UNSUPPORTED_GAME_ACTION',
@@ -585,8 +523,10 @@ export const mockEmitGameAction = ({
           actionId,
           type,
           ok: false,
-          message: '지원하지 않는 게임 액션입니다.',
-          errorCode: 'UNSUPPORTED_GAME_ACTION',
+          error: {
+            code: 'UNSUPPORTED_GAME_ACTION',
+            message: '지원하지 않는 게임 액션입니다.',
+          },
         })
     }
   }, 0)
@@ -617,8 +557,7 @@ export const mockEmitPromptResponse = (response: GamePromptResponse) => {
   emitSnapshotPatch(undefined, undefined, [
     {
       type: 'PROMPT_RESPONSE',
-      playerId: response.playerId,
-      payload: { value: response.value },
+      payload: { choice: response.choice },
     },
   ])
 }
