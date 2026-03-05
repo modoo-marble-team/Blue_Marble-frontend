@@ -1,5 +1,6 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { gameApi } from '../../services/game/game.api'
+import { emitGameAction } from '../../services/socket/game.handler'
 import type { PlayerState, TileOwner, BuildingLevel } from './board.constants'
 import {
   getBoardSellFallbackRefund,
@@ -96,6 +97,23 @@ export function createGameBoardActionHandlers(
     advanceTurn,
   } = params
 
+  function emitSocketAction(
+    type: string,
+    payload?: Record<string, unknown>
+  ): boolean {
+    if (!roomId) {
+      setStatus(roomIdRequiredMessage)
+      return false
+    }
+
+    emitGameAction({
+      type,
+      roomId,
+      payload,
+    })
+    return true
+  }
+
   async function syncBoardStateFromServer() {
     if (!roomId) return false
 
@@ -148,6 +166,14 @@ export function createGameBoardActionHandlers(
     if (!sellTarget) return false
 
     const { tileId, owner } = sellTarget
+
+    if (!useGameSocketMock) {
+      return emitSocketAction('SELL_PROPERTY', {
+        tileId,
+        buildingLevel: owner.level,
+      })
+    }
+
     if (!roomId) return false
 
     const sellResult = await gameApi.sellTile(roomId, {
@@ -179,6 +205,20 @@ export function createGameBoardActionHandlers(
   async function handleBuy(buyModal: BuyModalState) {
     const { tileId, onDoneCallback } = buyModal
     if (tileId === null) return
+
+    if (!useGameSocketMock) {
+      const emitted = emitSocketAction('BUY_PROPERTY', {
+        tileId,
+      })
+      if (!emitted) {
+        return
+      }
+
+      setBuyModal({ open: false, tileId: null })
+      onDoneCallback?.()
+      return
+    }
+
     if (!roomId) {
       setStatus(roomIdRequiredMessage)
       return
@@ -215,6 +255,15 @@ export function createGameBoardActionHandlers(
 
   function handleBuyPass(buyModal: BuyModalState) {
     setBuyModal({ open: false, tileId: null })
+
+    if (!useGameSocketMock) {
+      const emitted = emitSocketAction('END_TURN')
+      if (emitted) {
+        buyModal.onDoneCallback?.()
+      }
+      return
+    }
+
     advanceTurn(buyModal.onDoneCallback)
   }
 
@@ -252,6 +301,15 @@ export function createGameBoardActionHandlers(
 
   function handleBuildCancel(buildModal: BuildModalState) {
     setBuildModal({ open: false, tileId: null })
+
+    if (!useGameSocketMock) {
+      const emitted = emitSocketAction('END_TURN')
+      if (emitted) {
+        buildModal.onDoneCallback?.()
+      }
+      return
+    }
+
     advanceTurn(buildModal.onDoneCallback)
   }
 
@@ -264,6 +322,14 @@ export function createGameBoardActionHandlers(
       ownerName: '',
       tollText: '',
     })
+
+    if (!useGameSocketMock) {
+      const emitted = emitSocketAction('END_TURN')
+      if (emitted) {
+        onDoneCallback?.()
+      }
+      return
+    }
 
     if (tileId !== null) {
       const owner = tileOwnersRef.current[tileId]
