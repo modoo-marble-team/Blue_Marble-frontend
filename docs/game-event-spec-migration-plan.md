@@ -269,6 +269,7 @@
 - `src/services/socket/game.handler.ts`: `game:ack`, `game:patch`, `game:prompt`, `game:error` 구독. `emitGameAction`, `emitGameSync`, `emitPromptResponse` 구현
 - `src/hooks/game/useGameState.ts`: `game:sync` 우선, REST bootstrap fallback 병행
 - `src/pages/GamePage.tsx`: store 단일 소스, `gameViewModel` mapper로 board 데이터 조립 + `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결
+- `src/components/board/gameBoardActionHandlers.ts`: mock 경로 BUY/BUILD 성공 시 턴이 다음 플레이어로 넘어가지 않던 문제 수정 (`advanceTurn` 보장)
 
 ### 명세 불일치 (수정 완료 — 2026-03-05)
 
@@ -286,7 +287,7 @@
 
 - `GamePage` + `GameBoard`: `prompt.type` → Buy/Build/Toll/Timer 모달 매핑, `emitPromptResponse` 응답 경로 연결 완료
 - `store.eventQueue` → 소비 컴포넌트 없음
-- `gameBoardActionHandlers.ts` → BUY/SELL/END_TURN non-mock 전환 완료. BUILD/sync 레거시 호출 정리 필요
+- `gameBoardActionHandlers.ts` → BUY/SELL/END_TURN non-mock 전환 완료, mock 턴 전환 회귀 수정 완료. BUILD/sync 레거시 호출 정리 필요
 
 ## 5-2. 다음 우선순위
 

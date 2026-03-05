@@ -18,10 +18,10 @@
 
 ## 진행도 요약
 
-| 파트 | 진행도  | 상태                                                                                                                                 |
-| ---- | ------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| FE-B | 진행 중 | `GamePage`/`GameBoard` prompt modal 연결 완료 + `gameBoardActionHandlers` non-mock BUY/SELL/END_TURN 전환 완료, BUILD/sync 정리 단계 |
-| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄여야 하는 단계                                                                                   |
+| 파트 | 진행도  | 상태                                                                                                                  |
+| ---- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| FE-B | 진행 중 | prompt modal 연결 완료 + `gameBoardActionHandlers` non-mock 전환 및 mock 턴 전환 버그 수정 완료, BUILD/sync 정리 단계 |
+| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄여야 하는 단계                                                                    |
 
 ## FE-B 현재 최우선 작업
 
@@ -40,6 +40,7 @@
 
 - `GamePage` + `GameBoard`는 `prompt.type` 중심 소비 구조로 전환됐지만, mock 로컬 fallback과 실서버 경로가 이원화돼 있다.
 - `gameBoardActionHandlers`는 BUY/SELL/END_TURN만 non-mock 전환됐고 BUILD/sync는 레거시 경로가 남아 있다.
+- mock 경로 턴 전환 버그는 수정됐지만, BUILD/sync 레거시 경로가 남아 동작 축이 분리돼 있다.
 - `GameBoard.tsx`가 여전히 일부 게임 엔진 성격 로직을 들고 있다.
 - 게임 REST fallback이 장기화되면 중앙 docs 기준과 실제 런타임이 다시 벌어질 수 있다.
 - `gameId`, money unit, tile/building enum 기준이 문서와 코드에서 완전히 수렴하지 않았다.
