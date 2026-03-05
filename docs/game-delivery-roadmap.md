@@ -165,8 +165,8 @@
 남은 핵심 축 — UI 연결:
 
 - `GamePage.tsx`의 `store.prompt`/`emitPromptResponse`/`pendingAction`/`lastAck`/`lastError` 연결은 완료
-- `store.prompt.type` → `modals/*` 및 `GameBoard.tsx` 분기 연결은 아직 없음 (Buy/Build/Toll 흐름은 여전히 로컬/REST 혼재)
-- `DiceTimerModal` → `game:prompt.timeoutSec` 연동 없음
+- `store.prompt.type` → `modals/*` 및 `GameBoard.tsx` 분기 연결 완료 (non-mock 기준 Buy/Build/Toll/Timer 모달)
+- `DiceTimerModal` → `game:prompt.timeoutSec` 연동 완료
 - `gameBoardActionHandlers.ts`: BUILD/sync는 여전히 REST 레거시 경로 유지 → 최종 정리 필요
 
 ### FE-C: 골격 완료(약 30%), 버그 수정 + 시각 레이어 수렴 단계
@@ -190,7 +190,7 @@
 - `GameBoard.tsx` 내부에 `rollDice`, `applyMoney`, `advanceTurn`, 통행료 계산, 파산 판정 로직 잔존 → 제거
 - `store.eventQueue` 소비 컴포넌트 없음 (enqueue는 되지만 아무 연출도 없음)
 - `store.playerState`(`island`, `locked`) 기반 섬/잠금 상태 시각화 없음
-- `DiceTimerModal`: `game:prompt` timeout과 연결 없이 `GameBoard.tsx` 내부 독자 타이머만 사용
+- `DiceTimerModal`: `game:prompt.timeoutSec` 연동 완료. 다만 mock 로컬 fallback 타이머 분기는 유지
 
 ## 5. FE-B 우선 작업
 
@@ -236,8 +236,8 @@
 - ~~`GamePage.tsx`에서 `emitPromptResponse` 사용자 응답 흐름 연결~~ ✅ 완료
 - ~~`game:ack.ok=false` → `store.lastError` → 에러 UI 표시 연결~~ ✅ 완료
 - ~~`store.pendingAction`/`store.lastAck` 버튼 상태 및 상태 배지 연결~~ ✅ 완료
-- `store.prompt.type` → `modals/*`, `GameBoard.tsx` 분기 연결
-- `DiceTimerModal` → `game:prompt.timeoutSec` 기반으로 연결
+- ~~`store.prompt.type` → `modals/*`, `GameBoard.tsx` 분기 연결~~ ✅ 완료 (non-mock)
+- ~~`DiceTimerModal` → `game:prompt.timeoutSec` 기반으로 연결~~ ✅ 완료
 - `gameBoardActionHandlers.ts`: BUILD/sync 레거시 호출 제거 및 prompt.type 기반 액션 확정
 
 ### 5-5. mock 검증 흐름 정비
@@ -283,13 +283,13 @@ FE-B `store.eventQueue`가 채워지는 구조는 완료. FE-C가 소비 쪽을 
 
 - `playerState`(`island`, `locked`) 기반 섬 감금/잠금 상태 표시 추가
 - `stateDuration` 기반 잔여 턴 표시
-- `DiceTimerModal` → `game:prompt.timeoutSec` 기반 타이머로 교체 (FE-B와 협업)
+- `DiceTimerModal` → `game:prompt.timeoutSec` 기반 타이머 연결 완료. FE-C는 시각 연출/애니메이션만 후속 반영
 
 ## 7. 권장 실행 순서
 
 1. **FE-B 5-1**: 명세 불일치 수정 (`GamePromptResponse`, `GameAck`, `GamePatchEnvelope`, `emitGameSync`, `emitPromptResponse`, mock)
 2. **FE-C 6-1**: 버그 3개 수정 (`gameBoardStoreBridge`, `gameBoardTransactionUtils`, `gameBoardActionUtils`)
-3. **FE-B 5-4**: `store.prompt.type` 기반 modal 연결 + `DiceTimerModal` timeout 연결 + `gameBoardActionHandlers` BUILD/sync 레거시 제거
+3. **FE-B 5-4**: `gameBoardActionHandlers` BUILD/sync 레거시 제거 + prompt.type 액션 확정
 4. **FE-C 6-2**: `GameBoard.tsx` 서버 계산 제거, 시각 레이어 수렴
 5. **FE-C 6-4**: `store.eventQueue` 기반 이동/연출 구현
 6. **FE-B + FE-C**: `game:prompt` 흐름과 `DiceTimerModal` timeout 흐름 공동 검증
@@ -315,5 +315,5 @@ FE-B `store.eventQueue`가 채워지는 구조는 완료. FE-C가 소비 쪽을 
 지금 당장 해야 할 일은 **명세 불일치 수정**이다.
 코드 구조를 아무리 잘 만들어도 payload 필드명(`choice` vs `value`)이나 에러 구조(`error.code` vs `errorCode`)가 백엔드와 다르면 실서버 연동에서 즉시 깨진다.
 FE-B는 5-1 불일치 수정을 먼저, FE-C는 6-1 버그 3개 수정을 먼저 진행한다.
-그 다음 단계가 `store.prompt` UI 연결, `GameBoard.tsx` 시각 레이어 수렴이다.
+그 다음 단계는 `gameBoardActionHandlers`의 BUILD/sync 레거시 제거와 `GameBoard.tsx` 시각 레이어 수렴이다.
 `roomId`, money unit, 현재 보드 view model은 갑자기 제거하지 않고 compatibility layer로 안전하게 이행한다.
