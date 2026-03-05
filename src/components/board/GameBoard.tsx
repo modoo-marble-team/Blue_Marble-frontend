@@ -13,6 +13,8 @@ import CardModal from '../game/modals/CardModal'
 import TollModal from '../game/modals/TollModal'
 import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
+import DiceTimerModal from '../game/modals/DiceTimerModal'
+
 import { emitConfirmPenalty } from '../../services/socket/game.handler'
 import {
   TILES,
@@ -28,7 +30,9 @@ import {
   PlayerState,
   TileOwner,
   BuildingLevel,
+  DICE_TIMEOUT,
 } from './board.constants'
+
 import {
   syncMockStoreBankrupt,
   syncMockStoreCurrentTurn,
@@ -258,9 +262,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onTileOwnersChange,
       onBankrupt,
     },
+
     ref
   ) => {
+    const [localTimeLeft, setLocalTimeLeft] = useState(DICE_TIMEOUT)
+    const [showTimerModal, setShowTimerModal] = useState(false)
     const [dice1, setDice1] = useState(1)
+
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
     const [status, setStatus] = useState(GAME_START_STATUS)
@@ -288,6 +296,28 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setOptimisticTileOwners(null)
       tileOwnersRef.current = derivedTileOwners
     }, [derivedTileOwners])
+
+    // 타이머 관리
+    useEffect(() => {
+      setLocalTimeLeft(DICE_TIMEOUT)
+      setShowTimerModal(false)
+    }, [curPlayer])
+
+    useEffect(() => {
+      if (rolling) return
+
+      const timer = setInterval(() => {
+        setLocalTimeLeft((prev) => {
+          if (prev <= 1) {
+            setShowTimerModal(true)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => clearInterval(timer)
+    }, [curPlayer, rolling])
 
     function getPlayerIdByIndex(playerIdx: number) {
       return playersRef.current[playerIdx]?.id ?? playerIdx
@@ -744,6 +774,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 dir={ci === 0 || ci === 8 ? 'corner' : 'top'}
                 tokens={byTile[id] ?? []}
                 tileOwner={tileOwners[id]}
+                timeLeft={localTimeLeft}
+                isActivePlayerTile={id === players[curPlayer]?.pos}
               />
             </div>
           ))}
@@ -754,6 +786,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 dir={ci === 0 || ci === 8 ? 'corner' : 'bottom'}
                 tokens={byTile[id] ?? []}
                 tileOwner={tileOwners[id]}
+                timeLeft={localTimeLeft}
+                isActivePlayerTile={id === players[curPlayer]?.pos}
               />
             </div>
           ))}
@@ -764,6 +798,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 dir="left"
                 tokens={byTile[id] ?? []}
                 tileOwner={tileOwners[id]}
+                timeLeft={localTimeLeft}
+                isActivePlayerTile={id === players[curPlayer]?.pos}
               />
             </div>
           ))}
@@ -774,6 +810,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 dir="right"
                 tokens={byTile[id] ?? []}
                 tileOwner={tileOwners[id]}
+                timeLeft={localTimeLeft}
+                isActivePlayerTile={id === players[curPlayer]?.pos}
               />
             </div>
           ))}
@@ -836,6 +874,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           playerName={bankruptModal.playerName}
           description={BANKRUPT_DESCRIPTION}
           onConfirm={handleBankruptConfirm}
+        />
+        <DiceTimerModal
+          open={showTimerModal}
+          onConfirm={() => setShowTimerModal(false)}
         />
       </div>
     )

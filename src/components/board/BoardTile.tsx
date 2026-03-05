@@ -101,6 +101,8 @@ interface BoardTileProps {
   dir: TileDir
   tokens: PlayerState[]
   tileOwner?: TileOwner
+  timeLeft?: number
+  isActivePlayerTile?: boolean
 }
 
 const BoardTile: React.FC<BoardTileProps> = ({
@@ -108,6 +110,8 @@ const BoardTile: React.FC<BoardTileProps> = ({
   dir,
   tokens,
   tileOwner,
+  timeLeft = 0,
+  isActivePlayerTile = false,
 }) => {
   const isCity = tile.type === 'city'
   const buildingLevel = tileOwner?.level ?? 0
@@ -136,6 +140,9 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const outerBorderColor = ownerStyle ? ownerStyle.strip : '#E2E8F0'
   const stripOffset = strip ? 7 : 0
 
+  // 턴 진행 중인 플레이어가 위치한 칸이고 시간이 10초 이하일 때 애니메이션 강조
+  const isUrgent = isActivePlayerTile && timeLeft <= 10 && timeLeft > 0
+
   // ── 코너 ─────────────────────────────────────────────────────────
   if (['start', 'island', 'travel', 'go_to_island'].includes(tile.type)) {
     return (
@@ -144,9 +151,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
           width: '100%',
           height: '100%',
           backgroundColor: '#FFFFFF',
-          border: '2.5px solid #2B7FFF',
+          border: isUrgent ? '3px solid #EF5350' : '2.5px solid #2B7FFF',
           borderRadius: 18,
-          boxShadow: '0 0 0 5px rgba(190,219,255,0.65)',
+          boxShadow: isUrgent
+            ? '0 0 15px rgba(239, 83, 80, 0.6)'
+            : '0 0 0 5px rgba(190,219,255,0.65)',
+
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -185,8 +195,9 @@ const BoardTile: React.FC<BoardTileProps> = ({
         style={{
           width: '100%',
           height: '100%',
-          backgroundColor: outerBorderColor,
+          backgroundColor: isUrgent ? '#EF5350' : outerBorderColor,
           borderRadius: 13,
+
           padding: 2,
           boxSizing: 'border-box',
           position: 'relative',
@@ -276,6 +287,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     <BuildingBadge
                       level={buildingLevel}
                       ownerColor={tileOwner?.ownerColor}
+                      isUrgent={isUrgent}
                     />
                   )}
                 </div>
@@ -425,6 +437,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     <BuildingBadge
                       level={buildingLevel}
                       ownerColor={tileOwner?.ownerColor}
+                      isUrgent={isUrgent}
                     />
                   )}
                 </div>

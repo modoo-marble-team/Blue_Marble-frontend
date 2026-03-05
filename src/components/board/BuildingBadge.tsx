@@ -4,6 +4,7 @@ import { PLAYER_COLORS } from './board.constants'
 interface BuildingBadgeProps {
   level: number
   ownerColor?: string
+  isUrgent?: boolean
 }
 
 const RED_THEME = { folder: 'red-building-Icon', prefix: 'red' }
@@ -40,7 +41,11 @@ const BUILDING_SUFFIX: Record<number, string> = {
   7: '-landmark.svg',
 }
 
-const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
+const BuildingBadge: React.FC<BuildingBadgeProps> = ({
+  level,
+  ownerColor,
+  isUrgent = false,
+}) => {
   if (!level || level < 1 || level > 7) return null
 
   const rawPathColor = ownerColor || PLAYER_COLORS[0]
@@ -59,12 +64,25 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({ level, ownerColor }) => {
         height: 24,
         borderRadius: '50%',
         backgroundColor: 'rgba(255,255,255,0.92)',
-        boxShadow: '0 1px 5px rgba(0,0,0,0.25)',
+        boxShadow: isUrgent
+          ? '0 0 10px #EF5350, 0 1px 5px rgba(0,0,0,0.25)'
+          : '0 1px 5px rgba(0,0,0,0.25)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        animation: isUrgent ? 'pulse-urgent 1s infinite' : 'none',
       }}
     >
+      <style>
+        {`
+          @keyframes pulse-urgent {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+          }
+        `}
+      </style>
+
       <img
         src={src}
         alt={`building-level-${level}`}

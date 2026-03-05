@@ -82,6 +82,7 @@ export const STRAIGHT_SIZE = 70
 export const GRID_GAP = 2
 
 export const PLAYER_COLORS = ['#EF5350', '#42A5F5', '#66BB6A', '#FFD15B']
+export const DICE_TIMEOUT = 30
 
 export const INIT_PLAYERS: PlayerState[] = [
   {
