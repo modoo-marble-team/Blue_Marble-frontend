@@ -74,22 +74,22 @@
 
 아래 표에서 **상태** 열 기준: ✅ 완료 / ⚠️ 명세 불일치 수정 필요 / ❌ 미구현
 
-| 파일                                                | 현재 상태         | 남은 수정 방향                                                                         | 담당                       |
-| --------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------- | -------------------------- |
-| `src/types/domain.ts`                               | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/stores/game.store.ts`                          | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/services/socket/game.handler.ts`               | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/hooks/game/useGameState.ts`                    | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/services/game/game.api.ts`                     | ⚠️ 레거시 격리 중 | deprecated 표시 완료. `gameBoardActionHandlers.ts` 호출부 → `emitGameAction` 전환 필요 | FE-B                       |
-| `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/pages/GamePage.tsx`                            | ✅ 2차 완료       | `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결 완료             | FE-B                       |
-| `src/components/board/GameBoard.tsx`                | ⚠️ 부분 정리      | `applyMoney`, `advanceTurn`, 통행료 계산, 파산 판정 제거. `store.prompt` 연결          | FE-C 주도 / FE-B 선행 필요 |
-| `src/components/game/modals/*`                      | ⚠️ 부분 완료      | `store.prompt.type` 기준 모달 열림 조건 연결. `DiceTimerModal` timeout 연동            | FE-B                       |
-| `src/mocks/handlers/game.handler.ts`                | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/components/board/gameBoardStoreBridge.ts`      | ❌ 버그           | `toStoreBuildingLevel` 상한 5→7                                                        | FE-C                       |
-| `src/components/board/gameBoardTransactionUtils.ts` | ❌ 버그           | `upgradeBoardTileOwner` 상한 5→7                                                       | FE-C                       |
-| `src/components/board/gameBoardActionUtils.ts`      | ❌ 버그           | `getBoardSellFallbackRefund` level 5, 6 케이스 추가                                    | FE-C                       |
-| `src/components/board/*` (렌더 레이어)              | ❌ 미구현         | `store.eventQueue` 소비 연출. `playerState` 시각화                                     | FE-C                       |
+| 파일                                                | 현재 상태         | 남은 수정 방향                                                                                                      | 담당                       |
+| --------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| `src/types/domain.ts`                               | ✅ 완료           | —                                                                                                                   | FE-B                       |
+| `src/stores/game.store.ts`                          | ✅ 완료           | —                                                                                                                   | FE-B                       |
+| `src/services/socket/game.handler.ts`               | ✅ 완료           | —                                                                                                                   | FE-B                       |
+| `src/hooks/game/useGameState.ts`                    | ✅ 완료           | —                                                                                                                   | FE-B                       |
+| `src/services/game/game.api.ts`                     | ⚠️ 레거시 격리 중 | deprecated 표시 완료. `gameBoardActionHandlers.ts`의 BUY/SELL/END_TURN non-mock 전환 완료, BUILD/sync는 레거시 유지 | FE-B                       |
+| `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료           | —                                                                                                                   | FE-B                       |
+| `src/pages/GamePage.tsx`                            | ✅ 2차 완료       | `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결 완료                                          | FE-B                       |
+| `src/components/board/GameBoard.tsx`                | ⚠️ 부분 정리      | `applyMoney`, `advanceTurn`, 통행료 계산, 파산 판정 제거. `store.prompt` 연결                                       | FE-C 주도 / FE-B 선행 필요 |
+| `src/components/game/modals/*`                      | ⚠️ 부분 완료      | `store.prompt.type` 기준 모달 열림 조건 연결. `DiceTimerModal` timeout 연동                                         | FE-B                       |
+| `src/mocks/handlers/game.handler.ts`                | ✅ 완료           | —                                                                                                                   | FE-B                       |
+| `src/components/board/gameBoardStoreBridge.ts`      | ❌ 버그           | `toStoreBuildingLevel` 상한 5→7                                                                                     | FE-C                       |
+| `src/components/board/gameBoardTransactionUtils.ts` | ❌ 버그           | `upgradeBoardTileOwner` 상한 5→7                                                                                    | FE-C                       |
+| `src/components/board/gameBoardActionUtils.ts`      | ❌ 버그           | `getBoardSellFallbackRefund` level 5, 6 케이스 추가                                                                 | FE-C                       |
+| `src/components/board/*` (렌더 레이어)              | ❌ 미구현         | `store.eventQueue` 소비 연출. `playerState` 시각화                                                                  | FE-C                       |
 
 ### 2-1. `src/mocks/handlers/game.handler.ts` 명세 불일치 상세
 
@@ -286,7 +286,7 @@
 
 - `GamePage`: `store.prompt`/`lastError`/`pendingAction` UI 연결은 완료. `prompt.type`별 모달 분기 연결은 미완료
 - `store.eventQueue` → 소비 컴포넌트 없음
-- `gameBoardActionHandlers.ts` → REST 직접 호출 유지 (`emitGameAction` 전환 필요)
+- `gameBoardActionHandlers.ts` → BUY/SELL/END_TURN non-mock 전환 완료. BUILD/sync 레거시 호출 정리 필요
 
 ## 5-2. 다음 우선순위
 
@@ -295,7 +295,7 @@
 1. ~~`src/types/domain.ts`, `src/services/socket/game.handler.ts`: 명세 불일치 수정~~ ✅ 완료
 2. ~~`src/mocks/handlers/game.handler.ts`: 명세 불일치 수정~~ ✅ 완료
 3. `src/components/game/modals/*`, `src/components/board/GameBoard.tsx`: `store.prompt.type` → modal 연결, `DiceTimerModal` → `prompt.timeoutSec` 연결
-4. `src/components/board/gameBoardActionHandlers.ts`: REST 직접 호출 → `emitGameAction` 전환
+4. `src/components/board/gameBoardActionHandlers.ts`: BUILD/sync 레거시 호출 정리 및 prompt.type 기반 액션 확정
 
 **FE-C**
 
