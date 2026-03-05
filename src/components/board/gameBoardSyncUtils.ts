@@ -41,9 +41,9 @@ export function mapSyncPayloadPlayers(
       typeof player.id === 'number'
         ? player.id
         : Number.parseInt(String(player.id), 10)
-    const boardPlayerId = Number.isNaN(parsedPlayerId)
-      ? (prevPlayer?.id ?? index)
-      : parsedPlayerId
+    const boardPlayerId = (
+      Number.isNaN(parsedPlayerId) ? (prevPlayer?.id ?? index) : parsedPlayerId
+    ) as number
 
     serverToBoardId.set(String(player.id), boardPlayerId)
 

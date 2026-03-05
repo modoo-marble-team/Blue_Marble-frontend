@@ -15,7 +15,6 @@ import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import DiceTimerModal from '../game/modals/DiceTimerModal'
 
-import { emitConfirmPenalty } from '../../services/socket/game.handler'
 import {
   TILES,
   TOP_ROW,
@@ -52,12 +51,6 @@ import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
 
-// cost helpers are computed per-tile based on price
-
-function getPurchaseCost(tileId: number): number {
-  return TILES[tileId]?.price ?? 0
-}
-
 function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
   if (currentLevel === 0) return price * 0.5
   if (currentLevel === 1) return price * 0.5
@@ -84,30 +77,15 @@ function calcToll(price: number, level: BuildingLevel): number {
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 const AI_PENALTY_RESULTS = [
-  '\uB2E4\uC74C \uD134 \uC2DC\uC791 \uC804\uAE4C\uC9C0 \uD1B5\uD589\uB8CC\uAC00 10M \uC99D\uAC00\uD569\uB2C8\uB2E4.',
-  '\uC989\uC2DC \uBCF4\uB108\uC2A4 30M\uB97C \uD68D\uB4DD\uD569\uB2C8\uB2E4.',
-  '\uB2E4\uC74C \uC774\uB3D9\uC5D0\uC11C \uCD94\uAC00\uB85C 2\uCE78 \uC804\uC9C4\uD569\uB2C8\uB2E4.',
-  '\uB2E4\uC74C \uD134 \uC8FC\uC0AC\uC704 \uACB0\uACFC\uC5D0\uC11C 1\uC744 \uCD94\uAC00\uB85C \uBC1B\uC2B5\uB2C8\uB2E4.',
+  '다음 턴 시작 전까지 통행료가 10M 증가합니다.',
+  '즉시 보너스 30M를 획득합니다.',
+  '다음 이동에서 추가로 2칸 전진합니다.',
+  '다음 턴 주사위 결과에서 1을 추가로 받습니다.',
 ] as const
-const BOARD_TITLE = '\uBE14\uB8E8\uB9C8\uBE14'
-const BANKRUPT_DESCRIPTION =
-  '\uAC8C\uC784\uC5D0\uC11C \uD0C8\uB77D\uD588\uC2B5\uB2C8\uB2E4.'
-const DEFAULT_OPPONENT_NAME = '\uC0C1\uB300\uBC29'
-const GAME_START_STATUS = '\uAC8C\uC784 \uC2DC\uC791!'
-const ROOM_ID_REQUIRED_MESSAGE =
-  '\uAC8C\uC784 \uBC29 \uC2DD\uBCC4\uC790\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.'
-const DICE_ICON = '\uD83C\uDFB2'
 
-const LEVEL_LABEL: Record<number, string> = {
-  0: '\uBBF8\uAD6C\uB9E4',
-  1: '\uC9D1 1\uB2E8\uACC4',
-  2: '\uC9D1 2\uB2E8\uACC4',
-  3: '\uC9D1 3\uB2E8\uACC4',
-  4: '\uD638\uD154 1\uB2E8\uACC4',
-  5: '\uD638\uD154 2\uB2E8\uACC4',
-  6: '\uD638\uD154 3\uB2E8\uACC4',
-  7: '\uB79C\uB4DC\uB9C8\uD06C',
-}
+const DEFAULT_OPPONENT_NAME = '상대방'
+const GAME_START_STATUS = '게임 시작!'
+const ROOM_ID_REQUIRED_MESSAGE = '게임 방 식별자를 찾을 수 없습니다.'
 
 function getUpgradeStage(
   level: BuildingLevel
@@ -198,6 +176,7 @@ interface GameBoardProps {
     index: number
     owner_id?: string | number | null
     building: number
+    level?: number
   }>
   onPlayersChange?: (players: PlayerState[]) => void
   onCurPlayerChange?: (idx: number) => void
@@ -211,10 +190,10 @@ function toBoardBuildingLevel(
 ) {
   if (!hasOwner) return 0 as BuildingLevel
   if (typeof tile.level === 'number') {
-    return Math.min(Math.max(tile.level, 1), 7) as BuildingLevel
+    return Math.min(Math.max(tile.level, 0), 7) as BuildingLevel
   }
   const buildingLevel = typeof tile.building === 'number' ? tile.building : 0
-  return Math.min(Math.max(buildingLevel + 1, 1), 7) as BuildingLevel
+  return Math.min(Math.max(buildingLevel, 0), 7) as BuildingLevel
 }
 
 function buildTileOwnersFromProps(
@@ -222,6 +201,7 @@ function buildTileOwnersFromProps(
     index: number
     owner_id?: string | number | null
     building: number
+    level?: number
   }>,
   players: PlayerState[]
 ) {
@@ -262,13 +242,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onTileOwnersChange,
       onBankrupt,
     },
-
     ref
   ) => {
     const [localTimeLeft, setLocalTimeLeft] = useState(DICE_TIMEOUT)
     const [showTimerModal, setShowTimerModal] = useState(false)
     const [dice1, setDice1] = useState(1)
-
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
     const [status, setStatus] = useState(GAME_START_STATUS)
@@ -301,7 +279,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     useEffect(() => {
       setLocalTimeLeft(DICE_TIMEOUT)
       setShowTimerModal(false)
-    }, [curPlayer])
+
+      const p = players[curPlayer]
+      if (p) {
+        if (p.state === 'island') {
+          setStatus(
+            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)`
+          )
+        } else if ((p.skipTurns ?? 0) > 0) {
+          setStatus(
+            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)`
+          )
+        } else if (p.state === 'bankrupt') {
+          setStatus(`${p.name}님은 파산 상태입니다`)
+        }
+      }
+    }, [curPlayer, players])
 
     useEffect(() => {
       if (rolling) return
@@ -319,8 +312,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       return () => clearInterval(timer)
     }, [curPlayer, rolling])
 
-    function getPlayerIdByIndex(playerIdx: number) {
-      return playersRef.current[playerIdx]?.id ?? playerIdx
+    function getPlayerIdByIndex(playerIdx: number): number {
+      const rawId = playersRef.current[playerIdx]?.id ?? playerIdx
+      return typeof rawId === 'number'
+        ? rawId
+        : Number.parseInt(String(rawId), 10) || 0
     }
 
     function getPlayerColorByIndex(playerIdx: number) {
@@ -413,11 +409,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return { ...p, money: Math.max(0, p.money + delta) }
       })
       playersRef.current = updated
-      if (onPlayersChange) {
-        onPlayersChange([...updated])
-      } else {
-        syncMockStorePlayers(updated)
-      }
+      publishPlayers(updated)
 
       const isBankrupt = updated[playerIdx].money <= 0
       if (isBankrupt) {
@@ -462,7 +454,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       getPlayerColorByIndex,
       getPlayerIndexById,
       toBoardBuildingLevel,
-      getPurchaseCost,
+      getPurchaseCost: (id) => TILES[id]?.price ?? 0,
       getUpgradeCost,
       calcToll,
       getTilePrice: (tileId) => TILES[tileId]?.price ?? 0,
@@ -507,27 +499,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         tries++
       }
 
-      // 턴 스킵 처리 (남은 스킵 턴이 있으면 차감하고 다시 건너뛴다)
       const nextPlayer = playersRef.current[next]
       if (
         nextPlayer &&
         (nextPlayer.skipTurns ?? 0) > 0 &&
         tries < playerCount
       ) {
-        // 스킵 턴 1회를 차감해 반영한다
         const updatedPlayers = [...playersRef.current]
         updatedPlayers[next] = {
           ...nextPlayer,
           skipTurns: nextPlayer.skipTurns! - 1,
         }
         playersRef.current = updatedPlayers
-        if (onPlayersChange) {
-          onPlayersChange(updatedPlayers)
-        } else {
-          syncMockStorePlayers(updatedPlayers)
-        }
+        publishPlayers(updatedPlayers)
 
-        // 스킵 상태를 보여주기 위해 잠시 현재 턴으로 바꾼 뒤 다시 턴을 넘긴다
         curPlayerRef.current = next
         if (onCurPlayerChange) {
           onCurPlayerChange(next)
@@ -580,6 +565,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         )
       }, 1500)
     }
+
     function rollDice(onDone?: () => void) {
       if (lock.current) return
       lock.current = true
@@ -600,146 +586,106 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           clearInterval(iv)
           setRolling(false)
           lock.current = false
-
-          const total = f1 + f2
-          const activeCurPlayer = curPlayerRef.current
-
-          const movedPlayers = playersRef.current.map((p, i) => {
-            if (i !== activeCurPlayer) return p
-
-            let newPos = (p.pos + total) % TILES.length
-            let newSkipTurns = p.skipTurns ?? 0
-
-            if (TILES[newPos].type === 'go_to_island') {
-              newPos = 8
-              newSkipTurns += 1
-              setStatus(`${p.name} 무인도로 이동! (1턴 휴식)`)
-            } else {
-              setStatus(`${p.name} → ${TILES[newPos].name} (+${total}칸)`)
-            }
-
-            return { ...p, pos: newPos, skipTurns: newSkipTurns }
-          })
-          playersRef.current = movedPlayers
-          if (onPlayersChange) {
-            onPlayersChange([...movedPlayers])
-          } else {
-            syncMockStorePlayers(movedPlayers)
-          }
-
-          const landedTileId = movedPlayers[activeCurPlayer].pos
-
-          setTimeout(() => {
-            const tile = TILES[landedTileId]
-
-            if (tile.type === 'city') {
-              const owner = tileOwnersRef.current[landedTileId]
-              const activePlayer = movedPlayers[activeCurPlayer]
-              const price = tile.price ?? 0
-
-              if (!owner) {
-                setBuyModal({
-                  open: true,
-                  tileId: landedTileId,
-                  onDoneCallback: onDone,
-                })
-              } else if (owner.ownerId === activePlayer.id) {
-                if (owner.level < 7) {
-                  setBuildModal({
-                    open: true,
-                    tileId: landedTileId,
-                    onDoneCallback: onDone,
-                  })
-                } else {
-                  advanceTurn(onDone)
-                }
-              } else {
-                const ownerPlayer = playersRef.current.find(
-                  (p) => p.id === owner.ownerId
-                )
-                const tollAmount = calcToll(price, owner.level)
-                setTollModal({
-                  open: true,
-                  tileId: landedTileId,
-                  ownerName: ownerPlayer?.name ?? DEFAULT_OPPONENT_NAME,
-                  tollText: formatWon(tollAmount),
-                  onDoneCallback: onDone,
-                })
-              }
-            } else if (tile.type === 'ai') {
-              handleAITile(onDone)
-            } else if (tile.type === 'event') {
-              setCardModal({
-                open: true,
-                variant: 'event',
-                onDoneCallback: onDone,
-              })
-            } else if (tile.type === 'chance') {
-              setCardModal({
-                open: true,
-                variant: 'chance',
-                onDoneCallback: onDone,
-              })
-            } else {
-              advanceTurn(onDone)
-            }
-          }, 50)
+          handleDiceResult(f1, f2, onDone)
         }
-      }, 70)
+      }, 80)
     }
 
-    function handleCardConfirm() {
-      const { onDoneCallback, variant } = cardModal
+    useImperativeHandle(ref, () => ({
+      rollDice: (onDone) => {
+        rollDice(onDone)
+      },
+    }))
 
-      // 찬스 카드에서 주사위 1턴 쉬기 결과가 나왔을 때의 프런트 처리
-      // 실서버 연동 전까지는 서버 이벤트 대신 화면 동작만 확인한다
-      if (variant === 'chance') {
-        const active = curPlayerRef.current
-        const activePlayer = playersRef.current[active]
-        const updatedPlayers = [...playersRef.current]
-        updatedPlayers[active] = {
-          ...activePlayer,
-          skipTurns: (activePlayer.skipTurns ?? 0) + 1,
-        }
-        playersRef.current = updatedPlayers
-        if (onPlayersChange) {
-          onPlayersChange(updatedPlayers)
-        } else {
-          syncMockStorePlayers(updatedPlayers)
-        }
-        setStatus(`${activePlayer.name} 주사위 1턴 쉬기!`)
-      }
+    function handleDiceResult(v1: number, v2: number, onDone?: () => void) {
+      const sum = v1 + v2
+      setStatus(`주사위 결과: ${sum}`)
 
-      setCardModal({ open: false, variant: 'event' })
-      advanceTurn(onDoneCallback)
+      const playerIdx = curPlayerRef.current
+      const p = playersRef.current[playerIdx]
+      if (!p) return
+
+      const nextPos = (p.pos + sum) % TILES.length
+      const updatedPlayers = [...playersRef.current]
+      updatedPlayers[playerIdx] = { ...p, pos: nextPos }
+      playersRef.current = updatedPlayers
+      publishPlayers(updatedPlayers)
+
+      setTimeout(() => {
+        handleArrival(nextPos, onDone)
+      }, 600)
     }
 
-    function handleAIConfirm() {
-      if (aiModal.status === 'loading') return
-      const { onDoneCallback } = aiModal
-      if (aiModal.status === 'error') {
-        handleAITile(onDoneCallback)
+    function handleArrival(tileId: number, onDone?: () => void) {
+      const playerIdx = curPlayerRef.current
+      const tile = TILES[tileId]
+      const owner = tileOwnersRef.current[tileId]
+
+      if (tile.type === 'START') {
+        setStatus('시작 칸에 도착!')
+        advanceTurn(onDone)
         return
       }
 
-      const active = curPlayerRef.current
-      const activePlayer = playersRef.current[active]
-      if (activePlayer && roomId) {
-        emitConfirmPenalty({
-          room_id: roomId,
-          player_id: String(activePlayer.id),
-        })
+      if (tile.type === 'MOVE_TO_ISLAND') {
+        setStatus('무인도로 이동!')
+        const updatedPlayers = [...playersRef.current]
+        const islandTile = TILES.find((t) => t.type === 'ISLAND')
+        if (islandTile) {
+          updatedPlayers[playerIdx] = {
+            ...updatedPlayers[playerIdx],
+            pos: islandTile.id,
+            skipTurns: 3,
+          }
+          playersRef.current = updatedPlayers
+          publishPlayers(updatedPlayers)
+        }
+        advanceTurn(onDone)
+        return
       }
 
-      setAiModal({ open: false, status: 'loading' })
-      advanceTurn(onDoneCallback)
+      if (tile.type === 'PROPERTY') {
+        if (!owner) {
+          setBuyModal({ open: true, tileId, onDoneCallback: onDone })
+        } else if (owner.ownerId !== getPlayerIdByIndex(playerIdx)) {
+          const ownerPlayer = playersRef.current.find(
+            (p) => String(p.id) === String(owner.ownerId)
+          )
+          const tollAmount = calcToll(tile.price ?? 0, owner.level)
+          setTollModal({
+            open: true,
+            tileId,
+            ownerName: ownerPlayer?.name ?? DEFAULT_OPPONENT_NAME,
+            tollText: formatWon(tollAmount),
+            onDoneCallback: onDone,
+          })
+        } else {
+          setBuildModal({ open: true, tileId, onDoneCallback: onDone })
+        }
+        return
+      }
+
+      if (tile.type === 'EVENT' && tile.emoji === '🤖') {
+        handleAITile(onDone)
+        return
+      }
+
+      if (tile.type === 'CHANCE' || tile.type === 'EVENT') {
+        setCardModal({
+          open: true,
+          variant: tile.type === 'CHANCE' ? 'chance' : 'event',
+          onDoneCallback: onDone,
+        })
+        return
+      }
+
+      advanceTurn(onDone)
     }
 
-    useImperativeHandle(ref, () => ({ rollDice }))
-
     const byTile: Record<number, PlayerState[]> = {}
-    players.forEach((p, i) => {
-      if (bankruptSetRef.current.has(i)) return
+    players.forEach((p) => {
+      const idx = players.indexOf(p)
+      if (bankruptSetRef.current.has(idx)) return
       if (!byTile[p.pos]) byTile[p.pos] = []
       byTile[p.pos].push(p)
     })
@@ -747,13 +693,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const CS = CORNER_SIZE
     const SS = STRAIGHT_SIZE
     const GAP = GRID_GAP
+
     const buyTile = buyModal.tileId !== null ? TILES[buyModal.tileId] : null
     const buildTile =
       buildModal.tileId !== null ? TILES[buildModal.tileId] : null
-    const buildOwner =
-      buildModal.tileId !== null ? tileOwners[buildModal.tileId] : undefined
+    const currentLevel =
+      buildModal.tileId !== null
+        ? (tileOwners[buildModal.tileId]?.level ?? 0)
+        : 0
     const tollTile = tollModal.tileId !== null ? TILES[tollModal.tileId] : null
-    const currentLevel = (buildOwner?.level ?? 0) as BuildingLevel
 
     return (
       <div className="board-page">
@@ -816,10 +764,35 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             </div>
           ))}
 
-          <div className="board-center">
-            <span style={{ fontSize: 52 }}>{DICE_ICON}</span>
-            <span className="board-center__title">{BOARD_TITLE}</span>
-            <div className="board-dice-pair">
+          <div
+            className="board-center"
+            style={{
+              gridRow: '2 / 9',
+              gridColumn: '2 / 9',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 20,
+              background:
+                'radial-gradient(circle at center, #ffffff 0%, #f8fafc 100%)',
+              borderRadius: 24,
+              boxShadow: 'inset 0 0 40px rgba(0,0,0,0.03)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 32,
+                fontWeight: 900,
+                color: '#1E293B',
+                letterSpacing: -1,
+                textShadow: '0 2px 4px rgba(0,0,0,0.05)',
+              }}
+            >
+              BLUE MARBLE
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <DiceFace value={dice1} rolling={rolling} />
               <DiceFace value={dice2} rolling={rolling} />
             </div>
@@ -828,51 +801,52 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         <BuyModal
           open={buyModal.open}
+          onBuy={() => handleBuy(buyModal)}
+          onPass={() => handleBuyPass(buyModal)}
           cityName={buyTile?.name ?? ''}
           purchaseCostText={formatWon(buyTile?.price ?? 0)}
-          isUpgrade={false}
-          currentLevel={0}
-          onPass={() => handleBuyPass(buyModal)}
-          onBuy={() => handleBuy(buyModal)}
         />
         <BuildModal
           open={buildModal.open}
+          onConfirm={() => handleBuildConfirm(buildModal)}
+          onCancel={() => handleBuildCancel(buildModal)}
           cityName={buildTile?.name ?? ''}
           upgradeStage={getUpgradeStage(currentLevel)}
-          currentLevelLabel={LEVEL_LABEL[currentLevel]}
-          nextLevelLabel={LEVEL_LABEL[Math.min(currentLevel + 1, 7)]}
           buildCostText={formatWon(
             getUpgradeCost(buildTile?.price ?? 0, currentLevel)
           )}
-          nextTollText={formatWon(
-            calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
-          )}
-          canBuild={currentLevel < 7}
-          onCancel={() => handleBuildCancel(buildModal)}
-          onConfirm={() => handleBuildConfirm(buildModal)}
+        />
+        <TollModal
+          open={tollModal.open}
+          onConfirm={() => handleTollConfirm(tollModal)}
+          cityName={tollTile?.name ?? ''}
+          ownerName={tollModal.ownerName}
+          tollText={tollModal.tollText}
         />
         <CardModal
           open={cardModal.open}
           variant={cardModal.variant}
-          onConfirm={handleCardConfirm}
-        />
-        <TollModal
-          open={tollModal.open}
-          cityName={tollTile?.name}
-          ownerName={tollModal.ownerName}
-          tollText={tollModal.tollText}
-          onConfirm={() => handleTollConfirm(tollModal)}
+          onConfirm={() => {
+            setCardModal({ open: false, variant: 'event' })
+            advanceTurn(cardModal.onDoneCallback)
+          }}
         />
         <AIPenaltyModal
           open={aiModal.open}
           status={aiModal.status}
           resultDescription={aiModal.resultDescription}
-          onConfirm={handleAIConfirm}
+          onConfirm={() => {
+            if (aiModal.status === 'error') {
+              handleAITile(aiModal.onDoneCallback)
+            } else {
+              setAiModal({ open: false, status: 'loading' })
+              advanceTurn(aiModal.onDoneCallback)
+            }
+          }}
         />
         <BankruptModal
           open={bankruptModal.open}
           playerName={bankruptModal.playerName}
-          description={BANKRUPT_DESCRIPTION}
           onConfirm={handleBankruptConfirm}
         />
         <DiceTimerModal
@@ -885,4 +859,5 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 )
 
 GameBoard.displayName = 'GameBoard'
+
 export default GameBoard
