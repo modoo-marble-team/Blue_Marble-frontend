@@ -220,7 +220,8 @@ export function createGameBoardActionHandlers(
         }),
         { notifyParent: true }
       )
-      advanceTurn(onDoneCallback)
+      if (useGameSocketMock) onDoneCallback?.()
+      else advanceTurn(onDoneCallback)
     }
   }
 
@@ -256,7 +257,8 @@ export function createGameBoardActionHandlers(
       updateTileOwners((prev) => upgradeBoardTileOwner(prev, tileId), {
         notifyParent: true,
       })
-      advanceTurn(onDoneCallback)
+      if (useGameSocketMock) onDoneCallback?.()
+      else advanceTurn(onDoneCallback)
     }
   }
 
