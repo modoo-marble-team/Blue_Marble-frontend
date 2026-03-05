@@ -143,7 +143,7 @@
 - `src/services/socket/game.handler.ts`: `game:ack`, `game:patch`, `game:prompt`, `game:error` 구독. `emitGameAction`, `emitGameSync`, `emitPromptResponse` emit. 구 이벤트 리스너 제거
 - `src/hooks/game/useGameState.ts`: 진입 시 `game:sync` 우선, REST bootstrap fallback 병행
 - `src/mocks/handlers/game.handler.ts`: `game:ack` + `game:patch(snapshot)` 기반 event-socket mock 추가
-- `src/pages/GamePage.tsx`: store 단일 소스 + `gameViewModel` mapper로 board 데이터 조립
+- `src/pages/GamePage.tsx`: store 단일 소스 + `gameViewModel` mapper로 board 데이터 조립 + `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결
 
 남은 핵심 축 — **명세 불일치 (코드 수정 전 반드시 선행)**:
 
@@ -163,9 +163,9 @@
 
 남은 핵심 축 — UI 연결:
 
-- `store.prompt` → 모달/오버레이 열림 조건 연결 없음 (BuyModal 등은 여전히 REST 직접 호출)
-- `emitPromptResponse` → 실제 사용자 응답 흐름 연결 없음
-- `store.pendingAction`, `store.lastAck`, `store.lastError` → 버튼 비활성화/에러 UI 연결 없음
+- `GamePage.tsx`의 `store.prompt`/`emitPromptResponse`/`pendingAction`/`lastAck`/`lastError` 연결은 완료
+- `store.prompt.type` → `modals/*` 및 `GameBoard.tsx` 분기 연결은 아직 없음 (Buy/Build/Toll 흐름은 여전히 로컬/REST 혼재)
+- `DiceTimerModal` → `game:prompt.timeoutSec` 연동 없음
 - `gameBoardActionHandlers.ts`: `gameApi.buyTile`, `gameApi.buildTile`, `gameApi.sellTile` REST 직접 호출 유지 → 격리 필요
 
 ### FE-C: 골격 완료(약 30%), 버그 수정 + 시각 레이어 수렴 단계
@@ -231,10 +231,11 @@
 
 현재 FE-B의 다음 최우선 작업이다.
 
-- `store.prompt` → 모달/오버레이 열림 조건 연결 (`GameBoard.tsx`, `GamePage.tsx`)
-- `emitPromptResponse` → 실제 사용자 확인/거절 응답 흐름 연결
-- 즉시 실패는 `game:ack.ok=false` → `store.lastError` → 에러 UI 표시
-- `store.pendingAction` → 버튼 비활성화/로딩 연결
+- ~~`GamePage.tsx`에서 `store.prompt` 오버레이 열림 조건 연결~~ ✅ 완료
+- ~~`GamePage.tsx`에서 `emitPromptResponse` 사용자 응답 흐름 연결~~ ✅ 완료
+- ~~`game:ack.ok=false` → `store.lastError` → 에러 UI 표시 연결~~ ✅ 완료
+- ~~`store.pendingAction`/`store.lastAck` 버튼 상태 및 상태 배지 연결~~ ✅ 완료
+- `store.prompt.type` → `modals/*`, `GameBoard.tsx` 분기 연결
 - `DiceTimerModal` → `game:prompt.timeoutSec` 기반으로 연결
 - `gameBoardActionHandlers.ts`: REST 직접 호출(`gameApi.buyTile` 등) → `emitGameAction` 전환
 
@@ -287,7 +288,7 @@ FE-B `store.eventQueue`가 채워지는 구조는 완료. FE-C가 소비 쪽을 
 
 1. **FE-B 5-1**: 명세 불일치 수정 (`GamePromptResponse`, `GameAck`, `GamePatchEnvelope`, `emitGameSync`, `emitPromptResponse`, mock)
 2. **FE-C 6-1**: 버그 3개 수정 (`gameBoardStoreBridge`, `gameBoardTransactionUtils`, `gameBoardActionUtils`)
-3. **FE-B 5-4**: `store.prompt` / `store.lastError` / `store.pendingAction` → UI 연결. REST → `emitGameAction` 전환
+3. **FE-B 5-4**: `store.prompt.type` 기반 modal 연결 + `DiceTimerModal` timeout 연결 + REST → `emitGameAction` 전환
 4. **FE-C 6-2**: `GameBoard.tsx` 서버 계산 제거, 시각 레이어 수렴
 5. **FE-C 6-4**: `store.eventQueue` 기반 이동/연출 구현
 6. **FE-B + FE-C**: `game:prompt` 흐름과 `DiceTimerModal` timeout 흐름 공동 검증
