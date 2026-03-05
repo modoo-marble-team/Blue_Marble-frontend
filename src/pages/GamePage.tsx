@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react'
 import { useLocation, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
 import RollButton from '../components/game/controls/RollButton'
+import { isPromptHandledByBoardModal } from '../components/game/modals/promptModalMapping'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/store'
@@ -124,6 +125,9 @@ const GamePage: React.FC = () => {
     prompt?.playerId == null ||
     (currentUserId != null && String(prompt.playerId) === String(currentUserId))
   const isPromptVisible = Boolean(prompt && isPromptTargetedToCurrentUser)
+  const isBoardHandledPrompt = isPromptHandledByBoardModal(prompt)
+  const activeBoardPrompt =
+    isPromptVisible && isBoardHandledPrompt ? prompt : null
   const promptChoices = useMemo(
     () =>
       prompt?.choices && prompt.choices.length > 0
@@ -297,6 +301,9 @@ const GamePage: React.FC = () => {
               players={boardPlayers}
               curPlayer={boardCurPlayer}
               tiles={normalizedTilesForBoard}
+              activePrompt={activeBoardPrompt}
+              promptSubmittingChoice={promptSubmittingChoice}
+              onPromptChoice={handlePromptChoice}
             />
           </div>
         </div>
@@ -342,7 +349,7 @@ const GamePage: React.FC = () => {
         )}
       </div>
 
-      {isPromptVisible && prompt && (
+      {isPromptVisible && prompt && !isBoardHandledPrompt && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/45 px-4">
           <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
             <h2 className="text-2xl font-black text-[#1F2A44]">
