@@ -18,15 +18,14 @@
 
 ## 진행도 요약
 
-| 파트 | 진행도  | 상태                                                        |
-| ---- | ------- | ----------------------------------------------------------- |
-| FE-B | 진행 중 | 타입/store/socket/mock 골격 정리 후 prompt/ack UI 연결 단계 |
-| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄여야 하는 단계          |
+| 파트 | 진행도  | 상태                                                                       |
+| ---- | ------- | -------------------------------------------------------------------------- |
+| FE-B | 진행 중 | `GamePage` prompt/ack/error/pendingAction 연결 완료, modal/board 연결 단계 |
+| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄여야 하는 단계                         |
 
 ## FE-B 현재 최우선 작업
 
 - `src/components/game/modals/*`를 `gameStore.prompt`와 연결
-- `src/pages/GamePage.tsx`에서 `pendingAction`, `lastAck`, `lastError`를 실제 UI 상태와 연결
 - `src/components/board/GameBoard.tsx`의 로컬 modal 분기를 `game:prompt` 소비 구조로 전환
 - `src/services/socket/game.handler.ts`의 `emitPromptResponse`를 실사용 UI 흐름과 연결
 - 남아 있는 게임 REST fallback을 compatibility layer로 더 명확히 격리
@@ -40,10 +39,16 @@
 
 ## 현재 가장 큰 리스크
 
-- `prompt`, `ack`, `pendingAction`이 store에는 있지만 실제 UI 소비가 아직 불완전하다.
+- `GamePage`는 `prompt`, `ack`, `pendingAction`을 소비하지만, `modals/*`/`GameBoard.tsx`는 아직 `prompt.type` 중심 소비 구조가 아니다.
 - `GameBoard.tsx`가 여전히 일부 게임 엔진 성격 로직을 들고 있다.
 - 게임 REST fallback이 장기화되면 중앙 docs 기준과 실제 런타임이 다시 벌어질 수 있다.
 - `gameId`, money unit, tile/building enum 기준이 문서와 코드에서 완전히 수렴하지 않았다.
+
+## 작업 운영 규칙 (2026-03-05 추가)
+
+- 작업 종료 시점마다 문서를 같이 갱신한다.
+- 문서에는 반드시 `진행도`와 `다음 작업`을 같이 적는다.
+- 기본 갱신 파일: `docs/game-event-spec-migration-plan.md`, `docs/game-delivery-roadmap.md`, `docs/game-ownership-corrected-table.md`
 
 ## 완료 판단 기준
 

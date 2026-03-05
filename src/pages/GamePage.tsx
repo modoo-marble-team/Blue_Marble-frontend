@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Settings } from 'lucide-react'
 import { useLocation, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
@@ -13,8 +13,9 @@ import { useGameState } from '../hooks/game/useGameState'
 import { useGameTimer } from '../hooks/game/useGameTimer'
 import { useTurn } from '../hooks/game/useTurn'
 import { socket } from '../lib/socket'
+import { emitPromptResponse } from '../services/socket/game.handler'
 import { useGameStore } from '../stores/game.store'
-import type { ChatMessage } from '../types/domain'
+import type { ChatMessage, GamePromptChoice } from '../types/domain'
 import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
@@ -33,6 +34,13 @@ const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
+const FALLBACK_PROMPT_CHOICES: GamePromptChoice[] = [
+  {
+    id: 'confirm',
+    label: 'Confirm',
+    value: 'confirm',
+  },
+]
 
 function mapGameChatEventToMessage(payload: ChatEventPayload): ChatMessage {
   return {
@@ -63,7 +71,17 @@ const GamePage: React.FC = () => {
     turnTimerKey,
     players: storePlayers,
     tiles: storeTiles,
+    prompt,
+    pendingAction,
+    lastAck,
+    lastError,
+    gameId: storeGameId,
+    clearPrompt,
+    setLastError,
   } = useGameStore()
+  const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
+    string | null
+  >(null)
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
     resetSignal: turnTimerKey,
@@ -102,6 +120,38 @@ const GamePage: React.FC = () => {
     : normalizedCurrentTurn === null
       ? true
       : isMyTurnFromStore
+  const isPromptTargetedToCurrentUser =
+    prompt?.playerId == null ||
+    (currentUserId != null && String(prompt.playerId) === String(currentUserId))
+  const isPromptVisible = Boolean(prompt && isPromptTargetedToCurrentUser)
+  const promptChoices = useMemo(
+    () =>
+      prompt?.choices && prompt.choices.length > 0
+        ? prompt.choices
+        : FALLBACK_PROMPT_CHOICES,
+    [prompt]
+  )
+  const isActionPending = pendingAction !== null
+
+  useEffect(() => {
+    if (!prompt) {
+      setPromptSubmittingChoice(null)
+      return
+    }
+
+    if (lastAck?.promptId === prompt.id) {
+      clearPrompt(prompt.id)
+      setPromptSubmittingChoice(null)
+    }
+  }, [clearPrompt, lastAck?.promptId, prompt])
+
+  useEffect(() => {
+    if (!lastError) {
+      return
+    }
+
+    setPromptSubmittingChoice(null)
+  }, [lastError])
 
   useEffect(() => {
     if (!activeRoomId) {
@@ -166,6 +216,21 @@ const GamePage: React.FC = () => {
     roomChatSenderOptions.find(
       (senderOption) => senderOption.id !== currentUserIdForChat
     )?.id ?? roomChatSenderOptions[0]?.id
+  const handlePromptChoice = (choice: string) => {
+    if (!prompt || promptSubmittingChoice !== null) {
+      return
+    }
+
+    setPromptSubmittingChoice(choice)
+    emitPromptResponse({
+      gameId: storeGameId ?? gameId ?? null,
+      promptId: prompt.id,
+      choice,
+    })
+  }
+  const dismissLastError = () => {
+    setLastError(null)
+  }
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
@@ -173,6 +238,38 @@ const GamePage: React.FC = () => {
         <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 text-[#45556C] shadow-sm transition-colors hover:bg-white">
           <Settings size={20} />
         </button>
+      </div>
+      <div className="absolute right-6 top-6 z-20 flex w-[340px] flex-col gap-2">
+        {isActionPending && (
+          <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs font-semibold text-[#1D4ED8]">
+            Pending action: {pendingAction.type}
+          </div>
+        )}
+        {lastAck && (
+          <div
+            className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
+              lastAck.ok
+                ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'
+                : 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]'
+            }`}
+          >
+            {lastAck.ok ? 'Action acknowledged' : 'Action rejected'} (
+            {lastAck.type ?? 'UNKNOWN'})
+          </div>
+        )}
+        {lastError && (
+          <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-xs text-[#991B1B]">
+            <div className="font-semibold">{lastError.code}</div>
+            <div className="mt-1">{lastError.message}</div>
+            <button
+              type="button"
+              onClick={dismissLastError}
+              className="mt-2 rounded-lg border border-[#FCA5A5] bg-white px-2 py-1 text-[11px] font-semibold text-[#B91C1C] transition-colors hover:bg-[#FEE2E2]"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       </div>
 
       <div
@@ -239,11 +336,54 @@ const GamePage: React.FC = () => {
         {!isCurrentPlayerSkipped && !isCurrentPlayerBankrupt && (
           <RollButton
             timeLeft={timeLeft}
-            isMyTurn={isMyTurn}
+            isMyTurn={isMyTurn && !isActionPending && !isPromptVisible}
             onRoll={() => diceRoll(activeRoomId)}
           />
         )}
       </div>
+
+      {isPromptVisible && prompt && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-xl rounded-3xl bg-white p-6 shadow-2xl">
+            <h2 className="text-2xl font-black text-[#1F2A44]">
+              {prompt.title ?? prompt.type ?? 'Prompt'}
+            </h2>
+            {prompt.message && (
+              <p className="mt-2 text-sm font-semibold text-[#5A6D8A]">
+                {prompt.message}
+              </p>
+            )}
+            {typeof prompt.timeoutSec === 'number' && (
+              <p className="mt-1 text-xs font-semibold text-[#64748B]">
+                Timeout: {prompt.timeoutSec}s
+              </p>
+            )}
+            <div className="mt-4 flex flex-col gap-2">
+              {promptChoices.map((choice) => (
+                <button
+                  key={choice.id}
+                  type="button"
+                  disabled={promptSubmittingChoice !== null}
+                  onClick={() => handlePromptChoice(choice.value)}
+                  className="w-full rounded-xl border border-[#D0D7E2] px-4 py-3 text-left text-sm font-bold text-[#334155] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {choice.label}
+                  {choice.description ? (
+                    <span className="mt-1 block text-xs font-medium text-[#64748B]">
+                      {choice.description}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+            {promptSubmittingChoice && (
+              <p className="mt-3 text-xs font-semibold text-[#1D4ED8]">
+                Sending response...
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <DevRoomChatControlPanel
         roomId={activeRoomId ?? ''}

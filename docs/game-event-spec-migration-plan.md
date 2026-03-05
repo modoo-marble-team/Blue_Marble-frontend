@@ -82,9 +82,9 @@
 | `src/hooks/game/useGameState.ts`                    | ✅ 완료           | —                                                                                      | FE-B                       |
 | `src/services/game/game.api.ts`                     | ⚠️ 레거시 격리 중 | deprecated 표시 완료. `gameBoardActionHandlers.ts` 호출부 → `emitGameAction` 전환 필요 | FE-B                       |
 | `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료           | —                                                                                      | FE-B                       |
-| `src/pages/GamePage.tsx`                            | ✅ 1차 완료       | `store.prompt`, `store.lastError`, `store.pendingAction` UI 연결 필요                  | FE-B                       |
+| `src/pages/GamePage.tsx`                            | ✅ 2차 완료       | `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결 완료             | FE-B                       |
 | `src/components/board/GameBoard.tsx`                | ⚠️ 부분 정리      | `applyMoney`, `advanceTurn`, 통행료 계산, 파산 판정 제거. `store.prompt` 연결          | FE-C 주도 / FE-B 선행 필요 |
-| `src/components/game/modals/*`                      | ❌ prompt 미연결  | `store.prompt.type` 기준 모달 열림 조건 연결. `emitPromptResponse` 연결                | FE-B                       |
+| `src/components/game/modals/*`                      | ⚠️ 부분 완료      | `store.prompt.type` 기준 모달 열림 조건 연결. `DiceTimerModal` timeout 연동            | FE-B                       |
 | `src/mocks/handlers/game.handler.ts`                | ✅ 완료           | —                                                                                      | FE-B                       |
 | `src/components/board/gameBoardStoreBridge.ts`      | ❌ 버그           | `toStoreBuildingLevel` 상한 5→7                                                        | FE-C                       |
 | `src/components/board/gameBoardTransactionUtils.ts` | ❌ 버그           | `upgradeBoardTileOwner` 상한 5→7                                                       | FE-C                       |
@@ -268,7 +268,7 @@
 - `src/stores/game.store.ts`: `replaceFromSnapshot`, `applyPatchEnvelope`(revision guard + set/inc/push/remove), `setPendingAction`, `resolveAck`, `setPrompt`, `clearPrompt`, `enqueueEvents`, `consumeNextEvent`, `setLastError`, `resetGame` 전부 구현
 - `src/services/socket/game.handler.ts`: `game:ack`, `game:patch`, `game:prompt`, `game:error` 구독. `emitGameAction`, `emitGameSync`, `emitPromptResponse` 구현
 - `src/hooks/game/useGameState.ts`: `game:sync` 우선, REST bootstrap fallback 병행
-- `src/pages/GamePage.tsx`: store 단일 소스, `gameViewModel` mapper로 board 데이터 조립
+- `src/pages/GamePage.tsx`: store 단일 소스, `gameViewModel` mapper로 board 데이터 조립 + `prompt` 오버레이 응답, `pendingAction`/`lastAck`/`lastError` UI 연결
 
 ### 명세 불일치 (수정 완료 — 2026-03-05)
 
@@ -284,9 +284,7 @@
 
 ### 구조 미구현 (FE-B 2단계)
 
-- `store.prompt` → 모달 연결 없음
-- `store.lastError` → 에러 UI 연결 없음
-- `store.pendingAction` → 버튼 상태 연결 없음
+- `GamePage`: `store.prompt`/`lastError`/`pendingAction` UI 연결은 완료. `prompt.type`별 모달 분기 연결은 미완료
 - `store.eventQueue` → 소비 컴포넌트 없음
 - `gameBoardActionHandlers.ts` → REST 직접 호출 유지 (`emitGameAction` 전환 필요)
 
@@ -296,7 +294,7 @@
 
 1. ~~`src/types/domain.ts`, `src/services/socket/game.handler.ts`: 명세 불일치 수정~~ ✅ 완료
 2. ~~`src/mocks/handlers/game.handler.ts`: 명세 불일치 수정~~ ✅ 완료
-3. `src/components/game/modals/*`, `src/pages/GamePage.tsx`, `src/components/board/GameBoard.tsx`: `store.prompt` → modal 연결. `store.lastError` → 에러 UI. `store.pendingAction` → 버튼 상태
+3. `src/components/game/modals/*`, `src/components/board/GameBoard.tsx`: `store.prompt.type` → modal 연결, `DiceTimerModal` → `prompt.timeoutSec` 연결
 4. `src/components/board/gameBoardActionHandlers.ts`: REST 직접 호출 → `emitGameAction` 전환
 
 **FE-C**
@@ -315,3 +313,9 @@
 - 기존 roomId/REST/원 단위 계약을 안전하게 유지하기 위한 호환 변경인지
 
 둘을 섞을 때는 반드시 mapper/adapter 계층을 명시적으로 둔다.
+
+### 6-1. 작업 종료 시 문서 업데이트 규칙 (2026-03-05 추가)
+
+- 모든 작업은 완료 시점에 문서를 함께 갱신한다.
+- 문서에는 반드시 `진행도(무엇이 완료됐는지)`와 `다음 작업(무엇을 이어서 할지)`를 함께 기록한다.
+- 기본 갱신 대상은 `docs/game-event-spec-migration-plan.md`, `docs/game-delivery-roadmap.md`, `docs/game-ownership-corrected-table.md`다.
