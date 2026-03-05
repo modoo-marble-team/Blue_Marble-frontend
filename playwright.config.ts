@@ -1,5 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 
+// 로컬 디버그 실행(--debug/PW_LOCAL_DEBUG)에서만 큰 뷰포트를 사용
+const isLocalDebugRun =
+  !process.env.CI &&
+  (process.env.PWDEBUG === '1' ||
+    process.env.PWDEBUG === 'console' ||
+    process.env.PW_LOCAL_DEBUG === 'true')
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -14,7 +21,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(isLocalDebugRun
+          ? {
+              viewport: { width: 1536, height: 960 },
+              launchOptions: { args: ['--window-size=1536,960'] },
+            }
+          : {}),
+      },
     },
   ],
   webServer: {
