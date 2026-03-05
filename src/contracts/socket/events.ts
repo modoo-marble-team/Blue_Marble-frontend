@@ -105,8 +105,9 @@ export interface SocketAckSuccess<T = Record<string, never>> {
 export interface SocketAckError {
   ok: false
   error: {
-    detail: string
     code: string
+    message: string
+    detail?: string
   }
 }
 
