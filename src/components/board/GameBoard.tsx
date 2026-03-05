@@ -548,22 +548,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
     }
 
-    function publishCurrentTurn(nextTurnIndex: number) {
-      if (onCurPlayerChange) {
-        onCurPlayerChange(nextTurnIndex)
-      } else {
-        syncMockStoreCurrentTurn(nextTurnIndex)
-      }
-    }
-
-    function publishTileOwners(nextOwners: Record<number, TileOwner>) {
-      if (onTileOwnersChange) {
-        onTileOwnersChange(nextOwners)
-      } else {
-        syncMockStoreTileOwners(nextOwners)
-      }
-    }
-
     function applyMoney(
       playerIdx: number,
       delta: number,
@@ -605,20 +589,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       useGameSocketMock: USE_GAME_SOCKET_MOCK,
       roomIdRequiredMessage: ROOM_ID_REQUIRED_MESSAGE,
       setStatus,
-      setOptimisticTileOwners,
       setBuyModal,
       setBuildModal,
       setTollModal,
       playersRef,
       curPlayerRef,
       tileOwnersRef,
-      publishPlayers,
-      publishCurrentTurn,
-      publishTileOwners,
       getPlayerIdByIndex,
       getPlayerColorByIndex,
       getPlayerIndexById,
-      toBoardBuildingLevel,
       getPurchaseCost: (id) => TILES[id]?.price ?? 0,
       getUpgradeCost,
       calcToll,
