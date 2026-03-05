@@ -15,6 +15,7 @@ interface BuildModalProps {
   cancelLabel?: string
   confirmLabel?: string
   canBuild?: boolean
+  isSubmitting?: boolean
   onCancel?: () => void
   onConfirm?: () => void
 }
@@ -36,6 +37,7 @@ const BuildModal: React.FC<BuildModalProps> = ({
   cancelLabel = DEFAULT_CANCEL_LABEL,
   confirmLabel = DEFAULT_CONFIRM_LABEL,
   canBuild = true,
+  isSubmitting = false,
   onCancel,
   onConfirm,
 }) => {
@@ -86,7 +88,8 @@ const BuildModal: React.FC<BuildModalProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="h-15 w-full max-w-42 rounded-[22px] bg-[#E6EBF3] text-[24px] font-black tracking-tight text-[#5E708D] transition-colors hover:bg-[#DDE4EE]"
+            disabled={isSubmitting}
+            className="h-15 w-full max-w-42 rounded-[22px] bg-[#E6EBF3] text-[24px] font-black tracking-tight text-[#5E708D] transition-colors hover:bg-[#DDE4EE] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -94,8 +97,8 @@ const BuildModal: React.FC<BuildModalProps> = ({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={!canBuild}
-            className="h-15 w-full max-w-56 rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1] disabled:opacity-40"
+            disabled={isSubmitting || !canBuild}
+            className="h-15 w-full max-w-56 rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {confirmLabel}
           </button>
