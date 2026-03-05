@@ -5,6 +5,7 @@
   | 'MOVE_TO_ISLAND'
   | 'ISLAND'
   | 'EVENT'
+  | 'AI'
 
 export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
 
@@ -52,14 +53,14 @@ export const TILES: TileData[] = [
   { id: 0, name: 'START', type: 'START', emoji: '🚩' },
   { id: 1, name: '수원', type: 'PROPERTY', color: '#EF5350', price: 100000000 },
   { id: 2, name: '용인', type: 'PROPERTY', color: '#FFD15B', price: 120000000 },
-  { id: 3, name: '?', type: 'CHANCE', svgIcon: '/event-question.svg' },
+  { id: 3, name: '', type: 'CHANCE', svgIcon: '/event-question.svg' },
   { id: 4, name: '군산', type: 'PROPERTY', color: '#66BB6A', price: 140000000 },
   { id: 5, name: '평택', type: 'PROPERTY', color: '#42A5F5', price: 160000000 },
   { id: 6, name: '익산', type: 'PROPERTY', color: '#42A5F5', price: 180000000 },
   { id: 7, name: '이벤트', type: 'EVENT', svgIcon: '/chance-box.svg' },
   { id: 8, name: '무인도', type: 'ISLAND', emoji: '🏝️' },
   { id: 9, name: '경주', type: 'PROPERTY', color: '#FF7043', price: 200000000 },
-  { id: 10, name: '?', type: 'CHANCE', svgIcon: '/event-question.svg' },
+  { id: 10, name: '', type: 'CHANCE', svgIcon: '/event-question.svg' },
   {
     id: 11,
     name: '포항',
@@ -120,8 +121,8 @@ export const TILES: TileData[] = [
   {
     id: 20,
     name: 'AI',
-    type: 'EVENT',
-    color: '#111111',
+    type: 'AI',
+    color: '#000000',
     svgIcon: '/ai-head.png',
   },
   {
@@ -160,7 +161,7 @@ export const TILES: TileData[] = [
     color: '#42A5F5',
     price: 900000000,
   },
-  { id: 27, name: '?', type: 'CHANCE', svgIcon: '/event-question.svg' },
+  { id: 27, name: '', type: 'CHANCE', svgIcon: '/event-question.svg' },
   {
     id: 28,
     name: '대전',
@@ -234,8 +235,9 @@ export const INIT_PLAYERS: PlayerState[] = [
 
 export function getStripColor(tile: TileData): string | null {
   if (tile.type === 'PROPERTY') return tile.color ?? null
-  if (tile.type === 'EVENT') return tile.color ?? '#EF5350'
+  if (tile.type === 'EVENT') return '#EF5350'
   if (tile.type === 'CHANCE') return '#FFD15B'
+  if (tile.type === 'AI') return '#000000'
   return null
 }
 

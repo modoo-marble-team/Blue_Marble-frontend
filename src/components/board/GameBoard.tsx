@@ -303,6 +303,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         setLocalTimeLeft((prev) => {
           if (prev <= 1) {
             setShowTimerModal(true)
+            clearInterval(timer) // Stop once triggered
             return 0
           }
           return prev - 1
