@@ -17,9 +17,10 @@ import DiceTimerModal from '../game/modals/DiceTimerModal'
 import GameResultModal from '../game/modals/GameResultModal'
 import GoToIslandModal from '../game/modals/GoToIslandModal'
 import {
-  findPromptChoiceValue,
+  getPromptChoiceLabel,
   getPromptPayloadNumber,
   getPromptPayloadString,
+  resolvePromptChoiceValue,
   resolvePromptModalKind,
 } from '../game/modals/promptModalMapping'
 
@@ -333,47 +334,42 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     ) as BuildingLevel
     const promptNextLevel = Math.min(promptCurrentLevel + 1, 7) as BuildingLevel
 
-    const promptBuyChoiceValue = findPromptChoiceValue(activePrompt, ['BUY'], 0)
-    const promptBuyPassChoiceValue = findPromptChoiceValue(activePrompt, [
-      'SKIP',
-      'PASS',
-      'CANCEL',
-      'NO',
-    ])
-    const promptBuildConfirmChoiceValue = findPromptChoiceValue(
+    const promptBuyChoiceValue = resolvePromptChoiceValue(
       activePrompt,
-      ['BUILD', 'UPGRADE', 'CONFIRM'],
-      0
+      'buyConfirm'
     )
-    const promptBuildCancelChoiceValue = findPromptChoiceValue(activePrompt, [
-      'SKIP',
-      'PASS',
-      'CANCEL',
-      'NO',
-    ])
-    const promptTollConfirmChoiceValue = findPromptChoiceValue(
+    const promptBuyPassChoiceValue = resolvePromptChoiceValue(
       activePrompt,
-      ['PAY_TOLL', 'PAY', 'CONFIRM', 'OK'],
-      0
+      'buyCancel'
     )
-    const promptTimerConfirmChoiceValue = findPromptChoiceValue(
+    const promptBuildConfirmChoiceValue = resolvePromptChoiceValue(
       activePrompt,
-      ['END_TURN', 'CONFIRM', 'OK', 'SKIP'],
-      0
+      'buildConfirm'
+    )
+    const promptBuildCancelChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'buildCancel'
+    )
+    const promptTollConfirmChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'tollConfirm'
+    )
+    const promptTimerConfirmChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'timerConfirm'
     )
 
-    const getPromptChoiceLabel = (
+    const submitPromptChoice = (
       choiceValue: string | null,
-      fallbackLabel: string
+      onSuccess?: () => void
     ) => {
-      if (!activePrompt || !choiceValue) {
-        return fallbackLabel
+      if (!choiceValue || !onPromptChoice || promptSubmittingChoice !== null) {
+        return false
       }
 
-      return (
-        activePrompt.choices?.find((choice) => choice.value === choiceValue)
-          ?.label ?? fallbackLabel
-      )
+      onPromptChoice(choiceValue)
+      onSuccess?.()
+      return true
     }
 
     useEffect(() => {
@@ -830,11 +826,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     function handleDiceTimerConfirm() {
       if (
         isDiceTimerPromptOpen &&
-        promptTimerConfirmChoiceValue &&
-        onPromptChoice &&
-        promptSubmittingChoice === null
+        submitPromptChoice(promptTimerConfirmChoiceValue)
       ) {
-        onPromptChoice(promptTimerConfirmChoiceValue)
         return
       }
 
@@ -975,6 +968,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const diceTimerTitle = activePrompt?.title
     const diceTimerMessage = activePrompt?.message
     const diceTimerConfirmLabel = getPromptChoiceLabel(
+      activePrompt,
       promptTimerConfirmChoiceValue,
       '확인'
     )
@@ -1083,13 +1077,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
-            if (
-              promptBuyChoiceValue &&
-              onPromptChoice &&
-              promptSubmittingChoice === null
-            ) {
-              onPromptChoice(promptBuyChoiceValue)
-            }
+            submitPromptChoice(promptBuyChoiceValue)
           }}
           onPass={() => {
             if (useLocalPromptFallback) {
@@ -1097,22 +1085,18 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
-            const fallbackChoice =
-              promptBuyPassChoiceValue ??
-              findPromptChoiceValue(activePrompt, ['SKIP', 'PASS'], 1)
-            if (
-              fallbackChoice &&
-              onPromptChoice &&
-              promptSubmittingChoice === null
-            ) {
-              onPromptChoice(fallbackChoice)
-            }
+            submitPromptChoice(promptBuyPassChoiceValue)
           }}
           passLabel={getPromptChoiceLabel(
+            activePrompt,
             promptBuyPassChoiceValue,
             useLocalPromptFallback ? '패스' : '건너뛰기'
           )}
-          buyLabel={getPromptChoiceLabel(promptBuyChoiceValue, '구매하기')}
+          buyLabel={getPromptChoiceLabel(
+            activePrompt,
+            promptBuyChoiceValue,
+            '구매하기'
+          )}
           isSubmitting={
             promptSubmittingChoice !== null && !useLocalPromptFallback
           }
@@ -1127,13 +1111,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
-            if (
-              promptBuildConfirmChoiceValue &&
-              onPromptChoice &&
-              promptSubmittingChoice === null
-            ) {
-              onPromptChoice(promptBuildConfirmChoiceValue)
-            }
+            submitPromptChoice(promptBuildConfirmChoiceValue)
           }}
           onCancel={() => {
             if (useLocalPromptFallback) {
@@ -1141,16 +1119,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
-            const fallbackChoice =
-              promptBuildCancelChoiceValue ??
-              findPromptChoiceValue(activePrompt, ['SKIP', 'PASS', 'CANCEL'], 1)
-            if (
-              fallbackChoice &&
-              onPromptChoice &&
-              promptSubmittingChoice === null
-            ) {
-              onPromptChoice(fallbackChoice)
-            }
+            submitPromptChoice(promptBuildCancelChoiceValue)
           }}
           cityName={promptTileName}
           nextLevel={
@@ -1159,10 +1128,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               : promptNextLevel
           }
           cancelLabel={getPromptChoiceLabel(
+            activePrompt,
             promptBuildCancelChoiceValue,
             '취소'
           )}
           confirmLabel={getPromptChoiceLabel(
+            activePrompt,
             promptBuildConfirmChoiceValue,
             '건설하기'
           )}
@@ -1180,18 +1151,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
-            if (
-              promptTollConfirmChoiceValue &&
-              onPromptChoice &&
-              promptSubmittingChoice === null
-            ) {
-              onPromptChoice(promptTollConfirmChoiceValue)
-            }
+            submitPromptChoice(promptTollConfirmChoiceValue)
           }}
           cityName={promptTileName || tollTile?.name || ''}
           ownerName={tollOwnerName}
           tollText={tollAmountText}
           confirmLabel={getPromptChoiceLabel(
+            activePrompt,
             promptTollConfirmChoiceValue,
             '확인하기'
           )}
