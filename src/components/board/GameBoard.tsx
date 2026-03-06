@@ -10,6 +10,7 @@ import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
 import CardModal from '../game/modals/CardModal'
+import CityAcquisitionModal from '../game/modals/CityAcquisitionModals'
 import TollModal from '../game/modals/TollModal'
 import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
@@ -54,6 +55,7 @@ import type {
   BuildModalState,
   BuyModalState,
   CardModalState,
+  CityAcquisitionModalState,
   TollModalState,
   GameResultModalState,
   GoToIslandModalState,
@@ -98,6 +100,14 @@ const AI_PENALTY_RESULTS = [
 const DEFAULT_OPPONENT_NAME = '상대방'
 const GAME_START_STATUS = '게임 시작!'
 const ROOM_ID_REQUIRED_MESSAGE = '게임 방 식별자를 찾을 수 없습니다.'
+
+const INITIAL_CITY_ACQUISITION_MODAL_STATE: CityAcquisitionModalState = {
+  open: false,
+  tileId: null,
+  ownerName: '',
+  currentLevel: 0,
+  acquisitionCost: 0,
+}
 
 const DOTS: Record<number, [number, number][]> = {
   1: [[50, 50]],
@@ -288,6 +298,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isBuyPromptOpen = promptModalKind === 'buy'
     const isBuildPromptOpen = promptModalKind === 'build'
     const isTollPromptOpen = promptModalKind === 'toll'
+    const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
     const isDiceTimerPromptOpen = promptModalKind === 'dice_timer'
 
     const promptTileId = getPromptPayloadNumber(activePrompt, [
@@ -314,6 +325,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       'amount',
       'toll',
       'tollAmount',
+      'price',
+    ])
+    const promptAcquisitionCost = getPromptPayloadNumber(activePrompt, [
+      'acquisitionCost',
+      'buyoutCost',
+      'purchaseCost',
+      'cost',
       'price',
     ])
     const promptTileName =
@@ -354,6 +372,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       activePrompt,
       'tollConfirm'
     )
+    const promptAcquisitionConfirmChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'acquisitionConfirm'
+    )
+    const promptAcquisitionCancelChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'acquisitionCancel'
+    )
     const promptTimerConfirmChoiceValue = resolvePromptChoiceValue(
       activePrompt,
       'timerConfirm'
@@ -388,6 +414,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuildModal({ open: false, tileId: null })
       setCardModal({ open: false, variant: 'EVENT' })
       setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
+      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
       setAiModal({ open: false, status: 'loading' })
       setGoToIslandModal({ open: false })
 
@@ -501,6 +528,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       ownerName: '',
       tollText: '',
     })
+    const [cityAcquisitionModal, setCityAcquisitionModal] =
+      useState<CityAcquisitionModalState>(INITIAL_CITY_ACQUISITION_MODAL_STATE)
     const [aiModal, setAiModal] = useState<AIPenaltyModalState>({
       open: false,
       status: 'loading',
@@ -601,6 +630,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       updateTileOwners,
       applyMoney,
       advanceTurn,
+      onTollResolved: ({ tileId, ownerLevel, ownerName, onDoneCallback }) => {
+        if (ownerLevel >= 7) {
+          return false
+        }
+
+        const acquisitionCost = TILES[tileId]?.price ?? 0
+        setCityAcquisitionModal({
+          open: true,
+          tileId,
+          ownerName,
+          currentLevel: ownerLevel,
+          acquisitionCost,
+          onDoneCallback,
+        })
+        return true
+      },
     })
 
     function getPlayerResults() {
@@ -837,10 +882,113 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuildModal({ open: false, tileId: null })
       setCardModal({ open: false, variant: 'EVENT' })
       setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
+      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
       setAiModal({ open: false, status: 'loading' })
       setGoToIslandModal({ open: false })
 
       advanceTurn()
+    }
+
+    function handleCityAcquisitionCancel() {
+      const { onDoneCallback } = cityAcquisitionModal
+      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
+
+      if (useLocalPromptFallback) {
+        advanceTurn(onDoneCallback)
+        return
+      }
+
+      submitPromptChoice(promptAcquisitionCancelChoiceValue)
+    }
+
+    function handleCityAcquisitionConfirm() {
+      if (!useLocalPromptFallback) {
+        submitPromptChoice(promptAcquisitionConfirmChoiceValue)
+        return
+      }
+
+      const { tileId, acquisitionCost, onDoneCallback } = cityAcquisitionModal
+      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
+
+      if (tileId === null) {
+        advanceTurn(onDoneCallback)
+        return
+      }
+
+      const owner = tileOwnersRef.current[tileId]
+      if (!owner || owner.level >= 7) {
+        advanceTurn(onDoneCallback)
+        return
+      }
+
+      const activePlayerIdx = curPlayerRef.current
+      const activePlayerId = getPlayerIdByIndex(activePlayerIdx)
+      const activePlayerColor = getPlayerColorByIndex(activePlayerIdx)
+      const ownerPlayerIdx = getPlayerIndexById(owner.ownerId)
+
+      const bankrupt = applyMoney(
+        activePlayerIdx,
+        -acquisitionCost,
+        onDoneCallback
+      )
+      if (bankrupt) {
+        return
+      }
+
+      if (ownerPlayerIdx >= 0 && ownerPlayerIdx !== activePlayerIdx) {
+        applyMoney(ownerPlayerIdx, +acquisitionCost)
+      }
+
+      updateTileOwners(
+        (prev) => {
+          const currentOwner = prev[tileId]
+          if (!currentOwner || currentOwner.level >= 7) {
+            return prev
+          }
+
+          return {
+            ...prev,
+            [tileId]: {
+              ...currentOwner,
+              ownerId: activePlayerId,
+              ownerColor: activePlayerColor,
+            },
+          }
+        },
+        { notifyParent: true }
+      )
+
+      advanceTurn(onDoneCallback)
+    }
+
+    function handleCardConfirm() {
+      const { variant, onDoneCallback } = cardModal
+      setCardModal((prev) => ({ ...prev, open: false }))
+
+      if (!USE_GAME_SOCKET_MOCK) {
+        onDoneCallback?.()
+        return
+      }
+
+      if (variant === 'CHANCE') {
+        const playerIdx = curPlayerRef.current
+        const currentPlayer = playersRef.current[playerIdx]
+
+        if (currentPlayer) {
+          const updatedPlayers = [...playersRef.current]
+          updatedPlayers[playerIdx] = {
+            ...currentPlayer,
+            skipTurns: (currentPlayer.skipTurns ?? 0) + 1,
+          }
+          playersRef.current = updatedPlayers
+          publishPlayers(updatedPlayers)
+        }
+
+        advanceTurn(onDoneCallback)
+        return
+      }
+
+      setGoToIslandModal({ open: true, onDoneCallback })
     }
 
     function handleArrival(tileId: number, onDone?: () => void) {
@@ -870,6 +1018,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         if (!owner) {
           setBuyModal({ open: true, tileId, onDoneCallback: onDone })
         } else if (owner.ownerId !== getPlayerIdByIndex(playerIdx)) {
+          setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
           const ownerPlayer = playersRef.current.find(
             (p) => String(p.id) === String(owner.ownerId)
           )
@@ -952,6 +1101,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tollAmountText = useLocalPromptFallback
       ? tollModal.tollText
       : formatWon(promptAmount ?? 0)
+    const acquisitionTile = useLocalPromptFallback
+      ? cityAcquisitionModal.tileId !== null
+        ? TILES[cityAcquisitionModal.tileId]
+        : null
+      : promptTile
+    const acquisitionModalOpenRaw = useLocalPromptFallback
+      ? cityAcquisitionModal.open
+      : isAcquisitionPromptOpen
+    const acquisitionModalOpen = acquisitionModalOpenRaw && !tollModalOpen
+    const acquisitionOwnerName = useLocalPromptFallback
+      ? cityAcquisitionModal.ownerName
+      : promptOwnerName
+    const acquisitionCurrentLevel = useLocalPromptFallback
+      ? cityAcquisitionModal.currentLevel
+      : promptCurrentLevel
+    const acquisitionCost = useLocalPromptFallback
+      ? cityAcquisitionModal.acquisitionCost
+      : (promptAcquisitionCost ?? acquisitionTile?.price ?? 0)
     const buyCost = useLocalPromptFallback
       ? (buyTile?.price ?? 0)
       : (getPromptPayloadNumber(activePrompt, ['price', 'purchaseCost']) ??
@@ -1165,13 +1332,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             promptSubmittingChoice !== null && !useLocalPromptFallback
           }
         />
+        <CityAcquisitionModal
+          open={acquisitionModalOpen}
+          cityName={promptTileName || acquisitionTile?.name || ''}
+          ownerName={acquisitionOwnerName}
+          purchaseCostText={formatWon(acquisitionCost)}
+          currentLevel={acquisitionCurrentLevel}
+          onCancel={handleCityAcquisitionCancel}
+          onAcquire={handleCityAcquisitionConfirm}
+        />
         <CardModal
           open={cardModal.open}
           variant={cardModal.variant}
-          onConfirm={() => {
-            setCardModal((prev) => ({ ...prev, open: false }))
-            cardModal.onDoneCallback?.()
-          }}
+          onConfirm={handleCardConfirm}
         />
         <AIPenaltyModal
           open={aiModal.open}
