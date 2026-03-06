@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthSession } from '../auth/types'
 import {
   sendDirectMessage as sendDirectMessageSocket,
@@ -18,6 +18,18 @@ interface UseDirectMessageControllerParams {
   onBlockedByPlaying?: () => void
 }
 
+// DM 송신/수신 메시지의 클라이언트 식별자 생성
+function createDirectMessageId() {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID()
+  }
+
+  return `dm-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
 // DM 상태/구독/전송 로직을 공통으로 관리
 export function useDirectMessageController({
   session,
@@ -34,6 +46,12 @@ export function useDirectMessageController({
   ] = useState<Record<string, number>>({})
 
   const openedDirectMessageUserId = dmTargetUser?.id
+  const directMessagesByUserIdRef = useRef<Record<string, DirectMessage[]>>({})
+
+  // 최신 DM 목록 상태를 ref에 동기화해 수신 이벤트 중복 판정에 사용
+  useEffect(() => {
+    directMessagesByUserIdRef.current = directMessagesByUserId
+  }, [directMessagesByUserId])
 
   // DM 수신 이벤트를 구독해 대화 목록과 unread 카운트를 갱신
   useEffect(() => {
@@ -44,30 +62,30 @@ export function useDirectMessageController({
     const unsubscribe = subscribeDirectMessageSocketEvents({
       onReceive: (payload: DirectMessageReceiveSocketPayload) => {
         const receivedMessage: DirectMessage = {
-          id: `${payload.sender_id}-${payload.sent_at}`,
+          id: payload.message_id,
           senderId: payload.sender_id,
           senderNickname: payload.sender_nickname,
           content: payload.message,
           sentAt: payload.sent_at,
         }
 
-        setDirectMessagesByUserId((previousMessagesByUserId) => {
-          const previousMessages =
-            previousMessagesByUserId[payload.sender_id] ?? []
-          const hasSameMessage = previousMessages.some(
-            (message) => message.id === receivedMessage.id
-          )
+        const previousMessages =
+          directMessagesByUserIdRef.current[payload.sender_id] ?? []
+        const hasSameMessage = previousMessages.some(
+          (message) => message.id === receivedMessage.id
+        )
 
-          // 동일 메시지 ID는 중복 삽입을 방지
-          if (hasSameMessage) {
-            return previousMessagesByUserId
-          }
+        // 동일 message_id는 목록/카운트 모두 갱신하지 않음
+        if (hasSameMessage) {
+          return
+        }
 
-          return {
-            ...previousMessagesByUserId,
-            [payload.sender_id]: [...previousMessages, receivedMessage],
-          }
-        })
+        const nextMessagesByUserId = {
+          ...directMessagesByUserIdRef.current,
+          [payload.sender_id]: [...previousMessages, receivedMessage],
+        }
+        directMessagesByUserIdRef.current = nextMessagesByUserId
+        setDirectMessagesByUserId(nextMessagesByUserId)
 
         // 현재 열려 있는 사용자 메시지는 unread 카운트에서 제외
         if (payload.sender_id === openedDirectMessageUserId) {
@@ -154,8 +172,9 @@ export function useDirectMessageController({
       }
 
       const targetUserId = dmTargetUser.id
+      const clientMessageId = createDirectMessageId()
       const nextDirectMessage: DirectMessage = {
-        id: `${targetUserId}-${Date.now()}`,
+        id: clientMessageId,
         senderId: session.userId,
         senderNickname: session.nickname,
         content: message,
@@ -174,6 +193,7 @@ export function useDirectMessageController({
       sendDirectMessageSocket({
         receiverId: dmTargetUser.id,
         message,
+        clientMessageId,
       })
     },
     [dmTargetUser, onBlockedByPlaying, session]
