@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getWaitingRoomErrorMessage, isJoinPasswordMismatchError } from './api'
+import {
+  getWaitingRoomErrorMessage,
+  isJoinPasswordMismatchError,
+  parseJoinWaitingRoomPayload,
+  WaitingRoomContractError,
+} from './api'
 import { WaitingRoomMockError } from './mockGateway'
 
 // axios 에러 형태를 테스트에서 간단히 재현
@@ -72,5 +77,65 @@ describe('waiting-room api error mapping', () => {
     expect(
       getWaitingRoomErrorMessage(error, '대기방 정보를 불러오지 못했습니다.')
     ).toBe('대기방 정보를 불러오지 못했습니다.')
+  })
+})
+
+describe('waiting-room join response contract', () => {
+  it('필수 필드가 모두 있으면 join payload 파싱에 성공한다', () => {
+    const parsedPayload = parseJoinWaitingRoomPayload({
+      room_id: 'room-1',
+      title: '즐거운 게임 한판!',
+      status: 'waiting',
+      max_players: 4,
+      is_private: false,
+      players: [
+        {
+          id: 'u-1',
+          nickname: '고름EE',
+          is_ready: false,
+          is_host: true,
+        },
+      ],
+      chat_messages: [
+        {
+          id: 'chat-1',
+          sender_id: 'u-1',
+          sender_nickname: '고름EE',
+          message: '안녕하세요',
+          sent_at: '2026-03-06T10:00:00.000Z',
+          type: 'talk',
+        },
+      ],
+    })
+
+    expect(parsedPayload.room_id).toBe('room-1')
+    expect(parsedPayload.chat_messages).toHaveLength(1)
+  })
+
+  it('chat_messages 필드가 누락되면 계약 오류를 던진다', () => {
+    expect(() =>
+      parseJoinWaitingRoomPayload({
+        room_id: 'room-1',
+        title: '즐거운 게임 한판!',
+        status: 'waiting',
+        max_players: 4,
+        is_private: false,
+        players: [],
+      })
+    ).toThrow(WaitingRoomContractError)
+  })
+
+  it('status 값이 계약 외 값이면 계약 오류를 던진다', () => {
+    expect(() =>
+      parseJoinWaitingRoomPayload({
+        room_id: 'room-1',
+        title: '즐거운 게임 한판!',
+        status: 'closed',
+        max_players: 4,
+        is_private: false,
+        players: [],
+        chat_messages: [],
+      })
+    ).toThrow(WaitingRoomContractError)
   })
 })
