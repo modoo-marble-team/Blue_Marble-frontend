@@ -126,6 +126,7 @@ const INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE: InsufficientFundsModalState = {
   open: false,
   buildingLevel: 0,
   onDoneCallback: undefined,
+  promptChoiceValue: null,
 }
 
 const DOTS: Record<number, [number, number][]> = {
@@ -1018,7 +1019,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleInsufficientFundsConfirm() {
-      const { onDoneCallback } = insufficientFundsModal
+      const { onDoneCallback, promptChoiceValue } = insufficientFundsModal
       setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
 
       if (useLocalPromptFallback) {
@@ -1026,7 +1027,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      submitPromptChoice(promptBuyPassChoiceValue)
+      submitPromptChoice(promptChoiceValue ?? null)
     }
 
     function handleDiceTimerConfirm() {
@@ -1253,6 +1254,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         ? (tileOwners[buildModal.tileId]?.level ?? 0)
         : 0
       : promptCurrentLevel
+    const buildTargetLevel = useLocalPromptFallback
+      ? ((currentLevel + 1) as BuildingLevel)
+      : promptNextLevel
     const tollTile = useLocalPromptFallback
       ? tollModal.tileId !== null
         ? TILES[tollModal.tileId]
@@ -1316,6 +1320,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       dismissedBuyPromptId === activePrompt.id
     const buyModalVisible =
       buyModalOpen && !isBuyPromptDismissed && !insufficientFundsModal.open
+    const buildModalVisible = buildModalOpen && !insufficientFundsModal.open
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const buildCost = useLocalPromptFallback
       ? getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
@@ -1444,6 +1449,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 onDoneCallback: useLocalPromptFallback
                   ? buyModal.onDoneCallback
                   : undefined,
+                promptChoiceValue: useLocalPromptFallback
+                  ? null
+                  : promptBuyPassChoiceValue,
               })
               return
             }
@@ -1485,8 +1493,26 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleInsufficientFundsConfirm}
         />
         <BuildModal
-          open={buildModalOpen}
+          open={buildModalVisible}
           onConfirm={() => {
+            if (activePlayerMoney < buildCost) {
+              if (useLocalPromptFallback) {
+                setBuildModal({ open: false, tileId: null })
+              }
+
+              setInsufficientFundsModal({
+                open: true,
+                buildingLevel: buildTargetLevel,
+                onDoneCallback: useLocalPromptFallback
+                  ? buildModal.onDoneCallback
+                  : undefined,
+                promptChoiceValue: useLocalPromptFallback
+                  ? null
+                  : promptBuildCancelChoiceValue,
+              })
+              return
+            }
+
             if (useLocalPromptFallback) {
               handleBuildConfirm(buildModal)
               return
@@ -1503,11 +1529,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             submitPromptChoice(promptBuildCancelChoiceValue)
           }}
           cityName={promptTileName}
-          nextLevel={
-            useLocalPromptFallback
-              ? ((currentLevel + 1) as BuildingLevel)
-              : promptNextLevel
-          }
+          nextLevel={buildTargetLevel}
           cancelLabel={getPromptChoiceLabel(
             activePrompt,
             promptBuildCancelChoiceValue,

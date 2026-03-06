@@ -39,6 +39,7 @@ export interface InsufficientFundsModalState {
   open: boolean
   buildingLevel: BuildingLevel
   onDoneCallback?: () => void
+  promptChoiceValue?: string | null
 }
 
 export interface CityAcquisitionModalState {
