@@ -27,7 +27,8 @@ export function createBoardPurchasedTileOwner(
   return {
     ownerId,
     ownerColor,
-    level: 1,
+    // 구매 직후는 토지(0) 상태에서 시작한다.
+    level: 0,
   }
 }
 

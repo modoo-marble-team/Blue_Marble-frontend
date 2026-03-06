@@ -92,4 +92,41 @@ describe('game view model mapper', () => {
 
     expect(boardTiles[0]?.owner_id).toBe(boardPlayers[0]?.id)
   })
+
+  it('keeps owner mapping when owner_id is numeric 0', () => {
+    const storePlayers = [
+      {
+        id: 0,
+        nickname: 'Player 0',
+        position: 0,
+        balance: 1000,
+        owned_tiles: [],
+        is_in_jail: false,
+        jail_turn_count: 0,
+        is_bankrupt: false,
+        color: '#EF5350',
+      },
+    ]
+    const boardPlayers = [
+      {
+        ...mapStorePlayersToBoardPlayers(storePlayers)[0],
+        id: 99,
+      },
+    ]
+    const boardTiles = mapStoreTilesToBoardTiles(
+      [
+        {
+          index: 1,
+          name: 'Seoul',
+          type: 'city',
+          owner_id: 0,
+          building: 1,
+        },
+      ],
+      storePlayers,
+      boardPlayers
+    )
+
+    expect(boardTiles[0]?.owner_id).toBe(99)
+  })
 })

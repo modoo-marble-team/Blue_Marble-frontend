@@ -56,7 +56,7 @@ export const mapStoreTilesToBoardTiles = (
   }
 
   return storeTiles.map((tile) => {
-    if (!tile.owner_id) {
+    if (tile.owner_id === null || tile.owner_id === undefined) {
       return tile
     }
 

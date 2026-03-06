@@ -13,7 +13,7 @@ export function getBoardSellFallbackRefund(
   level: BuildingLevel
 ) {
   const basePrice = TILES[tileId]?.price ?? 0
-  if (level <= 0 || basePrice === 0) return 0
+  if (level < 0 || basePrice === 0) return 0
 
   let refund = basePrice
 

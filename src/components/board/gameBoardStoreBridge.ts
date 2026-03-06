@@ -84,7 +84,7 @@ export function syncMockStoreTileOwners(
         ...tile,
         ownerId: ownerPlayer?.id ?? String(owner.ownerId),
         owner_id: ownerPlayer?.id ?? String(owner.ownerId),
-        building: toStoreBuildingLevel(owner.level - 1),
+        building: toStoreBuildingLevel(owner.level),
       }
     }),
   })
