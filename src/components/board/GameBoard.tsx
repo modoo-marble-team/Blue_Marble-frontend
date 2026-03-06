@@ -418,7 +418,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setAiModal({ open: false, status: 'loading' })
       setGoToIslandModal({ open: false })
 
-      const p = players[curPlayer]
+      const p = playersRef.current[curPlayer]
       if (p) {
         if (p.state === 'island') {
           setStatus(
@@ -432,7 +432,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           setStatus(`${p.name}님은 파산 상태입니다`)
         }
       }
-    }, [curPlayer, players])
+    }, [curPlayer])
 
     useEffect(() => {
       if (rolling) return
