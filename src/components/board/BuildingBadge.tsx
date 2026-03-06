@@ -11,6 +11,7 @@ const RED_THEME = { folder: 'red-building-Icon', prefix: 'red' }
 const BLUE_THEME = { folder: 'blue-building-Icon', prefix: 'blue' }
 const GREEN_THEME = { folder: 'green-building-Icon', prefix: 'green' }
 const YELLOW_THEME = { folder: 'yellow-building-Icon', prefix: 'yellow' }
+const LAND_ICON_SRC = '/BuyModal-land.svg'
 
 const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
   '#EF5350': RED_THEME,
@@ -31,13 +32,13 @@ const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
   YELLOW: YELLOW_THEME,
 }
 
-const BUILDING_SUFFIX: Record<number, string> = {
+const BUILDING_SUFFIX: Partial<Record<number, string>> = {
   1: '-house.svg',
   2: '-second-house-upgrade.svg',
   3: '-third-house-upgrade.svg',
   4: '-hotel.svg',
   5: '-second-hotel-upgrade.svg',
-  6: '-third-hotel-upgrade.svg',
+  6: '-third—hotel-upgrade.svg',
   7: '-landmark.svg',
 }
 
@@ -46,16 +47,20 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({
   ownerColor,
   isUrgent = false,
 }) => {
-  if (!level || level < 1 || level > 7) return null
+  if (level < 0 || level > 7) return null
 
   const rawPathColor = ownerColor || PLAYER_COLORS[0]
   const normalizedColor = rawPathColor.trim().toUpperCase()
   const theme = COLOR_TO_THEME[normalizedColor] ?? RED_THEME
   const suffix = BUILDING_SUFFIX[level]
+  const src =
+    level === 0
+      ? LAND_ICON_SRC
+      : suffix
+        ? `/${theme.folder}/${theme.prefix}${suffix}`
+        : null
 
-  if (!suffix) return null
-
-  const src = `/${theme.folder}/${theme.prefix}${suffix}`
+  if (!src) return null
 
   return (
     <div
