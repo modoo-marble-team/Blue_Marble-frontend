@@ -32,12 +32,13 @@ export interface CitySellModalState {
   ownerName: string
   currentLevel: BuildingLevel
   sellPrice: number
-  tollContext: TollModalState | null
+  onDoneCallback?: () => void
 }
 
 export interface InsufficientFundsModalState {
   open: boolean
   buildingLevel: BuildingLevel
+  onDoneCallback?: () => void
 }
 
 export interface CityAcquisitionModalState {

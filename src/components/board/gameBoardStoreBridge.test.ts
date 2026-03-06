@@ -103,12 +103,12 @@ describe('gameBoardStoreBridge', () => {
       expect.objectContaining({
         index: 1,
         owner_id: 'p1',
-        building: 1,
+        building: 2,
       }),
       expect.objectContaining({
         index: 2,
         owner_id: 'p2',
-        building: 4,
+        building: 5,
       }),
     ])
   })

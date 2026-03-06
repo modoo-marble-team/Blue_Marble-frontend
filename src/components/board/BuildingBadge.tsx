@@ -5,6 +5,7 @@ interface BuildingBadgeProps {
   level: number
   ownerColor?: string
   isUrgent?: boolean
+  showLandAtLevelZero?: boolean
 }
 
 const RED_THEME = { folder: 'red-building-Icon', prefix: 'red' }
@@ -46,8 +47,10 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({
   level,
   ownerColor,
   isUrgent = false,
+  showLandAtLevelZero = true,
 }) => {
   if (level < 0 || level > 7) return null
+  if (level === 0 && !showLandAtLevelZero) return null
 
   const rawPathColor = ownerColor || PLAYER_COLORS[0]
   const normalizedColor = rawPathColor.trim().toUpperCase()

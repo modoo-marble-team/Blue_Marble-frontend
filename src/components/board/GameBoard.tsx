@@ -51,7 +51,6 @@ import {
   syncMockStoreTileOwners,
 } from './gameBoardStoreBridge'
 import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
-import { findBoardSellTarget } from './gameBoardTransactionUtils'
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import type {
   AIPenaltyModalState,
@@ -121,12 +120,12 @@ const INITIAL_CITY_SELL_MODAL_STATE: CitySellModalState = {
   ownerName: '',
   currentLevel: 0,
   sellPrice: 0,
-  tollContext: null,
 }
 
 const INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE: InsufficientFundsModalState = {
   open: false,
   buildingLevel: 0,
+  onDoneCallback: undefined,
 }
 
 const DOTS: Record<number, [number, number][]> = {
@@ -247,7 +246,7 @@ function buildTileOwnersFromProps(
   const nextOwners: Record<number, TileOwner> = {}
 
   tiles.forEach((tile) => {
-    if (!tile.owner_id) {
+    if (tile.owner_id === null || tile.owner_id === undefined) {
       return
     }
 
@@ -520,6 +519,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }, [activePrompt, isDiceTimerPromptOpen])
 
     useEffect(() => {
+      if (!activePrompt || !isBuyPromptOpen) {
+        setDismissedBuyPromptId(null)
+      }
+    }, [activePrompt, isBuyPromptOpen])
+
+    useEffect(() => {
       if (
         !isDiceTimerPromptOpen ||
         promptTimerLeftSec === null ||
@@ -588,6 +593,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       useState<InsufficientFundsModalState>(
         INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE
       )
+    const [dismissedBuyPromptId, setDismissedBuyPromptId] = useState<
+      string | null
+    >(null)
     const [aiModal, setAiModal] = useState<AIPenaltyModalState>({
       open: false,
       status: 'loading',
@@ -676,7 +684,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuyModal,
       setBuildModal,
       setTollModal,
-      playersRef,
       curPlayerRef,
       tileOwnersRef,
       getPlayerIdByIndex,
@@ -927,62 +934,38 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
-    function openCitySellModalForTollContext(tollContext: TollModalState) {
-      const { tileId } = tollContext
-      if (tileId === null) {
-        return false
-      }
-
-      const owner = tileOwnersRef.current[tileId]
-      if (!owner) {
-        return false
-      }
-
-      const activePlayerIdx = curPlayerRef.current
-      const activePlayer = playersRef.current[activePlayerIdx]
-      if (!activePlayer) {
-        return false
-      }
-
-      const tollAmount = calcToll(TILES[tileId]?.price ?? 0, owner.level)
-      if (activePlayer.money >= tollAmount) {
-        return false
-      }
-
-      const sellTarget = findBoardSellTarget(
-        tileOwnersRef.current,
-        getPlayerIdByIndex(activePlayerIdx)
-      )
-      if (!sellTarget) {
-        return false
-      }
-
-      setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
-      setCitySellModal({
-        open: true,
-        tileId: sellTarget.tileId,
-        ownerName: activePlayer.name,
-        currentLevel: sellTarget.owner.level,
-        sellPrice: getBoardSellFallbackRefund(
-          sellTarget.tileId,
-          sellTarget.owner.level
-        ),
-        tollContext,
-      })
-      return true
-    }
-
     async function handleTollModalConfirm() {
       if (!useLocalPromptFallback) {
         submitPromptChoice(promptTollConfirmChoiceValue)
         return
       }
 
-      if (openCitySellModalForTollContext(tollModal)) {
-        return
+      await handleTollConfirm(tollModal)
+    }
+
+    function openCitySellModalForOwnedTile(
+      tileId: number,
+      onDoneCallback?: () => void
+    ) {
+      const owner = tileOwnersRef.current[tileId]
+      const activePlayerIdx = curPlayerRef.current
+      const activePlayerId = getPlayerIdByIndex(activePlayerIdx)
+      const activePlayer = playersRef.current[activePlayerIdx]
+
+      if (!owner || owner.ownerId !== activePlayerId || !activePlayer) {
+        return false
       }
 
-      await handleTollConfirm(tollModal)
+      setBuildModal({ open: false, tileId: null })
+      setCitySellModal({
+        open: true,
+        tileId,
+        ownerName: activePlayer.name,
+        currentLevel: owner.level,
+        sellPrice: getBoardSellFallbackRefund(tileId, owner.level),
+        onDoneCallback,
+      })
+      return true
     }
 
     function handleCitySellCancel() {
@@ -991,14 +974,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      const { tollContext } = citySellModal
+      const { tileId, onDoneCallback } = citySellModal
       setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
 
-      if (!tollContext) {
+      if (tileId !== null) {
+        setBuildModal({
+          open: true,
+          tileId,
+          onDoneCallback,
+        })
         return
       }
 
-      void handleTollConfirm(tollContext, { skipAutoSell: true })
+      advanceTurn(onDoneCallback)
     }
 
     async function handleCitySellConfirm() {
@@ -1008,23 +996,37 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       const activePlayerIdx = curPlayerRef.current
-      const { tollContext } = citySellModal
+      const { tileId, onDoneCallback } = citySellModal
       setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
 
-      if (!tollContext) {
+      if (tileId === null) {
+        advanceTurn(onDoneCallback)
         return
       }
 
-      const sold = await sellOwnedTileForPlayer(activePlayerIdx)
-      if (sold && openCitySellModalForTollContext(tollContext)) {
+      const sold = await sellOwnedTileForPlayer(activePlayerIdx, { tileId })
+      if (!sold) {
+        setBuildModal({
+          open: true,
+          tileId,
+          onDoneCallback,
+        })
         return
       }
 
-      await handleTollConfirm(tollContext, { skipAutoSell: true })
+      advanceTurn(onDoneCallback)
     }
 
     function handleInsufficientFundsConfirm() {
+      const { onDoneCallback } = insufficientFundsModal
       setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
+
+      if (useLocalPromptFallback) {
+        advanceTurn(onDoneCallback)
+        return
+      }
+
+      submitPromptChoice(promptBuyPassChoiceValue)
     }
 
     function handleDiceTimerConfirm() {
@@ -1192,7 +1194,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             onDoneCallback: onDone,
           })
         } else {
-          setBuildModal({ open: true, tileId, onDoneCallback: onDone })
+          const openedSellModal = openCitySellModalForOwnedTile(tileId, onDone)
+          if (!openedSellModal) {
+            setBuildModal({ open: true, tileId, onDoneCallback: onDone })
+          }
         }
         return
       }
@@ -1305,6 +1310,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       : (getPromptPayloadNumber(activePrompt, ['price', 'purchaseCost']) ??
         buyTile?.price ??
         0)
+    const isBuyPromptDismissed =
+      !useLocalPromptFallback &&
+      activePrompt?.id != null &&
+      dismissedBuyPromptId === activePrompt.id
+    const buyModalVisible =
+      buyModalOpen && !isBuyPromptDismissed && !insufficientFundsModal.open
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const buildCost = useLocalPromptFallback
       ? getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
@@ -1419,12 +1430,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         </div>
 
         <BuyModal
-          open={buyModalOpen}
+          open={buyModalVisible}
           onBuy={() => {
             if (activePlayerMoney < buyCost) {
+              if (useLocalPromptFallback) {
+                setBuyModal({ open: false, tileId: null })
+              } else if (activePrompt?.id) {
+                setDismissedBuyPromptId(activePrompt.id)
+              }
               setInsufficientFundsModal({
                 open: true,
                 buildingLevel: 0,
+                onDoneCallback: useLocalPromptFallback
+                  ? buyModal.onDoneCallback
+                  : undefined,
               })
               return
             }

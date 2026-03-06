@@ -1,7 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { gameApi } from '../../services/game/game.api'
 import { emitGameAction } from '../../services/socket/game.handler'
-import type { PlayerState, TileOwner, BuildingLevel } from './board.constants'
+import type { TileOwner, BuildingLevel } from './board.constants'
 import {
   getBoardSellFallbackRefund,
   toBoardActionErrorMessage,
@@ -39,7 +39,6 @@ interface CreateGameBoardActionHandlersParams {
   setBuyModal: Dispatch<SetStateAction<BuyModalState>>
   setBuildModal: Dispatch<SetStateAction<BuildModalState>>
   setTollModal: Dispatch<SetStateAction<TollModalState>>
-  playersRef: MutableRefObject<PlayerState[]>
   curPlayerRef: MutableRefObject<number>
   tileOwnersRef: MutableRefObject<Record<number, TileOwner>>
   getPlayerIdByIndex: (playerIdx: number) => number
@@ -70,7 +69,6 @@ export function createGameBoardActionHandlers(
     setBuyModal,
     setBuildModal,
     setTollModal,
-    playersRef,
     curPlayerRef,
     tileOwnersRef,
     getPlayerIdByIndex,
@@ -103,9 +101,25 @@ export function createGameBoardActionHandlers(
     return true
   }
 
-  async function sellOwnedTileForPlayer(playerIdx: number) {
+  async function sellOwnedTileForPlayer(
+    playerIdx: number,
+    options?: { tileId?: number }
+  ) {
     const playerId = getPlayerIdByIndex(playerIdx)
-    const sellTarget = findBoardSellTarget(tileOwnersRef.current, playerId)
+    const sellTarget =
+      typeof options?.tileId === 'number'
+        ? (() => {
+            const owner = tileOwnersRef.current[options.tileId]
+            if (!owner || owner.ownerId !== playerId) {
+              return null
+            }
+
+            return {
+              tileId: options.tileId,
+              owner,
+            }
+          })()
+        : findBoardSellTarget(tileOwnersRef.current, playerId)
     if (!sellTarget) return false
 
     const { tileId, owner } = sellTarget
@@ -263,10 +277,7 @@ export function createGameBoardActionHandlers(
     advanceTurn(buildModal.onDoneCallback)
   }
 
-  async function handleTollConfirm(
-    tollModal: TollModalState,
-    options?: { skipAutoSell?: boolean }
-  ) {
+  async function handleTollConfirm(tollModal: TollModalState) {
     const { tileId, onDoneCallback } = tollModal
     const active = curPlayerRef.current
     setTollModal({
@@ -289,18 +300,6 @@ export function createGameBoardActionHandlers(
       const price = getTilePrice(tileId)
       const tollAmount = getBoardTollAmount(price, owner, calcToll)
       if (owner) {
-        if (
-          !options?.skipAutoSell &&
-          playersRef.current[active].money < tollAmount
-        ) {
-          const sold = await sellOwnedTileForPlayer(active)
-          if (!sold) {
-            const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
-            if (!bankrupt) advanceTurn(onDoneCallback)
-            return
-          }
-        }
-
         const ownerPlayerIndex = getPlayerIndexById(owner.ownerId)
         if (ownerPlayerIndex >= 0) {
           applyMoney(ownerPlayerIndex, +tollAmount)
