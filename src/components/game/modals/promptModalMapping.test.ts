@@ -44,6 +44,18 @@ describe('promptModalMapping', () => {
     expect(resolvePromptModalKind(prompt)).toBe('acquisition')
   })
 
+  it('resolves sell modal by prompt type token', () => {
+    const prompt = createPrompt({
+      type: 'SELL_OR_SKIP',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'sell', label: '매각하기', value: 'SELL' },
+      ],
+    })
+
+    expect(resolvePromptModalKind(prompt)).toBe('sell')
+  })
+
   it('uses preferred token for buy confirm choice', () => {
     const prompt = createPrompt({
       type: 'BUY_OR_SKIP',
@@ -81,6 +93,19 @@ describe('promptModalMapping', () => {
       'ACQUIRE'
     )
     expect(resolvePromptChoiceValue(prompt, 'acquisitionCancel')).toBe('SKIP')
+  })
+
+  it('resolves sell confirm/cancel choices', () => {
+    const prompt = createPrompt({
+      type: 'SELL_OR_SKIP',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'sell', label: '매각하기', value: 'SELL' },
+      ],
+    })
+
+    expect(resolvePromptChoiceValue(prompt, 'sellConfirm')).toBe('SELL')
+    expect(resolvePromptChoiceValue(prompt, 'sellCancel')).toBe('SKIP')
   })
 
   it('resolves END_TURN for timer confirm choice', () => {

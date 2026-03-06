@@ -263,7 +263,10 @@ export function createGameBoardActionHandlers(
     advanceTurn(buildModal.onDoneCallback)
   }
 
-  async function handleTollConfirm(tollModal: TollModalState) {
+  async function handleTollConfirm(
+    tollModal: TollModalState,
+    options?: { skipAutoSell?: boolean }
+  ) {
     const { tileId, onDoneCallback } = tollModal
     const active = curPlayerRef.current
     setTollModal({
@@ -286,7 +289,10 @@ export function createGameBoardActionHandlers(
       const price = getTilePrice(tileId)
       const tollAmount = getBoardTollAmount(price, owner, calcToll)
       if (owner) {
-        if (playersRef.current[active].money < tollAmount) {
+        if (
+          !options?.skipAutoSell &&
+          playersRef.current[active].money < tollAmount
+        ) {
           const sold = await sellOwnedTileForPlayer(active)
           if (!sold) {
             const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)

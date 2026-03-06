@@ -35,7 +35,7 @@ const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({
         {/* Icon */}
         <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-[#EEF3FF]">
           <img
-            src="/money.svg"
+            src="/Money.svg"
             alt="보유금 부족 아이콘"
             className="h-24 w-24"
           />
@@ -47,7 +47,7 @@ const InsufficientFundsModal: React.FC<InsufficientFundsModalProps> = ({
         </h2>
 
         {/* Description */}
-        <p className="text-center text-[22px] font-bold leading-[1.35] text-[#5A6D8A]">
+        <p className="text-center text-[20px] font-bold leading-[1.35] text-[#5A6D8A]">
           {buildingName}을(를) 구매할 보유금이 부족합니다.
         </p>
 
