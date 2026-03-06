@@ -35,7 +35,7 @@ const GoToIslandModal: React.FC<GoToIslandModalProps> = ({
         </div>
 
         {/* Title */}
-        <h2 className="mb-5 text-center text-[40px] font-black tracking-tight text-[#1F2A44]">
+        <h2 className="mb-5 text-center text-[32px] font-black tracking-tight text-[#1F2A44] whitespace-nowrap">
           당신은 무인도로 가세요
         </h2>
 

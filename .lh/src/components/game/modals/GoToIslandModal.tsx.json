@@ -3,7 +3,7 @@
   "activeCommit": 0,
   "commits": [
     {
-      "activePatchIndex": 24,
+      "activePatchIndex": 26,
       "patches": [
         {
           "date": 1772688770285,
@@ -104,6 +104,14 @@
         {
           "date": 1772764328240,
           "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,5 +1,5 @@\n-import React from 'react'\n+import React, { useState, useEffect } from 'react'\n \n interface GoToIslandModalProps {\n   open: boolean\n   onConfirm?: () => void\n@@ -8,27 +8,43 @@\n const GoToIslandModal: React.FC<GoToIslandModalProps> = ({\n   open,\n   onConfirm,\n }) => {\n-  if (!open) {\n+  const [isVisible, setIsVisible] = useState(open)\n+\n+  useEffect(() => {\n+    setIsVisible(open)\n+  }, [open])\n+\n+  const handleConfirm = () => {\n+    setIsVisible(false)\n+    onConfirm?.()\n+  }\n+\n+  if (!isVisible) {\n     return null\n   }\n \n   return (\n     <div className=\"fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm\">\n-      <div className=\"w-full max-w-480px rounded-[44px] bg-white px-10 pb-11 pt-12 shadow-2xl\">\n+      <div className=\"w-full max-w-105 rounded-[44px] bg-white px-10 pb-11 pt-12 shadow-2xl\">\n+        {/* Icon */}\n         <div className=\"mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-[#FFF3E5] text-[64px]\">\n           <span role=\"img\" aria-label=\"경찰\">\n             👮\n           </span>\n         </div>\n-        <h2 className=\"mb-10 text-center text-[40px] font-black tracking-tight break-keep whitespace-nowrap text-[#1F2A44]\">\n+\n+        {/* Title */}\n+        <h2 className=\"mb-5 text-center text-[40px] font-black tracking-tight text-[#1F2A44]\">\n           당신은 무인도로 가세요\n         </h2>\n+\n+        {/* Confirm Button */}\n         <button\n           type=\"button\"\n-          onClick={onConfirm}\n-          className=\"h-18.5 w-full rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1]\"\n+          onClick={handleConfirm}\n+          className=\"mt-10 h-18.5 w-full rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1]\"\n         >\n           확인\n         </button>\n       </div>\n"
+        },
+        {
+          "date": 1772772217349,
+          "content": "Index: \n===================================================================\n--- \n+++ \n@@ -34,11 +34,11 @@\n           </span>\n         </div>\n \n         {/* Title */}\n-        <h2 className=\"mb-5 text-center text-[40px] font-black tracking-tight text-[#1F2A44]\">\n-          당신은 무인도로 가세요\n-        </h2>\n+<h2 className=\"mb-5 text-center text-[40px] font-black tracking-tight text-[#1F2A44] break-keep leading-tight\">\n+  당신은 무인도로 가세요\n+</h2>\n \n         {/* Confirm Button */}\n         <button\n           type=\"button\"\n"
+        },
+        {
+          "date": 1772772385142,
+          "content": "Index: \n===================================================================\n--- \n+++ \n@@ -34,9 +34,9 @@\n           </span>\n         </div>\n \n         {/* Title */}\n-<h2 className=\"mb-5 text-center text-[40px] font-black tracking-tight text-[#1F2A44] break-keep leading-tight\">\n+<h2 className=\"mb-5 text-center text-[32px] font-black tracking-tight text-[#1F2A44] whitespace-nowrap\">\n   당신은 무인도로 가세요\n </h2>\n \n         {/* Confirm Button */}\n"
         }
       ],
       "date": 1772688770285,

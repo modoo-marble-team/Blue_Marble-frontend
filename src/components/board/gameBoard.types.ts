@@ -26,6 +26,20 @@ export interface TollModalState {
   onDoneCallback?: () => void
 }
 
+export interface CitySellModalState {
+  open: boolean
+  tileId: number | null
+  ownerName: string
+  currentLevel: BuildingLevel
+  sellPrice: number
+  tollContext: TollModalState | null
+}
+
+export interface InsufficientFundsModalState {
+  open: boolean
+  buildingLevel: BuildingLevel
+}
+
 export interface CityAcquisitionModalState {
   open: boolean
   tileId: number | null
