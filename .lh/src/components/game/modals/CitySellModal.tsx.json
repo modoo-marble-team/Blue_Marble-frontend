@@ -1,0 +1,22 @@
+{
+  "sourceFile": "src/components/game/modals/CitySellModal.tsx",
+  "activeCommit": 0,
+  "commits": [
+    {
+      "activePatchIndex": 1,
+      "patches": [
+        {
+          "date": 1772765509756,
+          "content": "Index: \n===================================================================\n--- \n+++ \n"
+        },
+        {
+          "date": 1772765582728,
+          "content": "Index: \n===================================================================\n--- \n+++ \n@@ -3,9 +3,8 @@\n \n interface CitySellModalProps {\n   open: boolean\n   ownerName?: string\n-  cityName?: string\n   sellPriceText?: string\n   currentLevel?: BuildingLevel\n   onCancel?: () => void\n   onSell?: () => void\n@@ -13,9 +12,8 @@\n \n const CitySellModal: React.FC<CitySellModalProps> = ({\n   open,\n   ownerName = '',\n-  cityName = '',\n   sellPriceText = '0',\n   currentLevel = 0,\n   onCancel,\n   onSell,\n"
+        }
+      ],
+      "date": 1772765509756,
+      "name": "Commit-0",
+      "content": "import React, { useState, useEffect } from 'react'\nimport { BuildingLevel, LEVEL_LABELS, LEVEL_MODAL_ICONS } from '../../board/board.constants'\n\ninterface CitySellModalProps {\n  open: boolean\n  ownerName?: string\n  cityName?: string\n  sellPriceText?: string\n  currentLevel?: BuildingLevel\n  onCancel?: () => void\n  onSell?: () => void\n}\n\nconst CitySellModal: React.FC<CitySellModalProps> = ({\n  open,\n  ownerName = '',\n  cityName = '',\n  sellPriceText = '0',\n  currentLevel = 0,\n  onCancel,\n  onSell,\n}) => {\n  const [isVisible, setIsVisible] = useState(open)\n\n  useEffect(() => {\n    setIsVisible(open)\n  }, [open])\n\n  const handleCancel = () => {\n    setIsVisible(false)\n    onCancel?.()\n  }\n\n  const handleSell = () => {\n    setIsVisible(false)\n    onSell?.()\n  }\n\n  if (!isVisible) {\n    return null\n  }\n\n  const iconSrc = LEVEL_MODAL_ICONS[currentLevel] || '/BuyModal-land.svg'\n  const buildingName = LEVEL_LABELS[currentLevel] ?? '토지'\n\n  return (\n    <div className=\"fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm\">\n      <div className=\"w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-11 shadow-2xl\">\n        {/* Icon */}\n        <div className=\"mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF]\">\n          <img src={iconSrc} alt={buildingName} className=\"h-14 w-14 object-contain\" />\n        </div>\n\n        {/* Title */}\n        <h2 className=\"mb-4 text-center text-[40px] font-black tracking-tight text-[#1F2A44]\">\n          {ownerName} 님의 {buildingName} 처분\n        </h2>\n\n        {/* Description */}\n        <div className=\"mb-10 text-center\">\n          <p className=\"text-[28px] font-extrabold leading-tight text-[#F5A623]\">\n            예상 수익 ({sellPriceText})\n          </p>\n          <p className=\"mt-2 text-[24px] font-bold text-[#5A6D8A]\">\n            매각 하시겠습니까?\n          </p>\n        </div>\n\n        {/* Buttons */}\n        <div className=\"flex items-center justify-center gap-4\">\n          <button\n            type=\"button\"\n            onClick={handleCancel}\n            className=\"h-15 w-36 rounded-[22px] bg-[#E6EBF3] text-[24px] font-black tracking-tight text-[#5E708D] transition-colors hover:bg-[#DDE4EE]\"\n          >\n            취소\n          </button>\n\n          <button\n            type=\"button\"\n            onClick={handleSell}\n            className=\"h-15 w-44 rounded-[22px] bg-[#F5A623] text-[24px] font-black tracking-tight text-white shadow-[0_12px_24px_rgba(245,166,35,0.3)] transition-colors hover:bg-[#E09820]\"\n          >\n            매각하기\n          </button>\n        </div>\n      </div>\n    </div>\n  )\n}\n\nexport default CitySellModal\n"
+    }
+  ]
+}
