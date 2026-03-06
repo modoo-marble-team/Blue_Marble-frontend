@@ -19,6 +19,7 @@ const {
   directMessageReceiveHandlerRef: {
     current: null as
       | ((payload: {
+          message_id: string
           sender_id: string
           sender_nickname: string
           message: string
@@ -121,6 +122,7 @@ describe('useDirectMessageController', () => {
     expect(sendDirectMessageSocketMock).toHaveBeenCalledWith({
       receiverId: 'user-2',
       message: '안녕하세요',
+      clientMessageId: expect.any(String),
     })
     expect(result.current.directMessagesByUserId['user-2']).toHaveLength(1)
   })
@@ -210,6 +212,7 @@ describe('useDirectMessageController', () => {
 
     act(() => {
       directMessageReceiveHandlerRef.current?.({
+        message_id: 'dm-1',
         sender_id: 'user-2',
         sender_nickname: '상대',
         message: '첫 메시지',
@@ -245,6 +248,7 @@ describe('useDirectMessageController', () => {
 
     act(() => {
       directMessageReceiveHandlerRef.current?.({
+        message_id: 'dm-2',
         sender_id: 'user-2',
         sender_nickname: '상대',
         message: '열린 창 메시지',
@@ -279,6 +283,7 @@ describe('useDirectMessageController', () => {
 
     act(() => {
       directMessageReceiveHandlerRef.current?.({
+        message_id: 'dm-3',
         sender_id: 'user-3',
         sender_nickname: '상대B',
         message: '다른 사용자 메시지',
@@ -290,5 +295,37 @@ describe('useDirectMessageController', () => {
       result.current.unreadDirectMessageCountByUserId['user-2']
     ).toBeUndefined()
     expect(result.current.unreadDirectMessageCountByUserId['user-3']).toBe(1)
+  })
+
+  it('동일 message_id 수신은 중복 삽입하지 않는다', () => {
+    const user = createOnlineUserFixture({
+      id: 'user-2',
+      nickname: '상대',
+      status: 'lobby',
+    })
+
+    const { result } = renderDirectMessageControllerHook({
+      users: [user],
+    })
+
+    act(() => {
+      directMessageReceiveHandlerRef.current?.({
+        message_id: 'dm-duplicate',
+        sender_id: 'user-2',
+        sender_nickname: '상대',
+        message: '중복 메시지',
+        sent_at: '2026-03-03T10:03:00.000Z',
+      })
+      directMessageReceiveHandlerRef.current?.({
+        message_id: 'dm-duplicate',
+        sender_id: 'user-2',
+        sender_nickname: '상대',
+        message: '중복 메시지',
+        sent_at: '2026-03-03T10:03:00.000Z',
+      })
+    })
+
+    expect(result.current.directMessagesByUserId['user-2']).toHaveLength(1)
+    expect(result.current.unreadDirectMessageCountByUserId['user-2']).toBe(1)
   })
 })
