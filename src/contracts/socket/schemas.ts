@@ -100,12 +100,14 @@ export function validateSocketEventPayload<T>(
     }
   }
 
+  const issues = parsed.error.issues.map((issue) => issue.message).join(', ')
+
   return {
     success: false as const,
     error: {
-      detail: 'Socket payload validation failed',
       code: 'INVALID_SOCKET_PAYLOAD',
-      issues: parsed.error.issues.map((issue) => issue.message),
+      message: 'Socket payload validation failed',
+      detail: issues || undefined,
     },
   }
 }
