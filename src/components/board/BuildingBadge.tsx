@@ -38,7 +38,7 @@ const BUILDING_SUFFIX: Partial<Record<number, string>> = {
   3: '-third-house-upgrade.svg',
   4: '-hotel.svg',
   5: '-second-hotel-upgrade.svg',
-  6: '-third—hotel-upgrade.svg',
+  6: '-third-hotel-upgrade.svg',
   7: '-landmark.svg',
 }
 
