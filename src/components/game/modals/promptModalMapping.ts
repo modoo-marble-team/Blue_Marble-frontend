@@ -4,6 +4,7 @@ export type PromptModalKind =
   | 'buy'
   | 'build'
   | 'toll'
+  | 'acquisition'
   | 'dice_timer'
   | 'unknown'
 
@@ -13,11 +14,20 @@ export type PromptChoiceRuleKey =
   | 'buildConfirm'
   | 'buildCancel'
   | 'tollConfirm'
+  | 'acquisitionConfirm'
+  | 'acquisitionCancel'
   | 'timerConfirm'
 
 const BUY_TYPE_TOKENS = ['BUY_OR_SKIP', 'BUY_PROPERTY', 'BUY_PROMPT']
 const BUILD_TYPE_TOKENS = ['BUILD_OR_SKIP', 'UPGRADE_OR_SKIP', 'BUILD_PROMPT']
 const TOLL_TYPE_TOKENS = ['PAY_TOLL', 'TOLL_CONFIRM', 'PAY_TOLL_CONFIRM']
+const ACQUISITION_TYPE_TOKENS = [
+  'CITY_ACQUISITION',
+  'CITY_ACQUIRE',
+  'ACQUISITION',
+  'TAKEOVER',
+  'BUYOUT',
+]
 const DICE_TIMER_TYPE_TOKENS = [
   'DICE_TIMEOUT',
   'TURN_TIMEOUT',
@@ -50,6 +60,14 @@ const PROMPT_CHOICE_RULES: Record<
   tollConfirm: {
     preferredTokens: ['PAY_TOLL', 'PAY', 'CONFIRM', 'OK'],
     fallbackIndex: 0,
+  },
+  acquisitionConfirm: {
+    preferredTokens: ['ACQUIRE', 'ACQUISITION', 'TAKEOVER', 'BUYOUT', 'BUY'],
+    fallbackIndex: 0,
+  },
+  acquisitionCancel: {
+    preferredTokens: ['SKIP', 'PASS', 'CANCEL', 'NO'],
+    fallbackIndex: 1,
   },
   timerConfirm: {
     preferredTokens: ['END_TURN', 'CONFIRM', 'OK', 'SKIP', 'PASS'],
@@ -116,6 +134,14 @@ export const resolvePromptModalKind = (
     hasChoiceToken(prompt, ['PAY_TOLL', 'PAY'])
   ) {
     return 'toll'
+  }
+
+  if (
+    hasTypeToken(prompt, ACQUISITION_TYPE_TOKENS) ||
+    (hasChoiceToken(prompt, ['ACQUIRE', 'TAKEOVER', 'BUYOUT']) &&
+      hasChoiceToken(prompt, ['SKIP', 'PASS', 'CANCEL']))
+  ) {
+    return 'acquisition'
   }
 
   if (

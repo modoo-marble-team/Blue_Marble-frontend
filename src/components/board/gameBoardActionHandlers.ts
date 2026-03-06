@@ -23,6 +23,14 @@ type UpdateTileOwners = (
   options?: { notifyParent?: boolean }
 ) => void
 
+interface TollResolvedPayload {
+  tileId: number
+  ownerId: number
+  ownerLevel: BuildingLevel
+  ownerName: string
+  onDoneCallback?: () => void
+}
+
 interface CreateGameBoardActionHandlersParams {
   roomId: string | null
   useGameSocketMock: boolean
@@ -48,6 +56,7 @@ interface CreateGameBoardActionHandlersParams {
     onDoneCallback?: () => void
   ) => boolean
   advanceTurn: (onDone?: () => void) => void
+  onTollResolved?: (payload: TollResolvedPayload) => boolean
 }
 
 export function createGameBoardActionHandlers(
@@ -74,6 +83,7 @@ export function createGameBoardActionHandlers(
     updateTileOwners,
     applyMoney,
     advanceTurn,
+    onTollResolved,
   } = params
 
   function emitSocketAction(
@@ -290,7 +300,20 @@ export function createGameBoardActionHandlers(
           applyMoney(ownerPlayerIndex, +tollAmount)
         }
         const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
-        if (!bankrupt) advanceTurn(onDoneCallback)
+        if (!bankrupt) {
+          const handledByFollowup =
+            onTollResolved?.({
+              tileId,
+              ownerId: owner.ownerId,
+              ownerLevel: owner.level,
+              ownerName: tollModal.ownerName,
+              onDoneCallback,
+            }) ?? false
+
+          if (!handledByFollowup) {
+            advanceTurn(onDoneCallback)
+          }
+        }
         return
       }
     }

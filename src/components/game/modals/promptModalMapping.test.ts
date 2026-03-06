@@ -14,13 +14,13 @@ const createPrompt = (overrides: Partial<GamePrompt> = {}): GamePrompt => ({
 })
 
 describe('promptModalMapping', () => {
-  it('prompt type 토큰으로 buy 모달을 판별한다', () => {
+  it('resolves buy modal by prompt type token', () => {
     const prompt = createPrompt({ type: 'BUY_OR_SKIP' })
 
     expect(resolvePromptModalKind(prompt)).toBe('buy')
   })
 
-  it('choice 토큰으로 build 모달을 판별한다', () => {
+  it('resolves build modal by choice token', () => {
     const prompt = createPrompt({
       type: 'SERVER_PROMPT',
       choices: [
@@ -32,7 +32,19 @@ describe('promptModalMapping', () => {
     expect(resolvePromptModalKind(prompt)).toBe('build')
   })
 
-  it('buyConfirm 규칙은 토큰 매칭을 우선 적용한다', () => {
+  it('resolves acquisition modal by prompt type token', () => {
+    const prompt = createPrompt({
+      type: 'CITY_ACQUISITION',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
+      ],
+    })
+
+    expect(resolvePromptModalKind(prompt)).toBe('acquisition')
+  })
+
+  it('uses preferred token for buy confirm choice', () => {
     const prompt = createPrompt({
       type: 'BUY_OR_SKIP',
       choices: [
@@ -44,7 +56,7 @@ describe('promptModalMapping', () => {
     expect(resolvePromptChoiceValue(prompt, 'buyConfirm')).toBe('BUY')
   })
 
-  it('buyCancel 규칙은 매칭 실패 시 2번째 choice를 fallback으로 사용한다', () => {
+  it('falls back to second choice for buy cancel rule', () => {
     const prompt = createPrompt({
       type: 'BUY_OR_SKIP',
       choices: [
@@ -56,7 +68,22 @@ describe('promptModalMapping', () => {
     expect(resolvePromptChoiceValue(prompt, 'buyCancel')).toBe('SECOND')
   })
 
-  it('timerConfirm 규칙은 END_TURN 선택값을 반환한다', () => {
+  it('resolves acquisition confirm/cancel choices', () => {
+    const prompt = createPrompt({
+      type: 'CITY_ACQUISITION',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
+      ],
+    })
+
+    expect(resolvePromptChoiceValue(prompt, 'acquisitionConfirm')).toBe(
+      'ACQUIRE'
+    )
+    expect(resolvePromptChoiceValue(prompt, 'acquisitionCancel')).toBe('SKIP')
+  })
+
+  it('resolves END_TURN for timer confirm choice', () => {
     const prompt = createPrompt({
       type: 'TURN_TIMEOUT',
       timeoutSec: 15,
@@ -69,7 +96,7 @@ describe('promptModalMapping', () => {
     expect(resolvePromptChoiceValue(prompt, 'timerConfirm')).toBe('END_TURN')
   })
 
-  it('선택값 label이 없으면 fallback label을 반환한다', () => {
+  it('returns fallback label when choice label is missing', () => {
     const prompt = createPrompt({
       choices: [{ id: 'buy', label: '구매하기', value: 'BUY' }],
     })

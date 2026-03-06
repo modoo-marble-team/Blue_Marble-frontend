@@ -1,3 +1,5 @@
+import type { BuildingLevel } from './board.constants'
+
 export interface BuyModalState {
   open: boolean
   tileId: number | null
@@ -21,6 +23,15 @@ export interface TollModalState {
   tileId: number | null
   ownerName: string
   tollText: string
+  onDoneCallback?: () => void
+}
+
+export interface CityAcquisitionModalState {
+  open: boolean
+  tileId: number | null
+  ownerName: string
+  currentLevel: BuildingLevel
+  acquisitionCost: number
   onDoneCallback?: () => void
 }
 

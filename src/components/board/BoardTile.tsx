@@ -143,7 +143,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
 }) => {
   const isProperty = tile.type === 'PROPERTY'
   const buildingLevel = tileOwner?.level ?? 0
-  const hasBuilding = isProperty && buildingLevel >= 1
+  const hasBuilding = isProperty && Boolean(tileOwner)
 
   // 소유 색상 계산
   const ownerIdx =
@@ -313,8 +313,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     padding: '2px 5px',
                     borderRadius: 10,
                     marginBottom: 4,
-                    visibility:
-                      tileOwner && buildingLevel === 0 ? 'hidden' : 'visible',
                   }}
                 >
                   {tileOwner
@@ -413,8 +411,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     fontWeight: 900,
                     padding: '2px 5px',
                     borderRadius: 10,
-                    visibility:
-                      tileOwner && buildingLevel === 0 ? 'hidden' : 'visible',
                     marginTop: 4,
                   }}
                 >
