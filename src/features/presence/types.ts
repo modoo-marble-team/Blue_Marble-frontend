@@ -32,10 +32,12 @@ export interface DirectMessage {
 export interface DirectMessageSendSocketPayload {
   receiver_id: string
   message: string
+  client_message_id?: string
 }
 
 // DM 수신 소켓 payload 타입
 export interface DirectMessageReceiveSocketPayload {
+  message_id: string
   sender_id: string
   sender_nickname: string
   message: string

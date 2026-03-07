@@ -183,6 +183,7 @@ export function DevControlPanel({
     }
 
     emitDirectMessageReceiveMockForDev({
+      message_id: `dev-dm-${Date.now()}`,
       sender_id: selectedPresenceUser.id,
       sender_nickname: selectedPresenceUser.nickname,
       message: normalizedMessage,

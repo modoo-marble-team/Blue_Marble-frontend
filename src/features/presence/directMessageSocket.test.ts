@@ -99,6 +99,22 @@ describe('directMessageSocket', () => {
     })
   })
 
+  it('real 모드에서 clientMessageId를 전달하면 client_message_id를 함께 emit한다', async () => {
+    const { module, socket } = await loadDirectMessageSocketModule(false, true)
+
+    module.sendDirectMessage({
+      receiverId: 'user-2',
+      message: '테스트',
+      clientMessageId: 'client-msg-1',
+    })
+
+    expect(socket.emit).toHaveBeenCalledWith('dm_send', {
+      receiver_id: 'user-2',
+      message: '테스트',
+      client_message_id: 'client-msg-1',
+    })
+  })
+
   it('공백 메시지는 real/mock 모드 모두 전송하지 않는다', async () => {
     const { module: realModule, socket: realSocket } =
       await loadDirectMessageSocketModule(false)
@@ -137,6 +153,7 @@ describe('directMessageSocket', () => {
     const { module, socket } = await loadDirectMessageSocketModule(true)
     const onReceive = vi.fn()
     const payload: DirectMessageReceiveSocketPayload = {
+      message_id: 'dm-1',
       sender_id: 'user-2',
       sender_nickname: '상대',
       message: '수신 테스트',
@@ -160,6 +177,7 @@ describe('directMessageSocket', () => {
       onReceive,
     })
     module.emitDirectMessageReceiveMockForDev({
+      message_id: 'dm-1',
       sender_id: 'user-2',
       sender_nickname: '상대',
       message: '수신 테스트',

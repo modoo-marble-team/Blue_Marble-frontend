@@ -17,6 +17,7 @@ const USE_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 interface SendDirectMessageParams {
   receiverId: string
   message: string
+  clientMessageId?: string
 }
 
 // DM 수신 구독 함수 입력값 타입
@@ -84,6 +85,7 @@ export function subscribeDirectMessageSocketEvents({
 export function sendDirectMessage({
   receiverId,
   message,
+  clientMessageId,
 }: SendDirectMessageParams) {
   const normalizedMessage = message.trim()
 
@@ -102,6 +104,7 @@ export function sendDirectMessage({
   const payload: DirectMessageSendSocketPayload = {
     receiver_id: receiverId,
     message: normalizedMessage,
+    ...(clientMessageId ? { client_message_id: clientMessageId } : {}),
   }
 
   socket.emit(DIRECT_MESSAGE_EVENT_NAMES.send, payload)

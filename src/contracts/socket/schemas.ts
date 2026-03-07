@@ -17,9 +17,11 @@ export const onlineUsersEventSchema = z.object({
 export const directMessageSendEventSchema = z.object({
   receiver_id: z.string().min(1),
   message: z.string().trim().min(1),
+  client_message_id: z.string().min(1).optional(),
 })
 
 export const directMessageReceiveEventSchema = z.object({
+  message_id: z.string().min(1),
   sender_id: z.string().min(1),
   sender_nickname: z.string().min(1),
   message: z.string().trim().min(1),

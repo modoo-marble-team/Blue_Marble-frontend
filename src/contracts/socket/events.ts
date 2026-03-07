@@ -41,9 +41,11 @@ export interface OnlineUsersEventPayload {
 export interface DirectMessageSendEventPayload {
   receiver_id: string
   message: string
+  client_message_id?: string
 }
 
 export interface DirectMessageReceiveEventPayload {
+  message_id: string
   sender_id: string
   sender_nickname: string
   message: string
