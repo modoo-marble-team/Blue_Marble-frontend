@@ -24,6 +24,7 @@ import type {
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
 const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
 const USE_WAITING_ROOM_MOCK = IS_SOCKET_MOCK_ENABLED
+const WAITING_ROOM_STATUS_VALUES = new Set(['waiting', 'playing'])
 // 비밀번호 불일치로 간주할 서버 에러 코드 집합
 const JOIN_PASSWORD_MISMATCH_ERROR_CODES = new Set([
   'ROOM_PASSWORD_MISMATCH',
@@ -72,6 +73,147 @@ interface StartWaitingGameParams {
   userId: string
 }
 
+type UnknownRecord = Record<string, unknown>
+
+// 입장 응답 계약 미일치 시 공통으로 던지는 오류 타입
+export class WaitingRoomContractError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'WaitingRoomContractError'
+  }
+}
+
+// object인지 확인하고 안전한 Record로 변환
+function toRecord(value: unknown): UnknownRecord | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  return value as UnknownRecord
+}
+
+// 계약 오류 메시지를 필드 경로 기준으로 통일
+function createFieldContractError(fieldPath: string) {
+  return new WaitingRoomContractError(
+    `ROOM_JOIN_INVALID_RESPONSE: ${fieldPath} 필드가 올바르지 않습니다.`
+  )
+}
+
+// 필수 문자열 필드를 검증해 반환
+function readRequiredString(record: UnknownRecord, fieldName: string) {
+  const fieldValue = record[fieldName]
+  if (typeof fieldValue !== 'string' || fieldValue.trim().length === 0) {
+    throw createFieldContractError(fieldName)
+  }
+
+  return fieldValue
+}
+
+// 필수 number 필드를 검증해 반환
+function readRequiredNumber(record: UnknownRecord, fieldName: string) {
+  const fieldValue = record[fieldName]
+  if (typeof fieldValue !== 'number' || Number.isNaN(fieldValue)) {
+    throw createFieldContractError(fieldName)
+  }
+
+  return fieldValue
+}
+
+// 필수 boolean 필드를 검증해 반환
+function readRequiredBoolean(record: UnknownRecord, fieldName: string) {
+  const fieldValue = record[fieldName]
+  if (typeof fieldValue !== 'boolean') {
+    throw createFieldContractError(fieldName)
+  }
+
+  return fieldValue
+}
+
+// 필수 배열 필드를 검증해 반환
+function readRequiredArray(record: UnknownRecord, fieldName: string) {
+  const fieldValue = record[fieldName]
+  if (!Array.isArray(fieldValue)) {
+    throw createFieldContractError(fieldName)
+  }
+
+  return fieldValue
+}
+
+// 입장 응답 players[] 원소를 계약 기준으로 정규화
+function parseJoinPlayerPayload(
+  item: unknown,
+  index: number
+): WaitingRoomPlayerPayload {
+  const playerRecord = toRecord(item)
+  if (!playerRecord) {
+    throw createFieldContractError(`players[${index}]`)
+  }
+
+  return {
+    id: readRequiredString(playerRecord, `id`),
+    nickname: readRequiredString(playerRecord, `nickname`),
+    is_ready: readRequiredBoolean(playerRecord, `is_ready`),
+    is_host: readRequiredBoolean(playerRecord, `is_host`),
+  }
+}
+
+// 입장 응답 chat_messages[] 원소를 계약 기준으로 정규화
+function parseJoinChatPayload(
+  item: unknown,
+  index: number
+): WaitingRoomChatPayload {
+  const chatRecord = toRecord(item)
+  if (!chatRecord) {
+    throw createFieldContractError(`chat_messages[${index}]`)
+  }
+
+  const messageType = readRequiredString(chatRecord, `type`)
+  if (messageType !== 'talk') {
+    throw createFieldContractError(`chat_messages[${index}].type`)
+  }
+
+  return {
+    id: readRequiredString(chatRecord, 'id'),
+    sender_id: readRequiredString(chatRecord, 'sender_id'),
+    sender_nickname: readRequiredString(chatRecord, 'sender_nickname'),
+    message: readRequiredString(chatRecord, 'message'),
+    sent_at: readRequiredString(chatRecord, 'sent_at'),
+    type: messageType,
+  }
+}
+
+// ROOM-002(join) 응답을 최신 계약 기준으로 strict 검증
+export function parseJoinWaitingRoomPayload(
+  payload: unknown
+): JoinWaitingRoomResponsePayload {
+  const payloadRecord = toRecord(payload)
+  if (!payloadRecord) {
+    throw new WaitingRoomContractError(
+      'ROOM_JOIN_INVALID_RESPONSE: join 응답이 object 형태가 아닙니다.'
+    )
+  }
+
+  const status = readRequiredString(payloadRecord, 'status')
+  if (!WAITING_ROOM_STATUS_VALUES.has(status)) {
+    throw createFieldContractError('status')
+  }
+  const normalizedStatus = status as JoinWaitingRoomResponsePayload['status']
+
+  return {
+    room_id: readRequiredString(payloadRecord, 'room_id'),
+    title: readRequiredString(payloadRecord, 'title'),
+    status: normalizedStatus,
+    max_players: readRequiredNumber(payloadRecord, 'max_players'),
+    is_private: readRequiredBoolean(payloadRecord, 'is_private'),
+    players: readRequiredArray(payloadRecord, 'players').map(
+      parseJoinPlayerPayload
+    ),
+    chat_messages: readRequiredArray(payloadRecord, 'chat_messages').map(
+      parseJoinChatPayload
+    ),
+  }
+}
+
 // 플레이어 payload를 화면 모델로 매핑
 function mapRoomPlayer(payload: WaitingRoomPlayerPayload) {
   return {
@@ -94,19 +236,18 @@ function mapChatMessage(payload: WaitingRoomChatPayload) {
   }
 }
 
-// 입장 응답 payload를 대기방 스냅샷으로 변환
+// 계약 검증된 입장 응답 payload를 대기방 스냅샷으로 변환
 function mapJoinResponse(
-  payload: JoinWaitingRoomResponsePayload,
-  fallbackTitle?: string
+  payload: JoinWaitingRoomResponsePayload
 ): WaitingRoomSnapshot {
   return {
     roomId: payload.room_id,
-    title: payload.title || fallbackTitle || DEFAULT_WAITING_ROOM_TITLE,
-    status: payload.status ?? 'waiting',
-    maxPlayers: payload.max_players ?? DEFAULT_WAITING_ROOM_MAX_PLAYERS,
-    isPrivate: payload.is_private ?? false,
+    title: payload.title,
+    status: payload.status,
+    maxPlayers: payload.max_players,
+    isPrivate: payload.is_private,
     players: payload.players.map(mapRoomPlayer),
-    chatMessages: (payload.chat_messages ?? []).map(mapChatMessage),
+    chatMessages: payload.chat_messages.map(mapChatMessage),
   }
 }
 
@@ -168,13 +309,9 @@ export async function createWaitingRoom({
 }
 
 // 대기방 입장 API 호출 또는 목 게이트웨이 호출
-export async function joinWaitingRoom({
-  roomId,
-  userId,
-  nickname,
-  fallbackTitle,
-  password,
-}: JoinWaitingRoomParams) {
+export async function joinWaitingRoom(params: JoinWaitingRoomParams) {
+  const { roomId, userId, nickname, password } = params
+
   if (USE_WAITING_ROOM_MOCK) {
     return mockJoinWaitingRoom({
       roomId,
@@ -185,12 +322,13 @@ export async function joinWaitingRoom({
   }
 
   const requestBody = password ? { password } : undefined
-  const { data } = await apiClient.post<JoinWaitingRoomResponsePayload>(
+  const { data } = await apiClient.post<unknown>(
     `/rooms/${roomId}/join`,
     requestBody
   )
 
-  return mapJoinResponse(data, fallbackTitle)
+  const joinPayload = parseJoinWaitingRoomPayload(data)
+  return mapJoinResponse(joinPayload)
 }
 
 // 대기방 퇴장 API 호출 또는 목 게이트웨이 호출
