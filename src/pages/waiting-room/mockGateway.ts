@@ -3,6 +3,7 @@ import { ROOM_PASSWORD_PATTERN } from '../../constants/room'
 import { setMockOnlineUserStatus } from '../../features/presence/mockData'
 import { mockLobbyRooms } from '../lobby/mockData'
 import type { LobbyRoom, LobbyRoomStatus } from '../lobby/types'
+import { createSeededRoomPlayers } from './mockSeed'
 import type {
   ChatEventPayload,
   GameStartEventPayload,
@@ -82,10 +83,10 @@ function wait(delayMs: number) {
 
 // 초기 방 플레이어 목록을 1번 플레이어 방장으로 생성
 function createRoomPlayers(roomId: string, count: number): MockRoomPlayer[] {
-  return Array.from({ length: count }, (_, index) => {
+  return createSeededRoomPlayers(roomId, count).map((player, index) => {
     return {
-      id: `${roomId}-user-${index + 1}`,
-      nickname: `플레이어${index + 1}`,
+      id: player.id,
+      nickname: player.nickname,
       is_ready: false,
       is_host: index === 0,
     }
@@ -300,7 +301,7 @@ function syncRoomPlayersPresenceStatus(
   status: 'lobby' | 'in_room' | 'playing'
 ) {
   room.players.forEach((player) => {
-    setMockOnlineUserStatus(player.id, status, player.nickname)
+    setMockOnlineUserStatus(player.id, status)
   })
 }
 
@@ -378,11 +379,7 @@ export async function mockJoinWaitingRoom({
 
   // 이미 입장한 사용자는 현재 스냅샷 그대로 반환
   if (existingPlayer) {
-    setMockOnlineUserStatus(
-      existingPlayer.id,
-      'in_room',
-      existingPlayer.nickname
-    )
+    setMockOnlineUserStatus(existingPlayer.id, 'in_room')
     return toWaitingRoomSnapshot(room)
   }
 
@@ -496,7 +493,7 @@ export async function mockLeaveWaitingRoom({
   }
 
   const [leftPlayer] = room.players.splice(targetPlayerIndex, 1)
-  setMockOnlineUserStatus(leftPlayer.id, 'lobby', leftPlayer.nickname)
+  setMockOnlineUserStatus(leftPlayer.id, 'lobby')
   let newHostId: string | undefined
 
   // 마지막 인원이 나가면 방을 삭제
@@ -765,7 +762,7 @@ export function mockDevRemoveWaitingRoomParticipant(
 
   const [removedPlayer] = room.players.splice(removablePlayerIndex, 1)
   if (removedPlayer) {
-    setMockOnlineUserStatus(removedPlayer.id, 'lobby', removedPlayer.nickname)
+    setMockOnlineUserStatus(removedPlayer.id, 'lobby')
   }
   emitLobbyUpdated(room, 'status_changed')
 
@@ -879,7 +876,7 @@ export function mockDevResetWaitingRoom(
     },
   ]
   removedPlayers.forEach((player) => {
-    setMockOnlineUserStatus(player.id, 'lobby', player.nickname)
+    setMockOnlineUserStatus(player.id, 'lobby')
   })
   setMockOnlineUserStatus(currentUserId, 'in_room', normalizedNickname)
   room.chat_messages = []

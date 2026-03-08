@@ -1,28 +1,9 @@
 import type { OnlineUserPayload } from './types'
+import { createInitialSeededOnlineUsers } from '../../pages/waiting-room/mockSeed'
 
-// 접속자 목록 UI 개발용 초기 목 데이터
-const INITIAL_MOCK_ONLINE_USERS: OnlineUserPayload[] = [
-  {
-    id: 'user-1',
-    nickname: '마블왕',
-    status: 'lobby',
-  },
-  {
-    id: 'user-2',
-    nickname: '주사위마스터',
-    status: 'playing',
-  },
-  {
-    id: 'user-3',
-    nickname: '행운의여신',
-    status: 'in_room',
-  },
-  {
-    id: 'user-4',
-    nickname: '부동산왕',
-    status: 'playing',
-  },
-]
+// 대기방 시드와 동일한 규칙으로 접속자 초기 데이터를 생성
+const INITIAL_MOCK_ONLINE_USERS: OnlineUserPayload[] =
+  createInitialSeededOnlineUsers()
 
 // 목 접속자 목록 저장소
 let mockOnlineUsersStore = [...INITIAL_MOCK_ONLINE_USERS]
