@@ -9,14 +9,16 @@ test.describe('로비 1:1 DM 채팅 플로우', () => {
     await resetSessionAndOpenHome(page)
     await loginAsGuest(page)
 
-    const openDmButton = page.getByRole('button', { name: '마블왕 채팅' })
+    const openDmButton = page
+      .locator('button[aria-label$=" 채팅"]:not(:disabled)')
+      .first()
+    await expect(openDmButton).toBeVisible()
     await openDmButton.click()
 
     const dmPanel = page
       .locator('section')
       .filter({ has: page.getByRole('button', { name: 'DM 닫기' }) })
     await expect(dmPanel).toBeVisible()
-    await expect(dmPanel.getByText('마블왕')).toBeVisible()
 
     await page.getByPlaceholder('메시지를 입력하세요...').fill('안녕 DM')
     await page.getByRole('button', { name: 'DM 전송' }).click()

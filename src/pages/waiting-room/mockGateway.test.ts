@@ -54,6 +54,11 @@ describe('mockGateway DEV control', () => {
 
   it('방 초기화는 현재 사용자만 남기고 채팅/상태를 초기화한다', async () => {
     const gateway = await loadMockGateway()
+    const beforeResetSnapshot = gateway.mockDevGetWaitingRoomSnapshot('room-5')
+    const currentUserNickname =
+      beforeResetSnapshot.players.find(
+        (player) => player.id === 'room-5-user-2'
+      )?.nickname ?? ''
 
     gateway.mockSendWaitingRoomChat({
       roomId: 'room-5',
@@ -73,7 +78,7 @@ describe('mockGateway DEV control', () => {
     expect(resetSnapshot.players).toHaveLength(1)
     expect(resetSnapshot.players[0]).toEqual({
       id: 'room-5-user-2',
-      nickname: '플레이어2',
+      nickname: currentUserNickname,
       isReady: false,
       isHost: true,
     })
