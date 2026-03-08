@@ -1,7 +1,8 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useMemo } from 'react'
 import { cn } from '../../../lib/utils'
 import { ONLINE_USER_STATUS_DOT_CLASS_MAP } from '../status'
-import type { OnlineUser } from '../types'
+import type { OnlineUser, OnlineUserStatus } from '../types'
 import { formatUnreadBadgeCount } from '../unreadBadge'
 import { UserRow } from './UserRow'
 
@@ -19,6 +20,13 @@ interface UserListPanelProps {
   disableWidthTransition?: boolean
 }
 
+// 접속자 상태 정렬 우선순위(낮을수록 위)
+const ONLINE_USER_STATUS_PRIORITY: Record<OnlineUserStatus, number> = {
+  lobby: 0,
+  in_room: 1,
+  playing: 2,
+}
+
 // 접속자 목록 패널의 열림/닫힘 UI와 목록 상태 렌더링
 export function UserListPanel({
   users,
@@ -33,11 +41,46 @@ export function UserListPanel({
   disableWidthTransition = false,
 }: UserListPanelProps) {
   const panelHeightClass =
-    heightMode === 'full' ? 'h-full' : 'xl:min-h-[calc(100vh-7rem)]'
-  const panelContainerHeightClass = heightMode === 'full' ? 'h-full' : undefined
+    heightMode === 'full'
+      ? 'h-full'
+      : 'h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-7rem)]'
+  const panelContainerHeightClass =
+    heightMode === 'full'
+      ? 'h-full'
+      : 'h-[calc(100dvh-6rem)] sm:h-[calc(100dvh-7rem)]'
   const widthTransitionClass = disableWidthTransition
     ? undefined
     : 'transition-[width] duration-300'
+  const sortedUsers = useMemo(() => {
+    return [...users].sort((firstUser, secondUser) => {
+      // 1) 현재 사용자 최우선
+      if (currentUserId && firstUser.id === currentUserId) {
+        return -1
+      }
+      if (currentUserId && secondUser.id === currentUserId) {
+        return 1
+      }
+
+      // 2) 상태 우선순위(lobby -> in_room -> playing)
+      const statusPriorityDiff =
+        ONLINE_USER_STATUS_PRIORITY[firstUser.status] -
+        ONLINE_USER_STATUS_PRIORITY[secondUser.status]
+      if (statusPriorityDiff !== 0) {
+        return statusPriorityDiff
+      }
+
+      // 3) 같은 상태는 닉네임 가나다순
+      const nicknameCompare = firstUser.nickname.localeCompare(
+        secondUser.nickname,
+        'ko-KR'
+      )
+      if (nicknameCompare !== 0) {
+        return nicknameCompare
+      }
+
+      return firstUser.id.localeCompare(secondUser.id)
+    })
+  }, [currentUserId, users])
 
   return (
     <aside
@@ -58,7 +101,7 @@ export function UserListPanel({
                 접속자 목록
               </h2>
               <span className="rounded-full bg-ui-brand-soft px-2 py-0.5 text-xs font-semibold text-ui-brand">
-                {users.length}명
+                {sortedUsers.length}명
               </span>
             </div>
             <button
@@ -94,7 +137,7 @@ export function UserListPanel({
 
             {!isLoading &&
               !isError &&
-              users.map((user) => (
+              sortedUsers.map((user) => (
                 <UserRow
                   key={user.id}
                   user={user}
@@ -124,13 +167,13 @@ export function UserListPanel({
           </button>
 
           <span className="rounded-full bg-ui-brand-soft px-2 py-0.5 text-xs font-semibold text-ui-brand">
-            {users.length}
+            {sortedUsers.length}
           </span>
 
           <div className="flex items-center gap-2 xl:mt-2 xl:flex-col">
             {!isLoading &&
               !isError &&
-              users.map((user) => (
+              sortedUsers.map((user) => (
                 <div key={user.id} className="relative">
                   <div
                     className="flex size-9 items-center justify-center rounded-full text-xs font-semibold text-ui-text-strong"

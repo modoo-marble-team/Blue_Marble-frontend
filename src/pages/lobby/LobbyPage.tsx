@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
@@ -14,6 +14,7 @@ import { DirectMessagePanel } from '../../features/presence/components/DirectMes
 import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
+import { setMockOnlineUserStatus } from '../../features/presence/mockData'
 import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
@@ -21,6 +22,7 @@ import { RoomGrid } from './RoomGrid'
 import { PrivateRoomJoinModal } from './PrivateRoomJoinModal'
 import { CreateRoomModal } from './CreateRoomModal'
 import { useLobbyRoomActions } from './useLobbyRoomActions'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 
 // 로비 화면 상태 관리와 방/접속자/DM 상호작용 통합 처리
 function LobbyPage() {
@@ -79,6 +81,15 @@ function LobbyPage() {
       toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
     },
   })
+
+  // 목 모드에서는 로비 진입 시 현재 사용자를 접속자 목록에 즉시 반영
+  useEffect(() => {
+    if (!IS_SOCKET_MOCK_ENABLED || !session) {
+      return
+    }
+
+    setMockOnlineUserStatus(session.userId, 'lobby', session.nickname)
+  }, [session])
 
   function handleLogout() {
     clearSession()
