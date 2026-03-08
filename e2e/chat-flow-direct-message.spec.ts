@@ -13,6 +13,8 @@ test.describe('로비 1:1 DM 채팅 플로우', () => {
       .locator('button[aria-label$=" 채팅"]:not(:disabled)')
       .first()
     await expect(openDmButton).toBeVisible()
+    const dmTargetButtonLabel = await openDmButton.getAttribute('aria-label')
+    const dmTargetNickname = dmTargetButtonLabel?.replace(/ 채팅$/, '').trim()
     await openDmButton.click()
 
     const dmPanel = page
@@ -26,6 +28,11 @@ test.describe('로비 1:1 DM 채팅 플로우', () => {
     await expect(page.getByText('안녕 DM')).toBeVisible()
 
     await ensureDevPresencePanelOpen(page)
+    if (dmTargetNickname) {
+      await page
+        .getByLabel('제어 유저')
+        .selectOption({ label: dmTargetNickname })
+    }
     await page.getByLabel('수신 DM').fill('수신 테스트 DM')
     await page.getByRole('button', { name: '선택 유저로 DM 수신' }).click()
 
