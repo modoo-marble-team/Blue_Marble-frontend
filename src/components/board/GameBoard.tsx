@@ -1268,7 +1268,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      if (tile.type === 'EVENT' && tile.emoji === '🤖') {
+      if (
+        tile.type === 'AI' ||
+        (tile.type === 'EVENT' && tile.emoji === '🤖')
+      ) {
         handleAITile(onDone)
         return
       }
