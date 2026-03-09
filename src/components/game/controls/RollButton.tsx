@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 interface RollControlProps {
   timeLeft: number
@@ -13,6 +13,19 @@ const RollControl: React.FC<RollControlProps> = ({
 }) => {
   const dashArray = 251 // Approx circumference for r=40
   const dashOffset = dashArray * (1 - timeLeft / 30)
+  const previousTimeLeftRef = useRef<number | null>(null)
+  const [shouldAnimate, setShouldAnimate] = useState(false)
+
+  useEffect(() => {
+    const previous = previousTimeLeftRef.current
+    if (previous === null) {
+      setShouldAnimate(false)
+    } else {
+      setShouldAnimate(timeLeft < previous)
+    }
+
+    previousTimeLeftRef.current = timeLeft
+  }, [timeLeft])
 
   return (
     <div className="flex items-center gap-6">
@@ -39,7 +52,9 @@ const RollControl: React.FC<RollControlProps> = ({
               strokeDasharray={`${dashArray}`}
               strokeDashoffset={dashOffset}
               strokeLinecap="round"
-              className="transition-all duration-1000 linear"
+              className={
+                shouldAnimate ? 'transition-all duration-1000 linear' : ''
+              }
             />
           </svg>
         </div>

@@ -32,10 +32,15 @@ export function syncMockStorePlayers(nextPlayers: PlayerState[]) {
 }
 
 export function syncMockStoreCurrentTurn(playerIdx: number) {
-  const { players: storePlayers, setCurrentTurn } = useGameStore.getState()
+  const {
+    players: storePlayers,
+    setCurrentTurn,
+    setGameState,
+  } = useGameStore.getState()
   const nextTurnPlayer = storePlayers[playerIdx]
   if (nextTurnPlayer) {
     setCurrentTurn(nextTurnPlayer.id)
+    setGameState({ turnTimerKey: Date.now() })
   }
 }
 
