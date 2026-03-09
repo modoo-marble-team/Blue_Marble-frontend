@@ -478,7 +478,15 @@ const handleEndTurnAction = (
   ])
 }
 
-export const mockEmitGameSync = ({ roomId, gameId }: MockGameSyncPayload) => {
+export const mockEmitGameSync = ({
+  roomId,
+  gameId,
+  knownRevision,
+}: MockGameSyncPayload) => {
+  if (knownRevision === 0) {
+    resetMockGameState()
+  }
+
   setTimeout(() => {
     emitSnapshotPatch(roomId, gameId)
   }, 0)
