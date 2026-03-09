@@ -269,7 +269,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
             {isProperty && (
               <span
                 style={{
-                  fontSize: 8,
+                  fontSize: 9,
                   fontWeight: 800,
                   color: '#374151',
                   textAlign: 'center',
@@ -389,7 +389,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
           >
             {isProperty && (
               <>
-                <span style={{ fontSize: 8, fontWeight: 800, marginBottom: 2 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, marginBottom: 2 }}>
                   {tile.name}
                 </span>
                 <div
