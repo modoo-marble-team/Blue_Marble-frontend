@@ -105,6 +105,13 @@ const AI_PENALTY_RESULTS = [
 const DEFAULT_OPPONENT_NAME = '상대방'
 const GAME_START_STATUS = '게임 시작!'
 const ROOM_ID_REQUIRED_MESSAGE = '게임 방 식별자를 찾을 수 없습니다.'
+const BOARD_GRID_BASE_SIZE = CORNER_SIZE * 2 + STRAIGHT_SIZE * 7 + GRID_GAP * 8
+const BOARD_INNER_PADDING = 10 * 2
+const BOARD_INNER_BORDER = 4 * 2
+const BOARD_RENDER_BASE_SIZE =
+  BOARD_GRID_BASE_SIZE + BOARD_INNER_PADDING + BOARD_INNER_BORDER
+const MIN_BOARD_SCALE = 0.55
+const MAX_BOARD_SCALE = 2.4
 
 const INITIAL_CITY_ACQUISITION_MODAL_STATE: CityAcquisitionModalState = {
   open: false,
@@ -296,6 +303,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [rolling, setRolling] = useState(false)
     const [status, setStatus] = useState(GAME_START_STATUS)
     const lock = useRef(false)
+    const boardPageRef = useRef<HTMLDivElement | null>(null)
+    const boardStatusRef = useRef<HTMLDivElement | null>(null)
+    const [boardScale, setBoardScale] = useState(1)
 
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
@@ -451,6 +461,61 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setOptimisticTileOwners(null)
       tileOwnersRef.current = derivedTileOwners
     }, [derivedTileOwners])
+
+    useEffect(() => {
+      const pageElement = boardPageRef.current
+      if (!pageElement) {
+        return
+      }
+
+      const updateBoardScale = () => {
+        const pageRect = pageElement.getBoundingClientRect()
+        const pageStyle = window.getComputedStyle(pageElement)
+        const paddingX =
+          Number.parseFloat(pageStyle.paddingLeft) +
+          Number.parseFloat(pageStyle.paddingRight)
+        const paddingY =
+          Number.parseFloat(pageStyle.paddingTop) +
+          Number.parseFloat(pageStyle.paddingBottom)
+        const rowGap = Number.parseFloat(
+          pageStyle.rowGap || pageStyle.gap || '0'
+        )
+        const statusHeight =
+          boardStatusRef.current?.getBoundingClientRect().height ?? 0
+        const availableWidth = pageRect.width - paddingX
+        const availableHeight =
+          pageRect.height - paddingY - statusHeight - rowGap
+
+        if (availableWidth <= 0 || availableHeight <= 0) {
+          return
+        }
+
+        const nextScaleRaw = Math.min(
+          availableWidth / BOARD_RENDER_BASE_SIZE,
+          availableHeight / BOARD_RENDER_BASE_SIZE
+        )
+        const nextScale = Math.max(
+          MIN_BOARD_SCALE,
+          Math.min(nextScaleRaw, MAX_BOARD_SCALE)
+        )
+        const roundedScale = Math.round(nextScale * 1000) / 1000
+
+        setBoardScale((prev) =>
+          Math.abs(prev - roundedScale) < 0.001 ? prev : roundedScale
+        )
+      }
+
+      const resizeObserver = new ResizeObserver(updateBoardScale)
+      resizeObserver.observe(pageElement)
+      if (boardStatusRef.current) {
+        resizeObserver.observe(boardStatusRef.current)
+      }
+
+      updateBoardScale()
+      return () => {
+        resizeObserver.disconnect()
+      }
+    }, [])
 
     // 타이머 관리
     useEffect(() => {
@@ -1337,99 +1402,152 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       promptTimerConfirmChoiceValue,
       '확인'
     )
+    const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
 
     return (
-      <div className="board-page">
-        <div className="board-status">{status}</div>
+      <div
+        className="board-page"
+        ref={boardPageRef}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <div className="board-status" ref={boardStatusRef}>
+          {status}
+        </div>
 
         <div
-          className="board-inner"
           style={{
-            gridTemplateColumns: `${CS}px repeat(7, ${SS}px) ${CS}px`,
-            gridTemplateRows: `${CS}px repeat(7, ${SS}px) ${CS}px`,
-            gap: `${GAP}px`,
+            position: 'relative',
+            width: `${scaledBoardSize}px`,
+            height: `${scaledBoardSize}px`,
+            flexShrink: 0,
           }}
         >
-          {TOP_ROW.map((id, ci) => (
-            <div key={id} style={{ gridRow: 1, gridColumn: ci + 1 }}>
-              <BoardTile
-                tile={TILES[id]}
-                dir={ci === 0 || ci === 8 ? 'corner' : 'top'}
-                tokens={byTile[id] ?? []}
-                tileOwner={tileOwners[id]}
-                timeLeft={localTimeLeft}
-                isActivePlayerTile={id === players[curPlayer]?.pos}
-              />
-            </div>
-          ))}
-          {BOTTOM_ROW.map((id, ci) => (
-            <div key={id} style={{ gridRow: 9, gridColumn: ci + 1 }}>
-              <BoardTile
-                tile={TILES[id]}
-                dir={ci === 0 || ci === 8 ? 'corner' : 'bottom'}
-                tokens={byTile[id] ?? []}
-                tileOwner={tileOwners[id]}
-                timeLeft={localTimeLeft}
-                isActivePlayerTile={id === players[curPlayer]?.pos}
-              />
-            </div>
-          ))}
-          {LEFT_COL.map((id, ri) => (
-            <div key={id} style={{ gridRow: ri + 2, gridColumn: 1 }}>
-              <BoardTile
-                tile={TILES[id]}
-                dir="left"
-                tokens={byTile[id] ?? []}
-                tileOwner={tileOwners[id]}
-                timeLeft={localTimeLeft}
-                isActivePlayerTile={id === players[curPlayer]?.pos}
-              />
-            </div>
-          ))}
-          {RIGHT_COL.map((id, ri) => (
-            <div key={id} style={{ gridRow: ri + 2, gridColumn: 9 }}>
-              <BoardTile
-                tile={TILES[id]}
-                dir="right"
-                tokens={byTile[id] ?? []}
-                tileOwner={tileOwners[id]}
-                timeLeft={localTimeLeft}
-                isActivePlayerTile={id === players[curPlayer]?.pos}
-              />
-            </div>
-          ))}
-
           <div
-            className="board-center"
+            className="board-inner"
             style={{
-              gridRow: '2 / 9',
-              gridColumn: '2 / 9',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 20,
-              background:
-                'radial-gradient(circle at center, #ffffff 0%, #f8fafc 100%)',
-              borderRadius: 24,
-              boxShadow: 'inset 0 0 40px rgba(0,0,0,0.03)',
+              position: 'absolute',
+              inset: 0,
+              width: `${BOARD_GRID_BASE_SIZE}px`,
+              height: `${BOARD_GRID_BASE_SIZE}px`,
+              transform: `scale(${boardScale})`,
+              transformOrigin: 'top left',
+              gridTemplateColumns: `${CS}px repeat(7, ${SS}px) ${CS}px`,
+              gridTemplateRows: `${CS}px repeat(7, ${SS}px) ${CS}px`,
+              gap: `${GAP}px`,
             }}
           >
+            {TOP_ROW.map((id, ci) => (
+              <div key={id} style={{ gridRow: 1, gridColumn: ci + 1 }}>
+                <BoardTile
+                  tile={TILES[id]}
+                  dir={ci === 0 || ci === 8 ? 'corner' : 'top'}
+                  tokens={byTile[id] ?? []}
+                  tileOwner={tileOwners[id]}
+                  timeLeft={localTimeLeft}
+                  isActivePlayerTile={id === players[curPlayer]?.pos}
+                />
+              </div>
+            ))}
+            {BOTTOM_ROW.map((id, ci) => (
+              <div key={id} style={{ gridRow: 9, gridColumn: ci + 1 }}>
+                <BoardTile
+                  tile={TILES[id]}
+                  dir={ci === 0 || ci === 8 ? 'corner' : 'bottom'}
+                  tokens={byTile[id] ?? []}
+                  tileOwner={tileOwners[id]}
+                  timeLeft={localTimeLeft}
+                  isActivePlayerTile={id === players[curPlayer]?.pos}
+                />
+              </div>
+            ))}
+            {LEFT_COL.map((id, ri) => (
+              <div key={id} style={{ gridRow: ri + 2, gridColumn: 1 }}>
+                <BoardTile
+                  tile={TILES[id]}
+                  dir="left"
+                  tokens={byTile[id] ?? []}
+                  tileOwner={tileOwners[id]}
+                  timeLeft={localTimeLeft}
+                  isActivePlayerTile={id === players[curPlayer]?.pos}
+                />
+              </div>
+            ))}
+            {RIGHT_COL.map((id, ri) => (
+              <div key={id} style={{ gridRow: ri + 2, gridColumn: 9 }}>
+                <BoardTile
+                  tile={TILES[id]}
+                  dir="right"
+                  tokens={byTile[id] ?? []}
+                  tileOwner={tileOwners[id]}
+                  timeLeft={localTimeLeft}
+                  isActivePlayerTile={id === players[curPlayer]?.pos}
+                />
+              </div>
+            ))}
+
             <div
+              className="board-center"
               style={{
-                fontSize: 32,
-                fontWeight: 900,
-                color: '#1E293B',
-                letterSpacing: -1,
-                textShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                gridRow: '2 / 9',
+                gridColumn: '2 / 9',
+                position: 'relative',
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 20,
+                backgroundColor: '#F0F9FF',
+                borderRadius: 24,
+                boxShadow: 'inset 0 0 0 1px rgba(203,213,225,0.35)',
               }}
             >
-              BLUE MARBLE
-            </div>
+              <svg
+                viewBox="0 0 520 520"
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '47.5%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '92%',
+                  maxWidth: 640,
+                  opacity: 0.3,
+                  pointerEvents: 'none',
+                }}
+              >
+                <path
+                  d="M50 156 L196 194 L260 58 L324 194 L470 156 L398 382 H122 Z"
+                  fill="none"
+                  stroke="#DBEAFE"
+                  strokeWidth="30"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M136 452 H384"
+                  fill="none"
+                  stroke="#DBEAFE"
+                  strokeWidth="30"
+                  strokeLinecap="round"
+                />
+              </svg>
 
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <DiceFace value={dice1} rolling={rolling} />
-              <DiceFace value={dice2} rolling={rolling} />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '49%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'center',
+                  zIndex: 1,
+                }}
+              >
+                <DiceFace value={dice1} rolling={rolling} />
+                <DiceFace value={dice2} rolling={rolling} />
+              </div>
             </div>
           </div>
         </div>
