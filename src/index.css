@@ -39,4 +39,12 @@
   #root {
     @apply min-h-screen;
   }
+
+  button:enabled {
+    @apply cursor-pointer;
+  }
+
+  button:disabled {
+    @apply cursor-not-allowed;
+  }
 }
