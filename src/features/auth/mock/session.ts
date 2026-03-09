@@ -31,7 +31,7 @@ export async function mockKakaoLogin() {
     accessToken: `mock-kakao-token-${kakaoUser.id}`,
     userId: kakaoUser.id,
     nickname: existingNickname,
-    profileImage: kakaoUser.profileImage,
+    profileImage: null,
     isGuest: false,
     needsNicknameSetup: !hasNickname,
     provider: 'kakao',
