@@ -223,6 +223,7 @@ interface GameBoardProps {
   roomId?: string | null
   players: PlayerState[]
   curPlayer: number
+  suppressDiceTimerModal?: boolean
   activePrompt?: GamePrompt | null
   promptSubmittingChoice?: string | null
   onPromptChoice?: (choice: string) => void
@@ -290,6 +291,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       roomId = null,
       players,
       curPlayer,
+      suppressDiceTimerModal = false,
       activePrompt = null,
       promptSubmittingChoice = null,
       onPromptChoice,
@@ -1517,6 +1519,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       '확인'
     )
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
+    const diceTimerModalOpen =
+      !suppressDiceTimerModal && (showTimerModal || isDiceTimerPromptOpen)
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
     const isOwnedTileSellClickable = (tileId: number) => {
@@ -1986,7 +1990,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleBankruptConfirm}
         />
         <DiceTimerModal
-          open={showTimerModal || isDiceTimerPromptOpen}
+          open={diceTimerModalOpen}
           title={diceTimerTitle}
           description={diceTimerMessage}
           timeLeftSec={
