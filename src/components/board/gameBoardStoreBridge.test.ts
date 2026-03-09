@@ -81,12 +81,16 @@ describe('gameBoardStoreBridge', () => {
   })
 
   it('현재 턴과 파산 상태를 store에 반영한다', () => {
+    const beforeTurnTimerKey = useGameStore.getState().turnTimerKey
+
     syncMockStoreCurrentTurn(1)
     syncMockStoreBankrupt(0)
 
-    const { currentTurn, currentPlayerId, players } = useGameStore.getState()
+    const { currentTurn, currentPlayerId, players, turnTimerKey } =
+      useGameStore.getState()
     expect(currentTurn).toBe('p2')
     expect(currentPlayerId).toBe('p2')
+    expect(turnTimerKey).toBeGreaterThan(beforeTurnTimerKey)
     expect(players[0]?.is_bankrupt).toBe(true)
   })
 
