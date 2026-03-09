@@ -1,11 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import { gameApi } from '../../services/game/game.api'
 import { emitGameAction } from '../../services/socket/game.handler'
 import type { TileOwner, BuildingLevel } from './board.constants'
-import {
-  getBoardSellFallbackRefund,
-  toBoardActionErrorMessage,
-} from './gameBoardActionUtils'
+import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import {
   createBoardPurchasedTileOwner,
   findBoardSellTarget,
@@ -131,37 +127,9 @@ export function createGameBoardActionHandlers(
       })
     }
 
-    if (!roomId) return false
-
-    const sellResult = await gameApi.sellTile(roomId, {
-      tile_index: tileId,
-      level: owner.level,
-    })
-
-    if (!sellResult.ok) {
-      setStatus(toBoardActionErrorMessage(sellResult.status))
-      return false
-    }
-
-    const actionPayload =
-      typeof sellResult.data === 'object' && sellResult.data !== null
-        ? (sellResult.data as {
-            refund?: number
-            building?: number
-            owner_id?: string | number | null
-          })
-        : {}
-    const refund =
-      typeof actionPayload.refund === 'number'
-        ? actionPayload.refund
-        : getBoardSellFallbackRefund(tileId, owner.level)
-    const nextLevelRaw =
-      typeof actionPayload.building === 'number'
-        ? actionPayload.building
-        : Math.max(owner.level - 1, 0)
-    const nextLevel = Math.min(Math.max(nextLevelRaw, 0), 7) as BuildingLevel
-    const releaseOwnership =
-      actionPayload.owner_id === null || actionPayload.owner_id === undefined
+    const refund = getBoardSellFallbackRefund(tileId, owner.level)
+    const nextLevel = Math.max(owner.level - 1, 0) as BuildingLevel
+    const releaseOwnership = nextLevel <= 0
 
     updateTileOwners(
       (prev) => {
