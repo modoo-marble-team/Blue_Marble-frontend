@@ -202,7 +202,7 @@ function WaitingRoomPage() {
     room?.title ?? selectedRoomTitle ?? DEFAULT_WAITING_ROOM_TITLE
   const roomIdLabel = formatRoomIdLabel(currentRoomId)
   const avatarText = getAvatarText(session.nickname)
-  const avatarBackground = getAvatarBackground(session.isGuest)
+  const avatarBackground = getAvatarBackground(session.userId)
   const headerMenuItems = createProfileMenuItems({
     isGuest: session.isGuest,
     onGoMyPage: handleGoMyPage,

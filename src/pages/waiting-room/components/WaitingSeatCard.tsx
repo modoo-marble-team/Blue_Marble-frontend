@@ -1,4 +1,5 @@
 import { CheckCircle2, Clock3, Crown, UserRound } from 'lucide-react'
+import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
 import type { WaitingRoomSeat } from '../types'
 
@@ -25,11 +26,13 @@ export function WaitingSeatCard({ seat }: WaitingSeatCardProps) {
 
   return (
     <article className="relative flex h-full min-h-[260px] flex-col rounded-[34px] border border-ui-border bg-ui-surface px-7 py-7 shadow-[0_2px_10px_rgba(15,23,42,0.06)]">
-      <div
-        className="relative mx-auto mb-5 flex size-32 items-center justify-center rounded-full text-5xl font-extrabold text-white shadow-[inset_0_-5px_0_rgba(0,0,0,0.2)]"
-        style={{ backgroundColor: seat.avatarColor }}
-      >
-        {seat.nickname.slice(0, 1).toUpperCase()}
+      <div className="relative mx-auto mb-5">
+        <Avatar
+          size="xl"
+          displayName={seat.nickname}
+          backgroundColor={seat.avatarColor}
+          className="text-white shadow-[inset_0_-5px_0_rgba(0,0,0,0.2)]"
+        />
 
         {seat.isHost ? (
           <span className="absolute -left-2 top-2 inline-flex size-12 items-center justify-center rounded-full border-[3px] border-white bg-[#f7c600] text-white shadow-md">

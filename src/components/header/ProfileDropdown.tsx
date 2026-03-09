@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Avatar } from '../avatar/Avatar'
 import type { ProfileMenuItem } from './profileMenu'
 
 // 프로필 드롭다운 렌더링 입력값 타입
@@ -6,6 +7,7 @@ interface ProfileDropdownProps {
   playerLabel?: string
   avatarText?: string
   avatarBackground?: string
+  avatarImageUrl?: string | null
   menuItems?: ProfileMenuItem[]
 }
 
@@ -14,6 +16,7 @@ export function ProfileDropdown({
   playerLabel = '플레이어',
   avatarText = 'P',
   avatarBackground = '#fde68a',
+  avatarImageUrl = null,
   menuItems = [],
 }: ProfileDropdownProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -21,12 +24,14 @@ export function ProfileDropdown({
 
   const hasMenuItems = menuItems.length > 0
   const avatar = (
-    <div
-      className="flex size-9 items-center justify-center rounded-full text-xs font-semibold text-ui-text-primary"
-      style={{ backgroundColor: avatarBackground }}
-    >
-      {avatarText}
-    </div>
+    <Avatar
+      size="sm"
+      displayName={avatarText}
+      imageUrl={avatarImageUrl}
+      imageAlt={`${playerLabel} 프로필`}
+      backgroundColor={avatarBackground}
+      className="text-ui-text-primary"
+    />
   )
 
   useEffect(() => {

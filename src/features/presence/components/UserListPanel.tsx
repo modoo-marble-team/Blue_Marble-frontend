@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useMemo } from 'react'
+import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
 import { ONLINE_USER_STATUS_DOT_CLASS_MAP } from '../status'
 import type { OnlineUser, OnlineUserStatus } from '../types'
@@ -175,12 +176,11 @@ export function UserListPanel({
               !isError &&
               sortedUsers.map((user) => (
                 <div key={user.id} className="relative">
-                  <div
-                    className="flex size-9 items-center justify-center rounded-full text-xs font-semibold text-ui-text-strong"
-                    style={{ backgroundColor: user.avatarBackground }}
-                  >
-                    {user.avatarText}
-                  </div>
+                  <Avatar
+                    size="sm"
+                    displayName={user.nickname}
+                    backgroundColor={user.avatarBackground}
+                  />
                   <span
                     className={cn(
                       'absolute -bottom-0.5 -right-0.5 size-2 rounded-full border-2 border-white',

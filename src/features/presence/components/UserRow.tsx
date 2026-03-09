@@ -1,4 +1,5 @@
 import { MessageCircle } from 'lucide-react'
+import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
 import {
   isDirectMessageAllowed,
@@ -32,12 +33,11 @@ export function UserRow({
   return (
     <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted">
       <div className="relative shrink-0">
-        <div
-          className="flex size-10 items-center justify-center rounded-full text-sm font-semibold text-ui-text-strong"
-          style={{ backgroundColor: user.avatarBackground }}
-        >
-          {user.avatarText}
-        </div>
+        <Avatar
+          size="md"
+          displayName={user.nickname}
+          backgroundColor={user.avatarBackground}
+        />
         <span
           className={cn(
             'absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white',

@@ -4,6 +4,7 @@ import type {
   WaitingRoomSeat,
   WaitingRoomSnapshot,
 } from '../types'
+import { getAvatarBackgroundColor } from '../../../components/avatar/avatarModel'
 
 // 대기방 액션 함수 공통 반환 타입
 export interface WaitingRoomActionResult {
@@ -16,26 +17,12 @@ export interface LeaveRoomSequenceParams {
   source: 'manual' | 'cleanup'
 }
 
-// 대기방 기본 정원과 좌석 색상 팔레트
+// 대기방 기본 정원
 const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
-const AVATAR_COLORS = [
-  '#ef4444',
-  '#3b82f6',
-  '#f97316',
-  '#22c55e',
-  '#8b5cf6',
-  '#14b8a6',
-]
 
 // playerId 해시 기반으로 좌석 아바타 색상 선택
 function getAvatarColor(playerId: string) {
-  const colorIndex =
-    playerId
-      .split('')
-      .reduce((sum, currentChar) => sum + currentChar.charCodeAt(0), 0) %
-    AVATAR_COLORS.length
-
-  return AVATAR_COLORS[colorIndex]
+  return getAvatarBackgroundColor(playerId)
 }
 
 // 채팅 이벤트 payload에서 메시지 고유 ID 생성

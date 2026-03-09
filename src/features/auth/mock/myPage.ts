@@ -46,7 +46,7 @@ export async function mockGetMyPageProfile(
     profile: {
       id: session.userId,
       nickname: profileNickname,
-      profileImage: session.profileImage ?? kakaoUser.profileImage,
+      profileImage: null,
       stats: createMockMyPageStats(session.userId),
     },
   }

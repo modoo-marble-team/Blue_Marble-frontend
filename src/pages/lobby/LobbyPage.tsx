@@ -107,7 +107,7 @@ function LobbyPage() {
   }
 
   const avatarText = getAvatarText(session.nickname)
-  const avatarBackground = getAvatarBackground(session.isGuest)
+  const avatarBackground = getAvatarBackground(session.userId)
   const headerMenuItems = createProfileMenuItems({
     isGuest: session.isGuest,
     onGoMyPage: handleGoMyPage,

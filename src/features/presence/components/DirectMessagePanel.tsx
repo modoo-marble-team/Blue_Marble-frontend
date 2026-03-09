@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { SendHorizontal, X } from 'lucide-react'
+import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
 import type { DirectMessage, OnlineUser } from '../types'
 
@@ -44,12 +45,11 @@ export function DirectMessagePanel({
     <section className="fixed bottom-6 right-4 z-40 w-[340px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-[0_18px_40px_rgba(15,23,42,0.2)] sm:right-6">
       <header className="flex h-14 items-center justify-between border-b border-ui-border px-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-ui-text-strong"
-            style={{ backgroundColor: user.avatarBackground }}
-          >
-            {user.avatarText}
-          </div>
+          <Avatar
+            size="xs"
+            displayName={user.nickname}
+            backgroundColor={user.avatarBackground}
+          />
           <p className="truncate text-base font-semibold text-ui-text-primary">
             {user.nickname}
           </p>

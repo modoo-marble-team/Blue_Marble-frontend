@@ -1,3 +1,8 @@
+import {
+  getAvatarBackgroundColor,
+  getAvatarText as getAvatarTextFromModel,
+} from '../avatar/avatarModel'
+
 // 프로필 드롭다운 메뉴 아이템 공통 타입
 export interface ProfileMenuItem {
   id: string
@@ -15,13 +20,12 @@ interface CreateProfileMenuItemsParams {
 
 // 닉네임 첫 글자를 아바타 텍스트로 만들고 비어 있으면 기본값 반환
 export function getAvatarText(nickname?: string): string {
-  const trimmedNickname = nickname?.trim() ?? ''
-  return trimmedNickname.length > 0 ? trimmedNickname.slice(0, 1) : 'P'
+  return getAvatarTextFromModel(nickname)
 }
 
-// 게스트 여부에 따라 아바타 배경 색상 반환
-export function getAvatarBackground(isGuest?: boolean): string {
-  return isGuest ? '#fde68a' : '#bfdbfe'
+// 사용자 식별값 기반으로 아바타 배경색 반환
+export function getAvatarBackground(userId?: string): string {
+  return getAvatarBackgroundColor(userId)
 }
 
 // 사용자 유형에 맞는 프로필 드롭다운 메뉴 목록 생성
