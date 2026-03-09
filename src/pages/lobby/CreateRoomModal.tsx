@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Lock, X } from 'lucide-react'
+import { Plus, Lock, X } from 'lucide-react'
 import {
   ROOM_PASSWORD_LENGTH,
   ROOM_PASSWORD_PATTERN,
@@ -84,7 +84,7 @@ export function CreateRoomModal({
         role="dialog"
         aria-modal="true"
         aria-label="방 만들기"
-        className="relative z-10 w-full max-w-[450px] overflow-hidden rounded-[32px] border border-ui-border bg-ui-surface shadow-[0_24px_60px_rgba(15,23,42,0.2)]"
+        className="relative z-10 w-full max-w-[430px] rounded-[32px] border border-ui-border bg-ui-surface px-7 pb-7 pt-8 shadow-[0_24px_60px_rgba(15,23,42,0.2)]"
       >
         <button
           type="button"
@@ -92,24 +92,28 @@ export function CreateRoomModal({
           onClick={handleClose}
           disabled={!canClose}
           className={cn(
-            'absolute right-5 top-5 inline-flex size-9 items-center justify-center rounded-full text-white/80 transition-colors',
-            canClose ? 'hover:bg-white/15 hover:text-white' : 'opacity-60'
+            'absolute right-5 top-5 inline-flex size-9 items-center justify-center rounded-full border border-ui-border bg-white text-ui-text-muted transition-colors',
+            canClose
+              ? 'hover:bg-ui-surface-soft hover:text-ui-text-strong'
+              : 'cursor-not-allowed opacity-60'
           )}
         >
           <X className="size-5" />
         </button>
 
-        <header className="bg-[linear-gradient(104deg,#3f8df7_0%,#334ce9_52%,#5633ea_100%)] px-7 pb-8 pt-7 text-center">
-          <h2 className="text-[2.2rem] font-extrabold tracking-tight text-white">
-            방 만들기
-          </h2>
-          <p className="mt-1 text-base font-semibold text-white/75">
-            친구들을 초대하고 게임을 즐기세요!
-          </p>
-        </header>
+        <div className="mx-auto mb-4 flex size-[62px] items-center justify-center rounded-full bg-ui-surface-soft text-ui-text-subtle">
+          <Plus className="size-8" />
+        </div>
+
+        <h2 className="text-center text-[2.1rem] font-extrabold tracking-tight text-ui-text-strong">
+          방 만들기
+        </h2>
+        <p className="mt-1 text-center text-lg font-semibold text-ui-text-muted">
+          친구들을 초대하고 게임을 즐기세요!
+        </p>
 
         <form
-          className="px-7 pb-8 pt-7"
+          className="mt-6"
           onSubmit={(event) => {
             event.preventDefault()
 
@@ -203,10 +207,10 @@ export function CreateRoomModal({
             type="submit"
             disabled={isSubmitDisabled}
             className={cn(
-              'mt-6 h-14 w-full rounded-2xl text-[1.35rem] font-extrabold transition-colors',
+              'mt-6 h-12 w-full rounded-2xl text-lg font-bold transition-colors',
               isSubmitDisabled
                 ? 'cursor-not-allowed bg-ui-disabled-bg text-ui-disabled-text'
-                : 'bg-ui-brand text-white shadow-[0_10px_20px_rgba(37,99,235,0.25)] hover:bg-ui-brand-strong'
+                : 'bg-ui-brand text-white hover:bg-ui-brand-strong'
             )}
           >
             {isSubmitting ? '생성 중...' : '방 만들기 완료'}

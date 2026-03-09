@@ -113,7 +113,6 @@ export function PrivateRoomJoinModal({
             maxLength={ROOM_PASSWORD_LENGTH}
             value={password}
             onFocus={() => setIsPasswordInputFocused(true)}
-            onBlur={() => setIsPasswordInputFocused(false)}
             onChange={(event) => {
               const nextValue = event.target.value
                 .replace(/\D/g, '')

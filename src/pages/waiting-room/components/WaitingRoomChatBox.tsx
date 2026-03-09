@@ -30,7 +30,7 @@ export function WaitingRoomChatBox({
 
   return (
     <RoomChat
-      className="flex-1 w-full"
+      className="min-h-0 flex-1 w-full"
       title="실시간 채팅"
       currentUserId={currentUserId}
       inputPlaceholder="메시지 입력..."

@@ -26,29 +26,31 @@ export function WaitingSeatCard({ seat }: WaitingSeatCardProps) {
 
   return (
     <article className="relative flex h-full min-h-[260px] flex-col rounded-[34px] border border-ui-border bg-ui-surface px-7 py-7 shadow-[0_2px_10px_rgba(15,23,42,0.06)]">
-      <div className="relative mx-auto mb-5">
-        <Avatar
-          size="xl"
-          displayName={seat.nickname}
-          backgroundColor={seat.avatarColor}
-          className="text-white shadow-[inset_0_-5px_0_rgba(0,0,0,0.2)]"
-        />
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="relative mb-5">
+          <Avatar
+            size="xl"
+            displayName={seat.nickname}
+            backgroundColor={seat.avatarColor}
+            className="text-white shadow-[inset_0_-5px_0_rgba(0,0,0,0.2)]"
+          />
 
-        {seat.isHost ? (
-          <span className="absolute -left-2 top-2 inline-flex size-12 items-center justify-center rounded-full border-[3px] border-white bg-[#f7c600] text-white shadow-md">
-            <Crown className="size-6 fill-white" />
-          </span>
-        ) : null}
+          {seat.isHost ? (
+            <span className="absolute -left-2 top-2 inline-flex size-12 items-center justify-center rounded-full border-[3px] border-white bg-[#f7c600] text-white shadow-md">
+              <Crown className="size-6 fill-white" />
+            </span>
+          ) : null}
+        </div>
+
+        <p className="truncate text-center text-[2.25rem] font-extrabold tracking-tight text-ui-text-strong">
+          {seat.nickname}
+          {seat.isMe ? (
+            <span className="ml-2 rounded-lg bg-ui-surface-soft px-2 py-0.5 text-xl font-semibold text-ui-text-subtle">
+              나
+            </span>
+          ) : null}
+        </p>
       </div>
-
-      <p className="truncate text-center text-[3rem] font-extrabold tracking-tight text-ui-text-strong">
-        {seat.nickname}
-        {seat.isMe ? (
-          <span className="ml-2 rounded-lg bg-ui-surface-soft px-2 py-0.5 text-xl font-semibold text-ui-text-subtle">
-            나
-          </span>
-        ) : null}
-      </p>
 
       <div className="mt-auto flex justify-end">
         <span

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { SendHorizontal, X } from 'lucide-react'
 import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
@@ -31,12 +31,23 @@ export function DirectMessagePanel({
   onSendMessage,
 }: DirectMessagePanelProps) {
   const [inputMessage, setInputMessage] = useState('')
+  const messageListRef = useRef<HTMLDivElement | null>(null)
 
   // 메시지 목록을 전송 시각 기준으로 오름차순 정렬
   const sortedMessages = useMemo(() => {
     return [...messages].sort((firstMessage, secondMessage) => {
       return firstMessage.sentAt.localeCompare(secondMessage.sentAt)
     })
+  }, [messages])
+
+  // 새 DM 메시지가 추가되면 스크롤을 최신 메시지로 이동
+  useEffect(() => {
+    const messageListElement = messageListRef.current
+    if (!messageListElement) {
+      return
+    }
+
+    messageListElement.scrollTop = messageListElement.scrollHeight
   }, [messages])
 
   const canSend = inputMessage.trim().length > 0
@@ -65,7 +76,10 @@ export function DirectMessagePanel({
         </button>
       </header>
 
-      <div className="h-[320px] overflow-y-auto bg-ui-surface px-4 py-3">
+      <div
+        ref={messageListRef}
+        className="ui-scrollbar h-[320px] overflow-y-auto bg-ui-surface px-4 py-3"
+      >
         {sortedMessages.length === 0 ? (
           <p className="flex h-full items-center justify-center text-sm font-medium text-ui-text-subtle">
             메시지를 보내 대화를 시작하세요

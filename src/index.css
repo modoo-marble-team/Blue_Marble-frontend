@@ -39,4 +39,40 @@
   #root {
     @apply min-h-screen;
   }
+
+  button:enabled {
+    @apply cursor-pointer;
+  }
+
+  button:disabled {
+    @apply cursor-not-allowed;
+  }
+}
+
+@layer utilities {
+  .ui-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ui-border) transparent;
+  }
+
+  .ui-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .ui-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ui-scrollbar::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background: var(--color-ui-border);
+    background-clip: padding-box;
+  }
+
+  .ui-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: var(--color-ui-text-subtle);
+    background-clip: padding-box;
+  }
 }
