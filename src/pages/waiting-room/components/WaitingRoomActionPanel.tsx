@@ -28,7 +28,7 @@ export function WaitingRoomActionPanel({
   const readyButtonLabel = isReady ? '준비 취소' : '준비하기'
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 shrink-0">
       {isHost ? (
         <button
           type="button"

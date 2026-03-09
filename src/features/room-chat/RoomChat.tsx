@@ -42,15 +42,15 @@ export default function RoomChat({
   }
 
   return (
-    <div className={cn('flex h-full w-full flex-col gap-3', className)}>
+    <div className={cn('flex h-full min-h-0 w-full flex-col gap-3', className)}>
       {notice ? (
-        <div className="flex items-center justify-start rounded-xl border border-ui-border bg-ui-brand-soft px-3 py-2">
+        <div className="shrink-0 rounded-xl border border-ui-border bg-ui-brand-soft px-3 py-2">
           <span className="text-xs font-semibold text-ui-brand">{notice}</span>
         </div>
       ) : null}
 
-      <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm">
-        <header className="flex items-center justify-between border-b border-ui-border bg-ui-surface px-4 py-3">
+      <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm">
+        <header className="shrink-0 border-b border-ui-border bg-ui-surface px-4 py-3">
           <div className="flex items-center gap-2">
             <MessageSquare className="size-4 text-ui-brand" />
             <span className="text-base font-semibold text-ui-text-strong">
@@ -59,7 +59,7 @@ export default function RoomChat({
           </div>
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3">
           {messages.map((message) => {
             const isMine = message.sender_id === currentUserId
 
@@ -94,9 +94,9 @@ export default function RoomChat({
 
         <form
           onSubmit={handleSubmit}
-          className="flex gap-2 border-t border-ui-border bg-ui-surface p-3"
+          className="shrink-0 flex items-center gap-2 border-t border-ui-border bg-ui-surface p-3"
         >
-          <div className="flex h-10 flex-1 items-center rounded-xl border border-ui-border bg-ui-surface-muted px-3 focus-within:border-ui-brand focus-within:ring-2 focus-within:ring-ui-brand/20">
+          <div className="flex h-10 w-full items-center rounded-xl border border-ui-border bg-ui-surface-muted px-3 focus-within:border-ui-brand focus-within:ring-2 focus-within:ring-ui-brand/20">
             <input
               type="text"
               value={input}
@@ -110,7 +110,7 @@ export default function RoomChat({
             type="submit"
             disabled={!canSend}
             className={cn(
-              'flex h-10 w-10 items-center justify-center rounded-xl text-white transition-colors',
+              'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white transition-colors',
               canSend
                 ? 'bg-ui-brand hover:bg-ui-brand-strong'
                 : 'bg-ui-disabled-bg text-ui-disabled-text'

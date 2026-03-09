@@ -32,7 +32,7 @@ export function WaitingRoomSidePanel({
   onSendMessage,
 }: WaitingRoomSidePanelProps) {
   return (
-    <aside className="flex h-full min-h-[320px] flex-col rounded-3xl border border-ui-border bg-ui-surface p-3">
+    <aside className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-3xl border border-ui-border bg-ui-surface p-3">
       <WaitingRoomChatBox
         messages={messages}
         currentUserId={currentUserId}

@@ -277,7 +277,7 @@ const GamePage: React.FC = () => {
       </div>
 
       <div className="mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4">
-        <div className="flex h-[80%] w-[320px] shrink-0 flex-col">
+        <div className="flex h-[80%] min-h-0 w-[320px] shrink-0 flex-col">
           <RoomChat
             title={GAME_CHAT_TITLE}
             messages={messages}
