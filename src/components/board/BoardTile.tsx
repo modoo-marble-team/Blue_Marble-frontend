@@ -273,9 +273,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
                   fontWeight: 800,
                   color: '#374151',
                   textAlign: 'center',
-                  lineHeight: 1.2,
-                  marginTop: 6,
-                  marginBottom: 2,
+                  lineHeight: '14px',
+                  height: 14,
+                  marginTop: 2,
+                  marginBottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
                 {tile.name}
@@ -295,7 +298,16 @@ const BoardTile: React.FC<BoardTileProps> = ({
 
             {isProperty && (
               <>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 34,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
                   {hasBuilding && (
                     <BuildingBadge
                       level={buildingLevel}
@@ -389,11 +401,27 @@ const BoardTile: React.FC<BoardTileProps> = ({
           >
             {isProperty && (
               <>
-                <span style={{ fontSize: 9, fontWeight: 800, marginBottom: 2 }}>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 800,
+                    lineHeight: '14px',
+                    height: 14,
+                    marginBottom: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
                   {tile.name}
                 </span>
                 <div
-                  style={{ height: 30, display: 'flex', alignItems: 'center' }}
+                  style={{
+                    height: 30,
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
                   {hasBuilding && (
                     <BuildingBadge
