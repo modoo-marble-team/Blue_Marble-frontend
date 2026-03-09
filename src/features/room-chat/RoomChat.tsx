@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageSquare } from 'lucide-react'
 import type { ChatMessage } from '../../types/domain'
 import { cn } from '../../lib/utils'
@@ -25,7 +25,18 @@ export default function RoomChat({
   inputPlaceholder = '메시지...',
 }: RoomChatProps) {
   const [input, setInput] = useState('')
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null)
   const canSend = input.trim().length > 0
+
+  // 새 메시지가 추가되면 스크롤을 최신 메시지 위치로 이동
+  useEffect(() => {
+    const containerElement = messagesContainerRef.current
+    if (!containerElement) {
+      return
+    }
+
+    containerElement.scrollTop = containerElement.scrollHeight
+  }, [messages])
 
   // 채팅 입력 submit 처리
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -59,7 +70,10 @@ export default function RoomChat({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3">
+        <div
+          ref={messagesContainerRef}
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3"
+        >
           {messages.map((message) => {
             const isMine = message.sender_id === currentUserId
 
