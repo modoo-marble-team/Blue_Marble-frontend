@@ -183,12 +183,12 @@ export function UserListPanel({
                   />
                   <span
                     className={cn(
-                      'absolute -bottom-0.5 -right-0.5 size-2 rounded-full border-2 border-white',
+                      'absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white',
                       ONLINE_USER_STATUS_DOT_CLASS_MAP[user.status]
                     )}
                   />
                   {(unreadDirectMessageCountByUserId[user.id] ?? 0) > 0 ? (
-                    <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-ui-danger px-1 text-[10px] font-bold leading-none text-white">
+                    <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 select-none items-center justify-center rounded-full border border-white bg-ui-danger px-1 text-[9px] font-semibold leading-none tracking-tight text-white">
                       {formatUnreadBadgeCount(
                         unreadDirectMessageCountByUserId[user.id] ?? 0
                       )}
