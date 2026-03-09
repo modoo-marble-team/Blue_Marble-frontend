@@ -1153,11 +1153,42 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function handleCityAcquisitionConfirm() {
       if (!useLocalPromptFallback) {
+        const activePlayerIdx = curPlayerRef.current
+        const activePlayerMoney =
+          playersRef.current[activePlayerIdx]?.money ?? 0
+        const requiredAcquisitionCost =
+          promptAcquisitionCost ??
+          (promptTileId != null ? (TILES[promptTileId]?.price ?? 0) : 0)
+
+        if (activePlayerMoney < requiredAcquisitionCost) {
+          setInsufficientFundsModal({
+            open: true,
+            buildingLevel: promptCurrentLevel,
+            promptChoiceValue: promptAcquisitionCancelChoiceValue,
+          })
+          return
+        }
+
         submitPromptChoice(promptAcquisitionConfirmChoiceValue)
         return
       }
 
-      const { tileId, acquisitionCost, onDoneCallback } = cityAcquisitionModal
+      const { tileId, acquisitionCost, currentLevel, onDoneCallback } =
+        cityAcquisitionModal
+      const activePlayerIdx = curPlayerRef.current
+      const activePlayerMoney = playersRef.current[activePlayerIdx]?.money ?? 0
+
+      if (activePlayerMoney < acquisitionCost) {
+        setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
+        setInsufficientFundsModal({
+          open: true,
+          buildingLevel: currentLevel,
+          onDoneCallback,
+          promptChoiceValue: null,
+        })
+        return
+      }
+
       setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
 
       if (tileId === null) {
@@ -1171,7 +1202,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      const activePlayerIdx = curPlayerRef.current
       const activePlayerId = getPlayerIdByIndex(activePlayerIdx)
       const activePlayerColor = getPlayerColorByIndex(activePlayerIdx)
       const ownerPlayerIdx = getPlayerIndexById(owner.ownerId)
@@ -1438,7 +1468,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const acquisitionModalOpenRaw = useLocalPromptFallback
       ? cityAcquisitionModal.open
       : isAcquisitionPromptOpen
-    const acquisitionModalOpen = acquisitionModalOpenRaw && !tollModalOpen
+    const acquisitionModalOpen =
+      acquisitionModalOpenRaw && !tollModalOpen && !insufficientFundsModal.open
     const acquisitionOwnerName = useLocalPromptFallback
       ? cityAcquisitionModal.ownerName
       : promptOwnerName
