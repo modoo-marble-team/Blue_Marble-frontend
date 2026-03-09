@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MessageSquare } from 'lucide-react'
 import type { ChatMessage } from '../../types/domain'
 import { cn } from '../../lib/utils'
 
@@ -24,6 +25,7 @@ export default function RoomChat({
   inputPlaceholder = '메시지...',
 }: RoomChatProps) {
   const [input, setInput] = useState('')
+  const canSend = input.trim().length > 0
 
   // 채팅 입력 submit 처리
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -40,26 +42,24 @@ export default function RoomChat({
   }
 
   return (
-    <div className={cn('flex h-full w-[320px] flex-col gap-4', className)}>
+    <div className={cn('flex h-full w-full flex-col gap-3', className)}>
       {notice ? (
-        <div className="flex items-center justify-start rounded-lg border border-white/10 bg-[#314158]/90 p-3 shadow-md">
-          <span className="text-xs leading-none font-bold text-white">
-            {notice}
-          </span>
+        <div className="flex items-center justify-start rounded-xl border border-ui-border bg-ui-brand-soft px-3 py-2">
+          <span className="text-xs font-semibold text-ui-brand">{notice}</span>
         </div>
       ) : null}
 
-      <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-white/50 bg-white/90 shadow-xl">
-        <header className="flex items-center justify-between border-b border-[#0F172B] bg-[#F8FAFC] p-3">
+      <section className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-sm">
+        <header className="flex items-center justify-between border-b border-ui-border bg-ui-surface px-4 py-3">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-[#90A1B9]">💬</span>
-            <span className="text-xs font-black tracking-widest text-[#45556C]">
+            <MessageSquare className="size-4 text-ui-brand" />
+            <span className="text-base font-semibold text-ui-text-strong">
               {title}
             </span>
           </div>
         </header>
 
-        <div className="flex-1 space-y-3 overflow-y-auto bg-[#F8FAFC]/30 p-3">
+        <div className="flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3">
           {messages.map((message) => {
             const isMine = message.sender_id === currentUserId
 
@@ -72,17 +72,17 @@ export default function RoomChat({
                 )}
               >
                 <div className="mb-0.5 px-0.5">
-                  <span className="text-[9px] font-bold text-[#90A1B9]">
+                  <span className="text-[11px] font-medium text-ui-text-subtle">
                     {message.sender_nickname}
                   </span>
                 </div>
 
                 <div
                   className={cn(
-                    'max-w-[85%] px-3 py-2 text-xs leading-snug font-medium shadow-sm',
+                    'max-w-[85%] px-3 py-2 text-sm leading-snug font-medium shadow-sm',
                     isMine
-                      ? 'rounded-[16px_0_16px_16px] bg-[#2B7FFF] text-white'
-                      : 'rounded-[0_16px_16px_16px] border border-[#E2E8F0] bg-white text-[#314158]'
+                      ? 'rounded-[16px_0_16px_16px] bg-ui-brand text-white'
+                      : 'rounded-[0_16px_16px_16px] border border-ui-border bg-ui-surface-soft text-ui-text-primary'
                   )}
                 >
                   {message.content}
@@ -94,21 +94,27 @@ export default function RoomChat({
 
         <form
           onSubmit={handleSubmit}
-          className="flex gap-2 border-t border-[#0F172B] bg-white p-3"
+          className="flex gap-2 border-t border-ui-border bg-ui-surface p-3"
         >
-          <div className="ring-[#2B7FFF]/30 flex flex-1 items-center rounded-lg bg-[#F1F5F9] px-3 py-1.5 focus-within:ring-1">
+          <div className="flex h-10 flex-1 items-center rounded-xl border border-ui-border bg-ui-surface-muted px-3 focus-within:border-ui-brand focus-within:ring-2 focus-within:ring-ui-brand/20">
             <input
               type="text"
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder={inputPlaceholder}
-              className="w-full bg-transparent text-xs font-medium text-[#314158] placeholder:text-[#90A1B9] outline-none"
+              className="w-full bg-transparent text-sm font-medium text-ui-text-primary placeholder:text-ui-text-subtle outline-none"
             />
           </div>
 
           <button
             type="submit"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2B7FFF] text-white shadow-md transition-transform hover:scale-105 active:scale-95"
+            disabled={!canSend}
+            className={cn(
+              'flex h-10 w-10 items-center justify-center rounded-xl text-white transition-colors',
+              canSend
+                ? 'bg-ui-brand hover:bg-ui-brand-strong'
+                : 'bg-ui-disabled-bg text-ui-disabled-text'
+            )}
           >
             <span className="text-sm">➤</span>
           </button>
