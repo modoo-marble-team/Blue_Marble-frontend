@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react'
 import { useLocation, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
 import RollButton from '../components/game/controls/RollButton'
+import ExitGameModal from '../components/game/modals/ExitGameModal'
 import { isPromptHandledByBoardModal } from '../components/game/modals/promptModalMapping'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
@@ -83,6 +84,7 @@ const GamePage: React.FC = () => {
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
+  const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
     resetSignal: turnTimerKey,
@@ -238,8 +240,13 @@ const GamePage: React.FC = () => {
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
-      <div className="absolute left-6 top-6">
-        <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 text-[#45556C] shadow-sm transition-colors hover:bg-white">
+      <div className="absolute left-6 top-6 z-[70]">
+        <button
+          type="button"
+          aria-label="게임 종료 설정"
+          onClick={() => setIsExitModalOpen(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 text-[#45556C] shadow-sm transition-colors hover:bg-white"
+        >
           <Settings size={20} />
         </button>
       </div>
@@ -300,6 +307,7 @@ const GamePage: React.FC = () => {
               roomId={activeRoomId ?? ''}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
+              suppressDiceTimerModal={isExitModalOpen}
               tiles={normalizedTilesForBoard}
               activePrompt={activeBoardPrompt}
               promptSubmittingChoice={promptSubmittingChoice}
@@ -391,6 +399,15 @@ const GamePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ExitGameModal
+        open={isExitModalOpen}
+        onCancel={() => setIsExitModalOpen(false)}
+        onConfirm={() => {
+          setIsExitModalOpen(false)
+          window.location.href = '/lobby'
+        }}
+      />
 
       <DevRoomChatControlPanel
         roomId={activeRoomId ?? ''}
