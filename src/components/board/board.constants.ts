@@ -5,6 +5,7 @@
   | 'MOVE_TO_ISLAND'
   | 'ISLAND'
   | 'EVENT'
+  | 'TRAVEL'
   | 'AI'
 
 export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
@@ -118,7 +119,7 @@ export const TILES: TileData[] = [
     color: '#EF5350',
     price: 400000000,
   },
-  { id: 16, name: '국내여행', type: 'EVENT', emoji: '✈️' },
+  { id: 16, name: '국내여행', type: 'TRAVEL', emoji: '✈️' },
   {
     id: 17,
     name: '제주',

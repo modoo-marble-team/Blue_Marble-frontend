@@ -18,6 +18,11 @@ export interface CardModalState {
   onDoneCallback?: () => void
 }
 
+export interface TravelModalState {
+  open: boolean
+  onDoneCallback?: () => void
+}
+
 export interface TollModalState {
   open: boolean
   tileId: number | null

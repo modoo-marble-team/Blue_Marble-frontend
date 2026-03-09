@@ -221,7 +221,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
 
   // ── 상단 / 하단 (중간 칸들) ─────────────────────────────────────────
   if (dir === 'top' || dir === 'bottom') {
-    const isSpecial = ['CHANCE', 'EVENT', 'AI'].includes(tile.type)
+    const isSpecial = ['CHANCE', 'EVENT', 'TRAVEL', 'AI'].includes(tile.type)
     return (
       <div
         style={{
@@ -332,7 +332,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
 
   // ── 좌측 / 우측 (중간 칸들) ─────────────────────────────────────────
   const isLeft = dir === 'left'
-  const isSpecial = ['CHANCE', 'EVENT', 'AI'].includes(tile.type)
+  const isSpecial = ['CHANCE', 'EVENT', 'TRAVEL', 'AI'].includes(tile.type)
 
   return (
     <div
