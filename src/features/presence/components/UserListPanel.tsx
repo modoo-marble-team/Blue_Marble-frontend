@@ -115,7 +115,7 @@ export function UserListPanel({
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="ui-scrollbar flex-1 overflow-y-auto">
             {isLoading &&
               Array.from({ length: 4 }).map((_, index) => (
                 <div
@@ -154,7 +154,7 @@ export function UserListPanel({
       ) : (
         <div
           className={cn(
-            'flex min-h-[120px] items-center gap-2 overflow-x-auto p-3 xl:flex-col xl:items-center xl:justify-start xl:overflow-visible',
+            'ui-scrollbar flex min-h-[120px] items-center gap-2 overflow-x-auto p-3 xl:flex-col xl:items-center xl:justify-start xl:overflow-visible',
             panelHeightClass
           )}
         >

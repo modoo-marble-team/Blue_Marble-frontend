@@ -78,7 +78,7 @@ export function DirectMessagePanel({
 
       <div
         ref={messageListRef}
-        className="h-[320px] overflow-y-auto bg-ui-surface px-4 py-3"
+        className="ui-scrollbar h-[320px] overflow-y-auto bg-ui-surface px-4 py-3"
       >
         {sortedMessages.length === 0 ? (
           <p className="flex h-full items-center justify-center text-sm font-medium text-ui-text-subtle">

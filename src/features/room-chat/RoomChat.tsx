@@ -72,7 +72,7 @@ export default function RoomChat({
 
         <div
           ref={messagesContainerRef}
-          className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3"
+          className="ui-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3"
         >
           {messages.map((message) => {
             const isMine = message.sender_id === currentUserId
