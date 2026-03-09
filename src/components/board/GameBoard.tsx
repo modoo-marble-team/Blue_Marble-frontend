@@ -10,6 +10,7 @@ import BoardTile from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
 import CardModal from '../game/modals/CardModal'
+import TravelModal from '../game/modals/TravelModal'
 import CityAcquisitionModal from '../game/modals/CityAcquisitionModals'
 import CitySellModal from '../game/modals/CitySellModal'
 import InsufficientFundsModal from '../game/modals/InsufficientFundsModal'
@@ -58,6 +59,7 @@ import type {
   BuildModalState,
   BuyModalState,
   CardModalState,
+  TravelModalState,
   CityAcquisitionModalState,
   CitySellModalState,
   InsufficientFundsModalState,
@@ -134,6 +136,11 @@ const INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE: InsufficientFundsModalState = {
   buildingLevel: 0,
   onDoneCallback: undefined,
   promptChoiceValue: null,
+}
+
+const INITIAL_TRAVEL_SELECTION_STATE = {
+  active: false,
+  onDoneCallback: undefined as (() => void) | undefined,
 }
 
 const DOTS: Record<number, [number, number][]> = {
@@ -527,6 +534,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setBuyModal({ open: false, tileId: null })
       setBuildModal({ open: false, tileId: null })
       setCardModal({ open: false, variant: 'EVENT' })
+      setTravelModal({ open: false })
+      setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
       setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
       setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
       setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
@@ -644,6 +653,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       open: false,
       variant: 'EVENT',
     })
+    const [travelModal, setTravelModal] = useState<TravelModalState>({
+      open: false,
+    })
+    const [travelSelection, setTravelSelection] = useState(
+      INITIAL_TRAVEL_SELECTION_STATE
+    )
     const [tollModal, setTollModal] = useState<TollModalState>({
       open: false,
       tileId: null,
@@ -1104,16 +1119,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       setShowTimerModal(false)
-      // Clear all other possible modals
-      setBuyModal({ open: false, tileId: null })
-      setBuildModal({ open: false, tileId: null })
-      setCardModal({ open: false, variant: 'EVENT' })
-      setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
-      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
-      setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
-      setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
-      setAiModal({ open: false, status: 'loading' })
-      setGoToIslandModal({ open: false })
+
+      const hasUnderlyingModal =
+        buyModal.open ||
+        buildModal.open ||
+        cardModal.open ||
+        travelModal.open ||
+        tollModal.open ||
+        cityAcquisitionModal.open ||
+        citySellModal.open ||
+        insufficientFundsModal.open ||
+        aiModal.open ||
+        goToIslandModal.open
+
+      if (hasUnderlyingModal) {
+        return
+      }
 
       advanceTurn()
     }
@@ -1220,6 +1241,48 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setGoToIslandModal({ open: true, onDoneCallback })
     }
 
+    function handleTravelConfirm() {
+      const { onDoneCallback } = travelModal
+      setTravelModal({ open: false })
+      setTravelSelection({
+        active: true,
+        onDoneCallback,
+      })
+      setStatus('국내여행: 이동할 칸을 클릭하세요.')
+    }
+
+    function handleTravelDestinationSelect(tileId: number) {
+      if (!travelSelection.active) {
+        return
+      }
+
+      const playerIdx = curPlayerRef.current
+      const currentPlayer = playersRef.current[playerIdx]
+      if (!currentPlayer || tileId === currentPlayer.pos) {
+        return
+      }
+
+      const { onDoneCallback } = travelSelection
+      const updatedPlayers = [...playersRef.current]
+      updatedPlayers[playerIdx] = {
+        ...currentPlayer,
+        pos: tileId,
+      }
+      playersRef.current = updatedPlayers
+      publishPlayers(updatedPlayers)
+      setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
+
+      const destinationName =
+        TILES[tileId]?.name.replace('\n', ' ') || '선택 칸'
+      setStatus(
+        `${currentPlayer.name}님이 ${destinationName} 칸으로 이동합니다.`
+      )
+
+      window.setTimeout(() => {
+        handleArrival(tileId, onDoneCallback)
+      }, 300)
+    }
+
     function handleArrival(tileId: number, onDone?: () => void) {
       const playerIdx = curPlayerRef.current
       const tile = TILES[tileId]
@@ -1265,6 +1328,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             setBuildModal({ open: true, tileId, onDoneCallback: onDone })
           }
         }
+        return
+      }
+
+      if (tile.type === 'TRAVEL') {
+        setTravelModal({
+          open: true,
+          onDoneCallback: onDone,
+        })
         return
       }
 
@@ -1406,6 +1477,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       '확인'
     )
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
+    const isTravelSelectableTile = (tileId: number) =>
+      travelSelection.active && tileId !== players[curPlayer]?.pos
 
     return (
       <div
@@ -1439,54 +1512,144 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               gap: `${GAP}px`,
             }}
           >
-            {TOP_ROW.map((id, ci) => (
-              <div key={id} style={{ gridRow: 1, gridColumn: ci + 1 }}>
-                <BoardTile
-                  tile={TILES[id]}
-                  dir={ci === 0 || ci === 8 ? 'corner' : 'top'}
-                  tokens={byTile[id] ?? []}
-                  tileOwner={tileOwners[id]}
-                  timeLeft={localTimeLeft}
-                  isActivePlayerTile={id === players[curPlayer]?.pos}
-                />
-              </div>
-            ))}
-            {BOTTOM_ROW.map((id, ci) => (
-              <div key={id} style={{ gridRow: 9, gridColumn: ci + 1 }}>
-                <BoardTile
-                  tile={TILES[id]}
-                  dir={ci === 0 || ci === 8 ? 'corner' : 'bottom'}
-                  tokens={byTile[id] ?? []}
-                  tileOwner={tileOwners[id]}
-                  timeLeft={localTimeLeft}
-                  isActivePlayerTile={id === players[curPlayer]?.pos}
-                />
-              </div>
-            ))}
-            {LEFT_COL.map((id, ri) => (
-              <div key={id} style={{ gridRow: ri + 2, gridColumn: 1 }}>
-                <BoardTile
-                  tile={TILES[id]}
-                  dir="left"
-                  tokens={byTile[id] ?? []}
-                  tileOwner={tileOwners[id]}
-                  timeLeft={localTimeLeft}
-                  isActivePlayerTile={id === players[curPlayer]?.pos}
-                />
-              </div>
-            ))}
-            {RIGHT_COL.map((id, ri) => (
-              <div key={id} style={{ gridRow: ri + 2, gridColumn: 9 }}>
-                <BoardTile
-                  tile={TILES[id]}
-                  dir="right"
-                  tokens={byTile[id] ?? []}
-                  tileOwner={tileOwners[id]}
-                  timeLeft={localTimeLeft}
-                  isActivePlayerTile={id === players[curPlayer]?.pos}
-                />
-              </div>
-            ))}
+            {TOP_ROW.map((id, ci) =>
+              (() => {
+                const isCornerTile = ci === 0 || ci === 8
+                const isSelectable = isTravelSelectableTile(id)
+                return (
+                  <div
+                    key={id}
+                    onClick={
+                      isSelectable
+                        ? () => handleTravelDestinationSelect(id)
+                        : undefined
+                    }
+                    style={{
+                      gridRow: 1,
+                      gridColumn: ci + 1,
+                      cursor: isSelectable ? 'pointer' : 'default',
+                      borderRadius: isCornerTile ? 18 : 13,
+                      boxShadow: isSelectable
+                        ? '0 0 0 3px rgba(43,127,255,0.9)'
+                        : undefined,
+                      transition: 'box-shadow 0.2s ease',
+                    }}
+                  >
+                    <BoardTile
+                      tile={TILES[id]}
+                      dir={isCornerTile ? 'corner' : 'top'}
+                      tokens={byTile[id] ?? []}
+                      tileOwner={tileOwners[id]}
+                      timeLeft={localTimeLeft}
+                      isActivePlayerTile={id === players[curPlayer]?.pos}
+                    />
+                  </div>
+                )
+              })()
+            )}
+            {BOTTOM_ROW.map((id, ci) =>
+              (() => {
+                const isCornerTile = ci === 0 || ci === 8
+                const isSelectable = isTravelSelectableTile(id)
+                return (
+                  <div
+                    key={id}
+                    onClick={
+                      isSelectable
+                        ? () => handleTravelDestinationSelect(id)
+                        : undefined
+                    }
+                    style={{
+                      gridRow: 9,
+                      gridColumn: ci + 1,
+                      cursor: isSelectable ? 'pointer' : 'default',
+                      borderRadius: isCornerTile ? 18 : 13,
+                      boxShadow: isSelectable
+                        ? '0 0 0 3px rgba(43,127,255,0.9)'
+                        : undefined,
+                      transition: 'box-shadow 0.2s ease',
+                    }}
+                  >
+                    <BoardTile
+                      tile={TILES[id]}
+                      dir={isCornerTile ? 'corner' : 'bottom'}
+                      tokens={byTile[id] ?? []}
+                      tileOwner={tileOwners[id]}
+                      timeLeft={localTimeLeft}
+                      isActivePlayerTile={id === players[curPlayer]?.pos}
+                    />
+                  </div>
+                )
+              })()
+            )}
+            {LEFT_COL.map((id, ri) =>
+              (() => {
+                const isSelectable = isTravelSelectableTile(id)
+                return (
+                  <div
+                    key={id}
+                    onClick={
+                      isSelectable
+                        ? () => handleTravelDestinationSelect(id)
+                        : undefined
+                    }
+                    style={{
+                      gridRow: ri + 2,
+                      gridColumn: 1,
+                      cursor: isSelectable ? 'pointer' : 'default',
+                      borderRadius: 13,
+                      boxShadow: isSelectable
+                        ? '0 0 0 3px rgba(43,127,255,0.9)'
+                        : undefined,
+                      transition: 'box-shadow 0.2s ease',
+                    }}
+                  >
+                    <BoardTile
+                      tile={TILES[id]}
+                      dir="left"
+                      tokens={byTile[id] ?? []}
+                      tileOwner={tileOwners[id]}
+                      timeLeft={localTimeLeft}
+                      isActivePlayerTile={id === players[curPlayer]?.pos}
+                    />
+                  </div>
+                )
+              })()
+            )}
+            {RIGHT_COL.map((id, ri) =>
+              (() => {
+                const isSelectable = isTravelSelectableTile(id)
+                return (
+                  <div
+                    key={id}
+                    onClick={
+                      isSelectable
+                        ? () => handleTravelDestinationSelect(id)
+                        : undefined
+                    }
+                    style={{
+                      gridRow: ri + 2,
+                      gridColumn: 9,
+                      cursor: isSelectable ? 'pointer' : 'default',
+                      borderRadius: 13,
+                      boxShadow: isSelectable
+                        ? '0 0 0 3px rgba(43,127,255,0.9)'
+                        : undefined,
+                      transition: 'box-shadow 0.2s ease',
+                    }}
+                  >
+                    <BoardTile
+                      tile={TILES[id]}
+                      dir="right"
+                      tokens={byTile[id] ?? []}
+                      tileOwner={tileOwners[id]}
+                      timeLeft={localTimeLeft}
+                      isActivePlayerTile={id === players[curPlayer]?.pos}
+                    />
+                  </div>
+                )
+              })()
+            )}
 
             <div
               className="board-center"
@@ -1708,6 +1871,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           variant={cardModal.variant}
           onConfirm={handleCardConfirm}
         />
+        <TravelModal open={travelModal.open} onConfirm={handleTravelConfirm} />
         <AIPenaltyModal
           open={aiModal.open}
           status={aiModal.status}
