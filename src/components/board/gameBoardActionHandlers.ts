@@ -243,6 +243,13 @@ export function createGameBoardActionHandlers(
     if (tileId === null) return
 
     if (!useGameSocketMock) {
+      const emitted = emitSocketAction('BUILD_PROPERTY', {
+        tileId,
+      })
+      if (!emitted) {
+        return
+      }
+
       setBuildModal({ open: false, tileId: null })
       onDoneCallback?.()
       return
