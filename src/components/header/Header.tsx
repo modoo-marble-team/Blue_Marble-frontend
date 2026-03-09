@@ -7,6 +7,7 @@ interface HeaderProps {
   playerLabel?: string
   avatarText?: string
   avatarBackground?: string
+  avatarImageUrl?: string | null
   menuItems?: ProfileMenuItem[]
 }
 
@@ -15,6 +16,7 @@ function Header({
   playerLabel = '플레이어',
   avatarText = 'P',
   avatarBackground = '#fde68a',
+  avatarImageUrl = null,
   menuItems = [],
 }: HeaderProps) {
   return (
@@ -30,6 +32,7 @@ function Header({
         playerLabel={playerLabel}
         avatarText={avatarText}
         avatarBackground={avatarBackground}
+        avatarImageUrl={avatarImageUrl}
         menuItems={menuItems}
       />
     </header>

@@ -1,10 +1,10 @@
-import { useMemo } from 'react'
 import { ArrowLeft, Gamepad2, Shield, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useRequireActiveSession } from '../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../features/auth/store'
 import { useMyPageProfileQuery } from '../features/auth/hooks/useMyPageProfileQuery'
-import { getAvatarText } from '../components/header/profileMenu'
+import { Avatar } from '../components/avatar/Avatar'
+import { getAvatarBackground } from '../components/header/profileMenu'
 
 // 전적 카드 렌더링 메타데이터
 const myPageStatsCardMeta = [
@@ -37,11 +37,6 @@ function MyPage() {
   const session = useAuthStore((state) => state.session)
   const isAllowedSession = useRequireActiveSession(session)
   const { data: profile, isLoading, isError } = useMyPageProfileQuery(session)
-
-  // 프로필 이미지가 없을 때 사용할 아바타 텍스트 계산
-  const fallbackAvatarText = useMemo(() => {
-    return getAvatarText(session?.nickname)
-  }, [session?.nickname])
 
   // 리다이렉트 조건에서는 화면을 렌더링하지 않음
   if (!isAllowedSession || !session) {
@@ -100,19 +95,15 @@ function MyPage() {
                 </p>
               ) : (
                 <div className="flex items-center gap-6">
-                  <div className="relative size-24 overflow-hidden rounded-full border border-ui-border bg-ui-brand-soft">
-                    {profile.profileImage ? (
-                      <img
-                        src={profile.profileImage}
-                        alt={`${profile.nickname} 프로필`}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-2xl font-bold text-ui-brand">
-                        {fallbackAvatarText}
-                      </div>
-                    )}
-                  </div>
+                  <Avatar
+                    size="lg"
+                    displayName={profile.nickname}
+                    imageUrl={profile.profileImage}
+                    imageAlt={`${profile.nickname} 프로필`}
+                    backgroundColor={getAvatarBackground(session.userId)}
+                    className="border border-ui-border"
+                    textClassName="text-black"
+                  />
                   <h1 className="text-3xl font-extrabold tracking-tight text-ui-text-strong">
                     {profile.nickname}
                   </h1>

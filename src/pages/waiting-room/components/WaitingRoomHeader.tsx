@@ -9,6 +9,7 @@ interface WaitingRoomHeaderProps {
   playerLabel: string
   avatarText: string
   avatarBackground: string
+  avatarImageUrl?: string | null
   menuItems: ProfileMenuItem[]
   onBackToLobby: () => void
 }
@@ -20,6 +21,7 @@ export function WaitingRoomHeader({
   playerLabel,
   avatarText,
   avatarBackground,
+  avatarImageUrl = null,
   menuItems,
   onBackToLobby,
 }: WaitingRoomHeaderProps) {
@@ -48,6 +50,7 @@ export function WaitingRoomHeader({
         playerLabel={playerLabel}
         avatarText={avatarText}
         avatarBackground={avatarBackground}
+        avatarImageUrl={avatarImageUrl}
         menuItems={menuItems}
       />
     </header>
