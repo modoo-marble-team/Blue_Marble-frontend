@@ -22,8 +22,8 @@ const createDefaultHandlers = (overrides?: {
 }) => {
   const setStatus = overrides?.setStatus ?? vi.fn()
   const setBuildModal = overrides?.setBuildModal ?? vi.fn()
-  const roomId =
-    overrides && 'roomId' in overrides ? overrides.roomId : 'room-1'
+  const roomId: string | null =
+    overrides?.roomId === undefined ? 'room-1' : overrides.roomId
 
   return createGameBoardActionHandlers({
     roomId,
