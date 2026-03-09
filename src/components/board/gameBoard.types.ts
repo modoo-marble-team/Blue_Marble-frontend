@@ -37,6 +37,7 @@ export interface CitySellModalState {
   ownerName: string
   currentLevel: BuildingLevel
   sellPrice: number
+  showBuildOnCancel?: boolean
   onDoneCallback?: () => void
 }
 
