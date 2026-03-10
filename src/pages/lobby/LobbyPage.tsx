@@ -123,7 +123,7 @@ function LobbyPage() {
         menuItems={headerMenuItems}
       />
 
-      <main className="flex flex-col gap-4 p-4 sm:p-6 xl:flex-row">
+      <main className="flex flex-col gap-4 p-4 sm:p-6 xl:flex-row xl:items-start">
         <section className="min-w-0 flex-1">
           <LobbyControls
             searchKeyword={searchRoom}
@@ -144,16 +144,18 @@ function LobbyPage() {
           />
         </section>
 
-        <UserListPanel
-          users={users}
-          isLoading={isUsersLoading}
-          isError={isUsersError}
-          isOpen={isUserListOpen}
-          currentUserId={session.userId}
-          unreadDirectMessageCountByUserId={unreadDirectMessageCountByUserId}
-          onOpenDirectMessage={openDirectMessage}
-          onToggle={() => setIsUserListOpen((prev) => !prev)}
-        />
+        <div className="xl:sticky xl:top-20 xl:self-start">
+          <UserListPanel
+            users={users}
+            isLoading={isUsersLoading}
+            isError={isUsersError}
+            isOpen={isUserListOpen}
+            currentUserId={session.userId}
+            unreadDirectMessageCountByUserId={unreadDirectMessageCountByUserId}
+            onOpenDirectMessage={openDirectMessage}
+            onToggle={() => setIsUserListOpen((prev) => !prev)}
+          />
+        </div>
       </main>
 
       {selectedPrivateRoom ? (
