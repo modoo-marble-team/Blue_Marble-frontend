@@ -1,34 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import { emitGameAction } from '../../services/socket/game.handler'
+import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import type { BuildModalState } from './gameBoard.types'
 
 vi.mock('../../services/socket/game.handler', () => ({
   emitGameAction: vi.fn(),
 }))
 
-vi.mock('../../services/game/game.api', () => ({
-  gameApi: {
-    sellTile: vi.fn(),
-  },
-}))
-
 type SetState<T> = (value: T | ((prev: T) => T)) => void
 
 const createDefaultHandlers = (overrides?: {
-  roomId?: string | null
+  gameId?: string | null
   setStatus?: SetState<string>
   setBuildModal?: SetState<BuildModalState>
 }) => {
   const setStatus = overrides?.setStatus ?? vi.fn()
   const setBuildModal = overrides?.setBuildModal ?? vi.fn()
-  const roomId: string | null =
-    overrides?.roomId === undefined ? 'room-1' : overrides.roomId
+  const gameId: string | null =
+    overrides?.gameId === undefined ? 'game-1' : overrides.gameId
 
   return createGameBoardActionHandlers({
-    roomId,
+    gameId,
     useGameSocketMock: false,
-    roomIdRequiredMessage: 'room id is required',
+    gameIdRequiredMessage: 'game id is required',
     setStatus: setStatus as never,
     setBuyModal: vi.fn() as never,
     setBuildModal: setBuildModal as never,
@@ -53,7 +47,7 @@ describe('createGameBoardActionHandlers - non mock build action', () => {
     vi.clearAllMocks()
   })
 
-  it('BUILD_PROPERTY 액션을 전송하고 모달을 닫는다', async () => {
+  it('sends BUY_PROPERTY action and closes modal', async () => {
     const setBuildModal = vi.fn<SetState<BuildModalState>>()
     const onDoneCallback = vi.fn()
     const handlers = createDefaultHandlers({ setBuildModal })
@@ -65,20 +59,20 @@ describe('createGameBoardActionHandlers - non mock build action', () => {
     })
 
     expect(emitGameAction).toHaveBeenCalledWith({
-      type: 'BUILD_PROPERTY',
-      roomId: 'room-1',
+      type: 'BUY_PROPERTY',
+      gameId: 'game-1',
       payload: { tileId: 7 },
     })
     expect(setBuildModal).toHaveBeenCalledWith({ open: false, tileId: null })
     expect(onDoneCallback).toHaveBeenCalledTimes(1)
   })
 
-  it('roomId가 없으면 상태만 갱신하고 종료한다', async () => {
+  it('does not emit when gameId is missing', async () => {
     const setStatus = vi.fn<SetState<string>>()
     const setBuildModal = vi.fn<SetState<BuildModalState>>()
     const onDoneCallback = vi.fn()
     const handlers = createDefaultHandlers({
-      roomId: null,
+      gameId: null,
       setStatus,
       setBuildModal,
     })
@@ -90,12 +84,12 @@ describe('createGameBoardActionHandlers - non mock build action', () => {
     })
 
     expect(emitGameAction).not.toHaveBeenCalled()
-    expect(setStatus).toHaveBeenCalledWith('room id is required')
+    expect(setStatus).toHaveBeenCalledWith('game id is required')
     expect(setBuildModal).not.toHaveBeenCalled()
     expect(onDoneCallback).not.toHaveBeenCalled()
   })
 
-  it('tileId가 없으면 아무 동작도 하지 않는다', async () => {
+  it('does nothing when tileId is missing', async () => {
     const setStatus = vi.fn<SetState<string>>()
     const setBuildModal = vi.fn<SetState<BuildModalState>>()
     const handlers = createDefaultHandlers({ setStatus, setBuildModal })
