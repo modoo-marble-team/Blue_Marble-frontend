@@ -18,16 +18,16 @@
 
 ## 진행도 요약
 
-| 파트 | 진행도  | 상태                                                                                                                  |
-| ---- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| FE-B | 진행 중 | prompt modal 연결 완료 + `gameBoardActionHandlers` non-mock 전환 및 mock 턴 전환 버그 수정 완료, BUILD/sync 정리 단계 |
-| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄여야 하는 단계                                                                    |
+| 파트 | 진행도  | 상태                                                                                                                      |
+| ---- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| FE-B | 진행 중 | prompt/ack 연결 및 event-socket 계약 전환 완료. `gameId` canonical/ActionType(건설)/prompt-snapshot 스키마 최종 고정 단계 |
+| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄이고 로컬 엔진 성격 로직을 제거해야 하는 단계                                         |
 
 ## FE-B 현재 최우선 작업
 
-- `src/components/board/gameBoardActionHandlers.ts`의 BUILD/sync 레거시 호출 정리
-- prompt.type별 choice 표준(BUY/SKIP, BUILD/SKIP, PAY_TOLL, END_TURN)을 문서/목업과 최종 고정
-- 미매핑 prompt의 fallback 표면(오버레이) 유지 범위 확정
+- `game:action`/`game:sync`/`game:prompt_response`의 `gameId` canonical 사용 범위 고정
+- ActionType에서 건설 처리 방식(`BUILD_PROPERTY` 유지 여부) 백엔드 최종 합의
+- prompt/snapshot 필드(`id/promptId`, `timeoutSec/timeoutMs`) 최종 계약 고정
 
 ## FE-C 현재 최우선 작업
 
@@ -38,12 +38,10 @@
 
 ## 현재 가장 큰 리스크
 
-- `GamePage` + `GameBoard`는 `prompt.type` 중심 소비 구조로 전환됐지만, mock 로컬 fallback과 실서버 경로가 이원화돼 있다.
-- `gameBoardActionHandlers`는 BUY/SELL/END_TURN만 non-mock 전환됐고 BUILD/sync는 레거시 경로가 남아 있다.
-- mock 경로 턴 전환 버그는 수정됐지만, BUILD/sync 레거시 경로가 남아 동작 축이 분리돼 있다.
-- `GameBoard.tsx`가 여전히 일부 게임 엔진 성격 로직을 들고 있다.
+- `GamePage` + `GameBoard`는 `prompt.type` 소비 구조로 전환됐지만 mock fallback과 실서버 경로가 일부 이원화돼 있다.
+- `GameBoard.tsx`가 여전히 `applyMoney`/`advanceTurn`/파산 판정 등 게임 엔진 성격 로직을 들고 있다.
 - 게임 REST fallback이 장기화되면 중앙 docs 기준과 실제 런타임이 다시 벌어질 수 있다.
-- `gameId`, money unit, tile/building enum 기준이 문서와 코드에서 완전히 수렴하지 않았다.
+- `gameId` canonical, money unit, prompt/snapshot 필드 기준이 문서와 코드에서 완전히 수렴하지 않았다.
 
 ## 작업 운영 규칙 (2026-03-05 추가)
 
