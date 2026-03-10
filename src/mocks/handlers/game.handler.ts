@@ -18,6 +18,15 @@ const MOCK_PLAYER_ID = 'mock-player-1'
 const MOCK_BUILD_COST = 30
 const MOCK_PASS_GO_SALARY = 200
 const MOCK_TURN_TIMEOUT_SEC = 30
+const MOCK_GAME_ID_FALLBACK = 'game-mock-room'
+const SYNC_SNAPSHOT_GAP_THRESHOLD = 200
+const PROMPT_RESPONSE_ACK_TYPE = 'PROMPT_RESPONSE'
+const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
+
+const PROMPT_CHOICE_CANONICAL_MAP: Record<string, readonly string[]> = {
+  BUY_OR_SKIP: ['BUY', 'SKIP'],
+  CONFIRM_ONLY: ['CONFIRM'],
+}
 
 type DiceRequestBody = {
   player_id: string
@@ -41,20 +50,23 @@ type GameStateResponse = {
   revision: number
   phase: GameSnapshot['phase']
   prompt: GamePrompt | null
+  promptIssuedAtMs: number | null
 }
 
 type MockGameActionPayload = {
   actionId?: string
   type: string
-  roomId?: string | null
   gameId?: string | null
   payload?: Record<string, unknown>
 }
 
 type MockGameSyncPayload = {
-  roomId?: string | null
   gameId?: string | null
   knownRevision?: number
+}
+
+type MockPromptResponsePayload = GamePromptResponse & {
+  gameId?: string | null
 }
 
 const clonePlayers = () => structuredClone(mockPlayers)
@@ -70,6 +82,7 @@ const createInitialGameState = (): GameStateResponse => ({
   revision: 1,
   phase: 'waiting',
   prompt: null,
+  promptIssuedAtMs: null,
 })
 
 const mockGameState: GameStateResponse = createInitialGameState()
@@ -84,10 +97,11 @@ const resetMockGameState = () => {
   mockGameState.revision = initialState.revision
   mockGameState.phase = initialState.phase
   mockGameState.prompt = initialState.prompt
+  mockGameState.promptIssuedAtMs = initialState.promptIssuedAtMs
 }
 
-const getMockGameId = (roomId?: string | null, gameId?: string | null) =>
-  gameId ?? (roomId ? `game-${roomId}` : 'game-mock-room')
+const getMockGameId = (gameId?: string | null) =>
+  gameId ?? MOCK_GAME_ID_FALLBACK
 
 const buildStateResponse = () => ({
   players: structuredClone(mockGameState.players),
@@ -98,12 +112,9 @@ const buildStateResponse = () => ({
   revision: mockGameState.revision,
 })
 
-const buildSnapshot = (
-  roomId?: string | null,
-  gameId?: string | null
-): GameSnapshot => ({
-  roomId: roomId ?? null,
-  gameId: getMockGameId(roomId, gameId),
+const buildSnapshot = (gameId?: string | null): GameSnapshot => ({
+  roomId: null,
+  gameId: getMockGameId(gameId),
   revision: mockGameState.revision,
   phase: mockGameState.phase,
   players: structuredClone(mockGameState.players),
@@ -157,6 +168,74 @@ const emitGamePatch = (
 const emitGameError = (error: GameError) => {
   emitSocketEvent('game:error', error)
 }
+
+const normalizeGameId = (gameId?: string | null) => {
+  if (typeof gameId !== 'string') {
+    return null
+  }
+
+  const normalized = gameId.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+const resolveRequiredGameId = (options: {
+  gameId?: string | null
+  actionId?: string
+  type?: string
+}) => {
+  const normalizedGameId = normalizeGameId(options.gameId)
+  if (normalizedGameId) {
+    return normalizedGameId
+  }
+
+  const error: GameError = {
+    code: 'INVALID_GAME_ID',
+    message: 'gameId가 필요합니다.',
+    actionId: options.actionId,
+  }
+
+  emitGameError(error)
+
+  if (options.actionId && options.type) {
+    emitGameAck({
+      actionId: options.actionId,
+      type: options.type,
+      ok: false,
+      error: {
+        code: error.code,
+        message: error.message,
+      },
+    })
+  }
+
+  return null
+}
+
+const buildStatePatch = (gameId: string): GamePatchEnvelope['patch'] => [
+  { op: 'set', path: 'roomId', value: null },
+  { op: 'set', path: 'gameId', value: gameId },
+  { op: 'set', path: 'phase', value: mockGameState.phase },
+  { op: 'set', path: 'players', value: structuredClone(mockGameState.players) },
+  { op: 'set', path: 'tiles', value: structuredClone(mockGameState.tiles) },
+  { op: 'set', path: 'currentPlayerId', value: mockGameState.currentTurn },
+  { op: 'set', path: 'currentTurn', value: mockGameState.currentTurn },
+  { op: 'set', path: 'round', value: mockGameState.round },
+  { op: 'set', path: 'turnTimeoutSec', value: MOCK_TURN_TIMEOUT_SEC },
+  { op: 'set', path: 'prompt', value: structuredClone(mockGameState.prompt) },
+  { op: 'set', path: 'gameResult', value: null },
+  { op: 'set', path: 'isGameOver', value: false },
+  { op: 'set', path: 'winnerId', value: null },
+  {
+    op: 'set',
+    path: 'session',
+    value: {
+      roomId: null,
+      gameId,
+      transport: 'event-socket',
+      syncedAt: new Date().toISOString(),
+    },
+  },
+]
 
 const getCurrentPlayer = () =>
   mockGameState.players.find(
@@ -235,7 +314,6 @@ const buildErrorResponse = (message: string, status: number) =>
   HttpResponse.json({ message }, { status })
 
 const emitSnapshotPatch = (
-  roomId?: string | null,
   gameId?: string | null,
   events?: GamePatchEnvelope['events']
 ) => {
@@ -243,13 +321,102 @@ const emitSnapshotPatch = (
     revision: mockGameState.revision,
     patch: [],
     events,
-    snapshot: buildSnapshot(roomId, gameId),
+    snapshot: buildSnapshot(gameId),
   })
+}
+
+const normalizePromptType = (prompt: GamePrompt | null) =>
+  typeof prompt?.type === 'string' ? prompt.type.trim().toUpperCase() : ''
+
+const normalizePromptChoice = (choice: string) => choice.trim().toUpperCase()
+
+const resolvePromptAllowedChoices = (prompt: GamePrompt | null) => {
+  const promptType = normalizePromptType(prompt)
+  return PROMPT_CHOICE_CANONICAL_MAP[promptType] ?? null
+}
+
+const isPromptExpired = (prompt: GamePrompt | null) => {
+  if (!prompt) {
+    return false
+  }
+
+  if (
+    typeof prompt.timeoutSec !== 'number' ||
+    !Number.isFinite(prompt.timeoutSec) ||
+    prompt.timeoutSec <= 0 ||
+    mockGameState.promptIssuedAtMs == null
+  ) {
+    return false
+  }
+
+  return Date.now() - mockGameState.promptIssuedAtMs > prompt.timeoutSec * 1000
+}
+
+const clearMockPrompt = () => {
+  mockGameState.prompt = null
+  mockGameState.promptIssuedAtMs = null
+}
+
+const emitPromptResponseRejected = ({
+  actionId,
+  promptId,
+  code,
+  message,
+}: {
+  actionId: string
+  promptId: string
+  code:
+    | 'PROMPT_NOT_FOUND'
+    | 'PROMPT_EXPIRED'
+    | 'INVALID_PROMPT_CHOICE'
+    | 'NOT_PROMPT_OWNER'
+    | 'INVALID_PHASE'
+  message: string
+}) => {
+  emitGameError({
+    code,
+    message,
+    actionId,
+  })
+
+  emitGameAck({
+    actionId,
+    type: PROMPT_RESPONSE_ACK_TYPE,
+    ok: false,
+    promptId,
+    error: {
+      code,
+      message,
+    },
+  })
+}
+
+export const mockDevSetPromptForTest = (prompt: GamePrompt | null) => {
+  if (prompt) {
+    mockGameState.prompt = structuredClone(prompt)
+    mockGameState.promptIssuedAtMs = Date.now()
+    mockGameState.phase = 'prompt'
+    return
+  }
+
+  clearMockPrompt()
+}
+
+export const mockDevSetPhaseForTest = (phase: GameSnapshot['phase']) => {
+  mockGameState.phase = phase
+}
+
+export const mockDevSetRevisionForTest = (revision: number) => {
+  if (!Number.isFinite(revision)) {
+    return
+  }
+
+  mockGameState.revision = Math.max(1, Math.trunc(revision))
 }
 
 const handleRollDiceAction = (
   action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'roomId' | 'gameId'>
+    Pick<MockGameActionPayload, 'gameId'>
 ) => {
   const currentPlayer = getCurrentPlayer()
 
@@ -289,7 +456,7 @@ const handleRollDiceAction = (
     revision,
   })
 
-  emitSnapshotPatch(action.roomId, action.gameId, [
+  emitSnapshotPatch(action.gameId, [
     {
       type: 'DICE_ROLLED',
       playerId: currentPlayer.id,
@@ -314,7 +481,7 @@ const handleRollDiceAction = (
 
 const handleBuyPropertyAction = (
   action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
+    Pick<MockGameActionPayload, 'gameId' | 'payload'>
 ) => {
   const tileIndex = Number(action.payload?.tileId)
   const player = getCurrentPlayer()
@@ -371,7 +538,7 @@ const handleBuyPropertyAction = (
     revision,
   })
 
-  emitSnapshotPatch(action.roomId, action.gameId, [
+  emitSnapshotPatch(action.gameId, [
     {
       type: 'BOUGHT_PROPERTY',
       playerId: player.id,
@@ -383,7 +550,7 @@ const handleBuyPropertyAction = (
 
 const handleSellPropertyAction = (
   action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'roomId' | 'gameId' | 'payload'>
+    Pick<MockGameActionPayload, 'gameId' | 'payload'>
 ) => {
   const tileIndex = Number(action.payload?.tileId)
   const buildingLevel =
@@ -441,7 +608,7 @@ const handleSellPropertyAction = (
     revision,
   })
 
-  emitSnapshotPatch(action.roomId, action.gameId, [
+  emitSnapshotPatch(action.gameId, [
     {
       type: 'SOLD_PROPERTY',
       playerId: player.id,
@@ -457,7 +624,7 @@ const handleSellPropertyAction = (
 
 const handleEndTurnAction = (
   action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'roomId' | 'gameId'>
+    Pick<MockGameActionPayload, 'gameId'>
 ) => {
   advanceMockTurn()
   mockGameState.phase = 'rolling'
@@ -470,7 +637,7 @@ const handleEndTurnAction = (
     revision,
   })
 
-  emitSnapshotPatch(action.roomId, action.gameId, [
+  emitSnapshotPatch(action.gameId, [
     {
       type: 'TURN_ENDED',
       playerId: mockGameState.currentTurn,
@@ -479,31 +646,89 @@ const handleEndTurnAction = (
 }
 
 export const mockEmitGameSync = ({
-  roomId,
   gameId,
   knownRevision,
 }: MockGameSyncPayload) => {
+  const resolvedGameId = resolveRequiredGameId({ gameId })
+  if (!resolvedGameId) {
+    return
+  }
+
   if (knownRevision === 0) {
     resetMockGameState()
   }
 
   setTimeout(() => {
-    emitSnapshotPatch(roomId, gameId)
+    const serverRevision = mockGameState.revision
+    const normalizedKnownRevision =
+      typeof knownRevision === 'number' && Number.isFinite(knownRevision)
+        ? Math.trunc(knownRevision)
+        : null
+
+    if (normalizedKnownRevision == null || normalizedKnownRevision <= 0) {
+      emitSnapshotPatch(resolvedGameId)
+      return
+    }
+
+    const revisionGap = serverRevision - normalizedKnownRevision
+
+    if (
+      normalizedKnownRevision > serverRevision ||
+      revisionGap > SYNC_SNAPSHOT_GAP_THRESHOLD
+    ) {
+      emitSnapshotPatch(resolvedGameId)
+      return
+    }
+
+    if (revisionGap === 0) {
+      emitGamePatch({
+        revision: serverRevision,
+        patch: [],
+        events: [
+          {
+            type: 'SYNCED',
+            payload: {
+              knownRevision: normalizedKnownRevision,
+              serverRevision,
+            },
+          },
+        ],
+      })
+      return
+    }
+
+    emitGamePatch({
+      revision: serverRevision,
+      patch: buildStatePatch(resolvedGameId),
+      events: [
+        {
+          type: 'SYNCED',
+          payload: {
+            knownRevision: normalizedKnownRevision,
+            serverRevision,
+            mode: 'DIFF',
+          },
+        },
+      ],
+    })
   }, 0)
 }
 
 export const mockEmitGameAction = ({
   actionId = `mock-action-${Date.now()}`,
   type,
-  roomId,
   gameId,
   payload,
 }: MockGameActionPayload) => {
+  const resolvedGameId = resolveRequiredGameId({ gameId, actionId, type })
+  if (!resolvedGameId) {
+    return actionId
+  }
+
   const action = {
     actionId,
     type,
-    roomId,
-    gameId,
+    gameId: resolvedGameId,
     payload,
   }
 
@@ -542,30 +767,94 @@ export const mockEmitGameAction = ({
   return actionId
 }
 
-export const mockEmitPromptResponse = (response: GamePromptResponse) => {
-  if (mockGameState.prompt?.id !== response.promptId) {
-    emitGameError({
+export const mockEmitPromptResponse = ({
+  gameId,
+  promptId,
+  choice,
+}: MockPromptResponsePayload) => {
+  const actionId = `${PROMPT_RESPONSE_ACTION_PREFIX}-${Date.now()}`
+  const resolvedGameId = resolveRequiredGameId({
+    gameId,
+    actionId,
+    type: PROMPT_RESPONSE_ACK_TYPE,
+  })
+
+  if (!resolvedGameId) {
+    return
+  }
+
+  const activePrompt = mockGameState.prompt
+  if (!activePrompt || activePrompt.id !== promptId) {
+    emitPromptResponseRejected({
+      actionId,
+      promptId,
       code: 'PROMPT_NOT_FOUND',
       message: '유효하지 않은 prompt 응답입니다.',
     })
     return
   }
 
-  mockGameState.prompt = null
+  if (mockGameState.phase !== 'prompt') {
+    emitPromptResponseRejected({
+      actionId,
+      promptId,
+      code: 'INVALID_PHASE',
+      message: 'prompt를 처리할 수 없는 phase입니다.',
+    })
+    return
+  }
+
+  if (
+    activePrompt.playerId != null &&
+    String(activePrompt.playerId) !== String(mockGameState.currentTurn)
+  ) {
+    emitPromptResponseRejected({
+      actionId,
+      promptId,
+      code: 'NOT_PROMPT_OWNER',
+      message: '현재 플레이어는 해당 prompt 응답 권한이 없습니다.',
+    })
+    return
+  }
+
+  if (isPromptExpired(activePrompt)) {
+    clearMockPrompt()
+    emitPromptResponseRejected({
+      actionId,
+      promptId,
+      code: 'PROMPT_EXPIRED',
+      message: 'prompt 응답 유효시간이 만료되었습니다.',
+    })
+    return
+  }
+
+  const normalizedChoice = normalizePromptChoice(choice)
+  const allowedChoices = resolvePromptAllowedChoices(activePrompt)
+  if (!normalizedChoice || !allowedChoices?.includes(normalizedChoice)) {
+    emitPromptResponseRejected({
+      actionId,
+      promptId,
+      code: 'INVALID_PROMPT_CHOICE',
+      message: '허용되지 않은 prompt choice입니다.',
+    })
+    return
+  }
+
+  clearMockPrompt()
   const revision = nextRevision()
 
   emitGameAck({
-    actionId: `prompt-response-${Date.now()}`,
-    type: 'PROMPT_RESPONSE',
+    actionId,
+    type: PROMPT_RESPONSE_ACK_TYPE,
     ok: true,
     revision,
-    promptId: response.promptId,
+    promptId,
   })
 
-  emitSnapshotPatch(undefined, undefined, [
+  emitSnapshotPatch(resolvedGameId, [
     {
       type: 'PROMPT_RESPONSE',
-      payload: { choice: response.choice },
+      payload: { choice: normalizedChoice, promptId },
     },
   ])
 }
