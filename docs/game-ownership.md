@@ -88,15 +88,15 @@
 
 - 새 이벤트 계약용 타입/store/socket/mock 골격 반영
 - `GamePage.tsx`의 store 단일 상태 렌더 구조 1차 정리
-- `GameBoard.tsx` 내부 액션/동기화/거래 로직 분리 착수
+- `GameBoard.tsx`의 `prompt.type` 기반 모달 소비 및 `emitPromptResponse` 연결
+- `gameBoardActionHandlers` non-mock 경로 BUY/BUILD/SELL/END_TURN `emitGameAction` 전환
 
 남은 것:
 
-- `prompt/ack/error/pendingAction`의 실제 UI 연결
-- `game:prompt_response` 기반 사용자 응답 흐름 정리
-- 남아 있는 게임 REST fallback 추가 축소
-- `gameId` 중심 식별자 정리
-- money unit, tile/building enum 기준 문서와 코드의 최종 정렬
+- `gameId` 중심 식별자 정리(`game:action`/`game:sync`/`game:prompt_response`)
+- ActionType에서 건설 처리(`BUILD_PROPERTY` 유지 여부) 백엔드 최종 합의
+- prompt/snapshot 필드(`id/promptId`, `timeoutSec/timeoutMs`) 계약 고정
+- money unit, tile/building enum 기준 문서-코드-백엔드 최종 정렬
 
 ### FE-C 현재 단계
 
@@ -109,16 +109,14 @@
 
 ## 7. 현재 다음 우선순위
 
-중앙 docs와 현재 코드 상태 기준으로, FE-B의 다음 작업은 `prompt/ack` UI 연결이다.
+중앙 docs와 현재 코드 상태 기준으로, FE-B의 다음 작업은 **백엔드 계약 최종 고정 + 식별자 canonical 정리**다.
 
-- `src/components/game/modals/*`
-  - `gameStore.prompt`를 실제 modal 열림 조건과 연결
-- `src/pages/GamePage.tsx`
-  - `pendingAction`, `lastAck`, `lastError`를 버튼/상태 문구/실패 메시지와 연결
-- `src/components/board/GameBoard.tsx`
-  - 기존 로컬 modal 분기를 `game:prompt` 소비 구조로 전환
-- `src/services/socket/game.handler.ts`
-  - `emitPromptResponse`가 실사용 UI 흐름에서 호출되도록 정리
+- `src/services/socket/game.handler.ts`, `src/hooks/game/useGameState.ts`
+  - emit payload의 `gameId` canonical 사용 범위 정렬
+- `src/components/board/gameBoardActionHandlers.ts`
+  - 건설 액션 타입(`BUILD_PROPERTY` vs `BUY_PROPERTY`) 확정 결과 반영
+- `src/types/domain.ts`, `src/pages/GamePage.tsx`
+  - prompt/snapshot 최종 필드명(`promptId`, `timeoutMs` 등) 고정값 반영
 
 ## 8. 작업 충돌 방지 규칙
 
