@@ -11,16 +11,16 @@ export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
   const currentTurn = useGameStore((state) => state.currentTurn)
 
   return useCallback(
-    (roomId: string | null) => {
-      if (!roomId) {
+    (gameId: string | null) => {
+      if (!gameId) {
         return
       }
 
       // Prefer server-authoritative roll via socket.
-      if (!USE_GAME_SOCKET_MOCK && socket.connected && currentTurn) {
+      if (!USE_GAME_SOCKET_MOCK && socket.connected && currentTurn !== null) {
         emitGameAction({
           type: 'ROLL_DICE',
-          roomId,
+          gameId,
         })
         return
       }

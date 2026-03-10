@@ -28,9 +28,9 @@ interface TollResolvedPayload {
 }
 
 interface CreateGameBoardActionHandlersParams {
-  roomId: string | null
+  gameId: string | null
   useGameSocketMock: boolean
-  roomIdRequiredMessage: string
+  gameIdRequiredMessage: string
   setStatus: Dispatch<SetStateAction<string>>
   setBuyModal: Dispatch<SetStateAction<BuyModalState>>
   setBuildModal: Dispatch<SetStateAction<BuildModalState>>
@@ -58,9 +58,9 @@ export function createGameBoardActionHandlers(
   params: CreateGameBoardActionHandlersParams
 ) {
   const {
-    roomId,
+    gameId,
     useGameSocketMock,
-    roomIdRequiredMessage,
+    gameIdRequiredMessage,
     setStatus,
     setBuyModal,
     setBuildModal,
@@ -84,14 +84,14 @@ export function createGameBoardActionHandlers(
     type: string,
     payload?: Record<string, unknown>
   ): boolean {
-    if (!roomId) {
-      setStatus(roomIdRequiredMessage)
+    if (!gameId) {
+      setStatus(gameIdRequiredMessage)
       return false
     }
 
     emitGameAction({
       type,
-      roomId,
+      gameId,
       payload,
     })
     return true
@@ -211,7 +211,7 @@ export function createGameBoardActionHandlers(
     if (tileId === null) return
 
     if (!useGameSocketMock) {
-      const emitted = emitSocketAction('BUILD_PROPERTY', {
+      const emitted = emitSocketAction('BUY_PROPERTY', {
         tileId,
       })
       if (!emitted) {

@@ -106,7 +106,7 @@ const AI_PENALTY_RESULTS = [
 
 const DEFAULT_OPPONENT_NAME = '상대방'
 const GAME_START_STATUS = '게임 시작!'
-const ROOM_ID_REQUIRED_MESSAGE = '게임 방 식별자를 찾을 수 없습니다.'
+const GAME_ID_REQUIRED_MESSAGE = '게임 식별자를 찾을 수 없습니다.'
 const BOARD_GRID_BASE_SIZE = CORNER_SIZE * 2 + STRAIGHT_SIZE * 7 + GRID_GAP * 8
 const BOARD_INNER_PADDING = 10 * 2
 const BOARD_INNER_BORDER = 4 * 2
@@ -220,7 +220,7 @@ export interface BoardGameHandle {
 }
 
 interface GameBoardProps {
-  roomId?: string | null
+  gameId?: string | null
   players: PlayerState[]
   curPlayer: number
   suppressDiceTimerModal?: boolean
@@ -288,7 +288,7 @@ function buildTileOwnersFromProps(
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     {
-      roomId = null,
+      gameId = null,
       players,
       curPlayer,
       suppressDiceTimerModal = false,
@@ -761,9 +761,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       handleBuildCancel,
       handleTollConfirm,
     } = createGameBoardActionHandlers({
-      roomId,
+      gameId,
       useGameSocketMock: USE_GAME_SOCKET_MOCK,
-      roomIdRequiredMessage: ROOM_ID_REQUIRED_MESSAGE,
+      gameIdRequiredMessage: GAME_ID_REQUIRED_MESSAGE,
       setStatus,
       setBuyModal,
       setBuildModal,
