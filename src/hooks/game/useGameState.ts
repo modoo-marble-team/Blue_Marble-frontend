@@ -9,15 +9,15 @@ import { useGameStore } from '../../stores/game.store'
 
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
-export const useGameState = (roomId: string | null) => {
-  const syncedRoomIdRef = useRef<string | null>(null)
+export const useGameState = (gameId: string | null) => {
+  const syncedGameIdRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!roomId) {
+    if (!gameId) {
       return
     }
 
-    const teardownHandlers = setupGameHandlers({ roomId })
+    const teardownHandlers = setupGameHandlers({ gameId })
 
     // mock 환경에서는 공유 소켓이 불필요하게 재연결되지 않도록 차단한다.
     if (USE_GAME_SOCKET_MOCK) {
@@ -27,17 +27,17 @@ export const useGameState = (roomId: string | null) => {
     }
 
     const syncGameState = () => {
-      const roomChanged = syncedRoomIdRef.current !== roomId
+      const gameChanged = syncedGameIdRef.current !== gameId
       const { players, revision } = useGameStore.getState()
 
-      // 같은 방에서 이미 상태를 들고 있으면 초기 동기화를 반복하지 않는다.
-      if (!roomChanged && players.length > 0) return
+      // 같은 게임에서 이미 상태를 들고 있으면 초기 동기화를 반복하지 않는다.
+      if (!gameChanged && players.length > 0) return
 
       emitGameSync({
-        roomId,
-        knownRevision: roomChanged ? 0 : revision,
+        gameId,
+        knownRevision: gameChanged ? 0 : revision,
       })
-      syncedRoomIdRef.current = roomId
+      syncedGameIdRef.current = gameId
     }
 
     syncGameState()
@@ -45,7 +45,7 @@ export const useGameState = (roomId: string | null) => {
     return () => {
       teardownHandlers()
     }
-  }, [roomId])
+  }, [gameId])
 
   return {}
 }
