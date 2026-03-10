@@ -61,11 +61,10 @@ interface GamePageLocationState {
 }
 
 const GamePage: React.FC = () => {
-  const { gameId } = useParams<{ gameId: string }>()
+  const { gameId: routeGameId } = useParams<{ gameId: string }>()
   const location = useLocation()
   const locationState = location.state as GamePageLocationState | null
-  const activeRoomId = locationState?.roomId ?? gameId ?? null
-  const session = useAuthStore((state) => state.session)
+  const authSession = useAuthStore((state) => state.session)
   const {
     currentTurn,
     messages,
@@ -77,10 +76,18 @@ const GamePage: React.FC = () => {
     pendingAction,
     lastAck,
     lastError,
+    session: gameSession,
     gameId: storeGameId,
     clearPrompt,
     setLastError,
   } = useGameStore()
+  const activeGameId =
+    locationState?.gameId ??
+    routeGameId ??
+    storeGameId ??
+    gameSession.gameId ??
+    null
+  const activeRoomId = locationState?.roomId ?? gameSession.roomId ?? null
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
@@ -91,12 +98,13 @@ const GamePage: React.FC = () => {
   })
   const boardRef = useRef<BoardGameHandle>(null)
 
-  useGameState(activeRoomId)
+  useGameState(activeGameId)
 
   const currentUserId =
-    session?.userId ?? (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_PLAYER_ID : null)
+    authSession?.userId ??
+    (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_PLAYER_ID : null)
   const currentNickname =
-    session?.nickname ??
+    authSession?.nickname ??
     (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_NICKNAME : 'Guest')
   const normalizedCurrentTurn =
     USE_GAME_SOCKET_MOCK &&
@@ -229,7 +237,7 @@ const GamePage: React.FC = () => {
 
     setPromptSubmittingChoice(choice)
     emitPromptResponse({
-      gameId: storeGameId ?? gameId ?? null,
+      gameId: activeGameId,
       promptId: prompt.id,
       choice,
     })
@@ -304,7 +312,7 @@ const GamePage: React.FC = () => {
           >
             <BoardGame
               ref={boardRef}
-              roomId={activeRoomId ?? ''}
+              gameId={activeGameId}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
               suppressDiceTimerModal={isExitModalOpen}
@@ -356,7 +364,7 @@ const GamePage: React.FC = () => {
           <RollButton
             timeLeft={timeLeft}
             isMyTurn={isMyTurn && !isActionPending && !isPromptVisible}
-            onRoll={() => diceRoll(activeRoomId)}
+            onRoll={() => diceRoll(activeGameId)}
           />
         )}
       </div>
