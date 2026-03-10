@@ -1,0 +1,22 @@
+{
+  "sourceFile": "src/components/board/BuildingBadge.tsx",
+  "activeCommit": 0,
+  "commits": [
+    {
+      "activePatchIndex": 1,
+      "patches": [
+        {
+          "date": 1773134081377,
+          "content": "Index: \n===================================================================\n--- \n+++ \n"
+        },
+        {
+          "date": 1773134101875,
+          "content": "Index: \n===================================================================\n--- \n+++ \n@@ -89,10 +89,10 @@\n       <img\n         src={src}\n         alt={`building-level-${level}`}\n         style={{\n-          width: ,\n-          height: 26,\n+          width: 35,\n+          height: 28,\n           objectFit: 'contain',\n           display: 'block',\n         }}\n         onError={(e) => {\n"
+        }
+      ],
+      "date": 1773134081377,
+      "name": "Commit-0",
+      "content": "import React from 'react'\nimport { PLAYER_COLORS } from './board.constants'\n\ninterface BuildingBadgeProps {\n  level: number\n  ownerColor?: string\n  isUrgent?: boolean\n  showLandAtLevelZero?: boolean\n}\n\nconst RED_THEME = { folder: 'red-building-Icon', prefix: 'red' }\nconst BLUE_THEME = { folder: 'blue-building-Icon', prefix: 'blue' }\nconst GREEN_THEME = { folder: 'green-building-Icon', prefix: 'green' }\nconst YELLOW_THEME = { folder: 'yellow-building-Icon', prefix: 'yellow' }\nconst LAND_ICON_SRC = '/BuyModal-land.svg'\n\nconst COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {\n  '#EF5350': RED_THEME,\n  '#EF4444': RED_THEME,\n  '#FF0000': RED_THEME,\n  RED: RED_THEME,\n  '#42A5F5': BLUE_THEME,\n  '#3B82F6': BLUE_THEME,\n  '#0000FF': BLUE_THEME,\n  BLUE: BLUE_THEME,\n  '#66BB6A': GREEN_THEME,\n  '#22C55E': GREEN_THEME,\n  '#00FF00': GREEN_THEME,\n  GREEN: GREEN_THEME,\n  '#FFD15B': YELLOW_THEME,\n  '#EAB308': YELLOW_THEME,\n  '#FFFF00': YELLOW_THEME,\n  YELLOW: YELLOW_THEME,\n}\n\nconst BUILDING_SUFFIX: Partial<Record<number, string>> = {\n  1: '-house.svg',\n  2: '-second-house-upgrade.svg',\n  3: '-third-house-upgrade.svg',\n  4: '-hotel.svg',\n  5: '-second-hotel-upgrade.svg',\n  6: '-third-hotel-upgrade.svg',\n  7: '-landmark.svg',\n}\n\nconst BuildingBadge: React.FC<BuildingBadgeProps> = ({\n  level,\n  ownerColor,\n  isUrgent = false,\n  showLandAtLevelZero = true,\n}) => {\n  if (level < 0 || level > 7) return null\n  if (level === 0 && !showLandAtLevelZero) return null\n\n  const rawPathColor = ownerColor || PLAYER_COLORS[0]\n  const normalizedColor = rawPathColor.trim().toUpperCase()\n  const theme = COLOR_TO_THEME[normalizedColor] ?? RED_THEME\n  const suffix = BUILDING_SUFFIX[level]\n  const src =\n    level === 0\n      ? LAND_ICON_SRC\n      : suffix\n        ? `/${theme.folder}/${theme.prefix}${suffix}`\n        : null\n\n  if (!src) return null\n\n  return (\n    <div\n      style={{\n        width: 34,\n        height: 34,\n        display: 'flex',\n        alignItems: 'center',\n        justifyContent: 'center',\n        animation: isUrgent ? 'pulse-urgent 1s infinite' : 'none',\n      }}\n    >\n      <style>\n        {`\n          @keyframes pulse-urgent {\n            0% { transform: scale(1); }\n            50% { transform: scale(1.08); }\n            100% { transform: scale(1); }\n          }\n        `}\n      </style>\n\n      <img\n        src={src}\n        alt={`building-level-${level}`}\n        style={{\n          width: ,\n          height: 26,\n          objectFit: 'contain',\n          display: 'block',\n        }}\n        onError={(e) => {\n          console.error('Failed to load building icon:', src)\n          e.currentTarget.style.display = 'none'\n          const fallback = e.currentTarget\n            .nextElementSibling as HTMLElement | null\n          if (fallback) fallback.style.display = 'flex'\n        }}\n      />\n      <span\n        style={{\n          display: 'none',\n          alignItems: 'center',\n          justifyContent: 'center',\n          fontSize: 10,\n          fontWeight: 700,\n          color: ownerColor ?? '#2b7fff',\n        }}\n      >\n        {level}\n      </span>\n    </div>\n  )\n}\n\nexport default BuildingBadge\n"
+    }
+  ]
+}

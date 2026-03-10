@@ -201,7 +201,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
         <TileIcon tile={tile} size={28} />
         <span
           style={{
-            fontSize: 9,
+            fontSize: 11,
             fontWeight: 800,
             color: '#374151',
             textAlign: 'center',
@@ -263,20 +263,20 @@ const BoardTile: React.FC<BoardTileProps> = ({
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: isProperty ? 'flex-start' : 'center',
-              padding: isProperty ? '8px 3px' : '2px 3px',
+              padding: isProperty ? '4px 3px' : '2px 3px',
             }}
           >
             {isProperty && (
               <span
                 style={{
-                  fontSize: 9,
+                  fontSize: 15,
                   fontWeight: 800,
                   color: '#374151',
                   textAlign: 'center',
                   lineHeight: '14px',
                   height: 14,
                   marginTop: 2,
-                  marginBottom: 0,
+                  marginBottom: -1,
                   display: 'flex',
                   alignItems: 'center',
                 }}
@@ -301,11 +301,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 <div
                   style={{
                     flex: 1,
-                    minHeight: 34,
+                    minHeight: 30,
                     width: '100%',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     justifyContent: 'center',
+                    paddingTop: 2,
                   }}
                 >
                   {hasBuilding && (
@@ -320,11 +321,11 @@ const BoardTile: React.FC<BoardTileProps> = ({
                   style={{
                     backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
                     color: tileOwner ? '#1E293B' : '#64748B',
-                    fontSize: 7,
+                    fontSize: 10,
                     fontWeight: 900,
                     padding: '2px 5px',
                     borderRadius: 10,
-                    marginBottom: 4,
+                    marginBottom: -1,
                   }}
                 >
                   {tileOwner
@@ -403,11 +404,11 @@ const BoardTile: React.FC<BoardTileProps> = ({
               <>
                 <span
                   style={{
-                    fontSize: 9,
+                    fontSize: 15,
                     fontWeight: 800,
                     lineHeight: '14px',
                     height: 14,
-                    marginBottom: 0,
+                    marginBottom: 1,
                     display: 'flex',
                     alignItems: 'center',
                   }}
@@ -416,11 +417,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 </span>
                 <div
                   style={{
-                    height: 30,
+                    height: 28,
                     width: '100%',
                     display: 'flex',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     justifyContent: 'center',
+                    paddingTop: 2,
                   }}
                 >
                   {hasBuilding && (
@@ -435,11 +437,11 @@ const BoardTile: React.FC<BoardTileProps> = ({
                   style={{
                     backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
                     color: tileOwner ? '#1E293B' : '#64748B',
-                    fontSize: 7,
+                    fontSize: 10,
                     fontWeight: 900,
                     padding: '2px 5px',
                     borderRadius: 10,
-                    marginTop: 4,
+                    marginTop: 0,
                   }}
                 >
                   {tileOwner

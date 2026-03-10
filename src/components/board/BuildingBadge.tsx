@@ -68,13 +68,8 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({
   return (
     <div
       style={{
-        width: 24,
-        height: 24,
-        borderRadius: '50%',
-        backgroundColor: 'rgba(255,255,255,0.92)',
-        boxShadow: isUrgent
-          ? '0 0 10px #EF5350, 0 1px 5px rgba(0,0,0,0.25)'
-          : '0 1px 5px rgba(0,0,0,0.25)',
+        width: 34,
+        height: 34,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -85,7 +80,7 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({
         {`
           @keyframes pulse-urgent {
             0% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            50% { transform: scale(1.08); }
             100% { transform: scale(1); }
           }
         `}
@@ -95,8 +90,8 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({
         src={src}
         alt={`building-level-${level}`}
         style={{
-          width: 16,
-          height: 16,
+          width: 35,
+          height: 35,
           objectFit: 'contain',
           display: 'block',
         }}

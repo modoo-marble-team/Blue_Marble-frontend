@@ -306,7 +306,7 @@ const GamePage: React.FC = () => {
           <div
             className="aspect-square w-full overflow-hidden rounded-[48px] border-white shadow-[0_50px_100px_-20px_rgba(30,58,138,0.3)]"
             style={{
-              maxWidth: 'min(1100px, calc(100vh - 190px), calc(100vw - 760px))',
+              maxWidth: 'min(1380px, calc(100vh - 140px), calc(100vw - 660px))',
               borderWidth: '8px',
             }}
           >
