@@ -317,13 +317,17 @@ const GamePage: React.FC = () => {
         </div>
 
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
-          {boardPlayers
+          {[...boardPlayers]
             .map((player, index) => ({ ...player, originalIndex: index }))
             .sort((left, right) => {
               const leftBankrupt = left.money <= 0 ? 1 : 0
               const rightBankrupt = right.money <= 0 ? 1 : 0
               if (leftBankrupt !== rightBankrupt) {
                 return leftBankrupt - rightBankrupt
+              }
+
+              if (left.money !== right.money) {
+                return right.money - left.money
               }
 
               return left.originalIndex - right.originalIndex
