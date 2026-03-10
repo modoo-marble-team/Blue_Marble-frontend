@@ -337,10 +337,7 @@ export const emitGameAction = ({
   return actionId
 }
 
-export const emitGameSync = ({
-  gameId,
-  knownRevision,
-}: GameSyncPayload) => {
+export const emitGameSync = ({ gameId, knownRevision }: GameSyncPayload) => {
   const resolvedGameId = getResolvedGameId(gameId)
   if (!resolvedGameId) {
     useGameStore.getState().setLastError(GAME_ID_REQUIRED_ERROR)
@@ -380,6 +377,7 @@ export const emitPromptResponse = ({
 
   if (USE_GAME_SOCKET_MOCK) {
     mockEmitPromptResponse({
+      gameId: resolvedGameId,
       promptId,
       choice: normalizedChoice,
     })
@@ -394,7 +392,10 @@ export const emitPromptResponse = ({
 }
 
 // Deprecated compatibility wrapper until all callers move to emitGameAction.
-export const emitRollDice = (payload: { room_id: string; game_id?: string }) => {
+export const emitRollDice = (payload: {
+  room_id: string
+  game_id?: string
+}) => {
   emitGameAction({
     type: 'ROLL_DICE',
     gameId: payload.game_id ?? payload.room_id,
