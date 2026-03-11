@@ -227,7 +227,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'GoormEE',
     color: PLAYER_COLORS[0],
     pos: 0,
-    money: 1000000000,
+    money: 5000000000,
     skipTurns: 0,
   },
   {
@@ -235,7 +235,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'MarbleKing',
     color: PLAYER_COLORS[1],
     pos: 0,
-    money: 1000000000,
+    money: 5000000000,
     skipTurns: 0,
   },
   {
@@ -243,7 +243,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'Player 3',
     color: PLAYER_COLORS[2],
     pos: 0,
-    money: 1000000000,
+    money: 5000000000,
     skipTurns: 0,
   },
   {
@@ -251,7 +251,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'Player 4',
     color: PLAYER_COLORS[3],
     pos: 0,
-    money: 1000000000,
+    money: 5000000000,
     skipTurns: 0,
   },
 ]
