@@ -16,8 +16,12 @@ export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
         return
       }
 
-      // Prefer server-authoritative roll via socket.
-      if (!USE_GAME_SOCKET_MOCK && socket.connected && currentTurn !== null) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        // Real server mode must stay authoritative; never fallback to local roll.
+        if (!socket.connected || currentTurn === null) {
+          return
+        }
+
         emitGameAction({
           type: 'ROLL_DICE',
           gameId,
@@ -25,7 +29,7 @@ export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
         return
       }
 
-      // Fallback for local/mock flow.
+      // Local roll is allowed only in socket-mock mode.
       boardRef.current?.rollDice()
     },
     [boardRef, currentTurn]
