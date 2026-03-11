@@ -824,6 +824,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { playerIdx, onDoneCallback } = bankruptModal
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
 
+      // 💥 파산 소리 재생
+      new Audio('/audio/bankrupt.mp3').play().catch(() => {})
+
       bankruptSetRef.current.add(playerIdx)
       const bankruptPlayerId = getPlayerIdByIndex(playerIdx)
 
@@ -945,6 +948,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       lock.current = true
       setRolling(true)
 
+      // 🎲 주사위 굴리는 소리 재생
+      const diceAudio = new Audio('/audio/dice-roll.mp3')
+      diceAudio.volume = 0.5
+      diceAudio.play().catch(() => {
+        // 자동재생 차단 시 조용히 무시
+      })
+
       let count = 0
       let f1 = 1
       let f2 = 1
@@ -960,6 +970,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           clearInterval(iv)
           setRolling(false)
           lock.current = false
+
+          // 소리 정지
+          diceAudio.pause()
+          diceAudio.currentTime = 0
+
           handleDiceResult(f1, f2, onDone)
         }
       }, 80)
@@ -1238,6 +1253,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         },
         { notifyParent: true }
       )
+
+      // 💰 인수 파트 소리 재생
+      new Audio('/audio/transaction.mp3').play().catch(() => {})
 
       advanceTurn(onDoneCallback)
     }

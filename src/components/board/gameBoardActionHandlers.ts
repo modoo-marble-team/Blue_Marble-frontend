@@ -150,6 +150,9 @@ export function createGameBoardActionHandlers(
     )
     applyMoney(playerIdx, +refund)
 
+    // 💰 매각 파트 소리 재생
+    new Audio('/audio/transaction.mp3').play().catch(() => {})
+
     return true
   }
 
@@ -188,6 +191,10 @@ export function createGameBoardActionHandlers(
         }),
         { notifyParent: true }
       )
+
+      // 💰 매수 파트 소리 재생
+      new Audio('/audio/transaction.mp3').play().catch(() => {})
+
       advanceTurn(onDoneCallback)
     }
   }
