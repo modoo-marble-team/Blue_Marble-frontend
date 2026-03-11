@@ -147,6 +147,7 @@
 - `src/components/board/gameBoardActionHandlers.ts`: non-mock 경로에서 BUY/BUILD/SELL/END_TURN를 `emitGameAction`으로 송신
 - `src/services/game/game.api.ts`: 레거시 게임 REST 모듈 삭제 완료
 - `src/mocks/handlers/game.handler.test.ts`: 한 턴 계약 시나리오(`action -> ack -> patch -> prompt_response`) 테스트 추가
+- `src/mocks/handlers/game.handler.ts`: `gameId` fallback 제거 및 prompt choice canonical 검증 경로 강화(`#362`)
 
 남은 핵심 축 — **중앙 docs 대비 런타임 정합성**:
 
@@ -187,11 +188,13 @@
 - `emitGameAction`/`emitGameSync`/`emitPromptResponse` 호출부를 `gameId` 기준으로 정리
 - `GameBoard` prompt 소비 경로의 로컬 fallback 분기 축소
 - 게임 런타임에서 REST 의존(`game.api`) 재도입 금지 유지
+- 실서버 payload 확정 시 `prompt`/`snapshot` 필드 어댑터를 최소 범위로 고정
 
 ### 5-3. mock 검증 흐름 유지
 
 - 한 턴 검증 시나리오: `sync → action(ROLL_DICE) → ack → patch(snapshot + events) → prompt → prompt_response → ack → patch`
 - `END_TURN` 흐름: `action(END_TURN) → ack → patch(TURN_ENDED)`
+- `CONFIRM_ONLY`/`BUY_OR_SKIP` canonical choice 검증 및 `gameId` 누락 거절 테스트 반영 완료
 
 ## 6. FE-C 우선 작업
 
