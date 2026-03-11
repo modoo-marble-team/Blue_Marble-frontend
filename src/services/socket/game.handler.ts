@@ -390,14 +390,3 @@ export const emitPromptResponse = ({
     choice: normalizedChoice,
   })
 }
-
-// Deprecated compatibility wrapper until all callers move to emitGameAction.
-export const emitRollDice = (payload: {
-  room_id: string
-  game_id?: string
-}) => {
-  emitGameAction({
-    type: 'ROLL_DICE',
-    gameId: payload.game_id ?? payload.room_id,
-  })
-}
