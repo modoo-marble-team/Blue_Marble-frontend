@@ -59,6 +59,13 @@ type MockGameActionPayload = {
   payload?: Record<string, unknown>
 }
 
+type MockResolvedGameAction = {
+  actionId: string
+  type: string
+  gameId: string
+  payload?: Record<string, unknown>
+}
+
 type MockGameSyncPayload = {
   gameId?: string | null
   knownRevision?: number
@@ -410,10 +417,7 @@ export const mockDevSetRevisionForTest = (revision: number) => {
   mockGameState.revision = Math.max(1, Math.trunc(revision))
 }
 
-const handleRollDiceAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId'>
-) => {
+const handleRollDiceAction = (action: MockResolvedGameAction) => {
   const currentPlayer = getCurrentPlayer()
 
   if (!currentPlayer) {
@@ -475,10 +479,7 @@ const handleRollDiceAction = (
   ])
 }
 
-const handleBuyPropertyAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId' | 'payload'>
-) => {
+const handleBuyPropertyAction = (action: MockResolvedGameAction) => {
   const tileIndex = Number(action.payload?.tileId)
   const player = getCurrentPlayer()
   const tile = getTileByIndex(tileIndex)
@@ -544,10 +545,7 @@ const handleBuyPropertyAction = (
   ])
 }
 
-const handleSellPropertyAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId' | 'payload'>
-) => {
+const handleSellPropertyAction = (action: MockResolvedGameAction) => {
   const tileIndex = Number(action.payload?.tileId)
   const buildingLevel =
     typeof action.payload?.buildingLevel === 'number'
@@ -618,10 +616,7 @@ const handleSellPropertyAction = (
   ])
 }
 
-const handleEndTurnAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId'>
-) => {
+const handleEndTurnAction = (action: MockResolvedGameAction) => {
   advanceMockTurn()
   mockGameState.phase = 'rolling'
   const revision = nextRevision()
@@ -721,7 +716,7 @@ export const mockEmitGameAction = ({
     return actionId
   }
 
-  const action = {
+  const action: MockResolvedGameAction = {
     actionId,
     type,
     gameId: resolvedGameId,
