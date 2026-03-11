@@ -18,16 +18,17 @@
 
 ## 진행도 요약
 
-| 파트 | 진행도  | 상태                                                                                                                      |
-| ---- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
-| FE-B | 진행 중 | prompt/ack 연결 및 event-socket 계약 전환 완료. `gameId` canonical/ActionType(건설)/prompt-snapshot 스키마 최종 고정 단계 |
-| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄이고 로컬 엔진 성격 로직을 제거해야 하는 단계                                         |
+| 파트 | 진행도  | 상태                                                                                                                   |
+| ---- | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| FE-B | 진행 중 | event-socket 계약 전환 + `game.api` 제거 + 한 턴 계약 시나리오 테스트(#298) 반영 완료. `#362`(MSW 계약 검증 강화) 단계 |
+| FE-C | 진행 중 | 보드를 표현/연출 중심 레이어로 더 줄이고 로컬 엔진 성격 로직을 제거해야 하는 단계                                      |
 
 ## FE-B 현재 최우선 작업
 
 - `game:action`/`game:sync`/`game:prompt_response`의 `gameId` canonical 사용 범위 고정
 - ActionType에서 건설 처리 방식(`BUILD_PROPERTY` 유지 여부) 백엔드 최종 합의
 - prompt/snapshot 필드(`id/promptId`, `timeoutSec/timeoutMs`) 최종 계약 고정
+- `#362` 범위로 MSW 소켓 계약 검증(식별자/choice/revision) 테스트 강화
 
 ## FE-C 현재 최우선 작업
 
@@ -40,7 +41,7 @@
 
 - `GamePage` + `GameBoard`는 `prompt.type` 소비 구조로 전환됐지만 mock fallback과 실서버 경로가 일부 이원화돼 있다.
 - `GameBoard.tsx`가 여전히 `applyMoney`/`advanceTurn`/파산 판정 등 게임 엔진 성격 로직을 들고 있다.
-- 게임 REST fallback이 장기화되면 중앙 docs 기준과 실제 런타임이 다시 벌어질 수 있다.
+- 레거시 REST(`game.api`)가 삭제된 이후, 소켓 계약 변경 시 회귀를 잡는 테스트 보강이 필요하다.
 - `gameId` canonical, money unit, prompt/snapshot 필드 기준이 문서와 코드에서 완전히 수렴하지 않았다.
 
 ## 작업 운영 규칙 (2026-03-05 추가)

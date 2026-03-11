@@ -247,4 +247,85 @@ describe('mock game socket handlers contract', () => {
 
     teardown()
   })
+
+  it('runs one-turn contract flow from game:action to prompt_response', async () => {
+    const { acks, errors, patches, teardown } = captureGameSocketEvents()
+
+    const gameId = 'game-turn-flow'
+    mockEmitGameSync({
+      gameId,
+      knownRevision: 0,
+    })
+    await flushMockTimers()
+
+    expect(patches).toHaveLength(1)
+    const syncRevision = patches[0].revision
+    expect(patches[0].snapshot?.gameId).toBe(gameId)
+
+    const rollActionId = 'action-roll-flow'
+    mockEmitGameAction({
+      actionId: rollActionId,
+      type: 'ROLL_DICE',
+      gameId,
+    })
+    await flushMockTimers()
+
+    const rollAck = acks.find((ack) => ack.actionId === rollActionId)
+    expect(rollAck).toBeDefined()
+    expect(rollAck).toMatchObject({
+      actionId: rollActionId,
+      type: 'ROLL_DICE',
+      ok: true,
+      revision: syncRevision + 1,
+    })
+
+    const rollPatch = patches.find(
+      (patch) => patch.revision === rollAck?.revision
+    )
+    expect(rollPatch).toBeDefined()
+    expect(rollPatch?.events?.map((event) => event.type)).toEqual(
+      expect.arrayContaining(['DICE_ROLLED', 'PLAYER_MOVED'])
+    )
+
+    const prompt: GamePrompt = {
+      id: 'prompt-turn-flow',
+      type: 'BUY_OR_SKIP',
+      playerId: rollPatch?.snapshot?.currentTurn ?? null,
+      timeoutSec: 30,
+    }
+    mockDevSetPromptForTest(prompt)
+
+    mockEmitPromptResponse({
+      gameId,
+      promptId: prompt.id,
+      choice: 'buy',
+    })
+    await flushMockTimers()
+
+    const promptAck = acks.find(
+      (ack) => ack.type === 'PROMPT_RESPONSE' && ack.promptId === prompt.id
+    )
+    expect(promptAck).toBeDefined()
+    expect(promptAck).toMatchObject({
+      type: 'PROMPT_RESPONSE',
+      ok: true,
+      promptId: prompt.id,
+    })
+
+    const promptPatch = patches.find(
+      (patch) => patch.revision === promptAck?.revision
+    )
+    expect(promptPatch).toBeDefined()
+    expect(promptPatch?.events?.[0]).toMatchObject({
+      type: 'PROMPT_RESPONSE',
+      payload: {
+        promptId: prompt.id,
+        choice: 'BUY',
+      },
+    })
+    expect(promptPatch?.snapshot?.prompt).toBeNull()
+    expect(errors).toHaveLength(0)
+
+    teardown()
+  })
 })

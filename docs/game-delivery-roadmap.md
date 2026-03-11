@@ -98,8 +98,8 @@
   새 명세 기준으로는 `game:ack`, `game:patch`, `game:prompt`, `game:error`만 처리하도록 바뀌어야 한다.
 
 - `src/services/game/game.api.ts`
-  현재는 `buy`, `build`, `sell`, `state` REST 액션이 중심이다.
-  중앙 docs `api.md` 기준으로 게임 로직은 `game:*` 소켓이 중심이므로, REST는 제거하거나 **이행 중 레거시 fallback으로 격리**해야 한다.
+  레거시 게임 REST 모듈은 삭제됐다.
+  중앙 docs `api.md` 기준으로 게임 로직은 `game:*` 소켓 경로를 단일 경로로 유지한다.
 
 - `src/hooks/game/useGameState.ts`
   현재는 진입 시 REST `getState`를 호출하고 기존 소켓 핸들러를 붙인다.
@@ -145,6 +145,8 @@
 - `src/mocks/handlers/game.handler.ts`: `game:ack` + `game:patch(snapshot)` 기반 mock 계약 정렬
 - `src/pages/GamePage.tsx`: prompt/ack/error/pendingAction UI 연결 완료
 - `src/components/board/gameBoardActionHandlers.ts`: non-mock 경로에서 BUY/BUILD/SELL/END_TURN를 `emitGameAction`으로 송신
+- `src/services/game/game.api.ts`: 레거시 게임 REST 모듈 삭제 완료
+- `src/mocks/handlers/game.handler.test.ts`: 한 턴 계약 시나리오(`action -> ack -> patch -> prompt_response`) 테스트 추가
 
 남은 핵심 축 — **중앙 docs 대비 런타임 정합성**:
 
@@ -184,7 +186,7 @@
 
 - `emitGameAction`/`emitGameSync`/`emitPromptResponse` 호출부를 `gameId` 기준으로 정리
 - `GameBoard` prompt 소비 경로의 로컬 fallback 분기 축소
-- `src/services/game/game.api.ts`는 레거시 fallback 유틸로만 격리 유지(직접 호출 금지)
+- 게임 런타임에서 REST 의존(`game.api`) 재도입 금지 유지
 
 ### 5-3. mock 검증 흐름 유지
 
