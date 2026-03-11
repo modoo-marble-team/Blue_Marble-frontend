@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { AppProviders } from './providers/AppProviders'
 import App from './App'
 import './index.css'
+import { SHOULD_ENABLE_MSW } from './config/env'
 
-// 개발 환경에서만 MSW를 활성화해 API 모킹 연결
+// 개발 서버 또는 배포 데모 모드에서만 MSW를 활성화해 API 모킹 연결
 async function enableMocking() {
-  // 배포 환경에서는 네트워크 요청을 그대로 사용
-  if (import.meta.env.DEV) {
+  // 일반 배포 환경에서는 네트워크 요청을 그대로 사용
+  if (SHOULD_ENABLE_MSW) {
     const { worker } = await import('./mocks/browser')
     return worker.start({
       onUnhandledRequest: 'bypass',
