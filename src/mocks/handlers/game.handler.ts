@@ -18,7 +18,6 @@ const MOCK_PLAYER_ID = 'mock-player-1'
 const MOCK_BUILD_COST = 30
 const MOCK_PASS_GO_SALARY = 200
 const MOCK_TURN_TIMEOUT_SEC = 30
-const MOCK_GAME_ID_FALLBACK = 'game-mock-room'
 const SYNC_SNAPSHOT_GAP_THRESHOLD = 200
 const PROMPT_RESPONSE_ACK_TYPE = 'PROMPT_RESPONSE'
 const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
@@ -100,9 +99,6 @@ const resetMockGameState = () => {
   mockGameState.promptIssuedAtMs = initialState.promptIssuedAtMs
 }
 
-const getMockGameId = (gameId?: string | null) =>
-  gameId ?? MOCK_GAME_ID_FALLBACK
-
 const buildStateResponse = () => ({
   players: structuredClone(mockGameState.players),
   tiles: structuredClone(mockGameState.tiles),
@@ -112,9 +108,9 @@ const buildStateResponse = () => ({
   revision: mockGameState.revision,
 })
 
-const buildSnapshot = (gameId?: string | null): GameSnapshot => ({
+const buildSnapshot = (gameId: string): GameSnapshot => ({
   roomId: null,
-  gameId: getMockGameId(gameId),
+  gameId,
   revision: mockGameState.revision,
   phase: mockGameState.phase,
   players: structuredClone(mockGameState.players),
@@ -314,7 +310,7 @@ const buildErrorResponse = (message: string, status: number) =>
   HttpResponse.json({ message }, { status })
 
 const emitSnapshotPatch = (
-  gameId?: string | null,
+  gameId: string,
   events?: GamePatchEnvelope['events']
 ) => {
   emitGamePatch({
