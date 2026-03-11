@@ -274,6 +274,8 @@
 - `src/types/domain.ts`: `GamePromptResponse.choice`, `GameAck.error`, `GamePatchEnvelope.gameId/turn` 반영 완료
 - `src/services/socket/game.handler.ts`: `emitGameSync(knownRevision)`, `emitPromptResponse(choice)` 반영 완료
 - `src/mocks/handlers/game.handler.ts`: `END_TURN`, camelCase payload, `BuildingLevel 0..7`, `ServerEventType` 정렬 반영 완료
+- `src/mocks/handlers/game.handler.ts`: snapshot/patch 경로의 `gameId` fallback 제거로 canonical 계약 고정
+- `src/mocks/handlers/game.handler.test.ts`: `gameId` 누락 sync/prompt_response 거절 및 `CONFIRM_ONLY` choice canonical 검증 케이스 추가
 - 남은 이슈는 BE와 최종 합의(`gameId` canonical, ActionType에서 건설 처리, prompt/snapshot 필드 고정)
 
 ### FE-C 버그 (수정 완료)
@@ -292,8 +294,8 @@
 
 **FE-B**
 
-1. 백엔드와 `gameId` canonical / ActionType(건설) / prompt 필드 / snapshot 스키마 최종 고정
-2. `#362` 범위로 MSW 소켓 계약 검증(식별자/choice/revision) 강화
+1. 실서버 연동 전 BE 최종 payload(`prompt`/`snapshot`)와 타입 필드 고정 확인
+2. `gameId` canonical / choice canonical 회귀 테스트 유지
 3. 문서와 타입의 `TURN_ENDED`/prompt/snapshot 표기 통일 유지
 
 **FE-C**
