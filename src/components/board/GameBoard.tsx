@@ -233,10 +233,6 @@ interface GameBoardProps {
     building: number
     level?: number
   }>
-  onPlayersChange?: (players: PlayerState[]) => void
-  onCurPlayerChange?: (idx: number) => void
-  onTileOwnersChange?: (tileOwners: Record<number, TileOwner>) => void
-  onBankrupt?: (playerIdx: number) => void
 }
 
 function toBoardBuildingLevel(
@@ -296,10 +292,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       promptSubmittingChoice = null,
       onPromptChoice,
       tiles = [],
-      onPlayersChange,
-      onCurPlayerChange,
-      onTileOwnersChange,
-      onBankrupt,
     },
     ref
   ) => {
@@ -707,20 +699,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setOptimisticTileOwners(next)
 
       if (options?.notifyParent) {
-        if (onTileOwnersChange) {
-          onTileOwnersChange(next)
-        } else {
-          syncMockStoreTileOwners(next)
-        }
+        syncMockStoreTileOwners(next)
       }
     }
 
     function publishPlayers(nextPlayers: PlayerState[]) {
-      if (onPlayersChange) {
-        onPlayersChange(nextPlayers)
-      } else {
-        syncMockStorePlayers(nextPlayers)
-      }
+      syncMockStorePlayers(nextPlayers)
     }
 
     function applyMoney(
@@ -728,6 +712,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       delta: number,
       onDoneCallback?: () => void
     ): boolean {
+      if (!USE_GAME_SOCKET_MOCK) {
+        onDoneCallback?.()
+        return false
+      }
+
       const updated = playersRef.current.map((p, i) => {
         if (i !== playerIdx) return p
         return { ...p, money: Math.max(0, p.money + delta) }
@@ -850,11 +839,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         { notifyParent: true }
       )
 
-      if (onBankrupt) {
-        onBankrupt(playerIdx)
-      } else {
-        syncMockStoreBankrupt(playerIdx)
-      }
+      syncMockStoreBankrupt(playerIdx)
 
       // Check for Game Over: Only one player not bankrupt
       const playerCount = playersRef.current.length || INIT_PLAYERS.length
@@ -874,6 +859,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function advanceTurn(onDone?: () => void) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        onDone?.()
+        return
+      }
+
       const playerCount = playersRef.current.length || INIT_PLAYERS.length
       let next = (curPlayerRef.current + 1) % playerCount
       let tries = 0
@@ -897,11 +887,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         publishPlayers(updatedPlayers)
 
         curPlayerRef.current = next
-        if (onCurPlayerChange) {
-          onCurPlayerChange(next)
-        } else {
-          syncMockStoreCurrentTurn(next)
-        }
+        syncMockStoreCurrentTurn(next)
 
         setTimeout(() => {
           advanceTurn(onDone)
@@ -910,11 +896,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       curPlayerRef.current = next
-      if (onCurPlayerChange) {
-        onCurPlayerChange(next)
-      } else {
-        syncMockStoreCurrentTurn(next)
-      }
+      syncMockStoreCurrentTurn(next)
       onDone?.()
     }
 
