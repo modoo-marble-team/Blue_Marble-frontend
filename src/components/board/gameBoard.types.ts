@@ -80,6 +80,11 @@ export interface GoToIslandModalState {
   onDoneCallback?: () => void
 }
 
+export interface IslandModalState {
+  open: boolean
+  onDoneCallback?: () => void
+}
+
 export type SyncStatePayload = {
   players?: Array<{
     id: string | number

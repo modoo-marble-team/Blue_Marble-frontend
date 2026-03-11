@@ -20,6 +20,7 @@ import BankruptModal from '../game/modals/BankruptModal'
 import DiceTimerModal from '../game/modals/DiceTimerModal'
 import GameResultModal from '../game/modals/GameResultModal'
 import GoToIslandModal from '../game/modals/GoToIslandModal'
+import IslandModal from '../game/modals/IslandModal'
 import {
   getPromptChoiceLabel,
   getPromptPayloadNumber,
@@ -66,11 +67,13 @@ import type {
   TollModalState,
   GameResultModalState,
   GoToIslandModalState,
+  IslandModalState,
 } from './gameBoard.types'
 import '../../styles/board.css'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
 import type { GamePrompt } from '../../types/domain'
+import { playLongSfx, stopLongSfx } from '../../lib/bgm'
 
 function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
   if (currentLevel === 0) return price * 0.5
@@ -691,6 +694,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       useState<GoToIslandModalState>({
         open: false,
       })
+    const [islandModal, setIslandModal] = useState<IslandModalState>({
+      open: false,
+    })
 
     function updateTileOwners(
       updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>,
@@ -1008,6 +1014,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleGoToIslandConfirm() {
+      stopLongSfx()
       const { onDoneCallback } = goToIslandModal
       setGoToIslandModal({ open: false })
 
@@ -1026,7 +1033,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDoneCallback)
     }
 
+    function handleIslandConfirm() {
+      stopLongSfx()
+      const { onDoneCallback } = islandModal
+      setIslandModal({ open: false })
+      advanceTurn(onDoneCallback)
+    }
+
     async function handleTollModalConfirm() {
+      stopLongSfx()
       // 💰 통행료(보유금) 지불 소리 재생
       new Audio('/audio/transaction.mp3').play().catch(() => {})
 
@@ -1097,6 +1112,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     async function handleCitySellConfirm() {
+      stopLongSfx()
       // 💰 매각 처리 (거래) 소리 재생
       new Audio('/audio/transaction.mp3').play().catch(() => {})
 
@@ -1176,6 +1192,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleCityAcquisitionConfirm() {
+      stopLongSfx()
       if (!useLocalPromptFallback) {
         const activePlayerIdx = curPlayerRef.current
         const activePlayerMoney =
@@ -1272,6 +1289,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleCardConfirm() {
+      stopLongSfx()
       const { variant, onDoneCallback } = cardModal
       setCardModal((prev) => ({ ...prev, open: false }))
 
@@ -1341,7 +1359,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       )
 
       // ✈️ 국내여행 이동 소리 재생
-      new Audio('/audio/plane-fly.mp3').play().catch(() => {})
+      playLongSfx('/audio/plane-fly.mp3')
 
       window.setTimeout(() => {
         handleArrival(tileId, onDoneCallback)
@@ -1371,8 +1389,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         setStatus('무인도 칸에 도착!')
         // 🏝️ 무인도(직접 도착) 칸 소리 재생
         new Audio('/audio/island-trap.mp3').play().catch(() => {})
-        // 무인도 도착 시 별도 모달 없이 턴 종료(현재 로직 유지)
-        advanceTurn(onDone)
+
+        setIslandModal({ open: true, onDoneCallback: onDone })
         return
       }
 
@@ -1417,7 +1435,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         (tile.type === 'EVENT' && tile.emoji === '🤖')
       ) {
         // 🤖 AI 칸 도착 소리 재생
-        new Audio('/audio/AI.mp3').play().catch(() => {})
+        playLongSfx('/audio/AI.mp3')
 
         handleAITile(onDone)
         return
@@ -2069,6 +2087,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={goToIslandModal.open}
           onConfirm={handleGoToIslandConfirm}
         />
+        {/* 🏝️ 무인도 (직접 도착) 팝업 */}
+        <IslandModal open={islandModal.open} onConfirm={handleIslandConfirm} />
       </div>
     )
   }

@@ -13,6 +13,7 @@ import type {
   BuyModalState,
   TollModalState,
 } from './gameBoard.types'
+import { stopLongSfx } from '../../lib/bgm'
 
 type UpdateTileOwners = (
   updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>,
@@ -157,6 +158,7 @@ export function createGameBoardActionHandlers(
   }
 
   async function handleBuy(buyModal: BuyModalState) {
+    stopLongSfx()
     const { tileId, onDoneCallback } = buyModal
     if (tileId === null) return
 
@@ -200,6 +202,7 @@ export function createGameBoardActionHandlers(
   }
 
   function handleBuyPass(buyModal: BuyModalState) {
+    stopLongSfx()
     setBuyModal({ open: false, tileId: null })
 
     if (!useGameSocketMock) {
@@ -214,6 +217,7 @@ export function createGameBoardActionHandlers(
   }
 
   async function handleBuildConfirm(buildModal: BuildModalState) {
+    stopLongSfx()
     const { tileId, onDoneCallback } = buildModal
     if (tileId === null) return
 
@@ -257,6 +261,7 @@ export function createGameBoardActionHandlers(
   }
 
   function handleBuildCancel(buildModal: BuildModalState) {
+    stopLongSfx()
     setBuildModal({ open: false, tileId: null })
 
     if (!useGameSocketMock) {
@@ -271,6 +276,7 @@ export function createGameBoardActionHandlers(
   }
 
   async function handleTollConfirm(tollModal: TollModalState) {
+    stopLongSfx()
     const { tileId, onDoneCallback } = tollModal
     const active = curPlayerRef.current
     setTollModal({

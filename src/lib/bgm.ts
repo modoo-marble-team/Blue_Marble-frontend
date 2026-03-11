@@ -106,3 +106,20 @@ export function stopBgm() {
     audio.currentTime = 0
   }
 }
+
+let activeLongSfx: HTMLAudioElement | null = null
+
+export function playLongSfx(src: string) {
+  stopLongSfx()
+  const sfx = new Audio(src)
+  sfx.play().catch(() => {})
+  activeLongSfx = sfx
+}
+
+export function stopLongSfx() {
+  if (activeLongSfx) {
+    activeLongSfx.pause()
+    activeLongSfx.currentTime = 0
+    activeLongSfx = null
+  }
+}
