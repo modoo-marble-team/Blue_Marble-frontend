@@ -932,6 +932,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function rollDice(onDone?: () => void) {
+      if (!USE_GAME_SOCKET_MOCK) {
+        onDone?.()
+        return
+      }
+
       if (lock.current) return
       if (travelSelection.active || travelModal.open) {
         setStatus('국내여행 목적지를 먼저 선택하세요.')
