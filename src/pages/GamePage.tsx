@@ -14,6 +14,7 @@ import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useGameState } from '../hooks/game/useGameState'
 import { useGameTimer } from '../hooks/game/useGameTimer'
 import { useTurn } from '../hooks/game/useTurn'
+import { playBgm, stopBgm } from '../lib/bgm'
 import { socket } from '../lib/socket'
 import { emitPromptResponse } from '../services/socket/game.handler'
 import { useGameStore } from '../stores/game.store'
@@ -97,6 +98,14 @@ const GamePage: React.FC = () => {
     resetSignal: turnTimerKey,
   })
   const boardRef = useRef<BoardGameHandle>(null)
+
+  // 🎵 배경음악 (BGM) — 게임 진입 시 즉시 재생, 퇴장 시 정지
+  useEffect(() => {
+    playBgm()
+    return () => {
+      stopBgm()
+    }
+  }, [])
 
   useGameState(activeGameId)
 

@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AppProviders } from './providers/AppProviders'
 import App from './App'
+import { initBgm } from './lib/bgm'
 import './index.css'
 
 // 개발 환경에서만 MSW를 활성화해 API 모킹 연결
@@ -18,6 +19,9 @@ async function enableMocking() {
 
 // 모킹 초기화 이후 루트 앱 렌더링 실행
 enableMocking().then(() => {
+  // 유저 인터랙션 감지 → 오디오 unlock (게임 BGM 즉시 재생 준비)
+  initBgm()
+
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <AppProviders>
