@@ -562,6 +562,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           if (prev <= 1) {
             if (USE_GAME_SOCKET_MOCK && !isDiceTimerPromptOpen) {
               setShowTimerModal(true)
+              // ⏱️ 턴 종료 (시간 초과) 소리 재생
+              new Audio('/audio/turn-end.mp3').play().catch(() => {})
             }
             clearInterval(timer) // Stop once triggered
             return 0
@@ -1025,6 +1027,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     async function handleTollModalConfirm() {
+      // 💰 통행료(보유금) 지불 소리 재생
+      new Audio('/audio/transaction.mp3').play().catch(() => {})
+
       if (!useLocalPromptFallback) {
         submitPromptChoice(promptTollConfirmChoiceValue)
         return
@@ -1092,6 +1097,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     async function handleCitySellConfirm() {
+      // 💰 매각 처리 (거래) 소리 재생
+      new Audio('/audio/transaction.mp3').play().catch(() => {})
+
       if (!useLocalPromptFallback) {
         submitPromptChoice(promptSellConfirmChoiceValue)
         return
@@ -1184,6 +1192,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           })
           return
         }
+
+        // 💰 인수 확인 소리 재생
+        new Audio('/audio/transaction.mp3').play().catch(() => {})
 
         submitPromptChoice(promptAcquisitionConfirmChoiceValue)
         return
@@ -1288,6 +1299,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       setGoToIslandModal({ open: true, onDoneCallback })
+      // 🏝️ 카드 결과로 무인도 갇힘 소리 재생
+      new Audio('/audio/island-trap.mp3').play().catch(() => {})
     }
 
     function handleTravelConfirm() {
@@ -1327,6 +1340,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         `${currentPlayer.name}님이 ${destinationName} 칸으로 이동합니다.`
       )
 
+      // ✈️ 국내여행 이동 소리 재생
+      new Audio('/audio/plane-fly.mp3').play().catch(() => {})
+
       window.setTimeout(() => {
         handleArrival(tileId, onDoneCallback)
       }, 300)
@@ -1346,6 +1362,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (tile.type === 'MOVE_TO_ISLAND') {
         setStatus('무인도로 이동!')
         setGoToIslandModal({ open: true, onDoneCallback: onDone })
+        // 🏝️ 무인도 칸 도착 소리 재생
+        new Audio('/audio/island-trap.mp3').play().catch(() => {})
+        return
+      }
+
+      if (tile.type === 'ISLAND') {
+        setStatus('무인도 칸에 도착!')
+        // 🏝️ 무인도(직접 도착) 칸 소리 재생
+        new Audio('/audio/island-trap.mp3').play().catch(() => {})
+        // 무인도 도착 시 별도 모달 없이 턴 종료(현재 로직 유지)
+        advanceTurn(onDone)
         return
       }
 
@@ -1389,6 +1416,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         tile.type === 'AI' ||
         (tile.type === 'EVENT' && tile.emoji === '🤖')
       ) {
+        // 🤖 AI 칸 도착 소리 재생
+        new Audio('/audio/AI.mp3').play().catch(() => {})
+
         handleAITile(onDone)
         return
       }
@@ -1399,6 +1429,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           variant: tile.type === 'CHANCE' ? 'CHANCE' : 'EVENT',
           onDoneCallback: onDone,
         })
+
+        // 🃏 찬스/강화 이벤트 소리 재생
+        if (tile.type === 'CHANCE') {
+          new Audio('/audio/chance.mp3').play().catch(() => {})
+        } else {
+          new Audio('/audio/event.mp3').play().catch(() => {})
+        }
         return
       }
 

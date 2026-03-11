@@ -192,8 +192,8 @@ export function createGameBoardActionHandlers(
         { notifyParent: true }
       )
 
-      // 💰 매수 파트 소리 재생
-      new Audio('/audio/transaction.mp3').play().catch(() => {})
+      // 💰 매수 파트 소리 재생 (토지 구매)
+      new Audio('/audio/land-buy.mp3').play().catch(() => {})
 
       advanceTurn(onDoneCallback)
     }
@@ -241,6 +241,17 @@ export function createGameBoardActionHandlers(
       updateTileOwners((prev) => upgradeBoardTileOwner(prev, tileId), {
         notifyParent: true,
       })
+
+      // 🏗️ 건설 목표 레벨에 따른 소리 재생
+      const targetLevel = owner ? owner.level + 1 : 1
+      if (targetLevel <= 3) {
+        new Audio('/audio/house-buy.mp3').play().catch(() => {})
+      } else if (targetLevel === 4) {
+        new Audio('/audio/hotel-build.mp3').play().catch(() => {})
+      } else {
+        new Audio('/audio/landmark-build.mp3').play().catch(() => {})
+      }
+
       advanceTurn(onDoneCallback)
     }
   }
@@ -288,6 +299,9 @@ export function createGameBoardActionHandlers(
         }
         const bankrupt = applyMoney(active, -tollAmount, onDoneCallback)
         if (!bankrupt) {
+          // 💰 통행료(보유금) 지불 소리 재생
+          new Audio('/audio/transaction.mp3').play().catch(() => {})
+
           const handledByFollowup =
             onTollResolved?.({
               tileId,
