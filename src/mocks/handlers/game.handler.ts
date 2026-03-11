@@ -18,7 +18,6 @@ const MOCK_PLAYER_ID = 'mock-player-1'
 const MOCK_BUILD_COST = 30
 const MOCK_PASS_GO_SALARY = 200
 const MOCK_TURN_TIMEOUT_SEC = 30
-const MOCK_GAME_ID_FALLBACK = 'game-mock-room'
 const SYNC_SNAPSHOT_GAP_THRESHOLD = 200
 const PROMPT_RESPONSE_ACK_TYPE = 'PROMPT_RESPONSE'
 const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
@@ -57,6 +56,13 @@ type MockGameActionPayload = {
   actionId?: string
   type: string
   gameId?: string | null
+  payload?: Record<string, unknown>
+}
+
+type MockResolvedGameAction = {
+  actionId: string
+  type: string
+  gameId: string
   payload?: Record<string, unknown>
 }
 
@@ -100,9 +106,6 @@ const resetMockGameState = () => {
   mockGameState.promptIssuedAtMs = initialState.promptIssuedAtMs
 }
 
-const getMockGameId = (gameId?: string | null) =>
-  gameId ?? MOCK_GAME_ID_FALLBACK
-
 const buildStateResponse = () => ({
   players: structuredClone(mockGameState.players),
   tiles: structuredClone(mockGameState.tiles),
@@ -112,9 +115,9 @@ const buildStateResponse = () => ({
   revision: mockGameState.revision,
 })
 
-const buildSnapshot = (gameId?: string | null): GameSnapshot => ({
+const buildSnapshot = (gameId: string): GameSnapshot => ({
   roomId: null,
-  gameId: getMockGameId(gameId),
+  gameId,
   revision: mockGameState.revision,
   phase: mockGameState.phase,
   players: structuredClone(mockGameState.players),
@@ -314,7 +317,7 @@ const buildErrorResponse = (message: string, status: number) =>
   HttpResponse.json({ message }, { status })
 
 const emitSnapshotPatch = (
-  gameId?: string | null,
+  gameId: string,
   events?: GamePatchEnvelope['events']
 ) => {
   emitGamePatch({
@@ -414,10 +417,7 @@ export const mockDevSetRevisionForTest = (revision: number) => {
   mockGameState.revision = Math.max(1, Math.trunc(revision))
 }
 
-const handleRollDiceAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId'>
-) => {
+const handleRollDiceAction = (action: MockResolvedGameAction) => {
   const currentPlayer = getCurrentPlayer()
 
   if (!currentPlayer) {
@@ -479,10 +479,7 @@ const handleRollDiceAction = (
   ])
 }
 
-const handleBuyPropertyAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId' | 'payload'>
-) => {
+const handleBuyPropertyAction = (action: MockResolvedGameAction) => {
   const tileIndex = Number(action.payload?.tileId)
   const player = getCurrentPlayer()
   const tile = getTileByIndex(tileIndex)
@@ -548,10 +545,7 @@ const handleBuyPropertyAction = (
   ])
 }
 
-const handleSellPropertyAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId' | 'payload'>
-) => {
+const handleSellPropertyAction = (action: MockResolvedGameAction) => {
   const tileIndex = Number(action.payload?.tileId)
   const buildingLevel =
     typeof action.payload?.buildingLevel === 'number'
@@ -622,10 +616,7 @@ const handleSellPropertyAction = (
   ])
 }
 
-const handleEndTurnAction = (
-  action: Required<Pick<MockGameActionPayload, 'type' | 'actionId'>> &
-    Pick<MockGameActionPayload, 'gameId'>
-) => {
+const handleEndTurnAction = (action: MockResolvedGameAction) => {
   advanceMockTurn()
   mockGameState.phase = 'rolling'
   const revision = nextRevision()
@@ -725,7 +716,7 @@ export const mockEmitGameAction = ({
     return actionId
   }
 
-  const action = {
+  const action: MockResolvedGameAction = {
     actionId,
     type,
     gameId: resolvedGameId,
