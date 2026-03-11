@@ -100,6 +100,25 @@ describe('mock game socket handlers contract', () => {
     teardown()
   })
 
+  it('rejects game sync when gameId is missing', async () => {
+    const { acks, errors, patches, teardown } = captureGameSocketEvents()
+
+    mockEmitGameSync({
+      gameId: null,
+      knownRevision: 1,
+    })
+    await flushMockTimers()
+
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatchObject({
+      code: 'INVALID_GAME_ID',
+    })
+    expect(acks).toHaveLength(0)
+    expect(patches).toHaveLength(0)
+
+    teardown()
+  })
+
   it('returns empty synced patch when knownRevision matches server revision', async () => {
     const { patches, teardown } = captureGameSocketEvents()
 
@@ -170,6 +189,78 @@ describe('mock game socket handlers contract', () => {
         code: 'INVALID_PROMPT_CHOICE',
       },
     })
+
+    teardown()
+  })
+
+  it('rejects non-canonical choice for CONFIRM_ONLY prompt', async () => {
+    const { acks, errors, teardown } = captureGameSocketEvents()
+
+    const prompt: GamePrompt = {
+      id: 'prompt-confirm-only',
+      type: 'CONFIRM_ONLY',
+      playerId: 'mock-player-1',
+      timeoutSec: 30,
+    }
+    mockDevSetPromptForTest(prompt)
+
+    mockEmitPromptResponse({
+      gameId: 'game-prompt',
+      promptId: prompt.id,
+      choice: 'BUY',
+    })
+    await flushMockTimers()
+
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatchObject({
+      code: 'INVALID_PROMPT_CHOICE',
+    })
+
+    expect(acks).toHaveLength(1)
+    expect(acks[0]).toMatchObject({
+      type: 'PROMPT_RESPONSE',
+      ok: false,
+      promptId: prompt.id,
+      error: {
+        code: 'INVALID_PROMPT_CHOICE',
+      },
+    })
+
+    teardown()
+  })
+
+  it('rejects prompt response when gameId is missing', async () => {
+    const { acks, errors, patches, teardown } = captureGameSocketEvents()
+
+    const prompt: GamePrompt = {
+      id: 'prompt-gameid-required',
+      type: 'BUY_OR_SKIP',
+      playerId: 'mock-player-1',
+      timeoutSec: 30,
+    }
+    mockDevSetPromptForTest(prompt)
+
+    mockEmitPromptResponse({
+      gameId: null,
+      promptId: prompt.id,
+      choice: 'BUY',
+    })
+    await flushMockTimers()
+
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toMatchObject({
+      code: 'INVALID_GAME_ID',
+    })
+
+    expect(acks).toHaveLength(1)
+    expect(acks[0]).toMatchObject({
+      type: 'PROMPT_RESPONSE',
+      ok: false,
+      error: {
+        code: 'INVALID_GAME_ID',
+      },
+    })
+    expect(patches).toHaveLength(0)
 
     teardown()
   })
