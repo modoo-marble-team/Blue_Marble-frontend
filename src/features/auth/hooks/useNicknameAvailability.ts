@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { mockCheckNicknameAvailability, validateNickname } from '../mockApi'
 import { NICKNAME_CHECK_DEBOUNCE_MS } from '../nicknameSetupRules'
 import type { NicknameValidationResult } from '../types'
@@ -18,7 +18,10 @@ export function useNicknameAvailability(
     boolean | null
   >(null)
 
-  const nicknameValidation = validateNickname(nickname)
+  const nicknameValidation = useMemo(
+    () => validateNickname(nickname),
+    [nickname]
+  )
 
   useEffect(() => {
     setIsCheckingNickname(false)
@@ -50,7 +53,7 @@ export function useNicknameAvailability(
       isDisposed = true
       window.clearTimeout(debounceTimer)
     }
-  }, [nicknameValidation])
+  }, [nicknameValidation.ok, nicknameValidation.normalizedNickname])
 
   return {
     nicknameValidation,

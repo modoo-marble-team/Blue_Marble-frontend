@@ -90,11 +90,6 @@ export function createNicknameHelperFeedback({
     }
   }
 
-  // 디바운스 구간에는 기본 안내 메시지만 유지
-  if (!showValidationMessage) {
-    return createLengthFeedback()
-  }
-
   // 형식 검증 통과 후에는 중복 검사 상태/결과를 노출
   if (nicknameValidation.ok) {
     // 중복 확인 중이면 로딩 메시지 표시
@@ -118,6 +113,11 @@ export function createNicknameHelperFeedback({
       message: '• 사용 가능한 닉네임입니다.',
       tone: 'success',
     }
+  }
+
+  // 형식 오류 안내만 디바운스로 지연해 깜빡임을 줄임
+  if (!showValidationMessage) {
+    return createLengthFeedback()
   }
 
   // 입력 중에는 현재 검증 오류를 즉시 노출
