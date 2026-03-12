@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Lock, X } from 'lucide-react'
+import { Lock, X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import {
   ROOM_PASSWORD_LENGTH,
   ROOM_PASSWORD_PATTERN,
@@ -78,13 +79,23 @@ export function CreateRoomModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.35)] p-4 backdrop-blur-[2px]">
-      <div className="absolute inset-0" onClick={handleClose} aria-hidden />
+      <motion.div
+        className="absolute inset-0"
+        onClick={handleClose}
+        aria-hidden
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      />
 
-      <section
+      <motion.section
         role="dialog"
         aria-modal="true"
         aria-label="방 만들기"
         className="relative z-10 w-full max-w-[430px] rounded-[32px] border border-ui-border bg-ui-surface px-7 pb-7 pt-8 shadow-[0_24px_60px_rgba(15,23,42,0.2)]"
+        initial={{ opacity: 0, y: 22, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.18, 0.9, 0.28, 1] }}
       >
         <button
           type="button"
@@ -101,14 +112,10 @@ export function CreateRoomModal({
           <X className="size-5" />
         </button>
 
-        <div className="mx-auto mb-4 flex size-[62px] items-center justify-center rounded-full bg-ui-surface-soft text-ui-text-subtle">
-          <Plus className="size-8" />
-        </div>
-
-        <h2 className="text-center text-[2.1rem] font-extrabold tracking-tight text-ui-text-strong">
+        <h2 className="text-center text-[1.85rem] font-extrabold tracking-tight text-ui-text-strong">
           방 만들기
         </h2>
-        <p className="mt-1 text-center text-lg font-semibold text-ui-text-muted">
+        <p className="mt-1 text-center text-base font-semibold text-ui-text-muted">
           친구들을 초대하고 게임을 즐기세요!
         </p>
 
@@ -131,7 +138,7 @@ export function CreateRoomModal({
         >
           <label
             htmlFor="create-room-title"
-            className="text-[1.05rem] font-semibold text-ui-text-primary"
+            className="text-base font-semibold text-ui-text-primary"
           >
             방 제목
           </label>
@@ -145,12 +152,12 @@ export function CreateRoomModal({
               setRoomTitle(event.target.value)
             }}
             placeholder={defaultRoomTitle}
-            className="mt-2 h-12 w-full rounded-2xl border border-ui-border bg-white px-4 text-[1.2rem] font-semibold text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
+            className="mt-2 h-12 w-full rounded-2xl border border-ui-border bg-white px-4 text-[1.05rem] font-semibold text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
             autoComplete="off"
           />
 
-          <div className="mt-8 flex items-center justify-between">
-            <div className="inline-flex items-center gap-2 text-[1.05rem] font-semibold text-ui-text-primary">
+          <div className="mt-7 flex items-center justify-between">
+            <div className="inline-flex items-center gap-2 text-base font-semibold text-ui-text-primary">
               <Lock className="size-4 text-ui-text-subtle" />
               비밀방 설정
             </div>
@@ -199,7 +206,7 @@ export function CreateRoomModal({
                 setRoomPassword(nextValue)
               }}
               placeholder="비밀번호 (4자리)"
-              className="mt-4 h-12 w-full rounded-2xl border border-ui-border bg-white px-4 text-[1.2rem] font-semibold text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
+              className="mt-4 h-12 w-full rounded-2xl border border-ui-border bg-white px-4 text-[1.05rem] font-semibold text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
             />
           ) : null}
 
@@ -207,7 +214,7 @@ export function CreateRoomModal({
             type="submit"
             disabled={isSubmitDisabled}
             className={cn(
-              'mt-6 h-12 w-full rounded-2xl text-lg font-bold transition-colors',
+              'mt-5 h-12 w-full rounded-2xl text-base font-bold transition-colors',
               isSubmitDisabled
                 ? 'cursor-not-allowed bg-ui-disabled-bg text-ui-disabled-text'
                 : 'bg-ui-brand text-white hover:bg-ui-brand-strong'
@@ -216,7 +223,7 @@ export function CreateRoomModal({
             {isSubmitting ? '생성 중...' : '방 만들기 완료'}
           </button>
         </form>
-      </section>
+      </motion.section>
     </div>
   )
 }

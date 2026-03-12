@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { Lock, X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import {
   ROOM_PASSWORD_LENGTH,
   ROOM_PASSWORD_PATTERN,
@@ -27,12 +28,10 @@ export function PrivateRoomJoinModal({
   onClose,
   onSubmit,
 }: PrivateRoomJoinModalProps) {
-  const [isPasswordInputFocused, setIsPasswordInputFocused] = useState(false)
   const isJoinDisabled = !ROOM_PASSWORD_PATTERN.test(password) || isSubmitting
-  const shouldShowHelperMessage = isPasswordInputFocused || isPasswordInvalid
   const helperMessage = isPasswordInvalid
     ? '비밀번호가 올바르지 않습니다.'
-    : '비밀번호 4자리를 입력해주세요'
+    : '• 비밀번호 4자리를 입력해주세요'
   const canClose = !isSubmitting
 
   // 제출 중이 아닐 때만 모달 닫기를 허용
@@ -60,13 +59,23 @@ export function PrivateRoomJoinModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.35)] p-4 backdrop-blur-[2px]">
-      <div className="absolute inset-0" onClick={handleClose} aria-hidden />
+      <motion.div
+        className="absolute inset-0"
+        onClick={handleClose}
+        aria-hidden
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
+      />
 
-      <section
+      <motion.section
         role="dialog"
         aria-modal="true"
         aria-label="비밀방 입장"
-        className="relative z-1 w-full max-w-[430px] rounded-[32px] border border-ui-border bg-ui-surface px-7 pb-7 pt-8 shadow-[0_24px_60px_rgba(15,23,42,0.2)]"
+        className="relative z-10 w-full max-w-[430px] rounded-[32px] border border-ui-border bg-ui-surface px-7 pb-7 pt-8 shadow-[0_24px_60px_rgba(15,23,42,0.2)]"
+        initial={{ opacity: 0, y: 22, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.18, 0.9, 0.28, 1] }}
       >
         <button
           type="button"
@@ -83,15 +92,15 @@ export function PrivateRoomJoinModal({
           <X className="size-5" />
         </button>
 
-        <div className="mx-auto mb-4 flex size-[62px] items-center justify-center rounded-full bg-ui-surface-soft text-ui-text-subtle">
+        <div className="mx-auto mb-4 flex size-[58px] items-center justify-center rounded-full bg-ui-surface-soft text-ui-text-subtle">
           <Lock className="size-8" />
         </div>
 
-        <h2 className="text-center text-[2.1rem] font-extrabold tracking-tight text-ui-text-strong">
+        <h2 className="text-center text-[1.85rem] font-extrabold tracking-tight text-ui-text-strong">
           비밀방 입장
         </h2>
 
-        <p className="mt-1 text-center text-lg font-semibold text-ui-text-muted">
+        <p className="mt-1 text-center text-base font-semibold text-ui-text-muted">
           {roomTitle}
         </p>
 
@@ -112,7 +121,6 @@ export function PrivateRoomJoinModal({
             pattern="[0-9]*"
             maxLength={ROOM_PASSWORD_LENGTH}
             value={password}
-            onFocus={() => setIsPasswordInputFocused(true)}
             onChange={(event) => {
               const nextValue = event.target.value
                 .replace(/\D/g, '')
@@ -121,30 +129,28 @@ export function PrivateRoomJoinModal({
             }}
             placeholder="비밀번호 입력"
             className={cn(
-              'h-12 w-full rounded-2xl border bg-white px-4 text-[1.2rem] font-semibold text-ui-text-strong placeholder:text-ui-text-subtle focus:outline-none focus:ring-0 transition-colors',
+              'h-12 w-full rounded-2xl border bg-white px-4 text-[1.05rem] font-semibold text-ui-text-strong placeholder:text-ui-text-subtle focus:outline-none focus:ring-0 transition-colors',
               isPasswordInvalid
                 ? 'border-2 border-ui-danger bg-ui-danger-bg/30 focus:border-ui-danger'
                 : 'border-ui-border focus:border-ui-border'
             )}
           />
 
-          {shouldShowHelperMessage ? (
-            <p
-              className={cn(
-                'mt-2 text-sm font-semibold',
-                isPasswordInvalid ? 'text-ui-danger' : 'text-ui-text-muted'
-              )}
-            >
-              {helperMessage}
-            </p>
-          ) : null}
+          <p
+            className={cn(
+              'mt-2 min-h-5 text-sm font-semibold',
+              isPasswordInvalid ? 'text-ui-danger' : 'text-ui-text-muted'
+            )}
+          >
+            {helperMessage}
+          </p>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="h-12 rounded-2xl bg-ui-disabled-bg text-lg font-bold text-ui-text-muted transition-colors hover:bg-ui-surface-soft"
+              className="h-12 rounded-2xl bg-ui-disabled-bg text-base font-bold text-ui-text-muted transition-colors hover:bg-ui-surface-soft"
             >
               취소
             </button>
@@ -152,7 +158,7 @@ export function PrivateRoomJoinModal({
               type="submit"
               disabled={isJoinDisabled}
               className={cn(
-                'h-12 rounded-2xl text-lg font-bold transition-colors',
+                'h-12 rounded-2xl text-base font-bold transition-colors',
                 isJoinDisabled
                   ? 'cursor-not-allowed bg-ui-disabled-bg text-ui-disabled-text'
                   : 'bg-ui-brand text-white hover:bg-ui-brand-strong'
@@ -162,7 +168,7 @@ export function PrivateRoomJoinModal({
             </button>
           </div>
         </form>
-      </section>
+      </motion.section>
     </div>
   )
 }
