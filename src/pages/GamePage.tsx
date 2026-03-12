@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Settings } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { useLocation, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
 import RollButton from '../components/game/controls/RollButton'
@@ -260,11 +260,11 @@ const GamePage: React.FC = () => {
       <div className="absolute left-6 top-6 z-[70]">
         <button
           type="button"
-          aria-label="게임 종료 설정"
+          aria-label="나가기"
           onClick={() => setIsExitModalOpen(true)}
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/80 text-[#45556C] shadow-sm transition-colors hover:bg-white"
         >
-          <Settings size={20} />
+          <ArrowLeft size={20} />
         </button>
       </div>
       <div className="absolute right-6 top-6 z-20 flex w-[340px] flex-col gap-2">
