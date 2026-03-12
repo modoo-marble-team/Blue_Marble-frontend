@@ -77,24 +77,16 @@ function HomePage() {
     <div className="relative min-h-screen overflow-hidden bg-ui-app-bg px-4 py-8 sm:px-8 sm:py-10">
       {/* 브랜드 중심을 받쳐주는 배경 레이어 */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(59,130,246,0.1),transparent_24%),radial-gradient(circle_at_14%_84%,rgba(250,204,21,0.06),transparent_24%),radial-gradient(circle_at_86%_20%,rgba(14,165,233,0.06),transparent_22%)]" />
-        <motion.div
-          initial={{ y: 0, x: 0 }}
-          animate={{ y: [0, -10, 0], x: [0, 4, 0] }}
-          transition={{ repeat: Infinity, duration: 7, ease: 'easeInOut' }}
-          className="absolute left-[10%] top-[14%] size-24 rounded-full bg-ui-brand-soft/45 blur-3xl"
-        />
-        <motion.div
-          initial={{ y: 0, x: 0 }}
-          animate={{ y: [0, 12, 0], x: [0, -4, 0] }}
-          transition={{
-            repeat: Infinity,
-            duration: 8,
-            ease: 'easeInOut',
-            delay: 0.6,
-          }}
-          className="absolute bottom-[12%] right-[12%] size-28 rounded-full bg-ui-tag-playing-bg/35 blur-3xl"
-        />
+        <picture>
+          <source srcSet="/HomePage_background.webp" type="image/webp" />
+          <img
+            src="/HomePage_background.jpg"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
+        </picture>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.24),transparent_28%),linear-gradient(180deg,rgba(250,248,240,0.1),rgba(250,248,240,0.08))]" />
       </div>
 
       <main className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl flex-col items-center justify-center gap-12">
@@ -111,13 +103,13 @@ function HomePage() {
             </span>
           </h1>
 
-          <p className="mx-auto mt-6 max-w-136 whitespace-pre-line text-[clamp(1rem,1.8vw,1.22rem)] font-bold leading-relaxed text-ui-text-primary">
+          <p className="mx-auto mt-6 max-w-116 whitespace-pre-line text-[clamp(1rem,1.8vw,1.22rem)] font-bold leading-relaxed text-ui-text-primary">
             {
               '주사위를 굴려 나만의 도시를 건설하세요!\n귀엽고 신나는 실시간 보드게임'
             }
           </p>
 
-          <div className="mx-auto mt-9 flex w-full max-w-[430px] flex-col gap-3 rounded-[24px] border border-ui-border/80 bg-ui-surface/95 p-3 shadow-[0_6px_18px_rgba(15,23,42,0.04)] sm:p-4">
+          <div className="mx-auto mt-9 flex w-full max-w-[430px] flex-col gap-3">
             <button
               type="button"
               onClick={handleKakaoLogin}
@@ -131,12 +123,12 @@ function HomePage() {
               type="button"
               onClick={handleGuestLogin}
               disabled={isAnyLoading}
-              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-ui-border bg-ui-surface/95 py-3 text-[1.125rem] font-bold text-ui-text-primary transition-colors hover:border-ui-text-subtle hover:bg-ui-surface-muted active:scale-[0.98] disabled:opacity-70"
+              className="flex h-14 items-center justify-center gap-2.5 rounded-2xl border-2 border-ui-border bg-ui-surface/92 py-3 text-[1.125rem] font-bold text-ui-text-primary shadow-[0_4px_10px_rgba(15,23,42,0.03)] transition-colors hover:border-ui-text-subtle hover:bg-ui-surface-muted active:scale-[0.98] disabled:opacity-70"
             >
               <UserRound className="size-6 shrink-0 text-ui-text-muted" />
               {isGuestLoading ? '입장 중...' : '게스트로 시작'}
             </button>
-            <p className="text-[0.75rem] font-medium text-ui-text-subtle">
+            <p className="pt-0.5 text-[0.75rem] font-medium text-ui-text-subtle">
               * 게스트는 전적이 저장되지 않으며 일부 기능이 제한됩니다.
             </p>
           </div>
@@ -156,14 +148,14 @@ function HomePage() {
                   delay: 0.15 + index * 0.12,
                   ease: [0.18, 0.9, 0.28, 1],
                 }}
-                className="group relative overflow-hidden rounded-[28px] border border-ui-border/90 bg-ui-surface/96 px-6 py-5 text-center shadow-[0_4px_14px_rgba(15,23,42,0.04)]"
+                className="group relative overflow-hidden rounded-[28px] border border-ui-border/80 bg-ui-surface/88 px-6 py-5 text-center shadow-[0_3px_10px_rgba(15,23,42,0.03)]"
               >
                 <div
                   className={`relative mx-auto mb-3 flex size-11 items-center justify-center rounded-xl ${card.iconBackground}`}
                 >
                   <Icon className="size-5 text-white" strokeWidth={2} />
                 </div>
-                <h2 className="text-[1.125rem] font-bold text-ui-text-primary">
+                <h2 className="text-[1rem] font-bold text-ui-text-primary">
                   {card.title}
                 </h2>
                 <p className="mt-1.5 text-[0.875rem] font-medium text-ui-text-muted">
