@@ -322,7 +322,7 @@ describe('LobbyPage filter and toggle regression', () => {
       screen.queryByText('비밀번호가 올바르지 않습니다.')
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText('비밀번호 4자리를 입력해주세요')
+      screen.getByText(/비밀번호 4자리를 입력해주세요/)
     ).toBeInTheDocument()
   })
 

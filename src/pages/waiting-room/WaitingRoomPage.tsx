@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
@@ -324,15 +325,17 @@ function WaitingRoomPage() {
         }}
       />
 
-      {dmTargetUser ? (
-        <DirectMessagePanel
-          user={dmTargetUser}
-          currentUserId={session.userId}
-          messages={directMessagesByUserId[dmTargetUser.id] ?? []}
-          onClose={closeDirectMessage}
-          onSendMessage={sendDirectMessage}
-        />
-      ) : null}
+      <AnimatePresence>
+        {dmTargetUser ? (
+          <DirectMessagePanel
+            user={dmTargetUser}
+            currentUserId={session.userId}
+            messages={directMessagesByUserId[dmTargetUser.id] ?? []}
+            onClose={closeDirectMessage}
+            onSendMessage={sendDirectMessage}
+          />
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }

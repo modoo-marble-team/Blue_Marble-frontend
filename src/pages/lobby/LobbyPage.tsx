@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
@@ -183,15 +184,17 @@ function LobbyPage() {
         />
       ) : null}
 
-      {dmTargetUser ? (
-        <DirectMessagePanel
-          user={dmTargetUser}
-          currentUserId={session.userId}
-          messages={directMessagesByUserId[dmTargetUser.id] ?? []}
-          onClose={closeDirectMessage}
-          onSendMessage={sendDirectMessage}
-        />
-      ) : null}
+      <AnimatePresence>
+        {dmTargetUser ? (
+          <DirectMessagePanel
+            user={dmTargetUser}
+            currentUserId={session.userId}
+            messages={directMessagesByUserId[dmTargetUser.id] ?? []}
+            onClose={closeDirectMessage}
+            onSendMessage={sendDirectMessage}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <DevPresenceControlPanel users={users} currentUserId={session.userId} />
     </div>

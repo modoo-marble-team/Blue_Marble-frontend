@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { SendHorizontal, X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
 import type { DirectMessage, OnlineUser } from '../types'
@@ -53,7 +54,13 @@ export function DirectMessagePanel({
   const canSend = inputMessage.trim().length > 0
 
   return (
-    <section className="fixed bottom-6 right-4 z-40 w-[340px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-[0_18px_40px_rgba(15,23,42,0.2)] sm:right-6">
+    <motion.section
+      className="fixed bottom-6 right-4 z-40 w-[340px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-2xl border border-ui-border bg-ui-surface shadow-[0_18px_40px_rgba(15,23,42,0.2)] sm:right-6"
+      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 14, scale: 0.98 }}
+      transition={{ duration: 0.24, ease: [0.18, 0.9, 0.28, 1] }}
+    >
       <header className="flex h-14 items-center justify-between border-b border-ui-border px-4">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar
@@ -155,6 +162,6 @@ export function DirectMessagePanel({
           <SendHorizontal className="size-4" />
         </button>
       </form>
-    </section>
+    </motion.section>
   )
 }
