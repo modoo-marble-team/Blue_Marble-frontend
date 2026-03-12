@@ -43,7 +43,7 @@ export function RoomCard({ room, onJoinRoom }: RoomCardProps) {
   const joinButtonLabel = getJoinButtonLabel(room)
 
   return (
-    <article className="flex min-h-[160px] flex-col rounded-2xl border border-ui-border bg-ui-surface px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]">
+    <article className="flex min-h-[160px] select-none flex-col rounded-2xl border border-ui-border bg-ui-surface px-5 py-4 shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]">
       <div className="flex flex-wrap items-center gap-1.5">
         <span
           className={cn(
@@ -80,7 +80,7 @@ export function RoomCard({ room, onJoinRoom }: RoomCardProps) {
           disabled={isJoinDisabled}
           onClick={() => onJoinRoom?.(room)}
           className={cn(
-            'shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-colors',
+            'shrink-0 select-none rounded-xl px-4 py-2 text-sm font-semibold transition-colors',
             isJoinDisabled
               ? 'cursor-not-allowed bg-ui-disabled-bg text-ui-disabled-text'
               : 'bg-ui-brand text-white hover:bg-ui-brand-strong active:scale-[0.98]'

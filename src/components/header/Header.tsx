@@ -21,7 +21,7 @@ function Header({
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-ui-border bg-ui-surface/95 px-4 backdrop-blur sm:px-6">
-      <div className="flex items-center gap-2.5">
+      <div className="flex select-none items-center gap-2.5">
         <div className="flex size-9 items-center justify-center rounded-lg bg-ui-brand text-white">
           <Dice5 className="size-5" strokeWidth={2} />
         </div>

@@ -27,12 +27,12 @@ export function WaitingRoomHeader({
 }: WaitingRoomHeaderProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-ui-border bg-ui-surface px-4 sm:px-6">
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2.5 select-none">
         <button
           type="button"
           onClick={onBackToLobby}
           aria-label="로비로 이동"
-          className="inline-flex size-8 items-center justify-center rounded-lg text-ui-text-primary transition-colors hover:bg-ui-surface-muted"
+          className="inline-flex size-8 select-none items-center justify-center rounded-lg text-ui-text-primary transition-colors hover:bg-ui-surface-muted"
         >
           <ArrowLeft className="size-4" />
         </button>

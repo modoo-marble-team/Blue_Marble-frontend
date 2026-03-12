@@ -68,12 +68,12 @@ export function ProfileDropdown({
 
   return (
     <div className="flex items-center gap-2 text-sm font-medium text-ui-text-muted">
-      <span className="max-w-[140px] truncate">{playerLabel}</span>
+      <span className="max-w-[140px] truncate select-none">{playerLabel}</span>
       {hasMenuItems ? (
         <div ref={menuContainerRef} className="relative group/menu">
           <button
             type="button"
-            className="rounded-full outline-none"
+            className="rounded-full outline-none select-none"
             aria-label="프로필 메뉴 열기"
             aria-expanded={isMenuOpen}
             onClick={() => setIsMenuOpen((previous) => !previous)}
@@ -98,7 +98,7 @@ export function ProfileDropdown({
                       item.onSelect()
                       setIsMenuOpen(false)
                     }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition hover:bg-ui-surface-muted ${
+                    className={`flex w-full select-none items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition hover:bg-ui-surface-muted ${
                       item.tone === 'danger'
                         ? 'text-ui-danger'
                         : 'text-ui-text-primary'

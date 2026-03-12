@@ -96,7 +96,7 @@ export function UserListPanel({
         <div
           className={cn('flex h-full min-h-[280px] flex-col', panelHeightClass)}
         >
-          <div className="flex items-center justify-between border-b border-ui-border px-4 py-3">
+          <div className="flex items-center justify-between border-b border-ui-border px-4 py-3 select-none">
             <div className="flex items-center gap-2">
               <h2 className="text-base font-semibold text-ui-text-strong">
                 접속자 목록
@@ -108,7 +108,7 @@ export function UserListPanel({
             <button
               type="button"
               onClick={onToggle}
-              className="rounded-lg p-1.5 text-ui-text-subtle transition-colors hover:bg-ui-surface-soft hover:text-ui-text-muted"
+              className="rounded-lg p-1.5 text-ui-text-subtle transition-colors hover:bg-ui-surface-soft hover:text-ui-text-muted select-none"
               aria-label="접속자 목록 닫기"
             >
               <ChevronRight className="size-4" />
@@ -161,13 +161,13 @@ export function UserListPanel({
           <button
             type="button"
             onClick={onToggle}
-            className="rounded-lg p-2 text-ui-text-subtle transition-colors hover:bg-ui-surface-soft hover:text-ui-text-muted"
+            className="rounded-lg p-2 text-ui-text-subtle transition-colors hover:bg-ui-surface-soft hover:text-ui-text-muted select-none"
             aria-label="접속자 목록 열기"
           >
             <ChevronLeft className="size-4" />
           </button>
 
-          <span className="rounded-full bg-ui-brand-soft px-2 py-0.5 text-xs font-semibold text-ui-brand">
+          <span className="rounded-full bg-ui-brand-soft px-2 py-0.5 text-xs font-semibold text-ui-brand select-none">
             {sortedUsers.length}
           </span>
 
