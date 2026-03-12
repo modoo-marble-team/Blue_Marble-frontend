@@ -29,9 +29,44 @@ export function UserRow({
     isCurrentUser ||
     !onOpenDirectMessage ||
     !isDirectMessageAllowed(user.status)
+  const interactiveRowClass = isDmDisabled
+    ? 'cursor-not-allowed'
+    : 'cursor-pointer'
+
+  function handleOpenDirectMessage() {
+    // 비활성 상태에서는 DM 열기 동작을 차단
+    if (isDmDisabled) {
+      return
+    }
+    onOpenDirectMessage?.(user)
+  }
 
   return (
-    <div className="group flex select-none items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted">
+    <div
+      role={isDmDisabled ? undefined : 'button'}
+      tabIndex={isDmDisabled ? undefined : 0}
+      aria-disabled={isDmDisabled || undefined}
+      onClick={handleOpenDirectMessage}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          handleOpenDirectMessage()
+        }
+      }}
+      title={
+        isCurrentUser
+          ? '본인에게는 DM을 보낼 수 없습니다.'
+          : !isDirectMessageAllowed(user.status)
+            ? '게임중인 유저에게는 DM을 보낼 수 없습니다.'
+            : isDmDisabled
+              ? 'DM 기능을 사용할 수 없습니다.'
+              : 'DM 열기'
+      }
+      className={cn(
+        'group flex select-none items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted',
+        interactiveRowClass
+      )}
+    >
       <div className="relative shrink-0">
         <Avatar
           size="md"
@@ -61,12 +96,9 @@ export function UserRow({
       <button
         type="button"
         disabled={isDmDisabled}
-        onClick={() => {
-          // 비활성 상태에서는 DM 열기 동작을 차단
-          if (isDmDisabled) {
-            return
-          }
-          onOpenDirectMessage?.(user)
+        onClick={(event) => {
+          event.stopPropagation()
+          handleOpenDirectMessage()
         }}
         className={cn(
           'rounded-lg p-2 text-ui-text-subtle transition select-none',
