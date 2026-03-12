@@ -31,7 +31,7 @@ export function UserRow({
     !isDirectMessageAllowed(user.status)
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted">
+    <div className="group flex select-none items-center gap-3 px-4 py-2.5 hover:bg-ui-surface-muted">
       <div className="relative shrink-0">
         <Avatar
           size="md"
@@ -69,7 +69,7 @@ export function UserRow({
           onOpenDirectMessage?.(user)
         }}
         className={cn(
-          'rounded-lg p-2 text-ui-text-subtle transition',
+          'rounded-lg p-2 text-ui-text-subtle transition select-none',
           isDmDisabled
             ? 'cursor-not-allowed opacity-45'
             : 'hover:bg-ui-surface-soft hover:text-ui-text-muted'

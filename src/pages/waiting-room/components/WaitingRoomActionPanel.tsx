@@ -35,7 +35,7 @@ export function WaitingRoomActionPanel({
           disabled={isStartButtonDisabled}
           onClick={onStartGame}
           className={cn(
-            'h-16 w-full rounded-2xl text-[2.1rem] font-bold transition-colors',
+            'h-16 w-full select-none rounded-2xl text-[2.1rem] font-bold transition-colors',
             !isStartButtonDisabled
               ? 'bg-ui-brand text-white hover:bg-ui-brand-strong'
               : 'cursor-not-allowed bg-ui-disabled-bg text-ui-disabled-text'
@@ -49,7 +49,7 @@ export function WaitingRoomActionPanel({
           disabled={isReadyButtonDisabled}
           onClick={onToggleReady}
           className={cn(
-            'h-16 w-full rounded-2xl text-[2.1rem] font-bold transition-colors',
+            'h-16 w-full select-none rounded-2xl text-[2.1rem] font-bold transition-colors',
             isReadyButtonDisabled
               ? 'cursor-not-allowed border border-ui-border bg-ui-surface-soft text-ui-text-subtle'
               : isReady

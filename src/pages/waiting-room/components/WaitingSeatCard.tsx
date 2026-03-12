@@ -13,7 +13,7 @@ export function WaitingSeatCard({ seat }: WaitingSeatCardProps) {
   // 좌석 데이터가 없으면 빈 자리 플레이스홀더를 렌더링
   if (!seat) {
     return (
-      <article className="flex h-full min-h-[260px] flex-col items-center justify-center rounded-[34px] border-[3px] border-dashed border-ui-border/80 bg-ui-app-bg text-ui-text-subtle">
+      <article className="flex h-full min-h-[260px] select-none flex-col items-center justify-center rounded-[34px] border-[3px] border-dashed border-ui-border/80 bg-ui-app-bg text-ui-text-subtle">
         <div className="mb-4 flex size-20 items-center justify-center rounded-full border-4 border-ui-border bg-ui-surface-soft">
           <UserRound className="size-9" />
         </div>
@@ -25,7 +25,7 @@ export function WaitingSeatCard({ seat }: WaitingSeatCardProps) {
   }
 
   return (
-    <article className="relative flex h-full min-h-[260px] flex-col rounded-[34px] border border-ui-border bg-ui-surface px-7 py-7 shadow-[0_2px_10px_rgba(15,23,42,0.06)]">
+    <article className="relative flex h-full min-h-[260px] select-none flex-col rounded-[34px] border border-ui-border bg-ui-surface px-7 py-7 shadow-[0_2px_10px_rgba(15,23,42,0.06)]">
       <div className="flex flex-1 flex-col items-center justify-center">
         <div className="relative mb-5">
           <Avatar

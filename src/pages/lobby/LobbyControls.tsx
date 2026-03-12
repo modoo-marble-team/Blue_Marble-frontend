@@ -47,7 +47,7 @@ export function LobbyControls({
           <button
             type="button"
             onClick={onCreateRoom}
-            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-ui-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-ui-brand-strong active:scale-[0.98]"
+            className="inline-flex h-10 shrink-0 select-none items-center justify-center gap-2 rounded-xl bg-ui-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-ui-brand-strong active:scale-[0.98]"
           >
             <Plus className="size-4" />방 만들기
           </button>
@@ -59,7 +59,7 @@ export function LobbyControls({
               aria-checked={excludePrivateRoom}
               onClick={() => onExcludePrivateRoomChange(!excludePrivateRoom)}
               className={cn(
-                'relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors',
+                'relative inline-flex h-6 w-11 shrink-0 select-none rounded-full transition-colors',
                 excludePrivateRoom ? 'bg-ui-brand' : 'bg-ui-text-subtle/40'
               )}
             >
@@ -70,7 +70,7 @@ export function LobbyControls({
                 )}
               />
             </button>
-            <span className="text-sm font-medium text-ui-text-muted">
+            <span className="select-none text-sm font-medium text-ui-text-muted">
               비밀방 제외
             </span>
           </div>
@@ -84,7 +84,7 @@ export function LobbyControls({
             type="button"
             onClick={() => onRoomFilterChange(filter.value)}
             className={cn(
-              'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              'flex-1 select-none rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               roomFilter === filter.value
                 ? 'bg-ui-surface text-ui-brand shadow-sm'
                 : 'text-ui-text-muted hover:text-ui-text-primary'
