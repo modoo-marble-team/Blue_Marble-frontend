@@ -103,7 +103,7 @@ function HomePage() {
             </span>
           </h1>
 
-          <p className="mx-auto mt-5 max-w-112 select-none whitespace-pre-line text-[clamp(1rem,1.8vw,1.22rem)] font-bold leading-relaxed text-ui-text-primary">
+          <p className="mx-auto mt-5 max-w-md select-none whitespace-pre-line text-[clamp(1rem,1.8vw,1.22rem)] font-bold leading-relaxed text-ui-text-primary">
             {
               '주사위를 굴려 나만의 도시를 건설하세요!\n귀엽고 신나는 실시간 보드게임'
             }
