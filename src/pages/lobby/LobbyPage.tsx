@@ -15,7 +15,10 @@ import { DirectMessagePanel } from '../../features/presence/components/DirectMes
 import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
-import { setMockOnlineUserStatus } from '../../features/presence/mockData'
+import {
+  removeMockOnlineUser,
+  setMockOnlineUserStatus,
+} from '../../features/presence/mockData'
 import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'
@@ -93,6 +96,10 @@ function LobbyPage() {
   }, [session])
 
   function handleLogout() {
+    if (IS_SOCKET_MOCK_ENABLED && session) {
+      removeMockOnlineUser(session.userId)
+    }
+
     clearSession()
     navigate('/', { replace: true })
   }

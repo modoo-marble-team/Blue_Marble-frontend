@@ -53,4 +53,22 @@ describe('presence mockData SSOT', () => {
       }
     })
   })
+
+  it('로그아웃한 목 접속자는 저장소에서 즉시 제거된다', async () => {
+    const { presence } = await loadMockModules()
+    const userId = 'logout-user'
+
+    presence.setMockOnlineUserStatus(userId, 'lobby', '로그아웃테스터')
+
+    expect(
+      presence.getMockOnlineUsersSnapshot().some((user) => user.id === userId)
+    ).toBe(true)
+
+    const updatedSnapshot = presence.removeMockOnlineUser(userId)
+
+    expect(updatedSnapshot.some((user) => user.id === userId)).toBe(false)
+    expect(
+      presence.getMockOnlineUsersSnapshot().some((user) => user.id === userId)
+    ).toBe(false)
+  })
 })
