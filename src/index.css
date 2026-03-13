@@ -50,6 +50,32 @@
 }
 
 @layer utilities {
+  .ui-brand-solid-3d {
+    text-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.72),
+      0 2px 0 rgba(203, 213, 225, 0.9),
+      0 8px 18px rgba(30, 41, 59, 0.12);
+  }
+
+  .ui-brand-solid-3d-hero {
+    text-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8),
+      0 3px 0 rgba(203, 213, 225, 0.95),
+      0 12px 24px rgba(30, 41, 59, 0.14);
+  }
+
+  .ui-brand-gradient-3d {
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.6))
+      drop-shadow(0 3px 0 rgba(37, 99, 235, 0.2))
+      drop-shadow(0 10px 18px rgba(37, 99, 235, 0.14));
+  }
+
+  .ui-brand-gradient-3d-hero {
+    filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.68))
+      drop-shadow(0 4px 0 rgba(37, 99, 235, 0.24))
+      drop-shadow(0 12px 24px rgba(37, 99, 235, 0.16));
+  }
+
   .ui-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: var(--color-ui-border) transparent;
