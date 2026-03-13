@@ -23,6 +23,7 @@ import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
+  calcPlayerTotalAssets,
 } from './game/gameViewModel'
 import { sendWaitingRoomChat } from './waiting-room/socket'
 import type { ChatEventPayload } from './waiting-room/types'
@@ -256,7 +257,7 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-[#F2EBD8] px-6 font-['Inter']">
+    <div className="relative flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#FFFFF0] via-[#F5EDD5] to-[#F2D9B0] px-6 font-['Inter']">
       <div className="absolute left-6 top-6 z-[70]">
         <button
           type="button"
@@ -358,7 +359,13 @@ const GamePage: React.FC = () => {
                   nickname: player.name ?? `Player ${player.id + 1}`,
                   color: player.color,
                   money: player.money,
-                  totalAssets: player.money,
+                  totalAssets: calcPlayerTotalAssets(
+                    storePlayers[player.originalIndex] ?? {
+                      balance: player.money,
+                      owned_tiles: [],
+                    },
+                    storeTiles
+                  ),
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
                 isRichest={player.money > 0 && player.money === maxMoney}

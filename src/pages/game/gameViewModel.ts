@@ -1,5 +1,8 @@
 import {
   INIT_PLAYERS,
+  TILES,
+  getBuildCost,
+  type BuildingLevel,
   type PlayerState,
 } from '../../components/board/board.constants'
 import type { Player, PlayerId, Tile } from '../../types/domain'
@@ -78,4 +81,36 @@ export const mapStoreTilesToBoardTiles = (
       owner_id: boardOwner.id,
     }
   })
+}
+
+/**
+ * 플레이어 총자산 계산:
+ * 현금 + 보유 도시 토지 가격 + 건물 레벨별 누적 건설비
+ */
+export const calcPlayerTotalAssets = (
+  player: Player,
+  storeTiles: Tile[]
+): number => {
+  let assets = player.balance
+
+  for (const tileIndex of player.owned_tiles) {
+    // 서버 타일에서 building 레벨 조회
+    const serverTile = storeTiles.find((t) => t.index === tileIndex)
+    const buildingLevel: BuildingLevel =
+      (serverTile?.building as BuildingLevel | undefined) ?? 0
+
+    // 정적 타일 데이터에서 토지 가격 조회
+    const staticTile = TILES.find((t) => t.id === tileIndex)
+    const landPrice = staticTile?.price ?? 0
+
+    // 토지 가격 합산
+    assets += landPrice
+
+    // 건물 레벨 1~7 누적 건설비 합산
+    for (let lvl = 0 as BuildingLevel; lvl < buildingLevel; lvl++) {
+      assets += getBuildCost(landPrice, lvl as BuildingLevel)
+    }
+  }
+
+  return assets
 }
