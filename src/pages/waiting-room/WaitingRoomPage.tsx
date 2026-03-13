@@ -217,7 +217,17 @@ function WaitingRoomPage() {
   })
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-ui-app-bg">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-ui-app-bg">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-14">
+        <img
+          src="/LobbyPage_background.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.3),transparent_28%),linear-gradient(180deg,rgba(250,248,240,0.48),rgba(250,248,240,0.62))]" />
+      </div>
+
       <WaitingRoomHeader
         roomIdLabel={roomIdLabel}
         roomTitle={roomTitle}
@@ -230,7 +240,7 @@ function WaitingRoomPage() {
         }}
       />
 
-      <main className="flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6 xl:flex-row">
+      <main className="relative flex min-h-0 flex-1 flex-col gap-4 p-4 sm:p-6 xl:flex-row">
         <section className="grid min-h-0 flex-1 gap-4 sm:grid-cols-2 xl:auto-rows-fr">
           {isRoomLoading &&
             Array.from({ length: 4 }).map((_, index) => (
