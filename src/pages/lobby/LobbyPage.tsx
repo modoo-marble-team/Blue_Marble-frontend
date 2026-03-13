@@ -123,7 +123,17 @@ function LobbyPage() {
   })
 
   return (
-    <div className="min-h-screen bg-ui-app-bg">
+    <div className="relative min-h-screen overflow-hidden bg-ui-app-bg">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-14">
+        <img
+          src="/LobbyPage_background.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.34),transparent_30%),linear-gradient(180deg,rgba(250,248,240,0.38),rgba(250,248,240,0.5))]" />
+      </div>
+
       <Header
         playerLabel={session.nickname}
         avatarText={avatarText}
@@ -131,7 +141,7 @@ function LobbyPage() {
         menuItems={headerMenuItems}
       />
 
-      <main className="flex flex-col gap-4 p-4 sm:p-6 xl:flex-row xl:items-start">
+      <main className="relative flex flex-col gap-4 p-4 sm:p-6 xl:flex-row xl:items-start">
         <section className="min-w-0 flex-1">
           <LobbyControls
             searchKeyword={searchRoom}
