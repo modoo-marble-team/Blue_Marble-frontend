@@ -32,8 +32,8 @@ export function BrandLockup({ compact = false, className }: BrandLockupProps) {
             : 'gap-1 text-[1.55rem] sm:text-[1.7rem]'
         )}
       >
-        <span className="text-ui-text-strong">MARBLE</span>
-        <span className="bg-linear-to-r from-ui-brand-strong via-ui-brand to-[#0ea5e9] bg-clip-text text-transparent">
+        <span className="ui-brand-solid-3d text-ui-text-strong">MARBLE</span>
+        <span className="ui-brand-gradient-3d bg-linear-to-r from-ui-brand-strong via-ui-brand to-[#0ea5e9] bg-clip-text text-transparent">
           POP
         </span>
       </div>
