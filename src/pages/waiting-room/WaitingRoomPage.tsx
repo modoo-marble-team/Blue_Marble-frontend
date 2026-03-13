@@ -13,7 +13,9 @@ import { DirectMessagePanel } from '../../features/presence/components/DirectMes
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
+import { removeMockOnlineUser } from '../../features/presence/mockData'
 import { cn } from '../../lib/utils'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
 import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
@@ -155,9 +157,13 @@ function WaitingRoomPage() {
       toast.error(result.message)
     }
 
+    if (IS_SOCKET_MOCK_ENABLED && session) {
+      removeMockOnlineUser(session.userId)
+    }
+
     clearSession()
     navigate('/', { replace: true })
-  }, [clearSession, leaveRoom, navigate])
+  }, [clearSession, leaveRoom, navigate, session])
 
   // 마이페이지 이동 전 대기방 퇴장 처리
   const handleGoMyPage = useCallback(async () => {

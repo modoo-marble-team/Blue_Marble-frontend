@@ -67,6 +67,16 @@ export function setMockOnlineUserStatus(
   return getMockOnlineUsersSnapshot()
 }
 
+// 특정 접속자를 저장소에서 제거하고 최신 스냅샷을 반환
+export function removeMockOnlineUser(userId: string) {
+  mockOnlineUsersStore = mockOnlineUsersStore.filter(
+    (user) => user.id !== userId
+  )
+  notifyMockOnlineUsersChanged()
+
+  return getMockOnlineUsersSnapshot()
+}
+
 // 접속자 저장소 변경을 구독하고 해제 함수를 반환
 export function subscribeMockOnlineUsersChange(
   listener: (users: OnlineUserPayload[]) => void
