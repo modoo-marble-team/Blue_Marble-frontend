@@ -77,15 +77,12 @@ function HomePage() {
     <div className="relative min-h-screen overflow-hidden bg-ui-app-bg px-4 py-5 sm:px-8 sm:py-6 lg:py-8">
       {/* 브랜드 중심을 받쳐주는 배경 레이어 */}
       <div className="pointer-events-none absolute inset-0">
-        <picture>
-          <source srcSet="/HomePage_background.webp" type="image/webp" />
-          <img
-            src="/HomePage_background.jpg"
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-        </picture>
+        <img
+          src="/HomePage_background.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.24),transparent_28%),linear-gradient(180deg,rgba(250,248,240,0.1),rgba(250,248,240,0.08))]" />
       </div>
 
@@ -97,8 +94,10 @@ function HomePage() {
           className="w-full max-w-4xl text-center"
         >
           <h1 className="select-none text-[clamp(3.2rem,8vw,5.8rem)] font-extrabold leading-[0.92] tracking-tight text-ui-text-strong">
-            <span className="text-ui-text-strong">MARBLE</span>
-            <span className="ml-1.5 bg-linear-to-r from-ui-brand-strong via-ui-brand to-[#0ea5e9] bg-clip-text text-transparent sm:ml-2">
+            <span className="ui-brand-solid-3d-hero text-ui-text-strong">
+              MARBLE
+            </span>
+            <span className="ui-brand-gradient-3d-hero ml-1.5 bg-linear-to-r from-ui-brand-strong via-ui-brand to-[#0ea5e9] bg-clip-text text-transparent sm:ml-2">
               POP
             </span>
           </h1>
