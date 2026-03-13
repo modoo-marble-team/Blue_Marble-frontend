@@ -1,3 +1,4 @@
+import { BrandLockup } from './BrandLockup'
 import { ProfileDropdown } from './ProfileDropdown'
 import type { ProfileMenuItem } from './profileMenu'
 
@@ -20,14 +21,7 @@ function Header({
 }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-ui-border bg-ui-surface/95 px-4 backdrop-blur sm:px-6">
-      <div className="flex select-none items-center">
-        <h1 className="text-[1.45rem] font-extrabold leading-none tracking-tight text-ui-text-strong">
-          <span className="text-ui-text-strong">MARBLE</span>
-          <span className="ml-1 bg-linear-to-r from-ui-brand-strong via-ui-brand to-[#0ea5e9] bg-clip-text text-transparent">
-            POP
-          </span>
-        </h1>
-      </div>
+      <BrandLockup compact />
 
       <ProfileDropdown
         playerLabel={playerLabel}
