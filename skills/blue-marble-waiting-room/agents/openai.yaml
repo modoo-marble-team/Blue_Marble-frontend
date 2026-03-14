@@ -1,0 +1,4 @@
+interface:
+  display_name: "Waiting Room Flow"
+  short_description: "Waiting room lifecycle, socket, and cleanup flow"
+  default_prompt: "Use $blue-marble-waiting-room to change waiting room lifecycle, ready/start flow, or leave cleanup."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blue Marble Review"
+  short_description: "Diff review, self-review, and targeted validation"
+  default_prompt: "Use $blue-marble-diff-review to review a change in this repository and select the right checks."

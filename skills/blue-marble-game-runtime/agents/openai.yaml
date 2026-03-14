@@ -1,0 +1,4 @@
+interface:
+  display_name: "Game Runtime"
+  short_description: "Game socket runtime, prompts, store, and contracts"
+  default_prompt: "Use $blue-marble-game-runtime to change game runtime contracts, prompt handling, or game store flow."
