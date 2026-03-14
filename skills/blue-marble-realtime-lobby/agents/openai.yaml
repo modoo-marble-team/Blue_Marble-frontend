@@ -1,0 +1,4 @@
+interface:
+  display_name: "Realtime Lobby"
+  short_description: "Lobby, presence, DM, and chat workflows"
+  default_prompt: "Use $blue-marble-realtime-lobby to update lobby, presence, or DM behavior in this repository."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Blue Marble Workflow"
+  short_description: "Project-specific AI workflow and task memory"
+  default_prompt: "Use $blue-marble-agent-workflow to plan and execute a scoped change in this repository."
