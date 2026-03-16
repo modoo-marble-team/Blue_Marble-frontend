@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useParams,
+} from 'react-router-dom'
 import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../../features/auth/store'
 import {
@@ -53,6 +58,7 @@ function WaitingRoomPage() {
   const currentRoomId = roomId ?? ''
   const location = useLocation()
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
   const session = useAuthStore((state) => state.session)
   const clearSession = useAuthStore((state) => state.clearSession)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
@@ -60,10 +66,12 @@ function WaitingRoomPage() {
 
   const locationState = location.state as WaitingRoomLocationState | null
   const isSameRoomState = locationState?.roomId === currentRoomId
+  const shouldUsePreJoinedSnapshot = navigationType !== 'POP'
   const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
-  const preJoinedSnapshot = isSameRoomState
-    ? (locationState?.preJoinedSnapshot ?? null)
-    : null
+  const preJoinedSnapshot =
+    isSameRoomState && shouldUsePreJoinedSnapshot
+      ? (locationState?.preJoinedSnapshot ?? null)
+      : null
 
   const handleGameStart = useCallback(
     (payload: GameStartEventPayload) => {

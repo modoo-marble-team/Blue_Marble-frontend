@@ -38,6 +38,7 @@ const {
   useOnlineUsersSocketMock,
   useDirectMessageControllerMock,
   navigateMock,
+  navigationTypeMock,
   toastErrorMock,
   waitingRoomControllerStateRef,
   gameStartHandlerRef,
@@ -46,6 +47,7 @@ const {
   useOnlineUsersSocketMock: vi.fn(),
   useDirectMessageControllerMock: vi.fn(),
   navigateMock: vi.fn(),
+  navigationTypeMock: vi.fn(),
   toastErrorMock: vi.fn(),
   waitingRoomControllerStateRef: {
     current: null as WaitingRoomControllerResult | null,
@@ -173,6 +175,7 @@ describe('WaitingRoomPage interaction', () => {
 
     waitingRoomControllerStateRef.current = createWaitingRoomControllerState()
     gameStartHandlerRef.current = null
+    navigationTypeMock.mockReturnValue('POP')
 
     useWaitingRoomControllerMock.mockImplementation((params) => {
       gameStartHandlerRef.current = params.onGameStart
@@ -378,5 +381,110 @@ describe('WaitingRoomPage interaction', () => {
       expect(handleStartGameMock).toHaveBeenCalledTimes(1)
       expect(toastErrorMock).toHaveBeenCalledWith('시작 실패')
     })
+  })
+
+  it('대기방 접속자 목록은 room.players 기준으로 현재 방 참가자를 in_room 상태로 보정한다', async () => {
+    useOnlineUsersSocketMock.mockReturnValue({
+      data: [
+        {
+          id: 'user-1',
+          nickname: '테스터',
+          status: 'lobby',
+          avatarText: '테',
+          avatarBackground: '#ef4444',
+        },
+        {
+          id: 'user-2',
+          nickname: '상대방',
+          status: 'lobby',
+          avatarText: '상',
+          avatarBackground: '#3b82f6',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    })
+
+    renderWaitingRoomPage()
+
+    await waitFor(() => {
+      expect(screen.getAllByText('대기방')).toHaveLength(2)
+    })
+  })
+
+  it('초기 진입(POP)에서는 location.state의 preJoinedSnapshot을 재사용하지 않는다', () => {
+    renderWaitingRoomPage({
+      initialEntries: [
+        {
+          pathname: '/rooms/room-5',
+          state: {
+            roomId: 'room-5',
+            roomTitle: '테스트 방',
+            preJoinedSnapshot: {
+              roomId: 'room-5',
+              title: '테스트 방',
+              status: 'waiting',
+              maxPlayers: 4,
+              isPrivate: false,
+              players: [
+                {
+                  id: 'user-1',
+                  nickname: '테스터',
+                  isReady: false,
+                  isHost: true,
+                },
+              ],
+              chatMessages: [],
+            },
+          },
+        },
+      ],
+    })
+
+    expect(useWaitingRoomControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preJoinedSnapshot: null,
+      })
+    )
+  })
+
+  it('로비에서 PUSH로 진입하면 location.state의 preJoinedSnapshot을 사용한다', () => {
+    navigationTypeMock.mockReturnValue('PUSH')
+
+    const preJoinedSnapshot: WaitingRoomSnapshot = {
+      roomId: 'room-5',
+      title: '테스트 방',
+      status: 'waiting',
+      maxPlayers: 4,
+      isPrivate: false,
+      players: [
+        {
+          id: 'user-1',
+          nickname: '테스터',
+          isReady: false,
+          isHost: true,
+        },
+      ],
+      chatMessages: [],
+    }
+
+    renderWaitingRoomPage({
+      initialEntries: [
+        {
+          pathname: '/rooms/room-5',
+          state: {
+            roomId: 'room-5',
+            roomTitle: '테스트 방',
+            preJoinedSnapshot,
+          },
+        },
+      ],
+    })
+
+    expect(useWaitingRoomControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preJoinedSnapshot,
+      })
+    )
   })
 })

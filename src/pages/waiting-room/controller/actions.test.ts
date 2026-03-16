@@ -174,6 +174,41 @@ describe('useWaitingRoomActions', () => {
     expect(params.shouldSkipNextCleanupLeaveRef.current).toBe(false)
   })
 
+  it('browser unload 이후 cleanup에서는 퇴장 시퀀스를 실행하지 않는다', () => {
+    const params = createActionsHookParams()
+
+    const { unmount } = renderHook(() => useWaitingRoomActions(params))
+
+    act(() => {
+      window.dispatchEvent(new Event('beforeunload'))
+    })
+
+    unmount()
+
+    expect(leaveWaitingRoomMock).not.toHaveBeenCalled()
+    expect(params.shouldSkipNextCleanupLeaveRef.current).toBe(false)
+  })
+
+  it('문서 visibility가 hidden이면 cleanup leave를 실행하지 않는다', () => {
+    const params = createActionsHookParams()
+    const originalVisibilityState = document.visibilityState
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: 'hidden',
+    })
+
+    const { unmount } = renderHook(() => useWaitingRoomActions(params))
+    unmount()
+
+    expect(leaveWaitingRoomMock).not.toHaveBeenCalled()
+
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      value: originalVisibilityState,
+    })
+  })
+
   it('handleToggleReady 성공 시 setRoom updater로 내 준비 상태를 갱신한다', async () => {
     toggleWaitingReadyMock.mockResolvedValue({ isReady: true })
     const params = createActionsHookParams({
