@@ -6,9 +6,10 @@ import { TILES } from './board.constants'
 import {
   createBoardStatusFromEvent,
   extractEventDice,
+  getBoardEventConsumeDelayMs,
+  resolveBoardEventAnimationKind,
+  type BoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
-
-const EVENT_QUEUE_CONSUME_DELAY_MS = 120
 
 interface UseBoardEventQueueParams {
   enabled: boolean
@@ -16,6 +17,7 @@ interface UseBoardEventQueueParams {
   setStatus: Dispatch<SetStateAction<string>>
   setDice1: Dispatch<SetStateAction<number>>
   setDice2: Dispatch<SetStateAction<number>>
+  onEventAnimation?: (kind: BoardEventAnimationKind) => void
 }
 
 export function useBoardEventQueue({
@@ -24,51 +26,88 @@ export function useBoardEventQueue({
   setStatus,
   setDice1,
   setDice2,
+  onEventAnimation,
 }: UseBoardEventQueueParams) {
-  const eventQueueLength = useGameStore((state) => state.eventQueue.length)
-  const consumeNextEvent = useGameStore((state) => state.consumeNextEvent)
   const consumingRef = useRef(false)
+  const consumeTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!enabled || eventQueueLength <= 0 || consumingRef.current) {
+    if (!enabled) {
       return
     }
 
-    consumingRef.current = true
-
-    const timer = window.setTimeout(() => {
-      const nextEvent = consumeNextEvent()
-      if (nextEvent) {
-        const dice = extractEventDice(nextEvent)
-        if (dice) {
-          setDice1(dice[0])
-          setDice2(dice[1])
-        }
-
-        const statusText = createBoardStatusFromEvent(
-          nextEvent,
-          playersRef.current,
-          TILES
-        )
-        if (statusText) {
-          setStatus(statusText)
-        }
+    let disposed = false
+    const clearConsumeTimer = () => {
+      if (consumeTimerRef.current !== null) {
+        window.clearTimeout(consumeTimerRef.current)
+        consumeTimerRef.current = null
       }
-
-      consumingRef.current = false
-    }, EVENT_QUEUE_CONSUME_DELAY_MS)
-
-    return () => {
-      window.clearTimeout(timer)
+    }
+    const releaseLock = () => {
+      clearConsumeTimer()
       consumingRef.current = false
     }
-  }, [
-    enabled,
-    eventQueueLength,
-    consumeNextEvent,
-    playersRef,
-    setStatus,
-    setDice1,
-    setDice2,
-  ])
+
+    const consumeIfPossible = () => {
+      if (disposed || consumingRef.current) {
+        return
+      }
+
+      const storeState = useGameStore.getState()
+      if (storeState.eventQueue.length <= 0) {
+        return
+      }
+
+      consumingRef.current = true
+      const nextEvent = storeState.consumeNextEvent()
+
+      if (!nextEvent) {
+        releaseLock()
+        return
+      }
+
+      const dice = extractEventDice(nextEvent)
+      if (dice) {
+        setDice1(dice[0])
+        setDice2(dice[1])
+      }
+
+      const statusText = createBoardStatusFromEvent(
+        nextEvent,
+        playersRef.current,
+        TILES
+      )
+      if (statusText) {
+        setStatus(statusText)
+      }
+
+      onEventAnimation?.(resolveBoardEventAnimationKind(nextEvent))
+
+      const delayMs = getBoardEventConsumeDelayMs(nextEvent)
+      consumeTimerRef.current = window.setTimeout(() => {
+        consumeTimerRef.current = null
+        consumingRef.current = false
+        consumeIfPossible()
+      }, delayMs)
+    }
+
+    const unsubscribe = useGameStore.subscribe((state, prevState) => {
+      if (
+        state.eventQueue.length === prevState.eventQueue.length ||
+        state.eventQueue.length <= 0
+      ) {
+        return
+      }
+
+      consumeIfPossible()
+    })
+
+    consumeIfPossible()
+
+    return () => {
+      disposed = true
+      releaseLock()
+      unsubscribe()
+    }
+  }, [enabled, playersRef, setStatus, setDice1, setDice2, onEventAnimation])
 }
