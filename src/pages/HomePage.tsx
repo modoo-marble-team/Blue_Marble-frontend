@@ -7,9 +7,14 @@ import {
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
+import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import {
+  getAuthErrorMessage,
+  loginAsGuest,
+  startKakaoLogin,
+} from '../features/auth/api'
 import { useRedirectAuthenticatedToLobby } from '../features/auth/hooks/useRedirectAuthenticatedToLobby'
-import { mockGuestLogin, mockKakaoLogin } from '../features/auth/mockApi'
 import { useAuthStore } from '../features/auth/store'
 
 // 홈 하단 기능 소개 카드 메타데이터
@@ -51,11 +56,20 @@ function HomePage() {
   async function handleKakaoLogin() {
     setIsKakaoLoading(true)
     try {
-      const kakaoSession = await mockKakaoLogin()
+      const kakaoSession = await startKakaoLogin()
+
+      if (!kakaoSession) {
+        return
+      }
+
       setSession(kakaoSession)
       navigate(kakaoSession.needsNicknameSetup ? '/nickname-setup' : '/lobby', {
         replace: true,
       })
+    } catch (error) {
+      toast.error(
+        getAuthErrorMessage(error, '카카오 로그인 시작에 실패했습니다.')
+      )
     } finally {
       setIsKakaoLoading(false)
     }
@@ -65,9 +79,11 @@ function HomePage() {
   async function handleGuestLogin() {
     setIsGuestLoading(true)
     try {
-      const guestSession = await mockGuestLogin()
+      const guestSession = await loginAsGuest()
       setSession(guestSession)
       navigate('/lobby', { replace: true })
+    } catch (error) {
+      toast.error(getAuthErrorMessage(error, '게스트 로그인에 실패했습니다.'))
     } finally {
       setIsGuestLoading(false)
     }
