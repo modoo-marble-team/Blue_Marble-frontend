@@ -175,17 +175,31 @@ describe('LobbyPage filter and toggle regression', () => {
     })
     getWaitingRoomErrorMessageMock.mockReturnValue('에러')
     isJoinPasswordMismatchErrorMock.mockReturnValue(false)
-    joinWaitingRoomMock.mockResolvedValue({
-      roomId: 'room-2',
-      title: '초보 비밀 방',
-      status: 'waiting',
-      maxPlayers: 4,
-      isPrivate: true,
-      players: [
-        { id: 'user-1', nickname: '테스터', isReady: false, isHost: false },
-      ],
-      chatMessages: [],
-    } satisfies WaitingRoomSnapshot)
+    joinWaitingRoomMock.mockImplementation(
+      async ({
+        roomId,
+        fallbackTitle,
+      }: {
+        roomId: string
+        fallbackTitle?: string
+      }) =>
+        ({
+          roomId,
+          title: fallbackTitle ?? '대기방',
+          status: 'waiting',
+          maxPlayers: 4,
+          isPrivate: roomId === 'room-2',
+          players: [
+            {
+              id: 'user-1',
+              nickname: '테스터',
+              isReady: false,
+              isHost: roomId === 'room-10',
+            },
+          ],
+          chatMessages: [],
+        }) satisfies WaitingRoomSnapshot
+    )
   })
 
   it('검색/탭/비밀방 토글 조합에 따라 조회 파라미터와 카드 목록이 함께 바뀐다', async () => {
@@ -283,6 +297,77 @@ describe('LobbyPage filter and toggle regression', () => {
         roomId: 'room-2',
         roomTitle: '초보 비밀 방',
         preJoinedSnapshot: expect.any(Object),
+      },
+    })
+  })
+
+  it('일반방 입장하기 클릭 시 join 응답 snapshot을 확보한 뒤 대기방으로 이동한다', async () => {
+    const user = userEvent.setup()
+    renderLobbyPage()
+
+    const publicRoomCard = screen
+      .getByText('초보 환영 방')
+      .closest('article') as HTMLElement
+
+    await user.click(
+      within(publicRoomCard).getByRole('button', { name: '입장하기' })
+    )
+
+    await waitFor(() => {
+      expect(joinWaitingRoomMock).toHaveBeenCalledWith({
+        roomId: 'room-1',
+        userId: 'user-1',
+        nickname: '테스터',
+        fallbackTitle: '초보 환영 방',
+        password: undefined,
+      })
+    })
+
+    expect(navigateMock).toHaveBeenCalledWith('/rooms/room-1', {
+      state: {
+        roomId: 'room-1',
+        roomTitle: '초보 환영 방',
+        preJoinedSnapshot: expect.objectContaining({
+          roomId: 'room-1',
+        }),
+      },
+    })
+  })
+
+  it('방 생성 후 join snapshot을 다시 받아 waiting-room으로 이동한다', async () => {
+    const user = userEvent.setup()
+    renderLobbyPage()
+
+    await user.click(screen.getByRole('button', { name: '방 만들기' }))
+    await user.click(screen.getByRole('button', { name: '방 만들기 완료' }))
+
+    await waitFor(() => {
+      expect(createWaitingRoomMock).toHaveBeenCalledWith({
+        title: '테스터님의 방',
+        isPrivate: false,
+        password: undefined,
+        hostUserId: 'user-1',
+        hostNickname: '테스터',
+      })
+    })
+
+    await waitFor(() => {
+      expect(joinWaitingRoomMock).toHaveBeenCalledWith({
+        roomId: 'room-10',
+        userId: 'user-1',
+        nickname: '테스터',
+        fallbackTitle: '테스트 방',
+        password: undefined,
+      })
+    })
+
+    expect(navigateMock).toHaveBeenCalledWith('/rooms/room-10', {
+      state: {
+        roomId: 'room-10',
+        roomTitle: '테스트 방',
+        preJoinedSnapshot: expect.objectContaining({
+          roomId: 'room-10',
+        }),
       },
     })
   })
