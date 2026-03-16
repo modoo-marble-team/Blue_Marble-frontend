@@ -21,7 +21,7 @@
 | 파트 | 진행도  | 상태                                                                                                             |
 | ---- | ------- | ---------------------------------------------------------------------------------------------------------------- |
 | FE-B | 진행 중 | event-socket 계약 전환 + `game.api` 제거 + 한 턴 계약 시나리오 테스트(#298) + MSW 계약 검증 강화(#362) 반영 완료 |
-| FE-C | 진행 중 | 보드 로컬 엔진 유틸 분리(`gameBoardLocalEngine`) 1차 완료. 표현/연출 중심 구조로 최종 수렴이 남은 단계           |
+| FE-C | 진행 중 | 보드 로컬 엔진 유틸 분리 + `useBoardEventQueue` 연결(상태 메시지/주사위 반영) 1차 완료. 연출 고도화 단계         |
 
 ## FE-B 현재 최우선 작업
 
@@ -34,7 +34,7 @@
 ## FE-C 현재 최우선 작업
 
 - `GameBoard.tsx`에서 남아 있는 로컬 게임 로직 제거 (`gameBoardLocalEngine` 의존 축소/해소)
-- `eventQueue` 기반 이동/효과 애니메이션 계층 추가
+- `eventQueue` 기반 이동/효과 애니메이션 분기 고도화
 - store selector 기반 보드 렌더 구조 추가 정리
 - 새 `buildingLevel`, `tileType`, `playerState` 표시 반영
 
@@ -43,6 +43,7 @@
 - `GamePage` + `GameBoard`는 `prompt.type` 소비 구조로 전환됐지만 mock fallback과 실서버 경로가 일부 이원화돼 있다.
 - `GameBoard.tsx`가 여전히 `applyMoney`/`advanceTurn`/파산 판정 등 게임 엔진 성격 로직을 들고 있다.
 - 레거시 REST(`game.api`)가 삭제된 이후, 소켓 계약 변경 시 회귀를 잡는 테스트 보강이 필요하다.
+- `eventQueue` 소비는 연결됐지만 이벤트별 시각 연출 완성도가 아직 균일하지 않다.
 - `gameId` canonical, money unit, prompt/snapshot 필드 기준이 문서와 코드에서 완전히 수렴하지 않았다.
 
 ## 작업 운영 규칙 (2026-03-05 추가)

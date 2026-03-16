@@ -60,6 +60,7 @@ import {
   buildPlayerResults,
   removeOwnedTilesByPlayerId,
 } from './gameBoardLocalEngine'
+import { useBoardEventQueue } from './useBoardEventQueue'
 import type {
   AIPenaltyModalState,
   BankruptModalState,
@@ -322,6 +323,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const playersRef = useRef<PlayerState[]>(players)
     curPlayerRef.current = curPlayer
     playersRef.current = players
+
+    useBoardEventQueue({
+      enabled: !USE_GAME_SOCKET_MOCK,
+      playersRef,
+      setStatus,
+      setDice1,
+      setDice2,
+    })
 
     const bankruptSetRef = useRef<Set<number>>(new Set())
     const [optimisticTileOwners, setOptimisticTileOwners] = useState<Record<
