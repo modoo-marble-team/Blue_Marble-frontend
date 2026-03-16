@@ -164,6 +164,7 @@
 완료된 축:
 
 - `gameBoardStoreBridge.ts`, `gameBoardTransactionUtils.ts`, `gameBoardActionUtils.ts`의 `BuildingLevel 0..7` 관련 버그 수정 반영
+- `gameBoardLocalEngine.ts` 분리로 `GameBoard.tsx`의 로컬 엔진(`applyMoney`, `advanceTurn`, 파산 자산 집계) 1차 모듈화 완료
 
 남은 핵심 축:
 

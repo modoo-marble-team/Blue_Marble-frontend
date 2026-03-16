@@ -74,22 +74,22 @@
 
 아래 표에서 **상태** 열 기준: ✅ 완료 / ⚠️ 런타임 정합성 조정 필요 / ❌ 미구현
 
-| 파일                                                | 현재 상태    | 남은 수정 방향                                                                                            | 담당                  |
-| --------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------- | --------------------- |
-| `src/types/domain.ts`                               | ✅ 완료      | —                                                                                                         | FE-B                  |
-| `src/stores/game.store.ts`                          | ✅ 완료      | —                                                                                                         | FE-B                  |
-| `src/services/socket/game.handler.ts`               | ✅ 완료      | —                                                                                                         | FE-B                  |
-| `src/hooks/game/useGameState.ts`                    | ✅ 완료      | —                                                                                                         | FE-B                  |
-| `src/services/game/game.api.ts`                     | ✅ 완료      | 레거시 REST 모듈 삭제 완료(게임 런타임은 event-socket 단일 경로 유지)                                     | FE-B                  |
-| `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료      | —                                                                                                         | FE-B                  |
-| `src/pages/GamePage.tsx`                            | ✅ 3차 완료  | `prompt` 오버레이 응답 + `prompt.type` board-modal 분기 연결 완료. 미매핑 prompt는 오버레이 fallback 유지 | FE-B                  |
-| `src/components/board/GameBoard.tsx`                | ⚠️ 부분 정리 | `store.prompt` 기반 모달 연결은 완료. 로컬 엔진 성격(`applyMoney`, `advanceTurn`, 파산 판정) 제거 필요    | FE-C 주도 / FE-B 협업 |
-| `src/components/game/modals/*`                      | ✅ 3차 완료  | `store.prompt.type` 기준 모달 열림 조건/응답 연결 완료. `DiceTimerModal` timeout 연동 완료                | FE-B                  |
-| `src/mocks/handlers/game.handler.ts`                | ✅ 완료      | —                                                                                                         | FE-B                  |
-| `src/components/board/gameBoardStoreBridge.ts`      | ✅ 완료      | `toStoreBuildingLevel` 상한 7 반영 완료                                                                   | FE-C                  |
-| `src/components/board/gameBoardTransactionUtils.ts` | ✅ 완료      | `upgradeBoardTileOwner` 상한 7 반영 완료                                                                  | FE-C                  |
-| `src/components/board/gameBoardActionUtils.ts`      | ✅ 완료      | `getBoardSellFallbackRefund` level 5, 6 반영 완료                                                         | FE-C                  |
-| `src/components/board/*` (렌더 레이어)              | ❌ 미구현    | `store.eventQueue` 소비 연출. `playerState` 시각화                                                        | FE-C                  |
+| 파일                                                | 현재 상태   | 남은 수정 방향                                                                                            | 담당                  |
+| --------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------- | --------------------- |
+| `src/types/domain.ts`                               | ✅ 완료     | —                                                                                                         | FE-B                  |
+| `src/stores/game.store.ts`                          | ✅ 완료     | —                                                                                                         | FE-B                  |
+| `src/services/socket/game.handler.ts`               | ✅ 완료     | —                                                                                                         | FE-B                  |
+| `src/hooks/game/useGameState.ts`                    | ✅ 완료     | —                                                                                                         | FE-B                  |
+| `src/services/game/game.api.ts`                     | ✅ 완료     | 레거시 REST 모듈 삭제 완료(게임 런타임은 event-socket 단일 경로 유지)                                     | FE-B                  |
+| `src/hooks/game/useDiceRoll.ts`                     | ✅ 완료     | —                                                                                                         | FE-B                  |
+| `src/pages/GamePage.tsx`                            | ✅ 3차 완료 | `prompt` 오버레이 응답 + `prompt.type` board-modal 분기 연결 완료. 미매핑 prompt는 오버레이 fallback 유지 | FE-B                  |
+| `src/components/board/GameBoard.tsx`                | ⚠️ 1차 정리 | `store.prompt` 기반 모달 연결 + 로컬 엔진 유틸 분리(`gameBoardLocalEngine`) 완료. 엔진 제거는 후속 필요   | FE-C 주도 / FE-B 협업 |
+| `src/components/game/modals/*`                      | ✅ 3차 완료 | `store.prompt.type` 기준 모달 열림 조건/응답 연결 완료. `DiceTimerModal` timeout 연동 완료                | FE-B                  |
+| `src/mocks/handlers/game.handler.ts`                | ✅ 완료     | —                                                                                                         | FE-B                  |
+| `src/components/board/gameBoardStoreBridge.ts`      | ✅ 완료     | `toStoreBuildingLevel` 상한 7 반영 완료                                                                   | FE-C                  |
+| `src/components/board/gameBoardTransactionUtils.ts` | ✅ 완료     | `upgradeBoardTileOwner` 상한 7 반영 완료                                                                  | FE-C                  |
+| `src/components/board/gameBoardActionUtils.ts`      | ✅ 완료     | `getBoardSellFallbackRefund` level 5, 6 반영 완료                                                         | FE-C                  |
+| `src/components/board/*` (렌더 레이어)              | ❌ 미구현   | `store.eventQueue` 소비 연출. `playerState` 시각화                                                        | FE-C                  |
 
 ### 2-1. 백엔드와 최종 고정이 필요한 항목
 
@@ -283,6 +283,7 @@
 - `src/components/board/gameBoardStoreBridge.ts`: `toStoreBuildingLevel` 상한 7 반영
 - `src/components/board/gameBoardTransactionUtils.ts`: `upgradeBoardTileOwner` 상한 7 반영
 - `src/components/board/gameBoardActionUtils.ts`: `getBoardSellFallbackRefund` level 5, 6 반영
+- `src/components/board/gameBoardLocalEngine.ts`: `applyMoney`/`advanceTurn`/결과 집계를 분리해 `GameBoard.tsx` 책임 1차 축소
 
 ### 구조 미구현 (현재 잔여)
 
