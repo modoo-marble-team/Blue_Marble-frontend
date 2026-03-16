@@ -47,6 +47,11 @@ export function useDirectMessageController({
 
   const openedDirectMessageUserId = dmTargetUser?.id
   const directMessagesByUserIdRef = useRef<Record<string, DirectMessage[]>>({})
+  const openedDirectMessageUserIdRef = useRef<string | undefined>(
+    openedDirectMessageUserId
+  )
+
+  openedDirectMessageUserIdRef.current = openedDirectMessageUserId
 
   // 최신 DM 목록 상태를 ref에 동기화해 수신 이벤트 중복 판정에 사용
   useEffect(() => {
@@ -68,7 +73,6 @@ export function useDirectMessageController({
           content: payload.message,
           sentAt: payload.sent_at,
         }
-
         const previousMessages =
           directMessagesByUserIdRef.current[payload.sender_id] ?? []
         const hasSameMessage = previousMessages.some(
@@ -88,7 +92,7 @@ export function useDirectMessageController({
         setDirectMessagesByUserId(nextMessagesByUserId)
 
         // 현재 열려 있는 사용자 메시지는 unread 카운트에서 제외
-        if (payload.sender_id === openedDirectMessageUserId) {
+        if (payload.sender_id === openedDirectMessageUserIdRef.current) {
           return
         }
 
@@ -106,7 +110,7 @@ export function useDirectMessageController({
     return () => {
       unsubscribe()
     }
-  }, [openedDirectMessageUserId, session])
+  }, [session])
 
   // 접속자 목록 갱신 시 DM 대상 사용자 참조를 최신 객체로 동기화
   useEffect(() => {
@@ -155,8 +159,22 @@ export function useDirectMessageController({
 
   // DM 창 닫기
   const closeDirectMessage = useCallback(() => {
+    const targetUserId = dmTargetUser?.id
+
+    if (targetUserId) {
+      setUnreadDirectMessageCountByUserId((previousCountByUserId) => {
+        if (!previousCountByUserId[targetUserId]) {
+          return previousCountByUserId
+        }
+
+        const nextCountByUserId = { ...previousCountByUserId }
+        delete nextCountByUserId[targetUserId]
+        return nextCountByUserId
+      })
+    }
+
     setDmTargetUser(null)
-  }, [])
+  }, [dmTargetUser?.id])
 
   // 로컬 DM 목록에 메시지를 추가하고 소켓 전송 실행
   const sendDirectMessage = useCallback(

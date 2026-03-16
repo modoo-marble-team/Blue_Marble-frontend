@@ -354,6 +354,7 @@ function WaitingRoomPage() {
               isError={isUsersError}
               isOpen={isUserListOpen}
               currentUserId={session.userId}
+              activeDirectMessageUserId={dmTargetUser?.id}
               unreadDirectMessageCountByUserId={
                 unreadDirectMessageCountByUserId
               }

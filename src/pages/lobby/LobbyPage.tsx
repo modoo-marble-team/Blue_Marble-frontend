@@ -169,6 +169,7 @@ function LobbyPage() {
             isError={isUsersError}
             isOpen={isUserListOpen}
             currentUserId={session.userId}
+            activeDirectMessageUserId={dmTargetUser?.id}
             unreadDirectMessageCountByUserId={unreadDirectMessageCountByUserId}
             onOpenDirectMessage={openDirectMessage}
             onToggle={() => setIsUserListOpen((prev) => !prev)}
