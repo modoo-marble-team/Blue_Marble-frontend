@@ -133,22 +133,39 @@ export interface ChatEventPayload {
   sent_at: string
 }
 
-// 로비 갱신 이벤트의 방 정보 payload 타입
-export interface LobbyUpdatedRoomPayload {
+// created/updated/status_changed 시 내려오는 full room card payload 타입
+export interface LobbyUpdatedFullRoomPayload {
   id: string
   title: string
   status: LobbyRoomStatus
   is_private: boolean
   current_players: number
   max_players: number
+  host_id: string
   host_nickname: string
 }
 
-// 로비 갱신 이벤트 payload 타입
-export interface LobbyUpdatedEventPayload {
-  action: 'created' | 'removed' | 'status_changed' | 'updated'
-  room: LobbyUpdatedRoomPayload
+// removed 시에는 room id만 내려오는 최소 payload 타입
+export interface LobbyUpdatedRemovedRoomPayload {
+  id: string
 }
+
+// room card 전체 정보가 포함된 로비 갱신 이벤트 타입
+export interface LobbyUpdatedFullEventPayload {
+  action: 'created' | 'status_changed' | 'updated'
+  room: LobbyUpdatedFullRoomPayload
+}
+
+// 방 삭제 시 최소 payload만 전달되는 이벤트 타입
+export interface LobbyUpdatedRemovedEventPayload {
+  action: 'removed'
+  room: LobbyUpdatedRemovedRoomPayload
+}
+
+// 로비 갱신 이벤트 payload 타입
+export type LobbyUpdatedEventPayload =
+  | LobbyUpdatedFullEventPayload
+  | LobbyUpdatedRemovedEventPayload
 
 // 게임 시작 이벤트 payload 타입
 export interface GameStartEventPayload {

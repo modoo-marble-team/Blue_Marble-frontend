@@ -4,6 +4,7 @@ import type { AuthSession } from '../../../features/auth/types'
 import { subscribeWaitingRoomSocketEvents } from '../socket'
 import type {
   GameStartEventPayload,
+  LobbyUpdatedEventPayload,
   WaitingRoomChatMessage,
   WaitingRoomSnapshot,
 } from '../types'
@@ -15,6 +16,7 @@ interface UseWaitingRoomSocketSyncParams {
   session: AuthSession | null
   activeRoomId?: string
   onGameStart: (payload: GameStartEventPayload) => void
+  onRoomRemoved: () => void
   setRoom: Dispatch<SetStateAction<WaitingRoomSnapshot | null>>
   setChatMessages: Dispatch<SetStateAction<WaitingRoomChatMessage[]>>
 }
@@ -25,6 +27,7 @@ export function useWaitingRoomSocketSync({
   session,
   activeRoomId,
   onGameStart,
+  onRoomRemoved,
   setRoom,
   setChatMessages,
 }: UseWaitingRoomSocketSyncParams) {
@@ -101,10 +104,27 @@ export function useWaitingRoomSocketSync({
 
         onGameStart(payload)
       },
+      onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => {
+        if (payload.action !== 'removed' || payload.room.id !== activeRoomId) {
+          return
+        }
+
+        setRoom(null)
+        setChatMessages([])
+        onRoomRemoved()
+      },
     })
 
     return () => {
       unsubscribe()
     }
-  }, [activeRoomId, onGameStart, roomId, session, setChatMessages, setRoom])
+  }, [
+    activeRoomId,
+    onGameStart,
+    onRoomRemoved,
+    roomId,
+    session,
+    setChatMessages,
+    setRoom,
+  ])
 }

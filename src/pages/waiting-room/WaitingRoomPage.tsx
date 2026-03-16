@@ -72,6 +72,10 @@ function WaitingRoomPage() {
     [navigate]
   )
 
+  const handleRoomRemoved = useCallback(() => {
+    navigate('/lobby', { replace: true })
+  }, [navigate])
+
   const {
     room,
     seats,
@@ -96,6 +100,7 @@ function WaitingRoomPage() {
     fallbackRoomTitle: selectedRoomTitle ?? undefined,
     preJoinedSnapshot,
     onGameStart: handleGameStart,
+    onRoomRemoved: handleRoomRemoved,
   })
 
   const {
