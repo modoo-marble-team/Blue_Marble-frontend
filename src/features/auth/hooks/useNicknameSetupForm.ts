@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRequireNicknameSetupSession } from './useRequireNicknameSetupSession'
-import { mockSetNickname } from '../mockApi'
+import { setNickname as submitNickname } from '../api'
 import {
   createNicknameHelperFeedback,
   VALIDATION_MESSAGE_DEBOUNCE_MS,
@@ -22,8 +22,12 @@ export function useNicknameSetupForm() {
   const [isNicknameFocused, setIsNicknameFocused] = useState(false)
   const [showValidationMessage, setShowValidationMessage] = useState(false)
 
-  const { nicknameValidation, isCheckingNickname, isNicknameAvailable } =
-    useNicknameAvailability(nickname)
+  const {
+    nicknameValidation,
+    isCheckingNickname,
+    isNicknameAvailable,
+    isAvailabilityCheckSupported,
+  } = useNicknameAvailability(nickname)
 
   // 입력 직후 안내 메시지 노출을 지연해 깜빡임 완화
   useEffect(() => {
@@ -45,9 +49,11 @@ export function useNicknameSetupForm() {
         nicknameValidation,
         isCheckingNickname,
         isNicknameAvailable,
+        isAvailabilityCheckSupported,
         showValidationMessage,
       }),
     [
+      isAvailabilityCheckSupported,
       isCheckingNickname,
       isNicknameAvailable,
       isNicknameFocused,
@@ -62,8 +68,8 @@ export function useNicknameSetupForm() {
   const isSubmitDisabled =
     isSubmitting ||
     !nicknameValidation.ok ||
-    isCheckingNickname ||
-    isNicknameAvailable !== true
+    (isAvailabilityCheckSupported &&
+      (isCheckingNickname || isNicknameAvailable !== true))
 
   // 제출 시 형식/중복 상태를 재검증하고 닉네임 저장 요청
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -82,19 +88,22 @@ export function useNicknameSetupForm() {
     }
 
     // 중복 닉네임이면 제출 차단
-    if (isNicknameAvailable === false) {
+    if (isAvailabilityCheckSupported && isNicknameAvailable === false) {
       setSubmitMessage('• 이미 사용 중인 닉네임입니다.')
       return
     }
 
     // 중복 검사 진행 중이거나 미완료면 제출 차단
-    if (isNicknameAvailable !== true || isCheckingNickname) {
+    if (
+      isAvailabilityCheckSupported &&
+      (isNicknameAvailable !== true || isCheckingNickname)
+    ) {
       setSubmitMessage('• 닉네임 중복 확인이 완료될 때까지 기다려 주세요.')
       return
     }
 
     setIsSubmitting(true)
-    const result = await mockSetNickname({
+    const result = await submitNickname({
       session,
       nickname: nicknameValidation.normalizedNickname,
     })

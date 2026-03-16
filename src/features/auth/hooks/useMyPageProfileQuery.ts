@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { mockGetMyPageProfile } from '../mockApi'
+import { getMyPageProfile } from '../api'
 import type { AuthSession } from '../types'
 
 const MY_PAGE_PROFILE_STALE_TIME_MS = 30_000
@@ -19,7 +19,7 @@ export function useMyPageProfileQuery(session: AuthSession | null) {
         throw new Error('로그인 세션이 없습니다.')
       }
 
-      const result = await mockGetMyPageProfile(session)
+      const result = await getMyPageProfile(session)
       // API 실패 응답은 에러로 전환해 상위에서 처리
       if (!result.ok) {
         throw new Error(result.message)

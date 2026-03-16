@@ -13,6 +13,7 @@ describe('createNicknameHelperFeedback', () => {
       },
       isCheckingNickname: false,
       isNicknameAvailable: null,
+      isAvailabilityCheckSupported: true,
       showValidationMessage: false,
     })
 
@@ -34,6 +35,7 @@ describe('createNicknameHelperFeedback', () => {
       },
       isCheckingNickname: false,
       isNicknameAvailable: null,
+      isAvailabilityCheckSupported: true,
       showValidationMessage: false,
     })
 
