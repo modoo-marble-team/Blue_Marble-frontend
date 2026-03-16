@@ -68,6 +68,9 @@ export interface JoinWaitingRoomResponsePayload {
   chat_messages: WaitingRoomChatPayload[]
 }
 
+// room_updated는 대기방 snapshot과 동일한 payload 계약을 사용
+export type RoomUpdatedEventPayload = JoinWaitingRoomResponsePayload
+
 // 방 생성 API 응답 타입
 export interface CreateRoomResponsePayload {
   id: string

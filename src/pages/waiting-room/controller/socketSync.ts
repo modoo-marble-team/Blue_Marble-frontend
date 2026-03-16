@@ -1,10 +1,13 @@
 import { useEffect } from 'react'
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { AuthSession } from '../../../features/auth/types'
+import { requestOnlineUsersSnapshotSync } from '../../../features/presence/onlineUsersSocket'
+import { mapWaitingRoomSnapshotPayload } from '../api'
 import { subscribeWaitingRoomSocketEvents } from '../socket'
 import type {
   GameStartEventPayload,
   LobbyUpdatedEventPayload,
+  RoomUpdatedEventPayload,
   WaitingRoomChatMessage,
   WaitingRoomSnapshot,
 } from '../types'
@@ -15,6 +18,7 @@ interface UseWaitingRoomSocketSyncParams {
   roomId: string
   session: AuthSession | null
   activeRoomId?: string
+  hasReceivedRoomUpdatedRef: MutableRefObject<boolean>
   onGameStart: (payload: GameStartEventPayload) => void
   onRoomRemoved: () => void
   setRoom: Dispatch<SetStateAction<WaitingRoomSnapshot | null>>
@@ -26,15 +30,18 @@ export function useWaitingRoomSocketSync({
   roomId,
   session,
   activeRoomId,
+  hasReceivedRoomUpdatedRef,
   onGameStart,
   onRoomRemoved,
   setRoom,
   setChatMessages,
 }: UseWaitingRoomSocketSyncParams) {
   useEffect(() => {
-    if (!roomId || !session || !activeRoomId) {
+    if (!roomId || !session) {
       return
     }
+
+    const targetRoomId = activeRoomId ?? roomId
 
     const unsubscribe = subscribeWaitingRoomSocketEvents({
       onPlayerReady: (payload) => {
@@ -77,7 +84,7 @@ export function useWaitingRoomSocketSync({
       },
       onChat: (payload) => {
         // 다른 방 채팅 이벤트는 무시
-        if (payload.room_id !== activeRoomId) {
+        if (payload.room_id !== targetRoomId) {
           return
         }
 
@@ -98,20 +105,34 @@ export function useWaitingRoomSocketSync({
       },
       onGameStart: (payload) => {
         // 다른 방 시작 이벤트는 무시
-        if (payload.room_id !== activeRoomId) {
+        if (payload.room_id !== targetRoomId) {
           return
         }
 
         onGameStart(payload)
       },
-      onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => {
-        if (payload.action !== 'removed' || payload.room.id !== activeRoomId) {
+      onRoomUpdated: (payload: RoomUpdatedEventPayload) => {
+        if (payload.room_id !== targetRoomId) {
           return
         }
 
-        setRoom(null)
-        setChatMessages([])
-        onRoomRemoved()
+        hasReceivedRoomUpdatedRef.current = true
+        const latestRoomSnapshot = mapWaitingRoomSnapshotPayload(payload)
+        setRoom(latestRoomSnapshot)
+        setChatMessages(latestRoomSnapshot.chatMessages)
+        requestOnlineUsersSnapshotSync()
+      },
+      onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => {
+        if (payload.room.id !== targetRoomId) {
+          return
+        }
+
+        if (payload.action === 'removed') {
+          setRoom(null)
+          setChatMessages([])
+          onRoomRemoved()
+          return
+        }
       },
     })
 
@@ -120,6 +141,7 @@ export function useWaitingRoomSocketSync({
     }
   }, [
     activeRoomId,
+    hasReceivedRoomUpdatedRef,
     onGameStart,
     onRoomRemoved,
     roomId,
