@@ -58,7 +58,5 @@ export function startOnlineUsersMockBroadcast() {
 
 // 실제 소켓 모드에서 연결이 없으면 명시적으로 연결
 export function ensureOnlineUsersSocketConnection() {
-  if (!socket.connected) {
-    connectSocketWithAuthIfNeeded()
-  }
+  connectSocketWithAuthIfNeeded()
 }

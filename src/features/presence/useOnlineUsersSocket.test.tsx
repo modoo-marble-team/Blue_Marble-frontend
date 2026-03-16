@@ -125,6 +125,38 @@ describe('useOnlineUsersSocket', () => {
     })
   })
 
+  it('connect 이벤트 수신 시 최신 REST snapshot으로 다시 동기화한다', async () => {
+    getOnlineUsersSnapshotMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      createOnlineUserPayloadFixture({
+        id: 'user-2',
+        nickname: 'Relogin',
+        status: 'lobby',
+      }),
+    ])
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.data).toEqual([])
+
+    act(() => {
+      emitSocketEvent(socketOnMock, 'connect', undefined)
+    })
+
+    await waitFor(() => {
+      expect(result.current.data).toHaveLength(1)
+    })
+
+    expect(result.current.data[0]).toMatchObject({
+      id: 'user-2',
+      nickname: 'Relogin',
+      status: 'lobby',
+    })
+  })
+
   it('cleanup 시 구독 해제와 mock 브로드캐스트 정리를 수행한다', () => {
     isOnlineUsersSocketMockModeMock.mockReturnValue(true)
 
@@ -139,5 +171,13 @@ describe('useOnlineUsersSocket', () => {
       'online_users',
       expect.any(Function)
     )
+  })
+
+  it('실소켓 모드 cleanup 시 connect 구독도 해제한다', () => {
+    const { unmount } = renderHook(() => useOnlineUsersSocket())
+
+    unmount()
+
+    expect(socketOffMock).toHaveBeenCalledWith('connect', expect.any(Function))
   })
 })

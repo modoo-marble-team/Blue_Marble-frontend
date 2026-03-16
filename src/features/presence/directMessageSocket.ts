@@ -38,10 +38,7 @@ function connectSocketIfNeeded() {
     return
   }
 
-  // 연결이 닫혀 있으면 재연결 시도
-  if (!socket.connected) {
-    connectSocketWithAuthIfNeeded()
-  }
+  connectSocketWithAuthIfNeeded()
 }
 
 // 목 모드에서 DM 수신 이벤트를 리스너에 직접 전파
