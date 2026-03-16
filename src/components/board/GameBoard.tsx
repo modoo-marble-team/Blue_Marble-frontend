@@ -39,7 +39,6 @@ import {
   STRAIGHT_SIZE,
   GRID_GAP,
   PLAYER_COLORS,
-  INIT_PLAYERS,
   PlayerState,
   TileOwner,
   BuildingLevel,
@@ -47,19 +46,11 @@ import {
 } from './board.constants'
 
 import {
-  syncMockStoreBankrupt,
-  syncMockStoreCurrentTurn,
   syncMockStorePlayers,
   syncMockStoreTileOwners,
 } from './gameBoardStoreBridge'
 import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
-import {
-  advanceMockTurn,
-  applyMockMoney,
-  buildPlayerResults,
-  removeOwnedTilesByPlayerId,
-} from './gameBoardLocalEngine'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
   getBoardEventAnimationHoldMs,
@@ -110,6 +101,8 @@ function calcToll(price: number, level: BuildingLevel): number {
 }
 
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
+// Local game engine fallback is deprecated. Keep false to force store/prompt path.
+const USE_LOCAL_GAME_ENGINE_FALLBACK = false
 
 const AI_PENALTY_RESULTS = [
   '다음 턴 시작 전까지 통행료가 10M 증가합니다.',
@@ -329,16 +322,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const playersRef = useRef<PlayerState[]>(players)
     curPlayerRef.current = curPlayer
     playersRef.current = players
+    const useLocalPromptFallback =
+      USE_GAME_SOCKET_MOCK && USE_LOCAL_GAME_ENGINE_FALLBACK
 
     useBoardEventQueue({
-      enabled: !USE_GAME_SOCKET_MOCK,
+      enabled: !useLocalPromptFallback,
       playersRef,
       setStatus,
       setDice1,
       setDice2,
       onEventAnimation: setEventFxKind,
     })
-
     useEffect(() => {
       if (eventFxKind === 'none') {
         return
@@ -358,8 +352,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         window.clearTimeout(timer)
       }
     }, [eventFxKind])
-
-    const bankruptSetRef = useRef<Set<number>>(new Set())
     const [optimisticTileOwners, setOptimisticTileOwners] = useState<Record<
       number,
       TileOwner
@@ -605,7 +597,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const timer = setInterval(() => {
         setLocalTimeLeft((prev) => {
           if (prev <= 1) {
-            if (USE_GAME_SOCKET_MOCK && !isDiceTimerPromptOpen) {
+            if (useLocalPromptFallback && !isDiceTimerPromptOpen) {
               setShowTimerModal(true)
               // ⏱️ 턴 종료 (시간 초과) 소리 재생
               new Audio('/audio/turn-end.mp3').play().catch(() => {})
@@ -762,15 +754,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       delta: number,
       onDoneCallback?: () => void
     ): boolean {
-      return applyMockMoney({
-        useGameSocketMock: USE_GAME_SOCKET_MOCK,
-        playersRef,
-        playerIdx,
-        delta,
-        publishPlayers,
-        setBankruptModal,
-        onDoneCallback,
-      })
+      if (!useLocalPromptFallback) {
+        onDoneCallback?.()
+        return false
+      }
+
+      const updated = playersRef.current.map((player, index) =>
+        index === playerIdx
+          ? {
+              ...player,
+              money: Math.max(0, player.money + delta),
+            }
+          : player
+      )
+
+      playersRef.current = updated
+      publishPlayers(updated)
+      return false
     }
 
     const {
@@ -782,7 +782,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       handleTollConfirm,
     } = createGameBoardActionHandlers({
       gameId,
-      useGameSocketMock: USE_GAME_SOCKET_MOCK,
+      useGameSocketMock: useLocalPromptFallback,
       gameIdRequiredMessage: GAME_ID_REQUIRED_MESSAGE,
       setStatus,
       setBuyModal,
@@ -819,65 +819,58 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     })
 
     function getPlayerResults() {
-      return buildPlayerResults({
-        players: playersRef.current,
-        tileOwners: tileOwnersRef.current,
-        tiles: TILES,
-        bankruptPlayerIndexes: bankruptSetRef.current,
+      const results = playersRef.current.map((player, index) => {
+        let propertyValue = 0
+        let cityCount = 0
+
+        Object.entries(tileOwnersRef.current).forEach(([tileId, owner]) => {
+          if (String(owner.ownerId) !== String(player.id)) {
+            return
+          }
+
+          const tile = TILES[Number(tileId)]
+          propertyValue += tile?.price ?? 0
+          cityCount++
+        })
+
+        const isBankrupt =
+          player.state === 'bankrupt' || player.money <= 0 || false
+
+        return {
+          id: String(player.id),
+          nickname: player.name || `Player ${index + 1}`,
+          money: player.money,
+          totalAsset: player.money + propertyValue,
+          ownedCityCount: cityCount,
+          isBankrupt,
+        }
+      })
+
+      return results.sort((left, right) => {
+        if (left.isBankrupt && !right.isBankrupt) {
+          return 1
+        }
+        if (!left.isBankrupt && right.isBankrupt) {
+          return -1
+        }
+        return right.totalAsset - left.totalAsset
       })
     }
 
     function handleBankruptConfirm() {
-      const { playerIdx, onDoneCallback } = bankruptModal
+      const { onDoneCallback } = bankruptModal
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
-
-      // 💥 파산 소리 재생
-      new Audio('/audio/bankrupt.mp3').play().catch(() => {})
-
-      bankruptSetRef.current.add(playerIdx)
-      const bankruptPlayerId = getPlayerIdByIndex(playerIdx)
-
-      updateTileOwners(
-        (prev) => removeOwnedTilesByPlayerId(prev, bankruptPlayerId),
-        { notifyParent: true }
-      )
-
-      syncMockStoreBankrupt(playerIdx)
-
-      // Check for Game Over: Only one player not bankrupt
-      const playerCount = playersRef.current.length || INIT_PLAYERS.length
-      const remainingPlayers = []
-      for (let i = 0; i < playerCount; i++) {
-        if (!bankruptSetRef.current.has(i)) {
-          remainingPlayers.push(i)
-        }
-      }
-
-      if (remainingPlayers.length <= 1) {
-        setGameResultModal({ open: true })
-        return // Stop the game
-      }
-
-      advanceTurn(onDoneCallback)
+      onDoneCallback?.()
     }
 
     function advanceTurn(onDone?: () => void) {
-      advanceMockTurn({
-        useGameSocketMock: USE_GAME_SOCKET_MOCK,
-        playersRef,
-        curPlayerRef,
-        bankruptSetRef,
-        publishPlayers,
-        syncCurrentTurn: syncMockStoreCurrentTurn,
-        fallbackPlayerCount: INIT_PLAYERS.length,
-        onDone,
-      })
+      onDone?.()
     }
 
     async function handleAITile(onDone?: () => void) {
       setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
 
-      if (USE_GAME_SOCKET_MOCK) {
+      if (useLocalPromptFallback) {
         const fallbackDescription =
           AI_PENALTY_RESULTS[
             Math.floor(Math.random() * AI_PENALTY_RESULTS.length)
@@ -906,7 +899,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function rollDice(onDone?: () => void) {
-      if (!USE_GAME_SOCKET_MOCK) {
+      if (!useLocalPromptFallback) {
         onDone?.()
         return
       }
@@ -1256,7 +1249,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { variant, onDoneCallback } = cardModal
       setCardModal((prev) => ({ ...prev, open: false }))
 
-      if (!USE_GAME_SOCKET_MOCK) {
+      if (!useLocalPromptFallback) {
         onDoneCallback?.()
         return
       }
@@ -1358,7 +1351,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'PROPERTY') {
-        if (!USE_GAME_SOCKET_MOCK) {
+        if (!useLocalPromptFallback) {
           setStatus('서버 선택 요청을 기다리는 중...')
           onDone?.()
           return
@@ -1425,8 +1418,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const byTile: Record<number, PlayerState[]> = {}
     players.forEach((p) => {
-      const idx = players.indexOf(p)
-      if (bankruptSetRef.current.has(idx)) return
+      if (p.state === 'bankrupt' || p.money <= 0) return
       if (!byTile[p.pos]) byTile[p.pos] = []
       byTile[p.pos].push(p)
     })
@@ -1435,7 +1427,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const SS = STRAIGHT_SIZE
     const GAP = GRID_GAP
 
-    const useLocalPromptFallback = USE_GAME_SOCKET_MOCK
     const buyTile = useLocalPromptFallback
       ? buyModal.tileId !== null
         ? TILES[buyModal.tileId]
