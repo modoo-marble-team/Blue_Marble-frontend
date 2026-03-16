@@ -41,6 +41,34 @@
   padding: 5px 16px;
   border-radius: 20px;
   box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.board-status--dice {
+  animation: board-status-dice 300ms ease;
+}
+
+.board-status--move {
+  animation: board-status-move 380ms ease;
+}
+
+.board-status--land {
+  animation: board-status-land 300ms ease;
+}
+
+.board-status--toll {
+  animation: board-status-toll 340ms ease;
+}
+
+.board-status--turn_end {
+  animation: board-status-turn-end 280ms ease;
+}
+
+.board-status--sync {
+  animation: board-status-sync 160ms ease;
 }
 
 /* ─── Board Outer Shell ─────────────────────────────────────── */
@@ -75,6 +103,196 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.board-center--dice {
+  animation: board-center-dice 300ms ease;
+}
+
+.board-center--move {
+  animation: board-center-move 380ms ease;
+}
+
+.board-center--land {
+  animation: board-center-land 300ms ease;
+}
+
+.board-center--toll {
+  animation: board-center-toll 340ms ease;
+}
+
+.board-center--turn_end {
+  animation: board-center-turn-end 280ms ease;
+}
+
+.board-center--sync {
+  animation: board-center-sync 160ms ease;
+}
+
+@keyframes board-status-dice {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(59, 130, 246, 0.28);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes board-status-move {
+  0% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes board-status-land {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.03);
+    background: rgba(219, 234, 254, 0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes board-status-toll {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.02);
+    background: rgba(254, 226, 226, 0.95);
+    color: #b91c1c;
+    box-shadow: 0 8px 16px rgba(239, 68, 68, 0.22);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes board-status-turn-end {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-2px);
+    opacity: 0.88;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes board-status-sync {
+  0% {
+    filter: saturate(1);
+  }
+  50% {
+    filter: saturate(1.25);
+    box-shadow: 0 6px 14px rgba(14, 165, 233, 0.24);
+  }
+  100% {
+    filter: saturate(1);
+  }
+}
+
+@keyframes board-center-dice {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.48);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes board-center-move {
+  0% {
+    transform: translateX(0);
+  }
+  35% {
+    transform: translateX(3px);
+  }
+  70% {
+    transform: translateX(-2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+@keyframes board-center-land {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.012);
+    filter: brightness(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes board-center-toll {
+  0% {
+    filter: saturate(1);
+  }
+  45% {
+    filter: saturate(1.2);
+    box-shadow: inset 0 0 0 1px rgba(252, 165, 165, 0.42);
+  }
+  100% {
+    filter: saturate(1);
+  }
+}
+
+@keyframes board-center-turn-end {
+  0% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.82;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes board-center-sync {
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(8deg) saturate(1.15);
+  }
+  100% {
+    filter: hue-rotate(0deg);
+  }
 }
 
 .board-center__title {
