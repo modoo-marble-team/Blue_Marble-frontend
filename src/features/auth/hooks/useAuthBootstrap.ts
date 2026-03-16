@@ -16,10 +16,30 @@ export function useAuthBootstrap({
 
   const [isBootstrapping, setIsBootstrapping] = useState(!skip)
   const hasBootstrappedRef = useRef(false)
+  const activeAccessTokenRef = useRef(session?.accessToken.trim() ?? '')
+  const bootstrapAccessTokenRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const currentAccessToken = session?.accessToken.trim() ?? ''
+    activeAccessTokenRef.current = currentAccessToken
+
+    if (!isBootstrapping) {
+      return
+    }
+
+    const bootstrapAccessToken = bootstrapAccessTokenRef.current
+    if (!bootstrapAccessToken || bootstrapAccessToken === currentAccessToken) {
+      return
+    }
+
+    bootstrapAccessTokenRef.current = null
+    setIsBootstrapping(false)
+  }, [isBootstrapping, session])
 
   useEffect(() => {
     if (skip) {
       hasBootstrappedRef.current = true
+      bootstrapAccessTokenRef.current = null
       setIsBootstrapping(false)
       return
     }
@@ -32,11 +52,13 @@ export function useAuthBootstrap({
 
     const accessToken = session?.accessToken.trim()
     if (!accessToken) {
+      bootstrapAccessTokenRef.current = null
       setIsBootstrapping(false)
       return
     }
 
     let isDisposed = false
+    bootstrapAccessTokenRef.current = accessToken
     setIsBootstrapping(true)
 
     restoreAuthSession({
@@ -44,14 +66,14 @@ export function useAuthBootstrap({
       fallbackSession: session,
     })
       .then((restoredSession) => {
-        if (isDisposed) {
+        if (isDisposed || activeAccessTokenRef.current !== accessToken) {
           return
         }
 
         setSession(restoredSession)
       })
       .catch((error) => {
-        if (isDisposed) {
+        if (isDisposed || activeAccessTokenRef.current !== accessToken) {
           return
         }
 
@@ -60,10 +82,11 @@ export function useAuthBootstrap({
         }
       })
       .finally(() => {
-        if (isDisposed) {
+        if (isDisposed || activeAccessTokenRef.current !== accessToken) {
           return
         }
 
+        bootstrapAccessTokenRef.current = null
         setIsBootstrapping(false)
       })
 

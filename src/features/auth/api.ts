@@ -69,6 +69,11 @@ interface CompleteKakaoLoginParams {
   isNewUser: boolean
 }
 
+interface ShouldUseFallbackSessionForRestoreParams {
+  fallbackSession?: AuthSession | null
+  isAuthMockEnabled?: boolean
+}
+
 function normalizeId(id: number | string) {
   return String(id)
 }
@@ -135,10 +140,24 @@ async function getAuthSessionWithToken(accessToken: string) {
   return data
 }
 
+export function shouldUseFallbackSessionForRestore({
+  fallbackSession,
+  isAuthMockEnabled = IS_AUTH_MOCK_ENABLED,
+}: ShouldUseFallbackSessionForRestoreParams) {
+  return isAuthMockEnabled && Boolean(fallbackSession)
+}
+
 export async function restoreAuthSession({
   accessToken,
   fallbackSession,
 }: RestoreAuthSessionParams) {
+  if (
+    fallbackSession &&
+    shouldUseFallbackSessionForRestore({ fallbackSession })
+  ) {
+    return fallbackSession
+  }
+
   const user = await getAuthSessionWithToken(accessToken)
 
   return buildAuthSession({

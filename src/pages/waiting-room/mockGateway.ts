@@ -160,7 +160,7 @@ function createInitialRooms(): Map<string, MockRoom> {
   return new Map(seededRooms.map((room) => [room.id, room]))
 }
 
-const roomsStore = createInitialRooms()
+let roomsStore = createInitialRooms()
 
 // 채팅 payload를 대기방 채팅 메시지 모델로 변환
 function mapChatPayloadToMessage(
@@ -684,6 +684,12 @@ export function getMockLobbyRooms(): LobbyRoom[] {
       maxPlayers: room.max_players,
       isPrivate: room.is_private,
     }))
+}
+
+// mock 로그인/시나리오 재시작 시 방 저장소를 초기 시드로 되돌린다.
+export function resetMockWaitingRooms() {
+  roomsStore = createInitialRooms()
+  devBotSequence = 1
 }
 
 // DEV 목 제어: 방 현재 스냅샷을 그대로 반환

@@ -82,8 +82,8 @@ describe('createNicknameHelperFeedback', () => {
     })
 
     expect(helperFeedback).toEqual({
-      message: '• 형식이 올바른 닉네임입니다. 중복 여부는 제출 시 확인됩니다.',
-      tone: 'default',
+      message: '• 사용 가능한 닉네임입니다.',
+      tone: 'success',
     })
   })
 

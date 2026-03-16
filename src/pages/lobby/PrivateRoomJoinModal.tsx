@@ -106,6 +106,9 @@ export function PrivateRoomJoinModal({
 
         <form
           className="mt-6"
+          autoComplete="off"
+          data-1p-ignore="true"
+          data-lpignore="true"
           onSubmit={(event) => {
             event.preventDefault()
             // 비밀번호 형식이 맞지 않으면 입장 요청 차단
@@ -116,10 +119,14 @@ export function PrivateRoomJoinModal({
           }}
         >
           <input
+            name="private-room-access-code"
             type="password"
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={ROOM_PASSWORD_LENGTH}
+            autoComplete="new-password"
+            data-1p-ignore="true"
+            data-lpignore="true"
             value={password}
             onChange={(event) => {
               const nextValue = event.target.value

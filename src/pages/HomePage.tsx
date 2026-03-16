@@ -40,7 +40,11 @@ const featureCards = [
 ]
 
 // 로그인 진입 홈 화면 렌더링과 인증 흐름 제어
-function HomePage() {
+interface HomePageProps {
+  isAuthBootstrapping?: boolean
+}
+
+function HomePage({ isAuthBootstrapping = false }: HomePageProps) {
   const navigate = useNavigate()
   const session = useAuthStore((state) => state.session)
   const setSession = useAuthStore((state) => state.setSession)
@@ -48,7 +52,9 @@ function HomePage() {
   const [isKakaoLoading, setIsKakaoLoading] = useState(false)
   const [isGuestLoading, setIsGuestLoading] = useState(false)
 
-  useRedirectAuthenticatedToLobby(session)
+  useRedirectAuthenticatedToLobby(session, {
+    skip: isAuthBootstrapping,
+  })
 
   const isAnyLoading = isKakaoLoading || isGuestLoading
 
