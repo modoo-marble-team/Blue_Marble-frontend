@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "env:mock": "node scripts/dev/switch-env.mjs mock",
+    "env:real": "node scripts/dev/switch-env.mjs real",
+    "env:show": "node scripts/dev/switch-env.mjs show",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "ai:check:fast": "node scripts/ai/check-fast.mjs",
