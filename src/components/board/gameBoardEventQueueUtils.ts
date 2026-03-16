@@ -2,8 +2,55 @@ import type { PlayerState, TileData } from './board.constants'
 import type { ServerEvent } from '../../types/domain'
 import { formatWon } from '../../lib/utils'
 
+export type BoardEventAnimationKind =
+  | 'none'
+  | 'dice'
+  | 'move'
+  | 'land'
+  | 'toll'
+  | 'turn_end'
+  | 'sync'
+
 const normalizeEventType = (type: unknown) =>
   typeof type === 'string' ? type.trim().toUpperCase() : ''
+
+export const resolveBoardEventAnimationKind = (
+  event: ServerEvent
+): BoardEventAnimationKind => {
+  const normalizedType = normalizeEventType(event.type)
+
+  if (normalizedType === 'DICE_ROLLED') return 'dice'
+  if (normalizedType === 'PLAYER_MOVED') return 'move'
+  if (normalizedType === 'LANDED') return 'land'
+  if (normalizedType === 'PAID_TOLL') return 'toll'
+  if (normalizedType === 'TURN_ENDED') return 'turn_end'
+  if (normalizedType === 'SYNCED') return 'sync'
+
+  return 'none'
+}
+
+export const getBoardEventConsumeDelayMs = (event: ServerEvent): number => {
+  const kind = resolveBoardEventAnimationKind(event)
+  if (kind === 'dice') return 420
+  if (kind === 'move') return 520
+  if (kind === 'land') return 420
+  if (kind === 'toll') return 460
+  if (kind === 'turn_end') return 380
+  if (kind === 'sync') return 220
+  return 160
+}
+
+export const getBoardEventAnimationHoldMs = (
+  kind: BoardEventAnimationKind
+): number => {
+  if (kind === 'dice') return 300
+  if (kind === 'move') return 380
+  if (kind === 'land') return 300
+  if (kind === 'toll') return 340
+  if (kind === 'turn_end') return 280
+  if (kind === 'sync') return 160
+  return 0
+}
 
 const getPayloadNumber = (
   payload: Record<string, unknown> | undefined,

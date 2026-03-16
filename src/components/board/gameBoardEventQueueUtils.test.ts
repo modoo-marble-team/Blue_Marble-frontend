@@ -4,6 +4,9 @@ import type { PlayerState, TileData } from './board.constants'
 import {
   createBoardStatusFromEvent,
   extractEventDice,
+  getBoardEventAnimationHoldMs,
+  getBoardEventConsumeDelayMs,
+  resolveBoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
 
 const players: PlayerState[] = [
@@ -89,5 +92,47 @@ describe('gameBoardEventQueueUtils', () => {
     }
 
     expect(createBoardStatusFromEvent(event, players, tiles)).toBeNull()
+  })
+
+  it('maps server events to animation kinds', () => {
+    expect(
+      resolveBoardEventAnimationKind({ type: 'DICE_ROLLED' } as ServerEvent)
+    ).toBe('dice')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'PLAYER_MOVED' } as ServerEvent)
+    ).toBe('move')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'LANDED' } as ServerEvent)
+    ).toBe('land')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'PAID_TOLL' } as ServerEvent)
+    ).toBe('toll')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'TURN_ENDED' } as ServerEvent)
+    ).toBe('turn_end')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'SYNCED' } as ServerEvent)
+    ).toBe('sync')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'SOMETHING_ELSE' } as ServerEvent)
+    ).toBe('none')
+  })
+
+  it('returns event-specific consume delays', () => {
+    expect(
+      getBoardEventConsumeDelayMs({ type: 'PLAYER_MOVED' } as ServerEvent)
+    ).toBe(520)
+    expect(
+      getBoardEventConsumeDelayMs({ type: 'UNKNOWN_EVENT' } as ServerEvent)
+    ).toBe(160)
+  })
+
+  it('keeps animation hold shorter than consume delay', () => {
+    const event = { type: 'PAID_TOLL' } as ServerEvent
+    const kind = resolveBoardEventAnimationKind(event)
+
+    expect(getBoardEventAnimationHoldMs(kind)).toBeLessThan(
+      getBoardEventConsumeDelayMs(event)
+    )
   })
 })

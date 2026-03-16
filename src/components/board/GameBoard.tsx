@@ -52,6 +52,10 @@ import {
 import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { useBoardEventQueue } from './useBoardEventQueue'
+import {
+  getBoardEventAnimationHoldMs,
+  type BoardEventAnimationKind,
+} from './gameBoardEventQueueUtils'
 import type {
   AIPenaltyModalState,
   BankruptModalState,
@@ -307,6 +311,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [dice2, setDice2] = useState(1)
     const [rolling, setRolling] = useState(false)
     const [status, setStatus] = useState(GAME_START_STATUS)
+    const [eventFxKind, setEventFxKind] =
+      useState<BoardEventAnimationKind>('none')
     const lock = useRef(false)
     const boardPageRef = useRef<HTMLDivElement | null>(null)
     const boardStatusRef = useRef<HTMLDivElement | null>(null)
@@ -325,8 +331,27 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setStatus,
       setDice1,
       setDice2,
+      onEventAnimation: setEventFxKind,
     })
+    useEffect(() => {
+      if (eventFxKind === 'none') {
+        return
+      }
 
+      const holdMs = getBoardEventAnimationHoldMs(eventFxKind)
+      if (holdMs <= 0) {
+        setEventFxKind('none')
+        return
+      }
+
+      const timer = window.setTimeout(() => {
+        setEventFxKind('none')
+      }, holdMs)
+
+      return () => {
+        window.clearTimeout(timer)
+      }
+    }, [eventFxKind])
     const [optimisticTileOwners, setOptimisticTileOwners] = useState<Record<
       number,
       TileOwner
@@ -1574,7 +1599,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         ref={boardPageRef}
         style={{ width: '100%', height: '100%' }}
       >
-        <div className="board-status" ref={boardStatusRef}>
+        <div
+          className={
+            eventFxKind === 'none'
+              ? 'board-status'
+              : `board-status board-status--${eventFxKind}`
+          }
+          ref={boardStatusRef}
+        >
           {status}
         </div>
 
@@ -1740,7 +1772,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             )}
 
             <div
-              className="board-center"
+              className={
+                eventFxKind === 'none'
+                  ? 'board-center'
+                  : `board-center board-center--${eventFxKind}`
+              }
               style={{
                 gridRow: '2 / 9',
                 gridColumn: '2 / 9',
