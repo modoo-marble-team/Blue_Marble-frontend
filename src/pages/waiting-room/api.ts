@@ -1,5 +1,5 @@
 import { apiClient } from '../../lib/axios'
-import { parseApiError } from '../../lib/apiError'
+import { getParsedApiErrorMessage, parseApiError } from '../../lib/apiError'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import {
   mockCreateWaitingRoom,
@@ -7,7 +7,6 @@ import {
   mockLeaveWaitingRoom,
   mockStartWaitingGame,
   mockToggleWaitingReady,
-  WaitingRoomMockError,
 } from './mockGateway'
 import type {
   CreateRoomResponsePayload,
@@ -381,20 +380,7 @@ export function getWaitingRoomErrorMessage(
   error: unknown,
   fallbackMessage: string
 ) {
-  // 목 게이트웨이 에러는 detail > message 순으로 사용
-  if (error instanceof WaitingRoomMockError) {
-    return error.detail ?? error.message
-  }
-
-  // 실서버 에러는 detail 우선으로 사용자 메시지 선택
-  const parsedError = parseApiError(error)
-  const normalizedMessage = parsedError.detail ?? parsedError.message
-
-  if (normalizedMessage) {
-    return normalizedMessage
-  }
-
-  return fallbackMessage
+  return getParsedApiErrorMessage(parseApiError(error), fallbackMessage)
 }
 
 // code 값이 비밀번호 불일치 케이스인지 판별
@@ -408,10 +394,6 @@ function isJoinPasswordMismatchCode(code?: string) {
 
 // 입장 실패 원인이 비밀번호 불일치인지 판별
 export function isJoinPasswordMismatchError(error: unknown) {
-  if (error instanceof WaitingRoomMockError) {
-    return isJoinPasswordMismatchCode(error.code) || error.status === 403
-  }
-
   const parsedError = parseApiError(error)
 
   return (
