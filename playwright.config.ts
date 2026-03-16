@@ -36,7 +36,10 @@ export default defineConfig({
     command: 'npm run dev -- --host 127.0.0.1 --port 4173',
     env: {
       ...process.env,
-      // 기본은 mock 모드로 CI 안정성을 유지하고, 필요 시 환경변수로 실소켓 모드 실행
+      // E2E는 auth/session까지 mock으로 고정해 로컬 .env 상태와 무관하게 동일한 플로우를 검증한다.
+      // 필요하면 환경변수로 override할 수 있다.
+      VITE_ENABLE_DEMO_MOCK: process.env.VITE_ENABLE_DEMO_MOCK ?? 'true',
+      // 기본은 mock 소켓 모드로 CI 안정성을 유지하고, 필요 시 환경변수로 실소켓 모드 실행
       VITE_USE_SOCKET_MOCK: process.env.VITE_USE_SOCKET_MOCK ?? 'true',
     },
     url: 'http://127.0.0.1:4173',
