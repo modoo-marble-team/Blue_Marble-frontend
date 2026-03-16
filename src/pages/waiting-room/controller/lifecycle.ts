@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { AuthSession } from '../../../features/auth/types'
+import { requestOnlineUsersSnapshotSync } from '../../../features/presence/onlineUsersSocket'
 import { getWaitingRoomErrorMessage, joinWaitingRoom } from '../api'
 import { enterWaitingRoomSocket } from '../socket'
 import type { WaitingRoomChatMessage, WaitingRoomSnapshot } from '../types'
@@ -11,6 +12,7 @@ interface UseWaitingRoomLifecycleParams {
   session: AuthSession | null
   fallbackRoomTitle?: string
   preJoinedSnapshot?: WaitingRoomSnapshot | null
+  hasReceivedRoomUpdatedRef: MutableRefObject<boolean>
   hasEnteredRoomRef: MutableRefObject<boolean>
   hasLeftRoomRef: MutableRefObject<boolean>
   hasInitializedPreJoinRef: MutableRefObject<boolean>
@@ -26,6 +28,7 @@ export function useWaitingRoomLifecycle({
   session,
   fallbackRoomTitle,
   preJoinedSnapshot,
+  hasReceivedRoomUpdatedRef,
   hasEnteredRoomRef,
   hasLeftRoomRef,
   hasInitializedPreJoinRef,
@@ -43,6 +46,7 @@ export function useWaitingRoomLifecycle({
       setChatMessages([])
       setIsRoomLoading(false)
       setRoomErrorMessage(null)
+      hasReceivedRoomUpdatedRef.current = false
       hasEnteredRoomRef.current = false
       hasLeftRoomRef.current = false
       hasInitializedPreJoinRef.current = false
@@ -55,6 +59,7 @@ export function useWaitingRoomLifecycle({
       setChatMessages([])
       setIsRoomLoading(false)
       setRoomErrorMessage(null)
+      hasReceivedRoomUpdatedRef.current = false
       hasEnteredRoomRef.current = false
       hasLeftRoomRef.current = false
       hasInitializedPreJoinRef.current = false
@@ -82,6 +87,7 @@ export function useWaitingRoomLifecycle({
       setRoomErrorMessage(null)
       setIsRoomLoading(false)
       enterWaitingRoomSocket({ roomId })
+      requestOnlineUsersSnapshotSync()
       hasEnteredRoomRef.current = true
       hasLeftRoomRef.current = false
       hasInitializedPreJoinRef.current = true
@@ -108,9 +114,12 @@ export function useWaitingRoomLifecycle({
           return
         }
 
-        setRoom(joinedRoom)
-        setChatMessages(joinedRoom.chatMessages)
+        if (!hasReceivedRoomUpdatedRef.current) {
+          setRoom(joinedRoom)
+          setChatMessages(joinedRoom.chatMessages)
+        }
         enterWaitingRoomSocket({ roomId })
+        requestOnlineUsersSnapshotSync()
         hasEnteredRoomRef.current = true
         hasLeftRoomRef.current = false
       } catch (error) {
@@ -137,6 +146,7 @@ export function useWaitingRoomLifecycle({
     }
   }, [
     fallbackRoomTitle,
+    hasReceivedRoomUpdatedRef,
     hasEnteredRoomRef,
     hasInitializedPreJoinRef,
     hasLeftRoomRef,

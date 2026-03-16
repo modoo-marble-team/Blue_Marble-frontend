@@ -8,10 +8,12 @@ const {
   joinWaitingRoomMock,
   getWaitingRoomErrorMessageMock,
   enterWaitingRoomSocketMock,
+  requestOnlineUsersSnapshotSyncMock,
 } = vi.hoisted(() => ({
   joinWaitingRoomMock: vi.fn(),
   getWaitingRoomErrorMessageMock: vi.fn(),
   enterWaitingRoomSocketMock: vi.fn(),
+  requestOnlineUsersSnapshotSyncMock: vi.fn(),
 }))
 
 vi.mock('../api', () => ({
@@ -21,6 +23,10 @@ vi.mock('../api', () => ({
 
 vi.mock('../socket', () => ({
   enterWaitingRoomSocket: enterWaitingRoomSocketMock,
+}))
+
+vi.mock('../../../features/presence/onlineUsersSocket', () => ({
+  requestOnlineUsersSnapshotSync: requestOnlineUsersSnapshotSyncMock,
 }))
 
 function createPreJoinedSnapshot(): WaitingRoomSnapshot {
@@ -48,6 +54,7 @@ function createLifecycleParams(overrides: Record<string, unknown> = {}) {
     session,
     fallbackRoomTitle: 'fallback',
     preJoinedSnapshot: null,
+    hasReceivedRoomUpdatedRef: { current: false },
     hasEnteredRoomRef: { current: false },
     hasLeftRoomRef: { current: false },
     hasInitializedPreJoinRef: { current: false },
@@ -102,6 +109,7 @@ describe('useWaitingRoomLifecycle', () => {
     expect(enterWaitingRoomSocketMock).toHaveBeenCalledWith({
       roomId: 'room-5',
     })
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledTimes(1)
     expect(params.hasEnteredRoomRef.current).toBe(true)
     expect(params.hasInitializedPreJoinRef.current).toBe(true)
   })
@@ -129,8 +137,31 @@ describe('useWaitingRoomLifecycle', () => {
     expect(enterWaitingRoomSocketMock).toHaveBeenCalledWith({
       roomId: 'room-5',
     })
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledTimes(1)
     expect(params.setIsRoomLoading).toHaveBeenCalledWith(true)
     expect(params.setIsRoomLoading).toHaveBeenLastCalledWith(false)
+  })
+
+  it('room_updated를 이미 받은 경우에는 뒤늦은 join 응답이 room 상태를 다시 덮지 않는다', async () => {
+    const joinedSnapshot = createPreJoinedSnapshot()
+    joinWaitingRoomMock.mockResolvedValue(joinedSnapshot)
+    const params = createLifecycleParams({
+      hasReceivedRoomUpdatedRef: { current: true },
+    })
+
+    renderHook(() => useWaitingRoomLifecycle(params))
+
+    await waitFor(() => {
+      expect(joinWaitingRoomMock).toHaveBeenCalled()
+    })
+
+    expect(params.setRoom).not.toHaveBeenCalledWith(joinedSnapshot)
+    expect(params.setChatMessages).not.toHaveBeenCalledWith(
+      joinedSnapshot.chatMessages
+    )
+    expect(enterWaitingRoomSocketMock).toHaveBeenCalledWith({
+      roomId: 'room-5',
+    })
   })
 
   it('join 실패 시 파싱된 오류 메시지를 roomError로 설정한다', async () => {

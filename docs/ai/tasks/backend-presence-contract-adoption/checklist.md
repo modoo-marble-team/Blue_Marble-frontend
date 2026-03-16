@@ -7,6 +7,7 @@
 - [x] `/users/online` 응답 shape를 실제 계약 기준으로 확인했다
 - [x] `online_users` socket payload와 enum을 실백엔드 기준으로 맞췄다
 - [x] mock/real 경로가 같은 `OnlineUserPayload` 의미를 유지하도록 정리했다
+- [x] room enter/room update 직후 접속자 snapshot을 수동 재동기화할 수 있도록 정리했다
 - [x] 필요 시 lobby/waiting-room presence 소비 코드를 함께 맞췄다
 
 ## Testing
