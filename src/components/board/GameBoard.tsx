@@ -54,6 +54,12 @@ import {
 } from './gameBoardStoreBridge'
 import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
+import {
+  advanceMockTurn,
+  applyMockMoney,
+  buildPlayerResults,
+  removeOwnedTilesByPlayerId,
+} from './gameBoardLocalEngine'
 import type {
   AIPenaltyModalState,
   BankruptModalState,
@@ -720,34 +726,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       delta: number,
       onDoneCallback?: () => void
     ): boolean {
-      if (!USE_GAME_SOCKET_MOCK) {
-        onDoneCallback?.()
-        return false
-      }
-
-      const updated = playersRef.current.map((p, i) => {
-        if (i !== playerIdx) return p
-        return { ...p, money: Math.max(0, p.money + delta) }
+      return applyMockMoney({
+        useGameSocketMock: USE_GAME_SOCKET_MOCK,
+        playersRef,
+        playerIdx,
+        delta,
+        publishPlayers,
+        setBankruptModal,
+        onDoneCallback,
       })
-      playersRef.current = updated
-      publishPlayers(updated)
-
-      const isBankrupt = updated[playerIdx].money <= 0
-      if (isBankrupt) {
-        const name = updated[playerIdx]?.name ?? `Player ${playerIdx + 1}`
-        setTimeout(
-          () =>
-            setBankruptModal({
-              open: true,
-              playerIdx,
-              playerName: name,
-              onDoneCallback,
-            }),
-          0
-        )
-        return true
-      }
-      return false
     }
 
     const {
@@ -796,35 +783,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     })
 
     function getPlayerResults() {
-      const allPlayers = playersRef.current
-      const owners = tileOwnersRef.current
-
-      const results = allPlayers.map((p, idx) => {
-        let propertyValue = 0
-        let cityCount = 0
-        Object.entries(owners).forEach(([tileId, owner]) => {
-          if (String(owner.ownerId) === String(p.id)) {
-            const tile = TILES[Number(tileId)]
-            propertyValue += tile.price ?? 0
-            cityCount++
-          }
-        })
-
-        return {
-          id: String(p.id),
-          nickname: p.name || `Player ${idx + 1}`,
-          money: p.money,
-          totalAsset: p.money + propertyValue,
-          ownedCityCount: cityCount,
-          isBankrupt: bankruptSetRef.current.has(idx),
-        }
-      })
-
-      // Sort by total asset descending
-      return results.sort((a, b) => {
-        if (a.isBankrupt && !b.isBankrupt) return 1
-        if (!a.isBankrupt && b.isBankrupt) return -1
-        return b.totalAsset - a.totalAsset
+      return buildPlayerResults({
+        players: playersRef.current,
+        tileOwners: tileOwnersRef.current,
+        tiles: TILES,
+        bankruptPlayerIndexes: bankruptSetRef.current,
       })
     }
 
@@ -839,14 +802,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const bankruptPlayerId = getPlayerIdByIndex(playerIdx)
 
       updateTileOwners(
-        (prev) => {
-          const next = { ...prev }
-          Object.keys(next).forEach((k) => {
-            if (next[Number(k)].ownerId === bankruptPlayerId)
-              delete next[Number(k)]
-          })
-          return next
-        },
+        (prev) => removeOwnedTilesByPlayerId(prev, bankruptPlayerId),
         { notifyParent: true }
       )
 
@@ -870,45 +826,16 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function advanceTurn(onDone?: () => void) {
-      if (!USE_GAME_SOCKET_MOCK) {
-        onDone?.()
-        return
-      }
-
-      const playerCount = playersRef.current.length || INIT_PLAYERS.length
-      let next = (curPlayerRef.current + 1) % playerCount
-      let tries = 0
-      while (bankruptSetRef.current.has(next) && tries < playerCount) {
-        next = (next + 1) % playerCount
-        tries++
-      }
-
-      const nextPlayer = playersRef.current[next]
-      if (
-        nextPlayer &&
-        (nextPlayer.skipTurns ?? 0) > 0 &&
-        tries < playerCount
-      ) {
-        const updatedPlayers = [...playersRef.current]
-        updatedPlayers[next] = {
-          ...nextPlayer,
-          skipTurns: nextPlayer.skipTurns! - 1,
-        }
-        playersRef.current = updatedPlayers
-        publishPlayers(updatedPlayers)
-
-        curPlayerRef.current = next
-        syncMockStoreCurrentTurn(next)
-
-        setTimeout(() => {
-          advanceTurn(onDone)
-        }, 1500)
-        return
-      }
-
-      curPlayerRef.current = next
-      syncMockStoreCurrentTurn(next)
-      onDone?.()
+      advanceMockTurn({
+        useGameSocketMock: USE_GAME_SOCKET_MOCK,
+        playersRef,
+        curPlayerRef,
+        bankruptSetRef,
+        publishPlayers,
+        syncCurrentTurn: syncMockStoreCurrentTurn,
+        fallbackPlayerCount: INIT_PLAYERS.length,
+        onDone,
+      })
     }
 
     async function handleAITile(onDone?: () => void) {
