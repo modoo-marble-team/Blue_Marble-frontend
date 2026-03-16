@@ -121,6 +121,9 @@ export function CreateRoomModal({
 
         <form
           className="mt-6"
+          autoComplete="off"
+          data-1p-ignore="true"
+          data-lpignore="true"
           onSubmit={(event) => {
             event.preventDefault()
 
@@ -145,6 +148,7 @@ export function CreateRoomModal({
 
           <input
             id="create-room-title"
+            name="room-title"
             type="text"
             value={roomTitle}
             maxLength={ROOM_TITLE_MAX_LENGTH}
@@ -194,10 +198,14 @@ export function CreateRoomModal({
 
           {isPrivateRoomEnabled ? (
             <input
+              name="room-access-code"
               type="password"
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={ROOM_PASSWORD_LENGTH}
+              autoComplete="new-password"
+              data-1p-ignore="true"
+              data-lpignore="true"
               value={roomPassword}
               onChange={(event) => {
                 const nextValue = event.target.value

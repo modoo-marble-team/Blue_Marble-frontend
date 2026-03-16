@@ -67,6 +67,7 @@ describe('CreateRoomModal', () => {
     const passwordInput = screen.getByPlaceholderText(
       '비밀번호 (4자리)'
     ) as HTMLInputElement
+    expect(passwordInput).toHaveAttribute('autocomplete', 'new-password')
 
     await user.type(passwordInput, '12')
     expect(
