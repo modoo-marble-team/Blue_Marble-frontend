@@ -21,6 +21,7 @@ interface UseWaitingRoomControllerParams {
   fallbackRoomTitle?: string
   preJoinedSnapshot?: WaitingRoomSnapshot | null
   onGameStart: (payload: GameStartEventPayload) => void
+  onRoomRemoved: () => void
 }
 
 // 대기방 상태 동기화/소켓 구독/액션 핸들러를 통합한 컨트롤러 훅
@@ -30,6 +31,7 @@ export function useWaitingRoomController({
   fallbackRoomTitle,
   preJoinedSnapshot,
   onGameStart,
+  onRoomRemoved,
 }: UseWaitingRoomControllerParams) {
   const [room, setRoom] = useState<WaitingRoomSnapshot | null>(null)
   const [chatMessages, setChatMessages] = useState<WaitingRoomChatMessage[]>([])
@@ -61,6 +63,16 @@ export function useWaitingRoomController({
     roomRef.current = room
   }, [room])
 
+  const handleRoomRemoved = useCallback(() => {
+    roomRef.current = null
+    hasEnteredRoomRef.current = false
+    hasLeftRoomRef.current = true
+    hasInitializedPreJoinRef.current = false
+    setRoomErrorMessage(null)
+    setIsRoomLoading(false)
+    onRoomRemoved()
+  }, [onRoomRemoved])
+
   useWaitingRoomLifecycle({
     roomId,
     session,
@@ -82,6 +94,7 @@ export function useWaitingRoomController({
     session,
     activeRoomId,
     onGameStart,
+    onRoomRemoved: handleRoomRemoved,
     setRoom,
     setChatMessages,
   })

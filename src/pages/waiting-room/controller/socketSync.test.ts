@@ -7,6 +7,7 @@ import type {
   ChatEventPayload,
   GameStartEventPayload,
   HostChangedEventPayload,
+  LobbyUpdatedEventPayload,
   PlayerReadyEventPayload,
   WaitingRoomSnapshot,
 } from '../types'
@@ -42,6 +43,7 @@ interface SocketSyncHookParams {
   session: ReturnType<typeof createAuthSessionFixture> | null
   activeRoomId?: string
   onGameStart: (payload: GameStartEventPayload) => void
+  onRoomRemoved: () => void
   setRoom: Dispatch<SetStateAction<WaitingRoomSnapshot | null>>
   setChatMessages: Dispatch<SetStateAction<WaitingRoomSnapshot['chatMessages']>>
   setRoomMock: ReturnType<typeof vi.fn>
@@ -60,6 +62,7 @@ function createBaseParams(): SocketSyncHookParams {
     }),
     activeRoomId: 'room-5',
     onGameStart: vi.fn(),
+    onRoomRemoved: vi.fn(),
     setRoom: setRoomMock as unknown as Dispatch<
       SetStateAction<WaitingRoomSnapshot | null>
     >,
@@ -213,5 +216,41 @@ describe('useWaitingRoomSocketSync', () => {
 
     unmount()
     expect(unsubscribeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('lobby_updated removed는 현재 방 삭제일 때만 상태를 비우고 콜백을 호출한다', () => {
+    const params = createBaseParams()
+    renderHook(() => useWaitingRoomSocketSync(params))
+
+    const handlers = subscribeWaitingRoomSocketEventsMock.mock
+      .calls[0]?.[0] as {
+      onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => void
+    }
+
+    act(() => {
+      handlers.onLobbyUpdated({
+        action: 'removed',
+        room: {
+          id: 'room-other',
+        },
+      })
+    })
+
+    expect(params.setRoomMock).not.toHaveBeenCalledWith(null)
+    expect(params.setChatMessagesMock).not.toHaveBeenCalledWith([])
+    expect(params.onRoomRemoved).not.toHaveBeenCalled()
+
+    act(() => {
+      handlers.onLobbyUpdated({
+        action: 'removed',
+        room: {
+          id: 'room-5',
+        },
+      })
+    })
+
+    expect(params.setRoomMock).toHaveBeenCalledWith(null)
+    expect(params.setChatMessagesMock).toHaveBeenCalledWith([])
+    expect(params.onRoomRemoved).toHaveBeenCalledTimes(1)
   })
 })

@@ -195,11 +195,23 @@ function toWaitingRoomSnapshot(room: MockRoom): WaitingRoomSnapshot {
 }
 
 // 로비 갱신 브로드캐스트에 맞는 payload로 변환
-function getLobbyUpdatedPayload(room: MockRoom): LobbyUpdatedEventPayload {
+function getLobbyUpdatedPayload(
+  room: MockRoom,
+  action: LobbyUpdatedEventPayload['action']
+): LobbyUpdatedEventPayload {
+  if (action === 'removed') {
+    return {
+      action,
+      room: {
+        id: room.id,
+      },
+    }
+  }
+
   const hostPlayer = room.players.find((player) => player.is_host)
 
   return {
-    action: 'status_changed',
+    action,
     room: {
       id: room.id,
       title: room.title,
@@ -207,6 +219,7 @@ function getLobbyUpdatedPayload(room: MockRoom): LobbyUpdatedEventPayload {
       is_private: room.is_private,
       current_players: room.players.length,
       max_players: room.max_players,
+      host_id: hostPlayer?.id ?? '',
       host_nickname: hostPlayer?.nickname ?? '',
     },
   }
@@ -227,11 +240,8 @@ function emitLobbyUpdated(
   room: MockRoom,
   action: LobbyUpdatedEventPayload['action']
 ) {
-  const payload = getLobbyUpdatedPayload(room)
-  emitSocketEvent<LobbyUpdatedEventPayload>('lobby_updated', {
-    ...payload,
-    action,
-  })
+  const payload = getLobbyUpdatedPayload(room, action)
+  emitSocketEvent<LobbyUpdatedEventPayload>('lobby_updated', payload)
 }
 
 // 시작 가능 조건(2명 이상 + 방장 제외 전원 ready) 판별
@@ -345,7 +355,6 @@ interface MockCreateRoomParams {
 export interface MockCreateRoomResult {
   roomId: string
   roomTitle: string
-  preJoinedSnapshot: WaitingRoomSnapshot
 }
 
 // 대기방 입장 목 API 처리
@@ -379,6 +388,7 @@ export async function mockJoinWaitingRoom({
 
   // 이미 입장한 사용자는 현재 스냅샷 그대로 반환
   if (existingPlayer) {
+    emitLobbyUpdated(room, 'updated')
     setMockOnlineUserStatus(existingPlayer.id, 'in_room')
     return toWaitingRoomSnapshot(room)
   }
@@ -468,7 +478,6 @@ export async function mockCreateWaitingRoom({
   return {
     roomId: createdRoom.id,
     roomTitle: createdRoom.title,
-    preJoinedSnapshot: toWaitingRoomSnapshot(createdRoom),
   }
 }
 

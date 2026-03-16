@@ -22,7 +22,6 @@ import type {
 
 // 대기방 기본 제목/정원과 모드 전환 플래그
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
-const DEFAULT_WAITING_ROOM_MAX_PLAYERS = 4
 const USE_WAITING_ROOM_MOCK = IS_SOCKET_MOCK_ENABLED
 const WAITING_ROOM_STATUS_VALUES = new Set(['waiting', 'playing'])
 // 비밀번호 불일치로 간주할 서버 에러 코드 집합
@@ -54,7 +53,6 @@ interface CreateWaitingRoomParams {
 export interface CreateWaitingRoomResult {
   roomId: string
   roomTitle: string
-  preJoinedSnapshot?: WaitingRoomSnapshot
 }
 
 // 퇴장/준비/시작 요청 파라미터 타입
@@ -253,29 +251,11 @@ function mapJoinResponse(
 
 // 방 생성 응답 payload를 생성 결과 모델로 변환
 function mapCreateRoomResponse(
-  payload: CreateRoomResponsePayload,
-  hostUserId: string,
-  hostNickname: string
+  payload: CreateRoomResponsePayload
 ): CreateWaitingRoomResult {
   return {
     roomId: payload.id,
-    roomTitle: payload.title,
-    preJoinedSnapshot: {
-      roomId: payload.id,
-      title: payload.title || DEFAULT_WAITING_ROOM_TITLE,
-      status: payload.status ?? 'waiting',
-      maxPlayers: payload.max_players ?? DEFAULT_WAITING_ROOM_MAX_PLAYERS,
-      isPrivate: payload.is_private ?? false,
-      players: [
-        {
-          id: hostUserId,
-          nickname: hostNickname,
-          isReady: false,
-          isHost: true,
-        },
-      ],
-      chatMessages: [],
-    },
+    roomTitle: payload.title || DEFAULT_WAITING_ROOM_TITLE,
   }
 }
 
@@ -305,7 +285,7 @@ export async function createWaitingRoom({
   })
 
   // 실서버 응답을 화면 모델로 정규화
-  return mapCreateRoomResponse(data, hostUserId, hostNickname)
+  return mapCreateRoomResponse(data)
 }
 
 // 대기방 입장 API 호출 또는 목 게이트웨이 호출

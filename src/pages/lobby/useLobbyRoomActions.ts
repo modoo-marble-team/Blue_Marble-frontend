@@ -31,17 +31,45 @@ export function useLobbyRoomActions({ session }: UseLobbyRoomActionsParams) {
     useState(false)
 
   // 대기방 페이지로 이동하면서 roomId/title/snapshot을 전달
-  function enterWaitingRoom(
-    room: LobbyRoom,
+  function enterWaitingRoom(params: {
+    roomId: string
+    roomTitle: string
     preJoinedSnapshot?: WaitingRoomSnapshot
-  ) {
-    navigate(`/rooms/${room.id}`, {
+  }) {
+    navigate(`/rooms/${params.roomId}`, {
       state: {
-        roomId: room.id,
-        roomTitle: room.title,
-        preJoinedSnapshot,
+        roomId: params.roomId,
+        roomTitle: params.roomTitle,
+        preJoinedSnapshot: params.preJoinedSnapshot,
       },
     })
+  }
+
+  // waiting-room 진입 전 join 응답 snapshot을 확보해 초기 렌더 기준을 맞춘다.
+  async function joinRoomAndEnter(params: {
+    roomId: string
+    roomTitle: string
+    password?: string
+  }) {
+    if (!session) {
+      return null
+    }
+
+    const joinedRoomSnapshot = await joinWaitingRoom({
+      roomId: params.roomId,
+      userId: session.userId,
+      nickname: session.nickname,
+      fallbackTitle: params.roomTitle,
+      password: params.password,
+    })
+
+    enterWaitingRoom({
+      roomId: params.roomId,
+      roomTitle: params.roomTitle,
+      preJoinedSnapshot: joinedRoomSnapshot,
+    })
+
+    return joinedRoomSnapshot
   }
 
   // 방 생성 모달 열기
@@ -59,7 +87,7 @@ export function useLobbyRoomActions({ session }: UseLobbyRoomActionsParams) {
   }
 
   // 비밀방은 비밀번호 모달을 열고, 일반방은 바로 입장 처리
-  function joinRoom(room: LobbyRoom) {
+  async function joinRoom(room: LobbyRoom) {
     if (room.isPrivate) {
       setSelectedPrivateRoom(room)
       setPrivateRoomPassword('')
@@ -67,7 +95,14 @@ export function useLobbyRoomActions({ session }: UseLobbyRoomActionsParams) {
       return
     }
 
-    enterWaitingRoom(room)
+    try {
+      await joinRoomAndEnter({
+        roomId: room.id,
+        roomTitle: room.title,
+      })
+    } catch (error) {
+      toast.error(getWaitingRoomErrorMessage(error, '방 입장에 실패했습니다.'))
+    }
   }
 
   // 비밀방 모달 상태 초기화 후 닫기
@@ -105,13 +140,22 @@ export function useLobbyRoomActions({ session }: UseLobbyRoomActionsParams) {
       })
 
       setIsCreateRoomModalOpen(false)
-      navigate(`/rooms/${createdRoom.roomId}`, {
-        state: {
+
+      try {
+        await joinRoomAndEnter({
           roomId: createdRoom.roomId,
           roomTitle: createdRoom.roomTitle,
-          preJoinedSnapshot: createdRoom.preJoinedSnapshot,
-        },
-      })
+        })
+      } catch (error) {
+        // 생성은 이미 완료됐으므로 fallback 진입으로 한 번 더 snapshot 복구를 시도한다.
+        toast.error(
+          getWaitingRoomErrorMessage(error, '방 입장에 실패했습니다.')
+        )
+        enterWaitingRoom({
+          roomId: createdRoom.roomId,
+          roomTitle: createdRoom.roomTitle,
+        })
+      }
     } catch (error) {
       toast.error(getWaitingRoomErrorMessage(error, '방 생성에 실패했습니다.'))
     } finally {
@@ -128,15 +172,12 @@ export function useLobbyRoomActions({ session }: UseLobbyRoomActionsParams) {
     setIsPrivateRoomJoinPending(true)
 
     try {
-      const joinedRoomSnapshot = await joinWaitingRoom({
+      await joinRoomAndEnter({
         roomId: selectedPrivateRoom.id,
-        userId: session.userId,
-        nickname: session.nickname,
-        fallbackTitle: selectedPrivateRoom.title,
+        roomTitle: selectedPrivateRoom.title,
         password: privateRoomPassword,
       })
 
-      enterWaitingRoom(selectedPrivateRoom, joinedRoomSnapshot)
       closePrivateRoomModal()
     } catch (error) {
       // 비밀번호 불일치 에러는 인풋 에러 상태를 별도 표시
