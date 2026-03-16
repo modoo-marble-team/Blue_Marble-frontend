@@ -1,5 +1,4 @@
 import { useEffect, Fragment } from 'react'
-import { Dices } from 'lucide-react'
 
 interface ExitGameModalProps {
   open: boolean
@@ -33,11 +32,16 @@ const ExitGameModal = ({ open, onCancel, onConfirm }: ExitGameModalProps) => {
     <Fragment>
       <div className="fixed inset-0 z-80 flex items-center justify-center bg-[rgba(15,23,42,0.36)] backdrop-blur-sm">
         <div className="w-full max-w-125 rounded-[40px] bg-white px-11 pb-11 pt-9 shadow-[0_24px_64px_rgba(15,23,42,0.32)]">
-          <div className="mx-auto mb-6 flex h-20 w-20 -rotate-3 items-center justify-center rounded-2xl border border-[#D6E5FF] bg-[#F1F5FF] shadow-[0_8px_18px_rgba(15,23,42,0.12)]">
-            <Dices size={40} className="text-[#2B7FFF]" strokeWidth={2.2} />
+          <div className="mx-auto mb-6 flex h-20 w-20 -rotate-3 items-center justify-center">
+            <img
+              src="/logo.webp"
+              alt=""
+              aria-hidden="true"
+              className="h-30 w-30 object-contain"
+            />
           </div>
 
-          <h2 className="mb-5 text-center text-[72px] font-black leading-none tracking-tight text-[#DC2626]">
+          <h2 className="mb-5 text-center text-[40px] font-black leading-none tracking-tight text-[#DC2626]">
             게임 종료
           </h2>
 

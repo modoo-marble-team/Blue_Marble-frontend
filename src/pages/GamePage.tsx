@@ -257,7 +257,16 @@ const GamePage: React.FC = () => {
   }
 
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-gradient-to-br from-[#FFFFF0] via-[#F5EDD5] to-[#F2D9B0] px-6 font-['Inter']">
+    <div className="relative flex h-screen w-full items-center justify-center overflow-hidden bg-ui-app-bg px-6 font-['Inter']">
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <img
+          src="/GamePage_background.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.34),transparent_30%),linear-gradient(180deg,rgba(250,248,240,0.38),rgba(250,248,240,0.5))]" />
+      </div>
       <div className="absolute left-6 top-6 z-[70]">
         <button
           type="button"
@@ -301,7 +310,7 @@ const GamePage: React.FC = () => {
         )}
       </div>
 
-      <div className="mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4">
+      <div className="relative z-10 mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4">
         <div className="flex h-[80%] min-h-0 w-[320px] shrink-0 flex-col">
           <RoomChat
             title={GAME_CHAT_TITLE}
@@ -375,7 +384,7 @@ const GamePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-10 right-10">
+      <div className="absolute bottom-10 right-10 z-20">
         {!isCurrentPlayerSkipped && !isCurrentPlayerBankrupt && (
           <RollButton
             timeLeft={timeLeft}
