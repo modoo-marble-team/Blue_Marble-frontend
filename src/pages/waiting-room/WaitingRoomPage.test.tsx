@@ -1,5 +1,6 @@
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { MemoryRouterProps } from 'react-router-dom'
 import { Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../../features/auth/store'
@@ -150,7 +151,7 @@ function renderWaitingRoomPage({
   initialEntries = ['/rooms/room-5'],
 }: {
   routePath?: string
-  initialEntries?: string[]
+  initialEntries?: MemoryRouterProps['initialEntries']
 } = {}) {
   return renderWithProviders(
     <Routes>
