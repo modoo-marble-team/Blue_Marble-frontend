@@ -12,8 +12,15 @@ export const apiClient = axios.create({
 
 // 요청 직전에 최신 세션 토큰을 Authorization 헤더로 동기화
 apiClient.interceptors.request.use((config) => {
-  const accessToken = useAuthStore.getState().session?.accessToken
   const nextHeaders = AxiosHeaders.from(config.headers)
+  const explicitAuthorization = nextHeaders.get('Authorization')
+
+  if (explicitAuthorization) {
+    config.headers = nextHeaders
+    return config
+  }
+
+  const accessToken = useAuthStore.getState().session?.accessToken
   if (accessToken) {
     nextHeaders.set('Authorization', `Bearer ${accessToken}`)
   } else {
