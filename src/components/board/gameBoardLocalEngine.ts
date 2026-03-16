@@ -102,7 +102,9 @@ export function advanceMockTurn({
 
   const resolveNextTurn = () => {
     const playerCount =
-      playersRef.current.length > 0 ? playersRef.current.length : fallbackPlayerCount
+      playersRef.current.length > 0
+        ? playersRef.current.length
+        : fallbackPlayerCount
 
     if (playerCount <= 0) {
       onDone?.()
