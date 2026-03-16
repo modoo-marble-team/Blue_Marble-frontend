@@ -21,6 +21,7 @@ interface CreateNicknameHelperFeedbackParams {
   nicknameValidation: NicknameValidationResult
   isCheckingNickname: boolean
   isNicknameAvailable: boolean | null
+  isAvailabilityCheckSupported: boolean
   showValidationMessage: boolean
 }
 
@@ -80,6 +81,7 @@ export function createNicknameHelperFeedback({
   nicknameValidation,
   isCheckingNickname,
   isNicknameAvailable,
+  isAvailabilityCheckSupported,
   showValidationMessage,
 }: CreateNicknameHelperFeedbackParams): NicknameHelperFeedback {
   // 제출 단계 에러가 있으면 최우선 노출
@@ -92,6 +94,14 @@ export function createNicknameHelperFeedback({
 
   // 형식 검증 통과 후에는 중복 검사 상태/결과를 노출
   if (nicknameValidation.ok) {
+    if (!isAvailabilityCheckSupported) {
+      return {
+        message:
+          '• 형식이 올바른 닉네임입니다. 중복 여부는 제출 시 확인됩니다.',
+        tone: 'default',
+      }
+    }
+
     // 중복 확인 중이면 로딩 메시지 표시
     if (isCheckingNickname || isNicknameAvailable === null) {
       return {

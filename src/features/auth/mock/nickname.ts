@@ -2,13 +2,8 @@ import type {
   AuthSession,
   NicknameAvailabilityResult,
   NicknameSetResult,
-  NicknameValidationResult,
 } from '../types'
-import {
-  MOCK_AUTH_DELAY_MS,
-  MOCK_NICKNAME_CHECK_DELAY_MS,
-  NICKNAME_PATTERN,
-} from './constants'
+import { MOCK_AUTH_DELAY_MS, MOCK_NICKNAME_CHECK_DELAY_MS } from './constants'
 import { delay } from './helpers'
 import {
   addTakenNickname,
@@ -16,44 +11,11 @@ import {
   isTakenNickname,
   persistMockKakaoNickname,
 } from './storage'
+import { validateNickname } from '../validation'
 
 interface MockSetNicknameParams {
   session: AuthSession
   nickname: string
-}
-
-// trim/공백/길이/문자셋 순서로 닉네임 형식 검증
-export function validateNickname(nickname: string): NicknameValidationResult {
-  const normalizedNickname = nickname.trim()
-
-  if (nickname !== normalizedNickname || /\s/.test(nickname)) {
-    return {
-      ok: false,
-      normalizedNickname,
-      message: '공백은 사용할 수 없습니다.',
-    }
-  }
-
-  if (normalizedNickname.length < 2 || normalizedNickname.length > 10) {
-    return {
-      ok: false,
-      normalizedNickname,
-      message: '닉네임은 2~10자여야 합니다.',
-    }
-  }
-
-  if (!NICKNAME_PATTERN.test(normalizedNickname)) {
-    return {
-      ok: false,
-      normalizedNickname,
-      message: '한글/영문/숫자만 입력할 수 있습니다.',
-    }
-  }
-
-  return {
-    ok: true,
-    normalizedNickname,
-  }
 }
 
 // 형식 검증 통과 시 중복 검사까지 수행

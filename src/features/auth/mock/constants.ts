@@ -11,8 +11,6 @@ export const DEFAULT_TAKEN_NICKNAMES = [
   '부동산왕',
   'GoormEE',
 ]
-
-export const NICKNAME_PATTERN = /^[A-Za-z0-9가-힣]{2,10}$/
 export const DEFAULT_MOCK_KAKAO_PROFILE_IMAGE =
   'https://picsum.photos/seed/kakao/96/96'
 export const DEFAULT_MOCK_KAKAO_ID = 'mock-kakao-id-001'
