@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { socket } from '../../lib/socket'
-import { getOnlineUsersSnapshot } from './api'
+import { getOnlineUsersSnapshot, normalizeOnlineUsersPayload } from './api'
 import { mapOnlineUsersToViewModel } from './onlineUsersModel'
 import {
   ensureOnlineUsersSocketConnection,
@@ -9,6 +9,14 @@ import {
   startOnlineUsersMockBroadcast,
 } from './onlineUsersSocket'
 import type { OnlineUser, OnlineUsersEventPayload } from './types'
+
+function readOnlineUsersEventPayloadUsers(payload: unknown) {
+  if (!payload || typeof payload !== 'object' || !('users' in payload)) {
+    return []
+  }
+
+  return (payload as { users: unknown }).users
+}
 
 // 접속자 목록 소켓 구독과 로딩/에러 상태를 관리
 export function useOnlineUsersSocket() {
@@ -20,14 +28,16 @@ export function useOnlineUsersSocket() {
     let isActive = true
 
     // 접속자 이벤트 수신 시 목록과 상태를 갱신
-    const handleOnlineUsers = ({
-      users: payloadUsers,
-    }: OnlineUsersEventPayload) => {
+    const handleOnlineUsers = (payload: OnlineUsersEventPayload | unknown) => {
       if (!isActive) {
         return
       }
 
-      setUsers(mapOnlineUsersToViewModel(payloadUsers))
+      setUsers(
+        mapOnlineUsersToViewModel(
+          normalizeOnlineUsersPayload(readOnlineUsersEventPayloadUsers(payload))
+        )
+      )
       setIsLoading(false)
       setIsError(false)
     }
