@@ -12,6 +12,7 @@ const {
   socketOnMock,
   socketOffMock,
   getOnlineUsersSnapshotMock,
+  normalizeOnlineUsersPayloadMock,
   isOnlineUsersSocketMockModeMock,
   startOnlineUsersMockBroadcastMock,
   stopMockBroadcastMock,
@@ -20,6 +21,7 @@ const {
   socketOnMock: vi.fn(),
   socketOffMock: vi.fn(),
   getOnlineUsersSnapshotMock: vi.fn(),
+  normalizeOnlineUsersPayloadMock: vi.fn((users) => users),
   isOnlineUsersSocketMockModeMock: vi.fn(),
   startOnlineUsersMockBroadcastMock: vi.fn(),
   stopMockBroadcastMock: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock('../../lib/socket', () => ({
 
 vi.mock('./api', () => ({
   getOnlineUsersSnapshot: getOnlineUsersSnapshotMock,
+  normalizeOnlineUsersPayload: normalizeOnlineUsersPayloadMock,
 }))
 
 vi.mock('./onlineUsersSocket', () => ({
@@ -50,6 +53,15 @@ describe('useOnlineUsersSocket', () => {
 
     isOnlineUsersSocketMockModeMock.mockReturnValue(false)
     getOnlineUsersSnapshotMock.mockResolvedValue([])
+    normalizeOnlineUsersPayloadMock.mockImplementation((users) =>
+      Array.isArray(users)
+        ? users.map((user) => ({
+            ...user,
+            id: String(user.id),
+            nickname: user.nickname.trim(),
+          }))
+        : []
+    )
     startOnlineUsersMockBroadcastMock.mockReturnValue(stopMockBroadcastMock)
   })
 
@@ -95,18 +107,19 @@ describe('useOnlineUsersSocket', () => {
     act(() => {
       emitSocketEvent(socketOnMock, 'online_users', {
         users: [
-          createOnlineUserPayloadFixture({
-            id: 'user-2',
+          {
+            id: 2,
             nickname: '  alpha ',
             status: 'in_room',
-          }),
+          },
         ],
       })
     })
 
     expect(result.current.data).toHaveLength(1)
     expect(result.current.data[0]).toMatchObject({
-      id: 'user-2',
+      id: '2',
+      nickname: 'alpha',
       status: 'in_room',
       avatarText: 'A',
     })
