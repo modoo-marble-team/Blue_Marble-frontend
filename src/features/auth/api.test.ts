@@ -10,6 +10,7 @@ import {
   mapMyPageProfile,
   restoreAuthSession,
   setNickname,
+  shouldUseFallbackSessionForRestore,
   shouldClearAuthSession,
   startKakaoLogin,
 } from './api'
@@ -171,6 +172,22 @@ describe('auth api integration helpers', () => {
     })
     expect(restored.provider).toBe('kakao')
     expect(restored.needsNicknameSetup).toBe(true)
+  })
+
+  it('mock 모드에서는 persisted fallback session을 그대로 복구에 사용한다', () => {
+    expect(
+      shouldUseFallbackSessionForRestore({
+        fallbackSession: baseSession,
+        isAuthMockEnabled: true,
+      })
+    ).toBe(true)
+
+    expect(
+      shouldUseFallbackSessionForRestore({
+        fallbackSession: baseSession,
+        isAuthMockEnabled: false,
+      })
+    ).toBe(false)
   })
 
   it('completeKakaoLogin은 신규 사용자를 닉네임 설정 필요 상태로 저장한다', async () => {

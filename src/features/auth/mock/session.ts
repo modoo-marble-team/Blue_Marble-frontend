@@ -1,4 +1,6 @@
 import type { AuthSession } from '../types'
+import { resetMockOnlineUsers } from '../../presence/mockData'
+import { resetMockWaitingRooms } from '../../../pages/waiting-room/mockGateway'
 import { MOCK_AUTH_DELAY_MS } from './constants'
 import { createMockUuid, delay } from './helpers'
 import {
@@ -13,10 +15,17 @@ function createGuestNickname() {
   return `Guest_${uuid.slice(0, 4)}`
 }
 
+// 새 mock 세션을 시작할 때 이전 guest가 남긴 방/접속자 흔적을 초기화한다.
+function resetMockRealtimeState() {
+  resetMockWaitingRooms()
+  resetMockOnlineUsers()
+}
+
 // 카카오 mock 사용자 상태를 기준으로 세션 발급
 export async function mockKakaoLogin() {
   await delay(MOCK_AUTH_DELAY_MS)
   ensureTakenNicknamesSeeded()
+  resetMockRealtimeState()
 
   const kakaoUser = getOrCreateMockKakaoUser()
   const existingNickname =
@@ -44,6 +53,7 @@ export async function mockKakaoLogin() {
 export async function mockGuestLogin() {
   await delay(MOCK_AUTH_DELAY_MS)
   ensureTakenNicknamesSeeded()
+  resetMockRealtimeState()
 
   const userId = createMockUuid()
   const nickname = createGuestNickname()

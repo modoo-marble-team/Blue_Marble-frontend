@@ -223,4 +223,29 @@ describe('mockGateway waiting-room action sequence', () => {
     expect(leftUser).toBeTruthy()
     expect(leftUser?.status).toBe('lobby')
   })
+
+  it('resetMockWaitingRooms는 생성된 임시 방을 제거하고 초기 시드 상태로 되돌린다', async () => {
+    const gateway = await loadMockGateway()
+
+    await gateway.mockCreateWaitingRoom({
+      title: '임시 테스트 방',
+      isPrivate: false,
+      hostUserId: 'guest-user',
+      hostNickname: '게스트',
+    })
+
+    expect(
+      gateway
+        .getMockLobbyRooms()
+        .some((room) => room.title === '임시 테스트 방')
+    ).toBe(true)
+
+    gateway.resetMockWaitingRooms()
+
+    expect(
+      gateway
+        .getMockLobbyRooms()
+        .some((room) => room.title === '임시 테스트 방')
+    ).toBe(false)
+  })
 })
