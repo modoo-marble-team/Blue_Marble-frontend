@@ -414,7 +414,7 @@ const resolvePromptAmount = (prompt: GamePrompt | null) => {
   return 0
 }
 
-const buildBuyPrompt = (player: Player, tile: Tile): GamePrompt => ({
+const buildBuyPrompt = (_player: Player, tile: Tile): GamePrompt => ({
   id: createPromptId('prompt-buy'),
   type: 'BUY_OR_SKIP',
   playerId: null,
@@ -433,7 +433,7 @@ const buildBuyPrompt = (player: Player, tile: Tile): GamePrompt => ({
 })
 
 const buildTollPrompt = (
-  player: Player,
+  _player: Player,
   owner: Player,
   tile: Tile,
   amount: number
