@@ -109,18 +109,81 @@ export const setupGameHandlers = (
     if (typeof ack.revision === 'number' && ack.revision > gameStore.revision) {
       gameStore.setGameState({ revision: ack.revision })
     }
+
+    if (ack.ok && ack.type === 'ROLL_DICE' && !USE_GAME_SOCKET_MOCK) {
+      const ackPayload =
+        ack.payload && typeof ack.payload === 'object'
+          ? (ack.payload as Record<string, unknown>)
+          : null
+      const ackDice = Array.isArray(ackPayload?.dice)
+        ? (ackPayload!.dice as number[])
+        : null
+
+      setTimeout(() => {
+        const hasDiceEvent = gameStore.eventQueue.some(
+          (event) =>
+            typeof event.type === 'string' &&
+            [
+              'DICE_ROLLED',
+              'DICE_ROLL',
+              'DICE_ROLL_RESULT',
+              'ROLLED_DICE',
+            ].includes(event.type.trim().toUpperCase())
+        )
+
+        if (!hasDiceEvent) {
+          const syntheticDice: [number, number] =
+            ackDice && ackDice.length >= 2
+              ? [Number(ackDice[0]), Number(ackDice[1])]
+              : [
+                  Math.floor(Math.random() * 6) + 1,
+                  Math.floor(Math.random() * 6) + 1,
+                ]
+
+          useGameStore.getState().enqueueEvents([
+            {
+              type: 'DICE_ROLLED',
+              playerId: gameStore.currentPlayerId,
+              payload: {
+                dice: syntheticDice,
+                total: syntheticDice[0] + syntheticDice[1],
+                synthetic: true,
+              },
+            },
+          ])
+        }
+      }, 300)
+    }
   }
 
   const handleGamePatch = (payload: GamePatchPayload) => {
+    if (import.meta.env.DEV) {
+      console.debug('[game:patch] raw payload', payload)
+    }
+
     const gameStore = useGameStore.getState()
     const revision = toFiniteNumber(payload.revision) ?? 0
     const turn = toFiniteNumber(payload.turn) ?? undefined
+
+    const snapshotRecord =
+      payload.snapshot && typeof payload.snapshot === 'object'
+        ? (payload.snapshot as Record<string, unknown>)
+        : null
+    const snapshotEvents = snapshotRecord
+      ? Array.isArray(snapshotRecord.events)
+        ? snapshotRecord.events
+        : []
+      : []
+    const envelopeEvents = Array.isArray(payload.events) ? payload.events : []
+    const mergedEvents =
+      envelopeEvents.length > 0 ? envelopeEvents : snapshotEvents
+
     const normalizedPatchEnvelope = normalizePatchEnvelopePayload({
       gameId: typeof payload.gameId === 'string' ? payload.gameId : undefined,
       revision,
       turn,
       patch: Array.isArray(payload.patch) ? payload.patch : [],
-      events: Array.isArray(payload.events) ? payload.events : [],
+      events: mergedEvents,
     })
 
     if (payload.snapshot) {
@@ -136,6 +199,14 @@ export const setupGameHandlers = (
           message: 'Received game:patch snapshot payload is invalid.',
         })
         return
+      }
+
+      if (import.meta.env.DEV) {
+        console.debug('[game:patch] normalized snapshot', normalizedSnapshot)
+        console.debug(
+          '[game:patch] events to enqueue',
+          normalizedPatchEnvelope.events
+        )
       }
 
       gameStore.replaceFromSnapshot(normalizedSnapshot)

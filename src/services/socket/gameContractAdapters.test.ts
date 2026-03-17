@@ -267,6 +267,78 @@ describe('gameContractAdapters', () => {
     })
   })
 
+  it('preserves explicit zero balance from server (bankrupt player)', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-zero-balance',
+        revision: 5,
+        phase: 'WAIT_ROLL',
+        players: [
+          {
+            id: 'player-bankrupt',
+            nickname: 'bankrupt',
+            balance: 0,
+          },
+        ],
+        tiles: [],
+      },
+      { envelopeRevision: 5 }
+    )
+
+    expect(normalized?.players[0]).toMatchObject({
+      id: 'player-bankrupt',
+      balance: 0,
+    })
+  })
+
+  it('falls back to default balance when balance is non-numeric string', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-bad-balance',
+        revision: 3,
+        phase: 'WAIT_ROLL',
+        players: [
+          {
+            id: 'player-bad',
+            nickname: 'bad-balance',
+            balance: 'not-a-number',
+          },
+        ],
+        tiles: [],
+      },
+      { envelopeRevision: 3 }
+    )
+
+    expect(normalized?.players[0]).toMatchObject({
+      id: 'player-bad',
+      balance: 5000000000,
+    })
+  })
+
+  it('normalizes string "0" balance to zero', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-string-zero',
+        revision: 2,
+        phase: 'WAIT_ROLL',
+        players: [
+          {
+            id: 'player-str-zero',
+            nickname: 'str-zero',
+            balance: '0',
+          },
+        ],
+        tiles: [],
+      },
+      { envelopeRevision: 2 }
+    )
+
+    expect(normalized?.players[0]).toMatchObject({
+      id: 'player-str-zero',
+      balance: 0,
+    })
+  })
+
   it('normalizes patch envelope paths and canonical values', () => {
     const normalized = normalizePatchEnvelopePayload({
       gameId: 'game-1',
