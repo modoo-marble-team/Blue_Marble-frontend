@@ -263,6 +263,29 @@ describe('LobbyPage filter and toggle regression', () => {
     ).toBeInTheDocument()
   })
 
+  it('현재 사용자가 접속자 스냅샷에 없어도 로비 접속자로 보정한다', () => {
+    useOnlineUsersSocketMock.mockReturnValue({
+      data: [
+        createOnlineUserFixture({
+          id: 'user-2',
+          nickname: '상대방',
+          status: 'in_room',
+          avatarText: '상',
+          avatarBackground: '#fde68a',
+        }),
+      ],
+      isLoading: false,
+      isError: false,
+    })
+
+    renderLobbyPage()
+
+    expect(screen.getAllByText('테스터').length).toBeGreaterThan(0)
+    expect(screen.getByText('상대방')).toBeInTheDocument()
+    expect(screen.getByText('2명')).toBeInTheDocument()
+    expect(screen.getByText('로비')).toBeInTheDocument()
+  })
+
   it('비밀방 입장하기 클릭 시 비밀번호 모달이 열리고 성공하면 대기방 이동이 호출된다', async () => {
     const user = userEvent.setup()
     renderLobbyPage()

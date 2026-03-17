@@ -28,6 +28,7 @@ export function useOnlineUsersSocket() {
   useEffect(() => {
     let isActive = true
     let latestSnapshotRequestId = 0
+    let latestUsersCount = 0
 
     async function syncOnlineUsersSnapshot() {
       const requestId = latestSnapshotRequestId + 1
@@ -39,7 +40,9 @@ export function useOnlineUsersSocket() {
           return
         }
 
-        setUsers(mapOnlineUsersToViewModel(payloadUsers))
+        const nextUsers = mapOnlineUsersToViewModel(payloadUsers)
+        latestUsersCount = nextUsers.length
+        setUsers(nextUsers)
         setIsLoading(false)
         setIsError(false)
       } catch {
@@ -58,23 +61,23 @@ export function useOnlineUsersSocket() {
         return
       }
 
-      setUsers(
-        mapOnlineUsersToViewModel(
-          normalizeOnlineUsersPayload(readOnlineUsersEventPayloadUsers(payload))
-        )
+      const nextUsers = mapOnlineUsersToViewModel(
+        normalizeOnlineUsersPayload(readOnlineUsersEventPayloadUsers(payload))
       )
+      latestUsersCount = nextUsers.length
+      setUsers(nextUsers)
       setIsLoading(false)
       setIsError(false)
     }
 
-    // 소켓 연결 오류를 에러 상태로 반영
+    // 새로고침/재인증 경계의 connect_error는 일시 상태일 수 있어 즉시 hard error로 노출하지 않는다.
     const handleConnectError = () => {
       if (!isActive) {
         return
       }
 
       setIsLoading(false)
-      setIsError(true)
+      setIsError(false)
     }
 
     // 실제 연결 성공 뒤 최신 snapshot을 다시 읽어 현재 사용자 포함 여부를 맞춘다
@@ -95,13 +98,16 @@ export function useOnlineUsersSocket() {
       void syncOnlineUsersSnapshot()
     }
 
-    // 연결 종료 상태를 에러로 표시
+    // 새로고침/재연결 중 disconnect는 hard error 대신 재동기화 대기 상태로 처리
     const handleDisconnect = () => {
       if (!isActive) {
         return
       }
 
-      setIsError(true)
+      if (latestUsersCount === 0) {
+        setIsLoading(true)
+      }
+      setIsError(false)
     }
 
     socket.on(ONLINE_USERS_EVENT_NAME, handleOnlineUsers)
