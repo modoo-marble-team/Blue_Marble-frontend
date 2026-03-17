@@ -88,32 +88,43 @@ export const mapStoreTilesToBoardTiles = (
   })
 }
 
-/**
- * 플레이어 총자산 계산:
- * 현금 + 보유 도시 토지 가격 + 건물 레벨별 누적 건설비
- */
+const getOwnedTileIndices = (player: Player, storeTiles: Tile[]) => {
+  const ownedTileIndexSet = new Set<number>(player.owned_tiles)
+  const normalizedPlayerId = String(player.id)
+
+  for (const tile of storeTiles) {
+    const ownerId =
+      tile.ownerId !== undefined ? tile.ownerId : (tile.owner_id ?? null)
+    if (ownerId == null) {
+      continue
+    }
+
+    if (String(ownerId) === normalizedPlayerId) {
+      ownedTileIndexSet.add(tile.index)
+    }
+  }
+
+  return ownedTileIndexSet
+}
+
 export const calcPlayerTotalAssets = (
   player: Player,
   storeTiles: Tile[]
 ): number => {
+  const ownedTileIndices = getOwnedTileIndices(player, storeTiles)
   let assets = player.balance
 
-  for (const tileIndex of player.owned_tiles) {
-    // 서버 타일에서 building 레벨 조회
-    const serverTile = storeTiles.find((t) => t.index === tileIndex)
+  for (const tileIndex of ownedTileIndices) {
+    const serverTile = storeTiles.find((tile) => tile.index === tileIndex)
+    const staticTile = TILES.find((tile) => tile.id === tileIndex)
+    const landPrice = serverTile?.price ?? staticTile?.price ?? 0
     const buildingLevel: BuildingLevel =
       (serverTile?.building as BuildingLevel | undefined) ?? 0
 
-    // 정적 타일 데이터에서 토지 가격 조회
-    const staticTile = TILES.find((t) => t.id === tileIndex)
-    const landPrice = staticTile?.price ?? 0
-
-    // 토지 가격 합산
     assets += landPrice
 
-    // 건물 레벨 1~7 누적 건설비 합산
-    for (let lvl = 0 as BuildingLevel; lvl < buildingLevel; lvl++) {
-      assets += getBuildCost(landPrice, lvl as BuildingLevel)
+    for (let level = 0 as BuildingLevel; level < buildingLevel; level++) {
+      assets += getBuildCost(landPrice, level as BuildingLevel)
     }
   }
 

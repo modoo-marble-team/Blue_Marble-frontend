@@ -526,4 +526,64 @@ describe('gameContractAdapters', () => {
       },
     ])
   })
+
+  it('normalizes set patches that replace a single player or tile object', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-entity-set',
+      revision: 11,
+      patch: [
+        {
+          op: 'set',
+          path: 'players.player-a',
+          value: {
+            playerId: 'player-a',
+            nickname: 'Player A',
+            current_tile_id: 4,
+            money: 5200,
+            ownedTiles: [2],
+            player_state: 'NORMAL',
+          },
+        },
+        {
+          op: 'set',
+          path: ['tiles', 2],
+          value: {
+            tileId: 2,
+            owner_player_id: 'player-a',
+            tile_type: 'PROPERTY',
+            building_level: 3,
+            purchase_price: 140,
+          },
+        },
+      ],
+      events: [],
+    })
+
+    expect(normalized.patch).toEqual([
+      {
+        op: 'set',
+        path: 'players.player-a',
+        value: expect.objectContaining({
+          id: 'player-a',
+          nickname: 'Player A',
+          position: 4,
+          balance: 5200000000,
+          owned_tiles: [2],
+          state: 'normal',
+        }),
+      },
+      {
+        op: 'set',
+        path: ['tiles', 2],
+        value: expect.objectContaining({
+          index: 2,
+          ownerId: 'player-a',
+          owner_id: 'player-a',
+          type: 'property',
+          building: 3,
+          price: 140000000,
+        }),
+      },
+    ])
+  })
 })
