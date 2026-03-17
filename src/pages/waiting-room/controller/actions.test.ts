@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAuthSessionFixture } from '../../../test/fixtures'
 import { useWaitingRoomActions } from './actions'
-import type { WaitingRoomSnapshot } from '../types'
+import type { WaitingRoomSnapshot } from '../api/types'
 import type { WaitingRoomActionResult } from './state'
 
 const {
@@ -21,14 +21,14 @@ const {
   sendWaitingRoomChatMock: vi.fn(),
 }))
 
-vi.mock('../api', () => ({
+vi.mock('../api/api', () => ({
   leaveWaitingRoom: leaveWaitingRoomMock,
   startWaitingGame: startWaitingGameMock,
   toggleWaitingReady: toggleWaitingReadyMock,
   getWaitingRoomErrorMessage: getWaitingRoomErrorMessageMock,
 }))
 
-vi.mock('../socket', () => ({
+vi.mock('../socket/socket', () => ({
   leaveWaitingRoomSocket: leaveWaitingRoomSocketMock,
   sendWaitingRoomChat: sendWaitingRoomChatMock,
 }))

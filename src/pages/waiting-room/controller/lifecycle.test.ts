@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAuthSessionFixture } from '../../../test/fixtures'
 import { useWaitingRoomLifecycle } from './lifecycle'
-import type { WaitingRoomSnapshot } from '../types'
+import type { WaitingRoomSnapshot } from '../api/types'
 
 const {
   joinWaitingRoomMock,
@@ -16,12 +16,12 @@ const {
   requestOnlineUsersSnapshotSyncMock: vi.fn(),
 }))
 
-vi.mock('../api', () => ({
+vi.mock('../api/api', () => ({
   joinWaitingRoom: joinWaitingRoomMock,
   getWaitingRoomErrorMessage: getWaitingRoomErrorMessageMock,
 }))
 
-vi.mock('../socket', () => ({
+vi.mock('../socket/socket', () => ({
   enterWaitingRoomSocket: enterWaitingRoomSocketMock,
 }))
 

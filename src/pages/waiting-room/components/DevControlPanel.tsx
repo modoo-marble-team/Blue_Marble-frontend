@@ -7,7 +7,7 @@ import { emitDirectMessageReceiveMockForDev } from '../../../features/presence/d
 import { setMockOnlineUserStatus } from '../../../features/presence/mock/mockData'
 import { emitMockOnlineUsersSnapshot } from '../../../features/presence/online-users/onlineUsersSocket'
 import { cn } from '../../../lib/utils'
-import { getWaitingRoomErrorMessage } from '../api'
+import { getWaitingRoomErrorMessage } from '../api/api'
 import {
   mockDevAddWaitingRoomParticipant,
   mockDevGetWaitingRoomSnapshot,
@@ -16,9 +16,9 @@ import {
   mockDevSeedStartCondition,
   mockDevSetAllNonHostReady,
   mockDevTransferWaitingRoomHost,
-} from '../mockGateway'
-import { sendWaitingRoomChat } from '../socket'
-import type { WaitingRoomPlayer, WaitingRoomSnapshot } from '../types'
+} from '../socket/mockGateway'
+import { sendWaitingRoomChat } from '../socket/socket'
+import type { WaitingRoomPlayer, WaitingRoomSnapshot } from '../api/types'
 import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 
 const IS_DEV_CONTROL_ENABLED = IS_SOCKET_MOCK_ENABLED

@@ -1,4 +1,4 @@
-import type { LobbyRoomStatus } from '../lobby/types'
+import type { LobbyRoomStatus } from '../../lobby/types'
 
 // 대기방 플레이어 화면 모델
 export interface WaitingRoomPlayer {

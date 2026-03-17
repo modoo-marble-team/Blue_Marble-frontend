@@ -1,7 +1,7 @@
 import { CheckCircle2, Clock3, Crown, UserRound } from 'lucide-react'
 import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
-import type { WaitingRoomSeat } from '../types'
+import type { WaitingRoomSeat } from '../api/types'
 
 // 좌석 카드 렌더링 입력값 타입
 interface WaitingSeatCardProps {

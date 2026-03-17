@@ -3,16 +3,16 @@ import userEvent from '@testing-library/user-event'
 import type { MemoryRouterProps } from 'react-router-dom'
 import { Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAuthStore } from '../../features/auth/store'
-import { createAuthSessionFixture } from '../../test/fixtures'
-import { renderWithProviders } from '../../test/renderWithProviders'
+import { useAuthStore } from '../../../features/auth/store'
+import { createAuthSessionFixture } from '../../../test/fixtures'
+import { renderWithProviders } from '../../../test/renderWithProviders'
 import WaitingRoomPage from './WaitingRoomPage'
 import type {
   GameStartEventPayload,
   WaitingRoomChatMessage,
   WaitingRoomSeat,
   WaitingRoomSnapshot,
-} from './types'
+} from '../api/types'
 
 type WaitingRoomControllerResult = {
   room: WaitingRoomSnapshot | null
@@ -75,16 +75,16 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('./hooks', () => ({
+vi.mock('../hooks/hooks', () => ({
   useWaitingRoomController: useWaitingRoomControllerMock,
 }))
 
-vi.mock('../../features/presence/online-users/useOnlineUsersSocket', () => ({
+vi.mock('../../../features/presence/online-users/useOnlineUsersSocket', () => ({
   useOnlineUsersSocket: useOnlineUsersSocketMock,
 }))
 
 vi.mock(
-  '../../features/presence/direct-message/useDirectMessageController',
+  '../../../features/presence/direct-message/useDirectMessageController',
   () => ({
     useDirectMessageController: useDirectMessageControllerMock,
   })

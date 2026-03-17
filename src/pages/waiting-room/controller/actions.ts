@@ -6,9 +6,9 @@ import {
   leaveWaitingRoom,
   startWaitingGame,
   toggleWaitingReady,
-} from '../api'
-import { leaveWaitingRoomSocket, sendWaitingRoomChat } from '../socket'
-import type { WaitingRoomSnapshot } from '../types'
+} from '../api/api'
+import { leaveWaitingRoomSocket, sendWaitingRoomChat } from '../socket/socket'
+import type { WaitingRoomSnapshot } from '../api/types'
 import type { LeaveRoomSequenceParams, WaitingRoomActionResult } from './state'
 
 // 액션 훅 입력 파라미터 타입

@@ -1,13 +1,13 @@
-import { apiClient } from '../../lib/axios'
-import { getParsedApiErrorMessage, parseApiError } from '../../lib/apiError'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { apiClient } from '../../../lib/axios'
+import { getParsedApiErrorMessage, parseApiError } from '../../../lib/apiError'
+import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 import {
   mockCreateWaitingRoom,
   mockJoinWaitingRoom,
   mockLeaveWaitingRoom,
   mockStartWaitingGame,
   mockToggleWaitingReady,
-} from './mockGateway'
+} from '../socket/mockGateway'
 import type {
   CreateRoomResponsePayload,
   JoinWaitingRoomResponsePayload,

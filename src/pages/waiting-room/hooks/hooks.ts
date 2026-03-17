@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AuthSession } from '../../features/auth/types'
+import type { AuthSession } from '../../../features/auth/types'
 import type {
   GameStartEventPayload,
   WaitingRoomChatMessage,
   WaitingRoomSnapshot,
-} from './types'
-import { useWaitingRoomActions } from './controller/actions'
-import { useWaitingRoomLifecycle } from './controller/lifecycle'
+} from '../api/types'
+import { useWaitingRoomActions } from '../controller/actions'
+import { useWaitingRoomLifecycle } from '../controller/lifecycle'
 import {
   buildWaitingRoomSeats,
   getStartConditionMet,
   type WaitingRoomActionResult,
-} from './controller/state'
-import { useWaitingRoomSocketSync } from './controller/socketSync'
+} from '../controller/state'
+import { useWaitingRoomSocketSync } from '../controller/socketSync'
 
 // 대기방 컨트롤러 훅 입력값 타입
 interface UseWaitingRoomControllerParams {

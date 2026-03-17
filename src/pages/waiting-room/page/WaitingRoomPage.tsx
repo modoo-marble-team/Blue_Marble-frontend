@@ -7,28 +7,28 @@ import {
   useNavigationType,
   useParams,
 } from 'react-router-dom'
-import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
-import { useAuthStore } from '../../features/auth/store'
+import { useRequireActiveSession } from '../../../features/auth/hooks/useRequireActiveSession'
+import { useAuthStore } from '../../../features/auth/store'
 import {
   createProfileMenuItems,
   getAvatarBackground,
   getAvatarText,
-} from '../../components/header/profileMenu'
-import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
-import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import { useDirectMessageController } from '../../features/presence/direct-message/useDirectMessageController'
-import { removeMockOnlineUser } from '../../features/presence/mock/mockData'
-import { mergeOnlineUsersWithRoomPlayers } from '../../features/presence/online-users/onlineUsersModel'
-import { useOnlineUsersSocket } from '../../features/presence/online-users/useOnlineUsersSocket'
-import { cn } from '../../lib/utils'
-import { disconnectSocketAndClearAuth } from '../../lib/socket'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
-import { WaitingRoomHeader } from './components/WaitingRoomHeader'
-import { WaitingSeatCard } from './components/WaitingSeatCard'
-import { WaitingRoomSidePanel } from './components/WaitingRoomSidePanel'
-import { DevControlPanel } from './components/DevControlPanel'
-import { useWaitingRoomController } from './hooks'
-import type { GameStartEventPayload, WaitingRoomSnapshot } from './types'
+} from '../../../components/header/profileMenu'
+import { DirectMessagePanel } from '../../../features/presence/components/DirectMessagePanel'
+import { UserListPanel } from '../../../features/presence/components/UserListPanel'
+import { useDirectMessageController } from '../../../features/presence/direct-message/useDirectMessageController'
+import { removeMockOnlineUser } from '../../../features/presence/mock/mockData'
+import { mergeOnlineUsersWithRoomPlayers } from '../../../features/presence/online-users/onlineUsersModel'
+import { useOnlineUsersSocket } from '../../../features/presence/online-users/useOnlineUsersSocket'
+import { cn } from '../../../lib/utils'
+import { disconnectSocketAndClearAuth } from '../../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
+import { WaitingRoomHeader } from '../components/WaitingRoomHeader'
+import { WaitingSeatCard } from '../components/WaitingSeatCard'
+import { WaitingRoomSidePanel } from '../components/WaitingRoomSidePanel'
+import { DevControlPanel } from '../components/DevControlPanel'
+import { useWaitingRoomController } from '../hooks/hooks'
+import type { GameStartEventPayload, WaitingRoomSnapshot } from '../api/types'
 
 interface WaitingRoomLocationState {
   roomId?: string
