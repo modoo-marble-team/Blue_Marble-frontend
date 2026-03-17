@@ -11,7 +11,7 @@ import { renderWithProviders } from '../../test/renderWithProviders'
 import LobbyPage from './LobbyPage'
 import type { GetLobbyRoomsParams } from './api'
 import type { LobbyRoom } from './types'
-import type { WaitingRoomSnapshot } from '../waiting-room/types'
+import type { WaitingRoomSnapshot } from '../waiting-room/api/types'
 
 const {
   useLobbyRoomsQueryMock,
@@ -64,7 +64,7 @@ vi.mock('../../lib/socket', () => ({
   disconnectSocketAndClearAuth: disconnectSocketAndClearAuthMock,
 }))
 
-vi.mock('../waiting-room/api', () => ({
+vi.mock('../waiting-room/api/api', () => ({
   createWaitingRoom: createWaitingRoomMock,
   getWaitingRoomErrorMessage: getWaitingRoomErrorMessageMock,
   isJoinPasswordMismatchError: isJoinPasswordMismatchErrorMock,

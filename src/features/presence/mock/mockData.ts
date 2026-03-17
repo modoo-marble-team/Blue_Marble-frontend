@@ -1,5 +1,5 @@
 import type { OnlineUserPayload } from '../types'
-import { createInitialSeededOnlineUsers } from '../../../pages/waiting-room/mockSeed'
+import { createInitialSeededOnlineUsers } from '../../../pages/waiting-room/socket/mockSeed'
 
 // 대기방 시드와 동일한 규칙으로 접속자 초기 데이터를 생성
 const INITIAL_MOCK_ONLINE_USERS: OnlineUserPayload[] =

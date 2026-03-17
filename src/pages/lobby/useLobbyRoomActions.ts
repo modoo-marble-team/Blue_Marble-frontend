@@ -8,9 +8,9 @@ import {
   getWaitingRoomErrorMessage,
   isJoinPasswordMismatchError,
   joinWaitingRoom,
-} from '../waiting-room/api'
+} from '../waiting-room/api/api'
 import type { LobbyRoom } from './types'
-import type { WaitingRoomSnapshot } from '../waiting-room/types'
+import type { WaitingRoomSnapshot } from '../waiting-room/api/types'
 
 // 로비 방 생성/입장 액션 훅 입력값 타입
 interface UseLobbyRoomActionsParams {

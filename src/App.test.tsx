@@ -48,7 +48,7 @@ vi.mock('./pages/MyPage', () => ({
   default: () => <div>마이페이지</div>,
 }))
 
-vi.mock('./pages/waiting-room/WaitingRoomPage', () => ({
+vi.mock('./pages/waiting-room/page/WaitingRoomPage', () => ({
   default: () => <div>대기방 페이지</div>,
 }))
 
