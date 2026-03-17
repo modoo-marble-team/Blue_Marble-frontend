@@ -1,4 +1,4 @@
-import { ArrowLeft, Gamepad2, Shield, Trophy } from 'lucide-react'
+import { ArrowLeft, Frown, Gamepad2, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useRequireActiveSession } from '../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../features/auth/store'
@@ -25,7 +25,7 @@ const myPageStatsCardMeta = [
   {
     key: 'losses' as const,
     label: '패배',
-    icon: Shield,
+    icon: Frown,
     iconClassName: 'text-[#ef4444]',
     iconBackgroundClassName: 'bg-[#fee2e2]',
   },
@@ -46,8 +46,18 @@ function MyPage() {
   const isGuest = session.isGuest
 
   return (
-    <div className="min-h-screen bg-ui-app-bg">
-      <header className="flex h-14 items-center border-b border-ui-border bg-ui-surface px-4 sm:px-6">
+    <div className="relative min-h-screen overflow-hidden bg-ui-app-bg">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 top-14">
+        <img
+          src="/LobbyPage_background.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.34),transparent_30%),linear-gradient(180deg,rgba(250,248,240,0.38),rgba(250,248,240,0.5))]" />
+      </div>
+
+      <header className="relative flex h-14 items-center border-b border-ui-border bg-ui-surface px-4 sm:px-6">
         <button
           type="button"
           onClick={() => navigate('/lobby')}
@@ -62,7 +72,7 @@ function MyPage() {
         </button>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <main className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6">
         {isGuest ? (
           <section className="rounded-3xl border border-ui-border bg-ui-surface p-7 shadow-[0_12px_30px_rgba(15,23,42,0.08)]">
             <h2 className="text-xl font-bold text-ui-text-strong">
