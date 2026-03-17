@@ -129,7 +129,7 @@ describe('gameContractAdapters', () => {
             playerId: 105,
             nickname: 'beta',
             current_tile_id: '8',
-            balance: '210',
+            money: '210',
             ownedTiles: ['3', '5'],
           },
         ],
@@ -141,7 +141,7 @@ describe('gameContractAdapters', () => {
             tile_type: 'PROPERTY',
           },
         ],
-        prompt: {
+        pending_prompt: {
           promptId: 'prompt-2',
           type: 'BUY_OR_SKIP',
           payload: {
@@ -177,6 +177,43 @@ describe('gameContractAdapters', () => {
       id: 'prompt-2',
       playerId: 105,
       choices: [{ value: 'BUY' }, { value: 'SKIP' }],
+    })
+  })
+
+  it('normalizes object-shaped snapshot collections', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-3',
+        revision: 4,
+        phase: 'MOVING',
+        players: {
+          a: {
+            id: 'user-a',
+            nickname: 'A',
+            balance: 300,
+          },
+        },
+        tiles: {
+          c1: {
+            index: 1,
+            tileType: 'PROPERTY',
+            purchase_price: 50,
+          },
+        },
+      },
+      { envelopeRevision: 4 }
+    )
+
+    expect(normalized?.players).toHaveLength(1)
+    expect(normalized?.players[0]).toMatchObject({
+      id: 'user-a',
+      balance: 300,
+    })
+    expect(normalized?.tiles).toHaveLength(1)
+    expect(normalized?.tiles[0]).toMatchObject({
+      index: 1,
+      type: 'property',
+      price: 50,
     })
   })
 

@@ -303,7 +303,10 @@ const normalizePlayerFromSnapshot = (
         playerRecord.tileId,
       0
     ),
-    balance: toFiniteInt(playerRecord.balance, 0),
+    balance: toFiniteInt(
+      playerRecord.balance ?? playerRecord.money ?? playerRecord.cash,
+      0
+    ),
     owned_tiles: normalizeOwnedTileIds(
       playerRecord.owned_tiles ?? playerRecord.ownedTiles
     ),
@@ -360,7 +363,14 @@ const normalizeTileFromSnapshot = (
     name: toStringOrNull(tileRecord.name) ?? `Tile ${index}`,
     type: normalizeTileType(tileTypeRaw),
     transportType: normalizeTransportTileType(tileTypeRaw),
-    price: toFiniteNumber(tileRecord.price) ?? undefined,
+    price:
+      toFiniteNumber(
+        tileRecord.price ??
+          tileRecord.landPrice ??
+          tileRecord.purchasePrice ??
+          tileRecord.purchase_price ??
+          tileRecord.cost
+      ) ?? undefined,
     color: toStringOrNull(tileRecord.color) ?? undefined,
   }
 }
@@ -375,10 +385,14 @@ export const normalizeSnapshotPayload = (
 
   const playersRaw = Array.isArray(snapshotPayload.players)
     ? snapshotPayload.players
-    : []
+    : isRecord(snapshotPayload.players)
+      ? Object.values(snapshotPayload.players)
+      : []
   const tilesRaw = Array.isArray(snapshotPayload.tiles)
     ? snapshotPayload.tiles
-    : []
+    : isRecord(snapshotPayload.tiles)
+      ? Object.values(snapshotPayload.tiles)
+      : []
   const currentPlayerId = toPlayerIdOrNull(
     snapshotPayload.currentPlayerId ??
       snapshotPayload.current_player_id ??
@@ -404,7 +418,11 @@ export const normalizeSnapshotPayload = (
       snapshotPayload.turnTimeoutSec,
       DEFAULT_TURN_TIMEOUT_SEC
     ),
-    prompt: normalizePromptPayload(snapshotPayload.prompt),
+    prompt: normalizePromptPayload(
+      snapshotPayload.prompt ??
+        snapshotPayload.pending_prompt ??
+        snapshotPayload.pendingPrompt
+    ),
     gameResult:
       snapshotPayload.gameResult && isRecord(snapshotPayload.gameResult)
         ? (snapshotPayload.gameResult as GameSnapshot['gameResult'])
