@@ -229,9 +229,14 @@ export const normalizePromptPayload = (
         ? promptCompatPayload.type
         : 'UNKNOWN_PROMPT',
     playerId:
-      promptCompatPayload.playerId === undefined
+      promptCompatPayload.playerId === undefined &&
+      payloadRecord?.playerId === undefined &&
+      payloadRecord?.player_id === undefined
         ? null
-        : (promptCompatPayload.playerId ?? null),
+        : (promptCompatPayload.playerId ??
+          payloadRecord?.playerId ??
+          payloadRecord?.player_id ??
+          null),
     title:
       typeof promptCompatPayload.title === 'string' &&
       promptCompatPayload.title.trim().length > 0
@@ -259,6 +264,11 @@ const normalizeOwnedTileIds = (value: unknown): number[] => {
         return Math.trunc(item)
       }
 
+      if (typeof item === 'string') {
+        const parsed = Number.parseInt(item, 10)
+        return Number.isFinite(parsed) ? parsed : Number.NaN
+      }
+
       if (isRecord(item)) {
         return toFiniteInt(item.tileId, Number.NaN)
       }
@@ -282,7 +292,10 @@ const normalizePlayerFromSnapshot = (
   )
 
   return {
-    id: toPlayerId(playerRecord.id, fallbackIndex),
+    id: toPlayerId(
+      playerRecord.id ?? playerRecord.playerId ?? playerRecord.player_id,
+      fallbackIndex
+    ),
     nickname:
       toStringOrNull(playerRecord.nickname) ??
       toStringOrNull(playerRecord.name) ??
@@ -290,6 +303,7 @@ const normalizePlayerFromSnapshot = (
     position: toFiniteInt(
       playerRecord.position ??
         playerRecord.currentTileId ??
+        playerRecord.current_tile_id ??
         playerRecord.tileId,
       0
     ),
@@ -321,16 +335,31 @@ const normalizeTileFromSnapshot = (
   fallbackIndex: number
 ): Tile => {
   const tileRecord = isRecord(tilePayload) ? tilePayload : {}
-  const index = toFiniteInt(tileRecord.index ?? tileRecord.id, fallbackIndex)
-  const ownerId = tileRecord.ownerId ?? tileRecord.owner_id ?? null
-  const tileTypeRaw = tileRecord.tileType ?? tileRecord.type
+  const index = toFiniteInt(
+    tileRecord.index ??
+      tileRecord.id ??
+      tileRecord.tileId ??
+      tileRecord.tile_id,
+    fallbackIndex
+  )
+  const ownerId =
+    tileRecord.ownerId ??
+    tileRecord.owner_id ??
+    tileRecord.ownerPlayerId ??
+    tileRecord.owner_player_id ??
+    null
+  const tileTypeRaw =
+    tileRecord.tileType ?? tileRecord.type ?? tileRecord.tile_type
 
   return {
     index,
     ownerId: ownerId as Tile['ownerId'],
     owner_id: ownerId as Tile['owner_id'],
     building: clampBuildingLevel(
-      tileRecord.building ?? tileRecord.buildingLevel ?? 0
+      tileRecord.building ??
+        tileRecord.buildingLevel ??
+        tileRecord.building_level ??
+        0
     ),
     name: toStringOrNull(tileRecord.name) ?? `Tile ${index}`,
     type: normalizeTileType(tileTypeRaw),
@@ -355,7 +384,10 @@ export const normalizeSnapshotPayload = (
     ? snapshotPayload.tiles
     : []
   const currentPlayerId = toPlayerIdOrNull(
-    snapshotPayload.currentPlayerId ?? snapshotPayload.currentTurn ?? null
+    snapshotPayload.currentPlayerId ??
+      snapshotPayload.current_player_id ??
+      snapshotPayload.currentTurn ??
+      null
   )
   const roundFromTurn = toFiniteInt(snapshotPayload.turn, 1)
 
@@ -416,10 +448,15 @@ const normalizePathSegment = (segment: string | number): string | number => {
     return segment
   }
 
+  if (segment === 'current_player_id') return 'currentPlayerId'
   if (segment === 'currentTileId') return 'position'
+  if (segment === 'current_tile_id') return 'position'
   if (segment === 'playerState') return 'state'
+  if (segment === 'player_state') return 'state'
   if (segment === 'ownedTiles') return 'owned_tiles'
+  if (segment === 'building_level') return 'building'
   if (segment === 'buildingLevel') return 'building'
+  if (segment === 'tile_type') return 'type'
   if (segment === 'tileType') return 'type'
   return segment
 }

@@ -116,6 +116,70 @@ describe('gameContractAdapters', () => {
     })
   })
 
+  it('normalizes snapshot aliases from real payload fields', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-2',
+        revision: 7,
+        phase: 'WAIT_ROLL',
+        turn: 2,
+        current_player_id: 105,
+        players: [
+          {
+            playerId: 105,
+            nickname: 'beta',
+            current_tile_id: '8',
+            balance: '210',
+            ownedTiles: ['3', '5'],
+          },
+        ],
+        tiles: [
+          {
+            tileId: '3',
+            owner_player_id: 105,
+            building_level: 2,
+            tile_type: 'PROPERTY',
+          },
+        ],
+        prompt: {
+          promptId: 'prompt-2',
+          type: 'BUY_OR_SKIP',
+          payload: {
+            player_id: 105,
+          },
+          choices: [{ value: 'buy' }, { value: 'skip' }],
+        },
+      },
+      {
+        envelopeRevision: 7,
+      }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized).toMatchObject({
+      currentPlayerId: 105,
+      currentTurn: 105,
+      phase: 'rolling',
+    })
+    expect(normalized?.players[0]).toMatchObject({
+      id: 105,
+      position: 8,
+      balance: 210,
+      owned_tiles: [3, 5],
+    })
+    expect(normalized?.tiles[0]).toMatchObject({
+      index: 3,
+      ownerId: 105,
+      building: 2,
+      type: 'property',
+    })
+    expect(normalized?.prompt).toMatchObject({
+      id: 'prompt-2',
+      playerId: 105,
+      choices: [{ value: 'BUY' }, { value: 'SKIP' }],
+    })
+  })
+
   it('normalizes patch envelope paths and canonical values', () => {
     const normalized = normalizePatchEnvelopePayload({
       gameId: 'game-1',
@@ -151,6 +215,16 @@ describe('gameContractAdapters', () => {
           path: 'tiles.1.tileType',
           value: 'MOVE_TO_ISLAND',
         },
+        {
+          op: 'set',
+          path: 'players.0.current_tile_id',
+          value: 11,
+        },
+        {
+          op: 'set',
+          path: 'players.0.player_state',
+          value: 'LOCKED',
+        },
       ],
       events: [],
     })
@@ -185,6 +259,16 @@ describe('gameContractAdapters', () => {
         op: 'set',
         path: 'tiles.1.type',
         value: 'go_to_island',
+      },
+      {
+        op: 'set',
+        path: 'players.0.position',
+        value: 11,
+      },
+      {
+        op: 'set',
+        path: 'players.0.state',
+        value: 'locked',
       },
     ])
   })
