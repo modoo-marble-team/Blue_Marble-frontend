@@ -38,18 +38,12 @@ import {
   CORNER_SIZE,
   STRAIGHT_SIZE,
   GRID_GAP,
-  PLAYER_COLORS,
   PlayerState,
   TileOwner,
   BuildingLevel,
   DICE_TIMEOUT,
 } from './board.constants'
 
-import {
-  syncMockStorePlayers,
-  syncMockStoreTileOwners,
-} from './gameBoardStoreBridge'
-import { createGameBoardActionHandlers } from './gameBoardActionHandlers'
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
@@ -72,7 +66,6 @@ import type {
   IslandModalState,
 } from './gameBoard.types'
 import '../../styles/board.css'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { formatWon } from '../../lib/utils'
 import type { GamePrompt } from '../../types/domain'
 import { playLongSfx, stopLongSfx } from '../../lib/bgm'
@@ -100,20 +93,8 @@ function calcToll(price: number, level: BuildingLevel): number {
   return price
 }
 
-const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
-// Local game engine fallback is deprecated. Keep false to force store/prompt path.
-const USE_LOCAL_GAME_ENGINE_FALLBACK = false
-
-const AI_PENALTY_RESULTS = [
-  '다음 턴 시작 전까지 통행료가 10M 증가합니다.',
-  '즉시 보너스 30M를 획득합니다.',
-  '다음 이동에서 추가로 2칸 전진합니다.',
-  '다음 턴 주사위 결과에서 1을 추가로 받습니다.',
-] as const
-
 const DEFAULT_OPPONENT_NAME = '상대방'
 const GAME_START_STATUS = '게임 시작!'
-const GAME_ID_REQUIRED_MESSAGE = '게임 식별자를 찾을 수 없습니다.'
 const BOARD_GRID_BASE_SIZE = CORNER_SIZE * 2 + STRAIGHT_SIZE * 7 + GRID_GAP * 8
 const BOARD_INNER_PADDING = 10 * 2
 const BOARD_INNER_BORDER = 4 * 2
@@ -291,7 +272,6 @@ function buildTileOwnersFromProps(
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     {
-      gameId = null,
       players,
       curPlayer,
       suppressDiceTimerModal = false,
@@ -309,11 +289,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     )
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
-    const [rolling, setRolling] = useState(false)
+    const rolling = false
     const [status, setStatus] = useState(GAME_START_STATUS)
     const [eventFxKind, setEventFxKind] =
       useState<BoardEventAnimationKind>('none')
-    const lock = useRef(false)
     const boardPageRef = useRef<HTMLDivElement | null>(null)
     const boardStatusRef = useRef<HTMLDivElement | null>(null)
     const [boardScale, setBoardScale] = useState(1)
@@ -322,11 +301,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const playersRef = useRef<PlayerState[]>(players)
     curPlayerRef.current = curPlayer
     playersRef.current = players
-    const useLocalPromptFallback =
-      USE_GAME_SOCKET_MOCK && USE_LOCAL_GAME_ENGINE_FALLBACK
 
     useBoardEventQueue({
-      enabled: !useLocalPromptFallback,
+      enabled: true,
       playersRef,
       setStatus,
       setDice1,
@@ -352,16 +329,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         window.clearTimeout(timer)
       }
     }, [eventFxKind])
-    const [optimisticTileOwners, setOptimisticTileOwners] = useState<Record<
-      number,
-      TileOwner
-    > | null>(null)
     const derivedTileOwners = useMemo(
       () => buildTileOwnersFromProps(tiles, players),
       [tiles, players]
     )
-    const tileOwners =
-      optimisticTileOwners === null ? derivedTileOwners : optimisticTileOwners
+    const tileOwners = derivedTileOwners
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
@@ -497,7 +469,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     useEffect(() => {
-      setOptimisticTileOwners(null)
       tileOwnersRef.current = derivedTileOwners
     }, [derivedTileOwners])
 
@@ -597,11 +568,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const timer = setInterval(() => {
         setLocalTimeLeft((prev) => {
           if (prev <= 1) {
-            if (useLocalPromptFallback && !isDiceTimerPromptOpen) {
-              setShowTimerModal(true)
-              // ⏱️ 턴 종료 (시간 초과) 소리 재생
-              new Audio('/audio/turn-end.mp3').play().catch(() => {})
-            }
             clearInterval(timer) // Stop once triggered
             return 0
           }
@@ -656,24 +622,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         window.clearTimeout(timer)
       }
     }, [isDiceTimerPromptOpen, promptTimerLeftSec])
-
-    function getPlayerIdByIndex(playerIdx: number): number {
-      const rawId = playersRef.current[playerIdx]?.id ?? playerIdx
-      return typeof rawId === 'number'
-        ? rawId
-        : Number.parseInt(String(rawId), 10) || 0
-    }
-
-    function getPlayerColorByIndex(playerIdx: number) {
-      return (
-        playersRef.current[playerIdx]?.color ??
-        PLAYER_COLORS[playerIdx % PLAYER_COLORS.length]
-      )
-    }
-
-    function getPlayerIndexById(playerId: number) {
-      return playersRef.current.findIndex((player) => player.id === playerId)
-    }
 
     const [buyModal, setBuyModal] = useState<BuyModalState>({
       open: false,
@@ -732,92 +680,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       open: false,
     })
 
-    function updateTileOwners(
-      updater: (prev: Record<number, TileOwner>) => Record<number, TileOwner>,
-      options?: { notifyParent?: boolean }
-    ) {
-      const next = updater(tileOwnersRef.current)
-      tileOwnersRef.current = next
-      setOptimisticTileOwners(next)
-
-      if (options?.notifyParent) {
-        syncMockStoreTileOwners(next)
-      }
-    }
-
-    function publishPlayers(nextPlayers: PlayerState[]) {
-      syncMockStorePlayers(nextPlayers)
-    }
-
-    function applyMoney(
-      playerIdx: number,
-      delta: number,
-      onDoneCallback?: () => void
-    ): boolean {
-      if (!useLocalPromptFallback) {
-        onDoneCallback?.()
-        return false
-      }
-
-      const updated = playersRef.current.map((player, index) =>
-        index === playerIdx
-          ? {
-              ...player,
-              money: Math.max(0, player.money + delta),
-            }
-          : player
-      )
-
-      playersRef.current = updated
-      publishPlayers(updated)
-      return false
-    }
-
-    const {
-      sellOwnedTileForPlayer,
-      handleBuy,
-      handleBuyPass,
-      handleBuildConfirm,
-      handleBuildCancel,
-      handleTollConfirm,
-    } = createGameBoardActionHandlers({
-      gameId,
-      useGameSocketMock: useLocalPromptFallback,
-      gameIdRequiredMessage: GAME_ID_REQUIRED_MESSAGE,
-      setStatus,
-      setBuyModal,
-      setBuildModal,
-      setTollModal,
-      curPlayerRef,
-      tileOwnersRef,
-      getPlayerIdByIndex,
-      getPlayerColorByIndex,
-      getPlayerIndexById,
-      getPurchaseCost: (id) => TILES[id]?.price ?? 0,
-      getUpgradeCost,
-      calcToll,
-      getTilePrice: (tileId) => TILES[tileId]?.price ?? 0,
-      updateTileOwners,
-      applyMoney,
-      advanceTurn,
-      onTollResolved: ({ tileId, ownerLevel, ownerName, onDoneCallback }) => {
-        if (ownerLevel >= 7) {
-          return false
-        }
-
-        const acquisitionCost = TILES[tileId]?.price ?? 0
-        setCityAcquisitionModal({
-          open: true,
-          tileId,
-          ownerName,
-          currentLevel: ownerLevel,
-          acquisitionCost,
-          onDoneCallback,
-        })
-        return true
-      },
-    })
-
     function getPlayerResults() {
       const results = playersRef.current.map((player, index) => {
         let propertyValue = 0
@@ -870,22 +732,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     async function handleAITile(onDone?: () => void) {
       setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
 
-      if (useLocalPromptFallback) {
-        const fallbackDescription =
-          AI_PENALTY_RESULTS[
-            Math.floor(Math.random() * AI_PENALTY_RESULTS.length)
-          ]
-
-        window.setTimeout(() => {
-          setAiModal((prev) => ({
-            ...prev,
-            status: 'result',
-            resultDescription: fallbackDescription,
-          }))
-        }, 500)
-        return
-      }
-
       window.setTimeout(() => {
         setAiModal((prev) =>
           prev.open
@@ -899,49 +745,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function rollDice(onDone?: () => void) {
-      if (!useLocalPromptFallback) {
-        onDone?.()
-        return
-      }
-
-      if (lock.current) return
-      if (travelSelection.active || travelModal.open) {
-        setStatus('국내여행 목적지를 먼저 선택하세요.')
-        return
-      }
-      lock.current = true
-      setRolling(true)
-
-      // 🎲 주사위 굴리는 소리 재생
-      const diceAudio = new Audio('/audio/dice-roll.mp3')
-      diceAudio.volume = 0.5
-      diceAudio.play().catch(() => {
-        // 자동재생 차단 시 조용히 무시
-      })
-
-      let count = 0
-      let f1 = 1
-      let f2 = 1
-
-      const iv = setInterval(() => {
-        f1 = Math.ceil(Math.random() * 6)
-        f2 = Math.ceil(Math.random() * 6)
-        setDice1(f1)
-        setDice2(f2)
-        count++
-
-        if (count >= 12) {
-          clearInterval(iv)
-          setRolling(false)
-          lock.current = false
-
-          // 소리 정지
-          diceAudio.pause()
-          diceAudio.currentTime = 0
-
-          handleDiceResult(f1, f2, onDone)
-        }
-      }, 80)
+      onDone?.()
     }
 
     useImperativeHandle(ref, () => ({
@@ -949,25 +753,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         rollDice(onDone)
       },
     }))
-
-    function handleDiceResult(v1: number, v2: number, onDone?: () => void) {
-      const sum = v1 + v2
-      setStatus(`주사위 결과: ${sum}`)
-
-      const playerIdx = curPlayerRef.current
-      const p = playersRef.current[playerIdx]
-      if (!p) return
-
-      const nextPos = (p.pos + sum) % TILES.length
-      const updatedPlayers = [...playersRef.current]
-      updatedPlayers[playerIdx] = { ...p, pos: nextPos }
-      playersRef.current = updatedPlayers
-      publishPlayers(updatedPlayers)
-
-      setTimeout(() => {
-        handleArrival(nextPos, onDone)
-      }, 600)
-    }
 
     function handleGoToIslandConfirm() {
       stopLongSfx()
@@ -984,7 +769,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: 3,
         }
         playersRef.current = updatedPlayers
-        publishPlayers(updatedPlayers)
       }
       advanceTurn(onDoneCallback)
     }
@@ -1000,108 +784,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       stopLongSfx()
       // 💰 통행료(보유금) 지불 소리 재생
       new Audio('/audio/transaction.mp3').play().catch(() => {})
-
-      if (!useLocalPromptFallback) {
-        submitPromptChoice(promptTollConfirmChoiceValue)
-        return
-      }
-
-      await handleTollConfirm(tollModal)
-    }
-
-    function openCitySellModalForOwnedTile(
-      tileId: number,
-      onDoneCallback?: () => void,
-      options?: { showBuildOnCancel?: boolean }
-    ) {
-      const owner = tileOwnersRef.current[tileId]
-      const activePlayerIdx = curPlayerRef.current
-      const activePlayerId = getPlayerIdByIndex(activePlayerIdx)
-      const activePlayer = playersRef.current[activePlayerIdx]
-
-      if (!owner || owner.ownerId !== activePlayerId || !activePlayer) {
-        return false
-      }
-
-      setBuildModal({ open: false, tileId: null })
-      setCitySellModal({
-        open: true,
-        tileId,
-        ownerName: activePlayer.name,
-        currentLevel: owner.level,
-        sellPrice: getBoardSellFallbackRefund(tileId, owner.level),
-        showBuildOnCancel: options?.showBuildOnCancel ?? false,
-        onDoneCallback,
-      })
-      return true
+      submitPromptChoice(promptTollConfirmChoiceValue)
     }
 
     function handleCitySellCancel() {
-      if (!useLocalPromptFallback) {
-        submitPromptChoice(promptSellCancelChoiceValue)
-        return
-      }
-
-      const { tileId, onDoneCallback, showBuildOnCancel } = citySellModal
-      setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
-
-      if (showBuildOnCancel && tileId !== null) {
-        setBuildModal({
-          open: true,
-          tileId,
-          onDoneCallback,
-        })
-        return
-      }
-
-      if (onDoneCallback) {
-        advanceTurn(onDoneCallback)
-        return
-      }
-
-      // 타일 클릭으로 연 매각 모달은 취소 시 턴 유지
-      if (tileId !== null) {
-        return
-      }
-
-      advanceTurn(onDoneCallback)
+      submitPromptChoice(promptSellCancelChoiceValue)
     }
 
     async function handleCitySellConfirm() {
       stopLongSfx()
       // 💰 매각 처리 (거래) 소리 재생
       new Audio('/audio/transaction.mp3').play().catch(() => {})
-
-      if (!useLocalPromptFallback) {
-        submitPromptChoice(promptSellConfirmChoiceValue)
-        return
-      }
-
-      const activePlayerIdx = curPlayerRef.current
-      const { tileId, onDoneCallback } = citySellModal
-      setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
-
-      if (tileId === null) {
-        advanceTurn(onDoneCallback)
-        return
-      }
-
-      const sold = await sellOwnedTileForPlayer(activePlayerIdx, { tileId })
-      if (!sold) {
-        return
-      }
-
-      advanceTurn(onDoneCallback)
+      submitPromptChoice(promptSellConfirmChoiceValue)
     }
 
     function handleInsufficientFundsConfirm() {
-      const { onDoneCallback, promptChoiceValue } = insufficientFundsModal
+      const { promptChoiceValue } = insufficientFundsModal
       setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
-
-      if (useLocalPromptFallback) {
-        advanceTurn(onDoneCallback)
-        return
-      }
 
       submitPromptChoice(promptChoiceValue ?? null)
     }
@@ -1136,145 +835,38 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleCityAcquisitionCancel() {
-      const { onDoneCallback } = cityAcquisitionModal
       setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
-
-      if (useLocalPromptFallback) {
-        advanceTurn(onDoneCallback)
-        return
-      }
 
       submitPromptChoice(promptAcquisitionCancelChoiceValue)
     }
 
     function handleCityAcquisitionConfirm() {
       stopLongSfx()
-      if (!useLocalPromptFallback) {
-        const activePlayerIdx = curPlayerRef.current
-        const activePlayerMoney =
-          playersRef.current[activePlayerIdx]?.money ?? 0
-        const requiredAcquisitionCost =
-          promptAcquisitionCost ??
-          (promptTileId != null ? (TILES[promptTileId]?.price ?? 0) : 0)
-
-        if (activePlayerMoney < requiredAcquisitionCost) {
-          setInsufficientFundsModal({
-            open: true,
-            buildingLevel: promptCurrentLevel,
-            promptChoiceValue: promptAcquisitionCancelChoiceValue,
-          })
-          return
-        }
-
-        // 💰 인수 확인 소리 재생
-        new Audio('/audio/transaction.mp3').play().catch(() => {})
-
-        submitPromptChoice(promptAcquisitionConfirmChoiceValue)
-        return
-      }
-
-      const { tileId, acquisitionCost, currentLevel, onDoneCallback } =
-        cityAcquisitionModal
       const activePlayerIdx = curPlayerRef.current
       const activePlayerMoney = playersRef.current[activePlayerIdx]?.money ?? 0
+      const requiredAcquisitionCost =
+        promptAcquisitionCost ??
+        (promptTileId != null ? (TILES[promptTileId]?.price ?? 0) : 0)
 
-      if (activePlayerMoney < acquisitionCost) {
-        setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
+      if (activePlayerMoney < requiredAcquisitionCost) {
         setInsufficientFundsModal({
           open: true,
-          buildingLevel: currentLevel,
-          onDoneCallback,
-          promptChoiceValue: null,
+          buildingLevel: promptCurrentLevel,
+          promptChoiceValue: promptAcquisitionCancelChoiceValue,
         })
         return
       }
 
-      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
-
-      if (tileId === null) {
-        advanceTurn(onDoneCallback)
-        return
-      }
-
-      const owner = tileOwnersRef.current[tileId]
-      if (!owner || owner.level >= 7) {
-        advanceTurn(onDoneCallback)
-        return
-      }
-
-      const activePlayerId = getPlayerIdByIndex(activePlayerIdx)
-      const activePlayerColor = getPlayerColorByIndex(activePlayerIdx)
-      const ownerPlayerIdx = getPlayerIndexById(owner.ownerId)
-
-      const bankrupt = applyMoney(
-        activePlayerIdx,
-        -acquisitionCost,
-        onDoneCallback
-      )
-      if (bankrupt) {
-        return
-      }
-
-      if (ownerPlayerIdx >= 0 && ownerPlayerIdx !== activePlayerIdx) {
-        applyMoney(ownerPlayerIdx, +acquisitionCost)
-      }
-
-      updateTileOwners(
-        (prev) => {
-          const currentOwner = prev[tileId]
-          if (!currentOwner || currentOwner.level >= 7) {
-            return prev
-          }
-
-          return {
-            ...prev,
-            [tileId]: {
-              ...currentOwner,
-              ownerId: activePlayerId,
-              ownerColor: activePlayerColor,
-            },
-          }
-        },
-        { notifyParent: true }
-      )
-
-      // 💰 인수 파트 소리 재생
+      // 💰 인수 확인 소리 재생
       new Audio('/audio/transaction.mp3').play().catch(() => {})
-
-      advanceTurn(onDoneCallback)
+      submitPromptChoice(promptAcquisitionConfirmChoiceValue)
     }
 
     function handleCardConfirm() {
       stopLongSfx()
-      const { variant, onDoneCallback } = cardModal
+      const { onDoneCallback } = cardModal
       setCardModal((prev) => ({ ...prev, open: false }))
-
-      if (!useLocalPromptFallback) {
-        onDoneCallback?.()
-        return
-      }
-
-      if (variant === 'CHANCE') {
-        const playerIdx = curPlayerRef.current
-        const currentPlayer = playersRef.current[playerIdx]
-
-        if (currentPlayer) {
-          const updatedPlayers = [...playersRef.current]
-          updatedPlayers[playerIdx] = {
-            ...currentPlayer,
-            skipTurns: (currentPlayer.skipTurns ?? 0) + 1,
-          }
-          playersRef.current = updatedPlayers
-          publishPlayers(updatedPlayers)
-        }
-
-        advanceTurn(onDoneCallback)
-        return
-      }
-
-      setGoToIslandModal({ open: true, onDoneCallback })
-      // 🏝️ 카드 결과로 무인도 갇힘 소리 재생
-      new Audio('/audio/island-trap.mp3').play().catch(() => {})
+      onDoneCallback?.()
     }
 
     function handleTravelConfirm() {
@@ -1305,7 +897,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         pos: tileId,
       }
       playersRef.current = updatedPlayers
-      publishPlayers(updatedPlayers)
       setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
 
       const destinationName =
@@ -1323,9 +914,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function handleArrival(tileId: number, onDone?: () => void) {
-      const playerIdx = curPlayerRef.current
       const tile = TILES[tileId]
-      const owner = tileOwnersRef.current[tileId]
 
       if (tile.type === 'START') {
         setStatus('시작 칸에 도착!')
@@ -1351,30 +940,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'PROPERTY') {
-        if (!useLocalPromptFallback) {
-          setStatus('서버 선택 요청을 기다리는 중...')
-          onDone?.()
-          return
-        }
-
-        if (!owner) {
-          setBuyModal({ open: true, tileId, onDoneCallback: onDone })
-        } else if (owner.ownerId !== getPlayerIdByIndex(playerIdx)) {
-          setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
-          const ownerPlayer = playersRef.current.find(
-            (p) => String(p.id) === String(owner.ownerId)
-          )
-          const tollAmount = calcToll(tile.price ?? 0, owner.level)
-          setTollModal({
-            open: true,
-            tileId,
-            ownerName: ownerPlayer?.name ?? DEFAULT_OPPONENT_NAME,
-            tollText: formatWon(tollAmount),
-            onDoneCallback: onDone,
-          })
-        } else {
-          setBuildModal({ open: true, tileId, onDoneCallback: onDone })
-        }
+        setStatus('서버 선택 요청을 기다리는 중...')
+        onDone?.()
         return
       }
 
@@ -1427,104 +994,48 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const SS = STRAIGHT_SIZE
     const GAP = GRID_GAP
 
-    const buyTile = useLocalPromptFallback
-      ? buyModal.tileId !== null
-        ? TILES[buyModal.tileId]
-        : null
-      : promptTile
-    const buyModalOpen = useLocalPromptFallback
-      ? buyModal.open
-      : isBuyPromptOpen
-    const buildTile = useLocalPromptFallback
-      ? buildModal.tileId !== null
-        ? TILES[buildModal.tileId]
-        : null
-      : promptTile
-    const buildModalOpen = useLocalPromptFallback
-      ? buildModal.open
-      : isBuildPromptOpen
-    const currentLevel = useLocalPromptFallback
-      ? buildModal.tileId !== null
-        ? (tileOwners[buildModal.tileId]?.level ?? 0)
-        : 0
-      : promptCurrentLevel
-    const buildTargetLevel = useLocalPromptFallback
-      ? ((currentLevel + 1) as BuildingLevel)
-      : promptNextLevel
-    const tollTile = useLocalPromptFallback
-      ? tollModal.tileId !== null
-        ? TILES[tollModal.tileId]
-        : null
-      : promptTile
-    const tollModalOpen = useLocalPromptFallback
-      ? tollModal.open
-      : isTollPromptOpen
-    const tollOwnerName = useLocalPromptFallback
-      ? tollModal.ownerName
-      : promptOwnerName
-    const tollAmountText = useLocalPromptFallback
-      ? tollModal.tollText
-      : formatWon(promptAmount ?? 0)
-    const sellTile = useLocalPromptFallback
-      ? citySellModal.tileId !== null
-        ? TILES[citySellModal.tileId]
-        : null
-      : promptTile
-    const sellModalOpen = useLocalPromptFallback
-      ? citySellModal.open
-      : isSellPromptOpen
-    const sellOwnerName = useLocalPromptFallback
-      ? citySellModal.ownerName
-      : promptSellerName
-    const sellCurrentLevel = useLocalPromptFallback
-      ? citySellModal.currentLevel
-      : promptCurrentLevel
-    const sellPrice = useLocalPromptFallback
-      ? citySellModal.sellPrice
-      : (promptSellPrice ??
-        (promptTileId != null
-          ? getBoardSellFallbackRefund(promptTileId, promptCurrentLevel)
-          : (sellTile?.price ?? 0)))
-    const acquisitionTile = useLocalPromptFallback
-      ? cityAcquisitionModal.tileId !== null
-        ? TILES[cityAcquisitionModal.tileId]
-        : null
-      : promptTile
-    const acquisitionModalOpenRaw = useLocalPromptFallback
-      ? cityAcquisitionModal.open
-      : isAcquisitionPromptOpen
+    const buyTile = promptTile
+    const buyModalOpen = isBuyPromptOpen
+    const buildTile = promptTile
+    const buildModalOpen = isBuildPromptOpen
+    const currentLevel = promptCurrentLevel
+    const buildTargetLevel = promptNextLevel
+    const tollTile = promptTile
+    const tollModalOpen = isTollPromptOpen
+    const tollOwnerName = promptOwnerName
+    const tollAmountText = formatWon(promptAmount ?? 0)
+    const sellTile = promptTile
+    const sellModalOpen = isSellPromptOpen
+    const sellOwnerName = promptSellerName
+    const sellCurrentLevel = promptCurrentLevel
+    const sellPrice =
+      promptSellPrice ??
+      (promptTileId != null
+        ? getBoardSellFallbackRefund(promptTileId, promptCurrentLevel)
+        : (sellTile?.price ?? 0))
+    const acquisitionTile = promptTile
+    const acquisitionModalOpenRaw = isAcquisitionPromptOpen
     const acquisitionModalOpen =
       acquisitionModalOpenRaw && !tollModalOpen && !insufficientFundsModal.open
-    const acquisitionOwnerName = useLocalPromptFallback
-      ? cityAcquisitionModal.ownerName
-      : promptOwnerName
-    const acquisitionCurrentLevel = useLocalPromptFallback
-      ? cityAcquisitionModal.currentLevel
-      : promptCurrentLevel
-    const acquisitionCost = useLocalPromptFallback
-      ? cityAcquisitionModal.acquisitionCost
-      : (promptAcquisitionCost ?? acquisitionTile?.price ?? 0)
-    const buyCost = useLocalPromptFallback
-      ? (buyTile?.price ?? 0)
-      : (getPromptPayloadNumber(activePrompt, ['price', 'purchaseCost']) ??
-        buyTile?.price ??
-        0)
+    const acquisitionOwnerName = promptOwnerName
+    const acquisitionCurrentLevel = promptCurrentLevel
+    const acquisitionCost = promptAcquisitionCost ?? acquisitionTile?.price ?? 0
+    const buyCost =
+      getPromptPayloadNumber(activePrompt, ['price', 'purchaseCost']) ??
+      buyTile?.price ??
+      0
     const isBuyPromptDismissed =
-      !useLocalPromptFallback &&
-      activePrompt?.id != null &&
-      dismissedBuyPromptId === activePrompt.id
+      activePrompt?.id != null && dismissedBuyPromptId === activePrompt.id
     const buyModalVisible =
       buyModalOpen && !isBuyPromptDismissed && !insufficientFundsModal.open
     const buildModalVisible = buildModalOpen && !insufficientFundsModal.open
     const activePlayerMoney = players[curPlayer]?.money ?? 0
-    const buildCost = useLocalPromptFallback
-      ? getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
-      : (getPromptPayloadNumber(activePrompt, ['buildCost', 'cost', 'price']) ??
-        getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel))
-    const nextTollCost = useLocalPromptFallback
-      ? calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
-      : (getPromptPayloadNumber(activePrompt, ['nextToll', 'toll', 'amount']) ??
-        calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel))
+    const buildCost =
+      getPromptPayloadNumber(activePrompt, ['buildCost', 'cost', 'price']) ??
+      getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
+    const nextTollCost =
+      getPromptPayloadNumber(activePrompt, ['nextToll', 'toll', 'amount']) ??
+      calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
     const diceTimerTitle = activePrompt?.title
     const diceTimerMessage = activePrompt?.message
     const diceTimerConfirmLabel = getPromptChoiceLabel(
@@ -1537,59 +1048,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       !suppressDiceTimerModal && (showTimerModal || isDiceTimerPromptOpen)
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
-    const isOwnedTileSellClickable = (tileId: number) => {
-      if (!useLocalPromptFallback || travelSelection.active) {
-        return false
-      }
-
-      const tile = TILES[tileId]
-      if (tile.type !== 'PROPERTY') {
-        return false
-      }
-
-      const owner = tileOwners[tileId]
-      if (!owner) {
-        return false
-      }
-
-      const activePlayerId = getPlayerIdByIndex(curPlayer)
-      return owner.ownerId === activePlayerId
-    }
+    const isOwnedTileSellClickable = () => false
     const handleBoardTileClick = (tileId: number) => {
       if (travelSelection.active) {
         if (tileId !== players[curPlayer]?.pos) {
           handleTravelDestinationSelect(tileId)
         }
-        return
-      }
-
-      if (!isOwnedTileSellClickable(tileId)) {
-        return
-      }
-
-      const hasBlockingModal =
-        buyModal.open ||
-        buildModal.open ||
-        cardModal.open ||
-        travelModal.open ||
-        tollModal.open ||
-        cityAcquisitionModal.open ||
-        citySellModal.open ||
-        insufficientFundsModal.open ||
-        aiModal.open ||
-        bankruptModal.open ||
-        gameResultModal.open ||
-        goToIslandModal.open ||
-        showTimerModal ||
-        isDiceTimerPromptOpen
-
-      if (hasBlockingModal) {
-        return
-      }
-
-      const opened = openCitySellModalForOwnedTile(tileId)
-      if (opened) {
-        setStatus('매각할 도시를 선택했습니다.')
       }
     }
 
@@ -1636,7 +1100,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1671,7 +1135,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1705,7 +1169,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {LEFT_COL.map((id, ri) =>
               (() => {
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1739,7 +1203,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {RIGHT_COL.map((id, ri) =>
               (() => {
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1846,52 +1310,33 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={buyModalVisible}
           onBuy={() => {
             if (activePlayerMoney < buyCost) {
-              if (useLocalPromptFallback) {
-                setBuyModal({ open: false, tileId: null })
-              } else if (activePrompt?.id) {
+              if (activePrompt?.id) {
                 setDismissedBuyPromptId(activePrompt.id)
               }
               setInsufficientFundsModal({
                 open: true,
                 buildingLevel: 0,
-                onDoneCallback: useLocalPromptFallback
-                  ? buyModal.onDoneCallback
-                  : undefined,
-                promptChoiceValue: useLocalPromptFallback
-                  ? null
-                  : promptBuyPassChoiceValue,
+                promptChoiceValue: promptBuyPassChoiceValue,
               })
-              return
-            }
-
-            if (useLocalPromptFallback) {
-              handleBuy(buyModal)
               return
             }
 
             submitPromptChoice(promptBuyChoiceValue)
           }}
           onPass={() => {
-            if (useLocalPromptFallback) {
-              handleBuyPass(buyModal)
-              return
-            }
-
             submitPromptChoice(promptBuyPassChoiceValue)
           }}
           passLabel={getPromptChoiceLabel(
             activePrompt,
             promptBuyPassChoiceValue,
-            useLocalPromptFallback ? '패스' : '건너뛰기'
+            '건너뛰기'
           )}
           buyLabel={getPromptChoiceLabel(
             activePrompt,
             promptBuyChoiceValue,
             '구매하기'
           )}
-          isSubmitting={
-            promptSubmittingChoice !== null && !useLocalPromptFallback
-          }
+          isSubmitting={promptSubmittingChoice !== null}
           cityName={promptTileName}
           purchaseCostText={formatWon(buyCost)}
         />
@@ -1904,38 +1349,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={buildModalVisible}
           onConfirm={() => {
             if (activePlayerMoney < buildCost) {
-              if (useLocalPromptFallback) {
-                setBuildModal({ open: false, tileId: null })
-              }
-
               setInsufficientFundsModal({
                 open: true,
                 buildingLevel: buildTargetLevel,
-                onDoneCallback: useLocalPromptFallback
-                  ? buildModal.onDoneCallback
-                  : undefined,
-                promptChoiceValue: useLocalPromptFallback
-                  ? null
-                  : promptBuildCancelChoiceValue,
+                promptChoiceValue: promptBuildCancelChoiceValue,
               })
-              return
-            }
-
-            if (useLocalPromptFallback) {
-              handleBuildConfirm(buildModal)
               return
             }
 
             submitPromptChoice(promptBuildConfirmChoiceValue)
           }}
-          onCancel={() => {
-            if (useLocalPromptFallback) {
-              handleBuildCancel(buildModal)
-              return
-            }
-
-            submitPromptChoice(promptBuildCancelChoiceValue)
-          }}
+          onCancel={() => submitPromptChoice(promptBuildCancelChoiceValue)}
           cityName={promptTileName}
           nextLevel={buildTargetLevel}
           cancelLabel={getPromptChoiceLabel(
@@ -1948,9 +1372,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             promptBuildConfirmChoiceValue,
             '건설하기'
           )}
-          isSubmitting={
-            promptSubmittingChoice !== null && !useLocalPromptFallback
-          }
+          isSubmitting={promptSubmittingChoice !== null}
           buildCostText={formatWon(buildCost)}
           nextTollText={formatWon(nextTollCost)}
         />
@@ -1967,9 +1389,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             promptTollConfirmChoiceValue,
             '확인하기'
           )}
-          isSubmitting={
-            promptSubmittingChoice !== null && !useLocalPromptFallback
-          }
+          isSubmitting={promptSubmittingChoice !== null}
         />
         <CityAcquisitionModal
           open={acquisitionModalOpen}
