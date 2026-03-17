@@ -1,5 +1,4 @@
-import { RefObject, useCallback } from 'react'
-import type { BoardGameHandle } from '../../components/board/GameBoard'
+import { useCallback } from 'react'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { socket } from '../../lib/socket'
 import { emitGameAction } from '../../services/socket/game.handler'
@@ -7,7 +6,7 @@ import { useGameStore } from '../../stores/game.store'
 
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
-export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
+export const useDiceRoll = () => {
   const currentTurn = useGameStore((state) => state.currentTurn)
 
   return useCallback(
@@ -29,9 +28,12 @@ export const useDiceRoll = (boardRef: RefObject<BoardGameHandle | null>) => {
         return
       }
 
-      // Local roll is allowed only in socket-mock mode.
-      boardRef.current?.rollDice()
+      // Mock mode also goes through game:action to keep one contract path.
+      emitGameAction({
+        type: 'ROLL_DICE',
+        gameId,
+      })
     },
-    [boardRef, currentTurn]
+    [currentTurn]
   )
 }

@@ -1,7 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { RefObject } from 'react'
-import type { BoardGameHandle } from '../../components/board/GameBoard'
 
 type SetupOptions = {
   mockEnabled: boolean
@@ -55,13 +53,7 @@ describe('useDiceRoll', () => {
       socketConnected: true,
       currentTurn: 'player-1',
     })
-    const localRollDice = vi.fn()
-    const boardRef = {
-      current: {
-        rollDice: localRollDice,
-      },
-    } as RefObject<BoardGameHandle | null>
-    const { result } = renderHook(() => useDiceRoll(boardRef))
+    const { result } = renderHook(() => useDiceRoll())
 
     act(() => {
       result.current('game-1')
@@ -71,7 +63,6 @@ describe('useDiceRoll', () => {
       type: 'ROLL_DICE',
       gameId: 'game-1',
     })
-    expect(localRollDice).not.toHaveBeenCalled()
   })
 
   it('non-mock 모드에서 소켓 미연결이면 아무 동작도 하지 않는다', async () => {
@@ -80,20 +71,13 @@ describe('useDiceRoll', () => {
       socketConnected: false,
       currentTurn: 'player-1',
     })
-    const localRollDice = vi.fn()
-    const boardRef = {
-      current: {
-        rollDice: localRollDice,
-      },
-    } as RefObject<BoardGameHandle | null>
-    const { result } = renderHook(() => useDiceRoll(boardRef))
+    const { result } = renderHook(() => useDiceRoll())
 
     act(() => {
       result.current('game-1')
     })
 
     expect(emitGameAction).not.toHaveBeenCalled()
-    expect(localRollDice).not.toHaveBeenCalled()
   })
 
   it('non-mock 모드에서 currentTurn이 null이면 아무 동작도 하지 않는다', async () => {
@@ -102,41 +86,45 @@ describe('useDiceRoll', () => {
       socketConnected: true,
       currentTurn: null,
     })
-    const localRollDice = vi.fn()
-    const boardRef = {
-      current: {
-        rollDice: localRollDice,
-      },
-    } as RefObject<BoardGameHandle | null>
-    const { result } = renderHook(() => useDiceRoll(boardRef))
+    const { result } = renderHook(() => useDiceRoll())
 
     act(() => {
       result.current('game-1')
     })
 
     expect(emitGameAction).not.toHaveBeenCalled()
-    expect(localRollDice).not.toHaveBeenCalled()
   })
 
-  it('mock 모드에서는 로컬 rollDice를 실행한다', async () => {
+  it('mock 모드에서는 game:action(ROLL_DICE) 경로를 사용한다', async () => {
     const { useDiceRoll, emitGameAction } = await setupUseDiceRoll({
       mockEnabled: true,
       socketConnected: false,
       currentTurn: null,
     })
-    const localRollDice = vi.fn()
-    const boardRef = {
-      current: {
-        rollDice: localRollDice,
-      },
-    } as RefObject<BoardGameHandle | null>
-    const { result } = renderHook(() => useDiceRoll(boardRef))
+    const { result } = renderHook(() => useDiceRoll())
 
     act(() => {
       result.current('game-1')
     })
 
-    expect(localRollDice).toHaveBeenCalledTimes(1)
+    expect(emitGameAction).toHaveBeenCalledWith({
+      type: 'ROLL_DICE',
+      gameId: 'game-1',
+    })
+  })
+
+  it('gameId가 없으면 어떤 모드에서도 전송하지 않는다', async () => {
+    const { useDiceRoll, emitGameAction } = await setupUseDiceRoll({
+      mockEnabled: true,
+      socketConnected: true,
+      currentTurn: 'player-1',
+    })
+    const { result } = renderHook(() => useDiceRoll())
+
+    act(() => {
+      result.current(null)
+    })
+
     expect(emitGameAction).not.toHaveBeenCalled()
   })
 })

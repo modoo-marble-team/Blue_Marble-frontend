@@ -220,7 +220,7 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const diceRoll = useDiceRoll(boardRef)
+  const diceRoll = useDiceRoll()
 
   const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
