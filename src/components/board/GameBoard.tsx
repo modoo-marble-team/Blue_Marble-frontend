@@ -350,7 +350,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       },
       [stopDiceRollAnimation]
     )
-    const rolling = isMockMode ? isDiceRolling : eventFxKind === 'dice'
+    const rolling = isDiceRolling || eventFxKind === 'dice'
     const emitMockEndTurn = useCallback(() => {
       if (!isMockMode || !gameId) {
         return
@@ -363,20 +363,28 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }, [isMockMode, gameId])
     const handleBoardEventConsumed = useCallback(
       (event: ServerEvent) => {
-        if (!isMockMode) {
-          return
-        }
-
         const normalizedType =
           typeof event.type === 'string' ? event.type.trim().toUpperCase() : ''
+
         if (normalizedType === 'DICE_ROLLED') {
           if (rollAnimationIntervalRef.current !== null) {
             freezeDiceRollValues()
           } else {
             flashDiceRollAnimation()
           }
+
+          try {
+            new Audio('/audio/dice-roll.mp3').play().catch(() => {})
+          } catch {
+            // audio playback blocked
+          }
         }
+
         if (normalizedType !== 'PLAYER_MOVED') {
+          return
+        }
+
+        if (!isMockMode) {
           return
         }
 
@@ -406,9 +414,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           return
         }
 
+        if (kind === 'dice') {
+          freezeDiceRollValues()
+        }
+
         setEventFxKind(kind)
       },
-      [isMockMode]
+      [isMockMode, freezeDiceRollValues]
     )
 
     useBoardEventQueue({
