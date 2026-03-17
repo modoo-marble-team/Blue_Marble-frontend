@@ -92,10 +92,17 @@ export function useBoardEventQueue({
     }
 
     const unsubscribe = useGameStore.subscribe((state, prevState) => {
-      if (
-        state.eventQueue.length === prevState.eventQueue.length ||
-        state.eventQueue.length <= 0
-      ) {
+      const hasQueueItems = state.eventQueue.length > 0
+      if (!hasQueueItems) {
+        return
+      }
+
+      const queueLengthChanged =
+        state.eventQueue.length !== prevState.eventQueue.length
+      const queueHeadChanged = state.eventQueue[0] !== prevState.eventQueue[0]
+      const queueReferenceChanged = state.eventQueue !== prevState.eventQueue
+
+      if (!queueLengthChanged && !queueHeadChanged && !queueReferenceChanged) {
         return
       }
 
