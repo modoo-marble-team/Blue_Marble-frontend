@@ -1,6 +1,6 @@
 import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
 import { afterEach, describe, expect, it } from 'vitest'
-import { useAuthStore } from '../features/auth/store'
+import { useAuthStore } from '../features/auth/session/store'
 import { apiClient } from './axios'
 
 interface RequestInterceptorManagerLike {

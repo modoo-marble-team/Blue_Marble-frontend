@@ -16,11 +16,11 @@ vi.mock('./components/DesktopViewportGuard', () => ({
   ),
 }))
 
-vi.mock('./features/auth/hooks/useAuthBootstrap', () => ({
+vi.mock('./features/auth/session/hooks/useAuthBootstrap', () => ({
   useAuthBootstrap: useAuthBootstrapMock,
 }))
 
-vi.mock('./features/auth/store', () => ({
+vi.mock('./features/auth/session/store', () => ({
   useAuthStore: useAuthStoreMock,
 }))
 

@@ -1,7 +1,7 @@
 import { screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useAuthStore } from '../../features/auth/store'
+import { useAuthStore } from '../../features/auth/session/store'
 import {
   createAuthSessionFixture,
   createLobbyRoomFixture,

@@ -3,8 +3,8 @@ import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
-import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
-import { useAuthStore } from '../../features/auth/store'
+import { useRequireActiveSession } from '../../features/auth/session/hooks/useRequireActiveSession'
+import { useAuthStore } from '../../features/auth/session/store'
 import {
   createProfileMenuItems,
   getAvatarBackground,

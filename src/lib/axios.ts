@@ -1,5 +1,5 @@
 import axios, { AxiosHeaders } from 'axios'
-import { useAuthStore } from '../features/auth/store'
+import { useAuthStore } from '../features/auth/session/store'
 
 // 공통 API 요청에 사용할 axios 인스턴스 생성
 export const apiClient = axios.create({

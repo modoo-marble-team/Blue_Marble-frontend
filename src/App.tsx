@@ -1,9 +1,9 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { DesktopViewportGuard } from './components/DesktopViewportGuard'
-import { KAKAO_LOGIN_CALLBACK_PATH } from './features/auth/api'
-import { useAuthBootstrap } from './features/auth/hooks/useAuthBootstrap'
-import { useAuthStore } from './features/auth/store'
+import { KAKAO_LOGIN_CALLBACK_PATH } from './features/auth/api/api'
+import { useAuthBootstrap } from './features/auth/session/hooks/useAuthBootstrap'
+import { useAuthStore } from './features/auth/session/store'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
 const GamePage = lazy(() => import('./pages/GamePage'))

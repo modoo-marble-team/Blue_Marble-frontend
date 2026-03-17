@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client'
-import { useAuthStore } from '../features/auth/store'
+import { useAuthStore } from '../features/auth/session/store'
 
 // 소켓 서버 기본 URL을 환경변수 또는 로컬 값으로 결정
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:3000'
