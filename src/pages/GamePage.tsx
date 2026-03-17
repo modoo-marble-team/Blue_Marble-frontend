@@ -69,6 +69,7 @@ const GamePage: React.FC = () => {
   const authSession = useAuthStore((state) => state.session)
   const {
     currentTurn,
+    phase,
     messages,
     turnTimeoutSec,
     turnTimerKey,
@@ -225,7 +226,10 @@ const GamePage: React.FC = () => {
   const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt = currentPlayerState?.money <= 0
-  const isCurrentPlayerSkipped = (currentPlayerState?.skipTurns ?? 0) > 0
+  const isCurrentPlayerSkipped =
+    !USE_GAME_SOCKET_MOCK && phase === 'rolling'
+      ? false
+      : (currentPlayerState?.skipTurns ?? 0) > 0
   const roomChatSenderOptions = useMemo(
     () =>
       storePlayers.map((player) => ({
