@@ -2,9 +2,9 @@ import { useEffect } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { AuthSession } from '../../../features/auth/types'
 import { requestOnlineUsersSnapshotSync } from '../../../features/presence/online-users/onlineUsersSocket'
-import { getWaitingRoomErrorMessage, joinWaitingRoom } from '../api'
-import { enterWaitingRoomSocket } from '../socket'
-import type { WaitingRoomChatMessage, WaitingRoomSnapshot } from '../types'
+import { getWaitingRoomErrorMessage, joinWaitingRoom } from '../api/api'
+import { enterWaitingRoomSocket } from '../socket/socket'
+import type { WaitingRoomChatMessage, WaitingRoomSnapshot } from '../api/types'
 
 // 입장/초기화 훅 입력 파라미터 타입
 interface UseWaitingRoomLifecycleParams {

@@ -5,7 +5,7 @@ import {
   parseJoinWaitingRoomPayload,
   WaitingRoomContractError,
 } from './api'
-import { WaitingRoomMockError } from './mockGateway'
+import { WaitingRoomMockError } from '../socket/mockGateway'
 
 // axios 에러 형태를 테스트에서 간단히 재현
 function createAxiosLikeError(options: {

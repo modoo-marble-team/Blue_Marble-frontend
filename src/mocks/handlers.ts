@@ -1,7 +1,7 @@
 import { delay, http, HttpResponse } from 'msw'
 import { getMockOnlineUsersSnapshot } from '../features/presence/mock/mockData'
 import type { LobbyRoomPayload, LobbyRoomStatus } from '../pages/lobby/types'
-import { getMockLobbyRooms } from '../pages/waiting-room/mockGateway'
+import { getMockLobbyRooms } from '../pages/waiting-room/socket/mockGateway'
 import { gameHandlers } from './handlers/game.handler'
 
 // 로비 방 모델을 API 응답 payload 포맷으로 변환

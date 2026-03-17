@@ -11,7 +11,7 @@ import type {
   PlayerReadyEventPayload,
   RoomUpdatedEventPayload,
   WaitingRoomSnapshot,
-} from '../types'
+} from '../api/types'
 
 const {
   subscribeWaitingRoomSocketEventsMock,
@@ -25,11 +25,11 @@ const {
   requestOnlineUsersSnapshotSyncMock: vi.fn(),
 }))
 
-vi.mock('../socket', () => ({
+vi.mock('../socket/socket', () => ({
   subscribeWaitingRoomSocketEvents: subscribeWaitingRoomSocketEventsMock,
 }))
 
-vi.mock('../api', () => ({
+vi.mock('../api/api', () => ({
   mapWaitingRoomSnapshotPayload: mapWaitingRoomSnapshotPayloadMock,
 }))
 

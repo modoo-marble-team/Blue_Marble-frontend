@@ -1,5 +1,5 @@
-import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { connectSocketWithAuthIfNeeded, socket } from '../../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 import {
   mockEnterWaitingRoomSocket,
   mockLeaveWaitingRoomSocket,
@@ -15,7 +15,7 @@ import type {
   PlayerReadyEventPayload,
   RoomUpdatedEventPayload,
   SendChatSocketPayload,
-} from './types'
+} from '../api/types'
 
 // 대기방 소켓 이벤트 이름 맵
 const WAITING_ROOM_EVENT_NAMES = {

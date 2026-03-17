@@ -2,15 +2,15 @@ import { useEffect } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { AuthSession } from '../../../features/auth/types'
 import { requestOnlineUsersSnapshotSync } from '../../../features/presence/online-users/onlineUsersSocket'
-import { mapWaitingRoomSnapshotPayload } from '../api'
-import { subscribeWaitingRoomSocketEvents } from '../socket'
+import { mapWaitingRoomSnapshotPayload } from '../api/api'
+import { subscribeWaitingRoomSocketEvents } from '../socket/socket'
 import type {
   GameStartEventPayload,
   LobbyUpdatedEventPayload,
   RoomUpdatedEventPayload,
   WaitingRoomChatMessage,
   WaitingRoomSnapshot,
-} from '../types'
+} from '../api/types'
 import { mapChatPayloadToMessage } from './state'
 
 // 소켓 동기화 훅 입력 파라미터 타입

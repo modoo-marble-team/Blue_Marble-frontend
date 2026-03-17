@@ -25,8 +25,8 @@ import {
   mapStoreTilesToBoardTiles,
   calcPlayerTotalAssets,
 } from './game/gameViewModel'
-import { sendWaitingRoomChat } from './waiting-room/socket'
-import type { ChatEventPayload } from './waiting-room/types'
+import { sendWaitingRoomChat } from './waiting-room/socket/socket'
+import type { ChatEventPayload } from './waiting-room/api/types'
 
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 const ALLOW_ALL_MOCK_TURNS =

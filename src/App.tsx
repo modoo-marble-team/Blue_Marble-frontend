@@ -14,7 +14,7 @@ const KakaoLoginCallbackPage = lazy(
 const NicknameSetupPage = lazy(() => import('./pages/NicknameSetupPage'))
 const MyPage = lazy(() => import('./pages/MyPage'))
 const WaitingRoomPage = lazy(
-  () => import('./pages/waiting-room/WaitingRoomPage')
+  () => import('./pages/waiting-room/page/WaitingRoomPage')
 )
 
 function RouteLoadingScreen() {

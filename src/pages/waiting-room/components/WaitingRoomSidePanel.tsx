@@ -1,6 +1,6 @@
 import { WaitingRoomActionPanel } from './WaitingRoomActionPanel'
 import { WaitingRoomChatBox } from './WaitingRoomChatBox'
-import type { WaitingRoomChatMessage } from '../types'
+import type { WaitingRoomChatMessage } from '../api/types'
 
 // 우측 사이드 패널 렌더링 입력값 타입
 interface WaitingRoomSidePanelProps {

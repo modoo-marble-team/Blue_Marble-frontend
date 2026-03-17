@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildWaitingRoomSeats, getStartConditionMet } from './state'
-import type { WaitingRoomSnapshot } from '../types'
+import type { WaitingRoomSnapshot } from '../api/types'
 
 // 테스트 기본 대기방 스냅샷 생성
 function createWaitingRoomSnapshot(

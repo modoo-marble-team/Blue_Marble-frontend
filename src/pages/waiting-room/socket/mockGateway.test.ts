@@ -194,7 +194,7 @@ describe('mockGateway waiting-room action sequence', () => {
 
   it('입장과 퇴장 시 접속자 목록 상태가 in_room -> lobby로 동기화된다', async () => {
     const gateway = await loadMockGateway()
-    const presence = await import('../../features/presence/mock/mockData')
+    const presence = await import('../../../features/presence/mock/mockData')
     const userId = 'presence-sync-user'
     const nickname = '동기화테스터'
 

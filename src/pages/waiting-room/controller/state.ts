@@ -3,7 +3,7 @@ import type {
   WaitingRoomChatMessage,
   WaitingRoomSeat,
   WaitingRoomSnapshot,
-} from '../types'
+} from '../api/types'
 import { getAvatarBackgroundColor } from '../../../components/avatar/avatarModel'
 
 // 대기방 액션 함수 공통 반환 타입

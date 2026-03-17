@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { cn } from '../../lib/utils'
-import { sendWaitingRoomChat } from '../../pages/waiting-room/socket'
+import { sendWaitingRoomChat } from '../../pages/waiting-room/socket/socket'
 
 const IS_DEV_ROOM_CHAT_CONTROL_ENABLED = IS_SOCKET_MOCK_ENABLED
 

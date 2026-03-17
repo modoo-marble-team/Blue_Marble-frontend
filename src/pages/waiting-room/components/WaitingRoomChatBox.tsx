@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import RoomChat from '../../../features/room-chat/RoomChat'
 import type { ChatMessage } from '../../../types/domain'
-import type { WaitingRoomChatMessage } from '../types'
+import type { WaitingRoomChatMessage } from '../api/types'
 
 // 대기방 채팅 박스 렌더링 입력값 타입
 interface WaitingRoomChatBoxProps {

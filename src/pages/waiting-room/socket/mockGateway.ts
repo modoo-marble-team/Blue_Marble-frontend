@@ -1,8 +1,8 @@
-import { socket } from '../../lib/socket'
-import { ROOM_PASSWORD_PATTERN } from '../../constants/room'
-import { setMockOnlineUserStatus } from '../../features/presence/mock/mockData'
-import { mockLobbyRooms } from '../lobby/mockData'
-import type { LobbyRoom, LobbyRoomStatus } from '../lobby/types'
+import { socket } from '../../../lib/socket'
+import { ROOM_PASSWORD_PATTERN } from '../../../constants/room'
+import { setMockOnlineUserStatus } from '../../../features/presence/mock/mockData'
+import { mockLobbyRooms } from '../../lobby/mockData'
+import type { LobbyRoom, LobbyRoomStatus } from '../../lobby/types'
 import { createSeededRoomPlayers } from './mockSeed'
 import type {
   ChatEventPayload,
@@ -14,7 +14,7 @@ import type {
   WaitingRoomChatMessage,
   WaitingRoomChatPayload,
   WaitingRoomSnapshot,
-} from './types'
+} from '../api/types'
 
 // 목 게이트웨이 네트워크 지연/비밀방 기본 비밀번호
 const MOCK_NETWORK_DELAY_MS = 220

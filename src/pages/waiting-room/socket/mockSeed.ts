@@ -1,9 +1,9 @@
 import type {
   OnlineUserPayload,
   OnlineUserStatus,
-} from '../../features/presence/types'
-import { mockLobbyRooms } from '../lobby/mockData'
-import type { LobbyRoom, LobbyRoomStatus } from '../lobby/types'
+} from '../../../features/presence/types'
+import { mockLobbyRooms } from '../../lobby/mockData'
+import type { LobbyRoom, LobbyRoomStatus } from '../../lobby/types'
 
 // 목 시드 플레이어의 공통 기본 정보 타입
 interface SeededRoomPlayer {
