@@ -70,12 +70,12 @@ describe('App auth bootstrap gating', () => {
     )
   })
 
-  it('홈 경로에서는 bootstrap 중이어도 홈 화면을 그대로 렌더링한다', () => {
+  it('홈 경로에서는 bootstrap 중이어도 홈 화면을 그대로 렌더링한다', async () => {
     useAuthBootstrapMock.mockReturnValue(true)
 
     renderApp('/')
 
-    expect(screen.getByText('홈 페이지')).toBeInTheDocument()
+    expect(await screen.findByText('홈 페이지')).toBeInTheDocument()
     expect(
       screen.queryByText('세션 정보를 확인하고 있습니다.')
     ).not.toBeInTheDocument()
@@ -92,7 +92,7 @@ describe('App auth bootstrap gating', () => {
     expect(screen.queryByText('로비 페이지')).not.toBeInTheDocument()
   })
 
-  it('persisted session이 있으면 보호 경로에서도 bootstrap을 백그라운드로 진행한다', () => {
+  it('persisted session이 있으면 보호 경로에서도 bootstrap을 백그라운드로 진행한다', async () => {
     useAuthBootstrapMock.mockReturnValue(true)
     useAuthStoreMock.mockImplementation((selector) =>
       selector({
@@ -111,6 +111,6 @@ describe('App auth bootstrap gating', () => {
     expect(
       screen.queryByText('세션 정보를 확인하고 있습니다.')
     ).not.toBeInTheDocument()
-    expect(screen.getByText('로비 페이지')).toBeInTheDocument()
+    expect(await screen.findByText('로비 페이지')).toBeInTheDocument()
   })
 })
