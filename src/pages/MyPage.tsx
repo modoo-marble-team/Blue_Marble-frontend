@@ -1,4 +1,4 @@
-import { ArrowLeft, Gamepad2, Shield, Trophy } from 'lucide-react'
+import { ArrowLeft, Frown, Gamepad2, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useRequireActiveSession } from '../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../features/auth/store'
@@ -25,7 +25,7 @@ const myPageStatsCardMeta = [
   {
     key: 'losses' as const,
     label: '패배',
-    icon: Shield,
+    icon: Frown,
     iconClassName: 'text-[#ef4444]',
     iconBackgroundClassName: 'bg-[#fee2e2]',
   },
