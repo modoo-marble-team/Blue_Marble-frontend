@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
@@ -13,6 +13,11 @@ import {
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
+import {
+  getOnlineUserAvatarBackground,
+  getOnlineUserAvatarText,
+} from '../../features/presence/onlineUsersModel'
+import type { OnlineUser } from '../../features/presence/types'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import {
@@ -71,6 +76,35 @@ function LobbyPage() {
     isError: isUsersError,
   } = useOnlineUsersSocket()
 
+  const lobbyUsers = useMemo(() => {
+    if (!session) {
+      return users
+    }
+
+    const usersById = new Map<string, OnlineUser>(
+      users.map((user) => [user.id, user])
+    )
+    const currentUser = usersById.get(session.userId)
+
+    if (currentUser) {
+      usersById.set(session.userId, {
+        ...currentUser,
+        nickname: session.nickname,
+        status: 'lobby',
+      })
+    } else {
+      usersById.set(session.userId, {
+        id: session.userId,
+        nickname: session.nickname,
+        status: 'lobby',
+        avatarText: getOnlineUserAvatarText(session.nickname),
+        avatarBackground: getOnlineUserAvatarBackground(session.userId),
+      })
+    }
+
+    return Array.from(usersById.values())
+  }, [session, users])
+
   const {
     dmTargetUser,
     directMessagesByUserId,
@@ -80,7 +114,7 @@ function LobbyPage() {
     sendDirectMessage,
   } = useDirectMessageController({
     session,
-    users,
+    users: lobbyUsers,
     onBlockedByPlaying: () => {
       toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
     },
@@ -164,7 +198,7 @@ function LobbyPage() {
 
         <div className="xl:sticky xl:top-20 xl:self-start">
           <UserListPanel
-            users={users}
+            users={lobbyUsers}
             isLoading={isUsersLoading}
             isError={isUsersError}
             isOpen={isUserListOpen}
@@ -214,7 +248,10 @@ function LobbyPage() {
         ) : null}
       </AnimatePresence>
 
-      <DevPresenceControlPanel users={users} currentUserId={session.userId} />
+      <DevPresenceControlPanel
+        users={lobbyUsers}
+        currentUserId={session.userId}
+      />
     </div>
   )
 }
