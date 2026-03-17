@@ -345,17 +345,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const promptTileId = getPromptPayloadNumber(activePrompt, [
       'tileId',
+      'tile_id',
       'targetTileId',
+      'target_tile_id',
       'toTileId',
+      'to_tile_id',
     ])
     const promptTile = promptTileId != null ? TILES[promptTileId] : null
     const promptOwnerId = getPromptPayloadNumber(activePrompt, [
       'ownerId',
+      'owner_id',
       'toPlayerId',
+      'to_player_id',
     ])
     const promptOwnerNameFromPayload = getPromptPayloadString(activePrompt, [
       'ownerName',
+      'owner_name',
       'ownerNickname',
+      'owner_nickname',
     ])
     const promptOwnerName =
       promptOwnerNameFromPayload ??
@@ -366,9 +373,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const promptSellerName =
       getPromptPayloadString(activePrompt, [
         'sellerName',
+        'seller_name',
         'sellerNickname',
+        'seller_nickname',
         'playerName',
+        'player_name',
         'ownerName',
+        'owner_name',
       ]) ??
       (activePrompt?.playerId != null
         ? players.find(
@@ -381,28 +392,40 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       'amount',
       'toll',
       'tollAmount',
+      'toll_amount',
       'price',
     ])
     const promptAcquisitionCost = getPromptPayloadNumber(activePrompt, [
       'acquisitionCost',
+      'acquisition_cost',
       'buyoutCost',
+      'buyout_cost',
       'purchaseCost',
+      'purchase_cost',
       'cost',
       'price',
     ])
     const promptSellPrice = getPromptPayloadNumber(activePrompt, [
       'sellPrice',
+      'sell_price',
       'refund',
       'amount',
       'price',
     ])
     const promptTileName =
-      getPromptPayloadString(activePrompt, ['tileName', 'cityName']) ??
+      getPromptPayloadString(activePrompt, [
+        'tileName',
+        'tile_name',
+        'cityName',
+        'city_name',
+      ]) ??
       promptTile?.name ??
       ''
     const promptCurrentLevelFromPayload = getPromptPayloadNumber(activePrompt, [
       'buildingLevel',
+      'building_level',
       'currentLevel',
+      'current_level',
     ])
     const promptCurrentLevel = Math.min(
       7,
@@ -1021,7 +1044,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const acquisitionCurrentLevel = promptCurrentLevel
     const acquisitionCost = promptAcquisitionCost ?? acquisitionTile?.price ?? 0
     const buyCost =
-      getPromptPayloadNumber(activePrompt, ['price', 'purchaseCost']) ??
+      getPromptPayloadNumber(activePrompt, [
+        'price',
+        'purchaseCost',
+        'purchase_cost',
+        'cost',
+      ]) ??
       buyTile?.price ??
       0
     const isBuyPromptDismissed =
@@ -1031,11 +1059,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const buildModalVisible = buildModalOpen && !insufficientFundsModal.open
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const buildCost =
-      getPromptPayloadNumber(activePrompt, ['buildCost', 'cost', 'price']) ??
-      getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
+      getPromptPayloadNumber(activePrompt, [
+        'buildCost',
+        'build_cost',
+        'cost',
+        'price',
+      ]) ?? getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
     const nextTollCost =
-      getPromptPayloadNumber(activePrompt, ['nextToll', 'toll', 'amount']) ??
-      calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
+      getPromptPayloadNumber(activePrompt, [
+        'nextToll',
+        'next_toll',
+        'toll',
+        'toll_amount',
+        'amount',
+      ]) ?? calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
     const diceTimerTitle = activePrompt?.title
     const diceTimerMessage = activePrompt?.message
     const diceTimerConfirmLabel = getPromptChoiceLabel(

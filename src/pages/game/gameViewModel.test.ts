@@ -28,7 +28,14 @@ describe('game view model mapper', () => {
       money: 900,
       color: '#111111',
     })
-    expect(boardPlayers[1]?.name).toBe('MarbleKing')
+    expect(boardPlayers).toHaveLength(1)
+  })
+
+  it('falls back to default board players when store players are empty', () => {
+    const boardPlayers = mapStorePlayersToBoardPlayers([])
+
+    expect(boardPlayers).toHaveLength(4)
+    expect(boardPlayers[0]?.name).toBe('GoormEE')
   })
 
   it('finds the current board player index by mixed player id values', () => {

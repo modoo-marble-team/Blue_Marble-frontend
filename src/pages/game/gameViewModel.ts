@@ -17,22 +17,27 @@ const toBoardPlayerId = (playerId: PlayerId, fallbackIndex: number) => {
 }
 
 export const mapStorePlayersToBoardPlayers = (storePlayers: Player[]) =>
-  INIT_PLAYERS.map((initialPlayer, index) => {
-    const storePlayer = storePlayers[index]
-    if (!storePlayer) {
-      return initialPlayer
-    }
+  (storePlayers.length > 0 ? storePlayers : INIT_PLAYERS).map(
+    (storePlayerOrFallback, index) => {
+      const initialPlayer = INIT_PLAYERS[index] ?? INIT_PLAYERS[0]
+      const storePlayer =
+        storePlayers.length > 0 ? (storePlayerOrFallback as Player) : undefined
 
-    return {
-      ...initialPlayer,
-      id: toBoardPlayerId(storePlayer.id, initialPlayer.id),
-      name: storePlayer.nickname || initialPlayer.name,
-      color: storePlayer.color || initialPlayer.color,
-      pos: storePlayer.position,
-      money: storePlayer.balance,
-      skipTurns: storePlayer.jail_turn_count,
+      if (!storePlayer) {
+        return storePlayerOrFallback as PlayerState
+      }
+
+      return {
+        ...initialPlayer,
+        id: toBoardPlayerId(storePlayer.id, initialPlayer.id),
+        name: storePlayer.nickname || initialPlayer.name,
+        color: storePlayer.color || initialPlayer.color,
+        pos: storePlayer.position,
+        money: storePlayer.balance,
+        skipTurns: storePlayer.jail_turn_count,
+      }
     }
-  })
+  )
 
 export const findBoardCurrentPlayerIndex = (
   storePlayers: Player[],
