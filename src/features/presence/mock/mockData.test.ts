@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createSeededRoomPlayers } from '../../pages/waiting-room/mockSeed'
+import { createSeededRoomPlayers } from '../../../pages/waiting-room/mockSeed'
 
 type PresenceMockDataModule = typeof import('./mockData')
 type WaitingRoomMockGatewayModule =
-  typeof import('../../pages/waiting-room/mockGateway')
+  typeof import('../../../pages/waiting-room/mockGateway')
 
 interface LoadedMockModules {
   presence: PresenceMockDataModule
@@ -16,7 +16,7 @@ async function loadMockModules(): Promise<LoadedMockModules> {
 
   const [presence, gateway] = await Promise.all([
     import('./mockData'),
-    import('../../pages/waiting-room/mockGateway'),
+    import('../../../pages/waiting-room/mockGateway'),
   ])
 
   return {

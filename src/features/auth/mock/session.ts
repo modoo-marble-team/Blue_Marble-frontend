@@ -1,5 +1,5 @@
 import type { AuthSession } from '../types'
-import { resetMockOnlineUsers } from '../../presence/mockData'
+import { resetMockOnlineUsers } from '../../presence/mock/mockData'
 import { resetMockWaitingRooms } from '../../../pages/waiting-room/mockGateway'
 import { MOCK_AUTH_DELAY_MS } from './constants'
 import { createMockUuid, delay } from './helpers'
