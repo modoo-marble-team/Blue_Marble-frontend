@@ -428,10 +428,12 @@ const normalizePlayerFromSnapshot = (
 ): Player => {
   const playerRecord = isRecord(playerPayload) ? playerPayload : {}
   const state = normalizePlayerState(
-    playerRecord.playerState ?? playerRecord.state
+    playerRecord.playerState ?? playerRecord.player_state ?? playerRecord.state
   )
   const stateDuration = toFiniteInt(
-    playerRecord.stateDuration ?? playerRecord.jail_turn_count,
+    playerRecord.stateDuration ??
+      playerRecord.state_duration ??
+      playerRecord.jail_turn_count,
     0
   )
 
@@ -631,6 +633,18 @@ const normalizePathSegment = (segment: string | number): string | number => {
   return segment
 }
 
+const resolvePatchEntityFallbackIndex = (segment: string | number) => {
+  if (typeof segment === 'number' && Number.isFinite(segment)) {
+    return Math.max(0, Math.trunc(segment))
+  }
+
+  if (typeof segment === 'string' && /^\d+$/.test(segment)) {
+    return Number.parseInt(segment, 10)
+  }
+
+  return 0
+}
+
 const normalizePatchSetValue = (
   pathSegments: Array<string | number>,
   value: unknown
@@ -664,6 +678,28 @@ const normalizePatchSetValue = (
 
   if (pathSegments.length === 1 && firstSegment === 'prompt') {
     return normalizePromptPayload(value)
+  }
+
+  if (
+    pathSegments.length === 2 &&
+    firstSegment === 'players' &&
+    isRecord(value)
+  ) {
+    return normalizePlayerFromSnapshot(
+      value,
+      resolvePatchEntityFallbackIndex(pathSegments[1])
+    )
+  }
+
+  if (
+    pathSegments.length === 2 &&
+    firstSegment === 'tiles' &&
+    isRecord(value)
+  ) {
+    return normalizeTileFromSnapshot(
+      value,
+      resolvePatchEntityFallbackIndex(pathSegments[1])
+    )
   }
 
   if (lastSegment === 'state') {

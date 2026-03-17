@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calcPlayerTotalAssets,
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
@@ -135,5 +136,62 @@ describe('game view model mapper', () => {
     )
 
     expect(boardTiles[0]?.owner_id).toBe(99)
+  })
+
+  it('calculates total assets using server tile prices when available', () => {
+    const totalAssets = calcPlayerTotalAssets(
+      {
+        id: 'player-1',
+        nickname: 'Player 1',
+        position: 0,
+        balance: 1000,
+        owned_tiles: [1],
+        is_in_jail: false,
+        jail_turn_count: 0,
+        is_bankrupt: false,
+        color: '#111111',
+      },
+      [
+        {
+          index: 1,
+          name: 'Suwon',
+          type: 'property',
+          owner_id: 'player-1',
+          building: 1,
+          price: 200,
+        },
+      ]
+    )
+
+    expect(totalAssets).toBe(1300)
+  })
+
+  it('derives owned tiles from tile owner fields even when owned_tiles is stale', () => {
+    const totalAssets = calcPlayerTotalAssets(
+      {
+        id: 'owner-1',
+        nickname: 'Owner',
+        position: 0,
+        balance: 500,
+        owned_tiles: [],
+        is_in_jail: false,
+        jail_turn_count: 0,
+        is_bankrupt: false,
+        color: '#111111',
+      },
+      [
+        {
+          index: 2,
+          name: 'Yongin',
+          type: 'property',
+          ownerId: 'owner-1',
+          owner_id: 'owner-1',
+          building: 0,
+          price: 120,
+        },
+      ]
+    )
+
+    expect(totalAssets).toBe(620)
   })
 })
