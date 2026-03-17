@@ -18,6 +18,7 @@ const {
   useOnlineUsersSocketMock,
   useDirectMessageControllerMock,
   navigateMock,
+  disconnectSocketAndClearAuthMock,
   createWaitingRoomMock,
   getWaitingRoomErrorMessageMock,
   isJoinPasswordMismatchErrorMock,
@@ -27,6 +28,7 @@ const {
   useOnlineUsersSocketMock: vi.fn(),
   useDirectMessageControllerMock: vi.fn(),
   navigateMock: vi.fn(),
+  disconnectSocketAndClearAuthMock: vi.fn(),
   createWaitingRoomMock: vi.fn(),
   getWaitingRoomErrorMessageMock: vi.fn(),
   isJoinPasswordMismatchErrorMock: vi.fn(),
@@ -53,6 +55,10 @@ vi.mock('../../features/presence/useOnlineUsersSocket', () => ({
 
 vi.mock('../../features/presence/useDirectMessageController', () => ({
   useDirectMessageController: useDirectMessageControllerMock,
+}))
+
+vi.mock('../../lib/socket', () => ({
+  disconnectSocketAndClearAuth: disconnectSocketAndClearAuthMock,
 }))
 
 vi.mock('../waiting-room/api', () => ({
@@ -466,5 +472,17 @@ describe('LobbyPage filter and toggle regression', () => {
       '비밀번호 입력'
     ) as HTMLInputElement
     expect(reopenedPasswordInput.value).toBe('')
+  })
+
+  it('로그아웃 클릭 시 세션과 소켓 연결을 함께 정리한다', async () => {
+    const user = userEvent.setup()
+    renderLobbyPage()
+
+    await user.click(screen.getByRole('button', { name: '프로필 메뉴 열기' }))
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+
+    expect(disconnectSocketAndClearAuthMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true })
+    expect(useAuthStore.getState().session).toBeNull()
   })
 })

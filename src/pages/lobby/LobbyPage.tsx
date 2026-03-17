@@ -28,6 +28,7 @@ import { PrivateRoomJoinModal } from './PrivateRoomJoinModal'
 import { CreateRoomModal } from './CreateRoomModal'
 import { useLobbyRoomActions } from './useLobbyRoomActions'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { disconnectSocketAndClearAuth } from '../../lib/socket'
 
 // 로비 화면 상태 관리와 방/접속자/DM 상호작용 통합 처리
 function LobbyPage() {
@@ -114,6 +115,7 @@ function LobbyPage() {
     }
 
     clearSession()
+    disconnectSocketAndClearAuth()
     navigate('/', { replace: true })
   }
 

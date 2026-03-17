@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { restoreAuthSession, shouldClearAuthSession } from '../api'
 import { useAuthStore } from '../store'
+import { disconnectSocketAndClearAuth } from '../../../lib/socket'
 
 interface UseAuthBootstrapParams {
   skip?: boolean
@@ -79,6 +80,7 @@ export function useAuthBootstrap({
 
         if (shouldClearAuthSession(error)) {
           clearSession()
+          disconnectSocketAndClearAuth()
         }
       })
       .finally(() => {

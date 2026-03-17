@@ -42,3 +42,12 @@ export function connectSocketWithAuthIfNeeded() {
 
   socket.connect()
 }
+
+// 세션 종료 시 소켓 연결과 auth 컨텍스트를 함께 초기화
+export function disconnectSocketAndClearAuth() {
+  socket.auth = {}
+
+  if (socket.connected) {
+    socket.disconnect()
+  }
+}
