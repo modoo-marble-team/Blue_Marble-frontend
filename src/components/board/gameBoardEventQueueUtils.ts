@@ -138,7 +138,7 @@ const resolveTileName = (tiles: TileData[], tileIndex: number | null) => {
   return tiles[tileIndex]?.name?.replace('\n', ' ') ?? `칸 ${tileIndex}`
 }
 
-const resolveTileIndex = (event: ServerEvent) => {
+export const resolveBoardEventTileIndex = (event: ServerEvent) => {
   if (typeof event.tileIndex === 'number' && Number.isFinite(event.tileIndex)) {
     return event.tileIndex
   }
@@ -217,12 +217,12 @@ export const createBoardStatusFromEvent = (
   }
 
   if (normalizedType === 'PLAYER_MOVED') {
-    const tileName = resolveTileName(tiles, resolveTileIndex(event))
+    const tileName = resolveTileName(tiles, resolveBoardEventTileIndex(event))
     return `${playerName}님이 ${tileName} 칸으로 이동했습니다.`
   }
 
   if (normalizedType === 'LANDED') {
-    const tileName = resolveTileName(tiles, resolveTileIndex(event))
+    const tileName = resolveTileName(tiles, resolveBoardEventTileIndex(event))
     return `${playerName}님이 ${tileName} 칸에 도착했습니다.`
   }
 

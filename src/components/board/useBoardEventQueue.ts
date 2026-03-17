@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { ServerEvent } from '../../types/domain'
 import { useGameStore } from '../../stores/game.store'
 import type { PlayerState } from './board.constants'
 import { TILES } from './board.constants'
@@ -18,6 +19,7 @@ interface UseBoardEventQueueParams {
   setDice1: Dispatch<SetStateAction<number>>
   setDice2: Dispatch<SetStateAction<number>>
   onEventAnimation?: (kind: BoardEventAnimationKind) => void
+  onEventConsumed?: (event: ServerEvent) => void
 }
 
 export function useBoardEventQueue({
@@ -27,6 +29,7 @@ export function useBoardEventQueue({
   setDice1,
   setDice2,
   onEventAnimation,
+  onEventConsumed,
 }: UseBoardEventQueueParams) {
   const consumingRef = useRef(false)
   const consumeTimerRef = useRef<number | null>(null)
@@ -65,6 +68,8 @@ export function useBoardEventQueue({
         releaseLock()
         return
       }
+
+      onEventConsumed?.(nextEvent)
 
       const dice = extractEventDice(nextEvent)
       if (dice) {
@@ -116,5 +121,13 @@ export function useBoardEventQueue({
       releaseLock()
       unsubscribe()
     }
-  }, [enabled, playersRef, setStatus, setDice1, setDice2, onEventAnimation])
+  }, [
+    enabled,
+    playersRef,
+    setStatus,
+    setDice1,
+    setDice2,
+    onEventAnimation,
+    onEventConsumed,
+  ])
 }

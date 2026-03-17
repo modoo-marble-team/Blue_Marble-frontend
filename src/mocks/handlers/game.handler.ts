@@ -25,6 +25,7 @@ const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
 const PROMPT_CHOICE_CANONICAL_MAP: Record<string, readonly string[]> = {
   BUY_OR_SKIP: ['BUY', 'SKIP'],
   CONFIRM_ONLY: ['CONFIRM'],
+  PAY_TOLL: ['PAY_TOLL'],
 }
 
 type DiceRequestBody = {
@@ -263,6 +264,12 @@ const removeOwnedTile = (player: Player, tileIndex: number) => {
   )
 }
 
+const isModalLandingTile = (tile: Tile | undefined) =>
+  !!tile &&
+  ['chance', 'event', 'travel', 'ai', 'island', 'go_to_island'].includes(
+    tile.type
+  )
+
 const getSellRefund = (tile: Tile, requestedLevel?: number) => {
   const sellLevel = requestedLevel ?? tile.building
 
@@ -360,6 +367,94 @@ const clearMockPrompt = () => {
   mockGameState.promptIssuedAtMs = null
 }
 
+const createPromptId = (prefix: string) => `${prefix}-${Date.now()}`
+
+const resolvePromptTileIndex = (prompt: GamePrompt | null) => {
+  if (!prompt || !prompt.payload || typeof prompt.payload !== 'object') {
+    return null
+  }
+
+  const payload = prompt.payload as Record<string, unknown>
+  const raw = payload.tileId ?? payload.targetTileId ?? payload.toTileId ?? null
+
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return Math.trunc(raw)
+  }
+
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const parsed = Number.parseInt(raw, 10)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+const resolvePromptAmount = (prompt: GamePrompt | null) => {
+  if (!prompt || !prompt.payload || typeof prompt.payload !== 'object') {
+    return 0
+  }
+
+  const payload = prompt.payload as Record<string, unknown>
+  const raw =
+    payload.amount ??
+    payload.tollAmount ??
+    payload.toll ??
+    payload.price ??
+    null
+
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw
+  }
+
+  if (typeof raw === 'string' && raw.trim() !== '') {
+    const parsed = Number.parseFloat(raw)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  return 0
+}
+
+const buildBuyPrompt = (player: Player, tile: Tile): GamePrompt => ({
+  id: createPromptId('prompt-buy'),
+  type: 'BUY_OR_SKIP',
+  playerId: null,
+  title: '토지를 구매하시겠습니까?',
+  message: `${tile.name} 칸을 구매할까요?`,
+  timeoutSec: MOCK_TURN_TIMEOUT_SEC,
+  choices: [
+    { id: 'buy', label: '구매하기', value: 'BUY' },
+    { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+  ],
+  payload: {
+    tileId: tile.index,
+    tileName: tile.name,
+    price: tile.price ?? 0,
+  },
+})
+
+const buildTollPrompt = (
+  player: Player,
+  owner: Player,
+  tile: Tile,
+  amount: number
+): GamePrompt => ({
+  id: createPromptId('prompt-toll'),
+  type: 'PAY_TOLL',
+  playerId: null,
+  title: '통행료 지불',
+  message: `${owner.nickname}님의 ${tile.name} 칸에 도착했습니다.`,
+  timeoutSec: MOCK_TURN_TIMEOUT_SEC,
+  choices: [{ id: 'pay', label: '지불하기', value: 'PAY_TOLL' }],
+  payload: {
+    tileId: tile.index,
+    tileName: tile.name,
+    ownerId: owner.id,
+    ownerName: owner.nickname,
+    amount,
+    tollAmount: amount,
+  },
+})
+
 const emitPromptResponseRejected = ({
   actionId,
   promptId,
@@ -445,8 +540,43 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
     currentPlayer.balance += MOCK_PASS_GO_SALARY
   }
 
-  advanceMockTurn()
-  mockGameState.phase = 'rolling'
+  const landedTile = getTileByIndex(toIndex)
+  const isOwnableLanding = !!landedTile && isOwnableTile(landedTile)
+  const landingOwner = isOwnableLanding
+    ? mockGameState.players.find(
+        (player) => String(player.id) === String(landedTile?.owner_id)
+      )
+    : null
+  const shouldPromptBuy = isOwnableLanding && !landedTile?.owner_id
+  const shouldPromptToll =
+    isOwnableLanding &&
+    landedTile?.owner_id &&
+    landingOwner &&
+    String(landingOwner.id) !== String(currentPlayer.id)
+
+  const shouldHoldTurnForModal =
+    !shouldPromptBuy && !shouldPromptToll && isModalLandingTile(landedTile)
+
+  if (shouldPromptBuy && landedTile) {
+    mockGameState.prompt = buildBuyPrompt(currentPlayer, landedTile)
+    mockGameState.promptIssuedAtMs = Date.now()
+    mockGameState.phase = 'prompt'
+  } else if (shouldPromptToll && landedTile && landingOwner) {
+    const tollAmount = landedTile.price ?? 0
+    mockGameState.prompt = buildTollPrompt(
+      currentPlayer,
+      landingOwner,
+      landedTile,
+      tollAmount
+    )
+    mockGameState.promptIssuedAtMs = Date.now()
+    mockGameState.phase = 'prompt'
+  } else if (shouldHoldTurnForModal) {
+    mockGameState.phase = 'resolving'
+  } else {
+    advanceMockTurn()
+    mockGameState.phase = 'rolling'
+  }
   const revision = nextRevision()
 
   emitGameAck({
@@ -831,6 +961,72 @@ export const mockEmitPromptResponse = ({
     return
   }
 
+  const promptType = normalizePromptType(activePrompt)
+  const respondingPlayer = getCurrentPlayer()
+  const targetTileIndex = resolvePromptTileIndex(activePrompt)
+  const targetTile =
+    typeof targetTileIndex === 'number'
+      ? getTileByIndex(targetTileIndex)
+      : undefined
+  const promptAmount = resolvePromptAmount(activePrompt)
+  const nextEvents: GamePatchEnvelope['events'] = [
+    {
+      type: 'PROMPT_RESPONSE',
+      payload: { choice: normalizedChoice, promptId },
+    },
+  ]
+
+  if (promptType === 'BUY_OR_SKIP') {
+    if (
+      normalizedChoice === 'BUY' &&
+      respondingPlayer &&
+      targetTile &&
+      isOwnableTile(targetTile) &&
+      !targetTile.owner_id
+    ) {
+      const price = targetTile.price ?? 0
+      if (respondingPlayer.balance >= price) {
+        respondingPlayer.balance -= price
+        targetTile.owner_id = respondingPlayer.id
+        targetTile.ownerId = respondingPlayer.id
+        targetTile.building = 0
+        ensureOwnedTiles(respondingPlayer, targetTile.index)
+      }
+    }
+    advanceMockTurn()
+  }
+
+  if (promptType === 'PAY_TOLL') {
+    if (respondingPlayer && promptAmount > 0) {
+      respondingPlayer.balance -= promptAmount
+      if (respondingPlayer.balance <= 0) {
+        respondingPlayer.balance = 0
+        respondingPlayer.is_bankrupt = true
+      }
+
+      if (targetTile?.owner_id != null) {
+        const owner = mockGameState.players.find(
+          (player) => String(player.id) === String(targetTile.owner_id)
+        )
+        if (owner) {
+          owner.balance += promptAmount
+        }
+      }
+    }
+
+    nextEvents.push({
+      type: 'PAID_TOLL',
+      playerId: respondingPlayer?.id ?? null,
+      tileIndex: targetTileIndex ?? null,
+      amount: promptAmount,
+      payload: {
+        amount: promptAmount,
+      },
+    })
+    advanceMockTurn()
+  }
+
+  mockGameState.phase = 'rolling'
   clearMockPrompt()
   const revision = nextRevision()
 
@@ -842,12 +1038,7 @@ export const mockEmitPromptResponse = ({
     promptId,
   })
 
-  emitSnapshotPatch(resolvedGameId, [
-    {
-      type: 'PROMPT_RESPONSE',
-      payload: { choice: normalizedChoice, promptId },
-    },
-  ])
+  emitSnapshotPatch(resolvedGameId, nextEvents)
 }
 
 export const gameHandlers = [

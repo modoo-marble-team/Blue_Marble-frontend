@@ -255,6 +255,11 @@ const GamePage: React.FC = () => {
   const dismissLastError = () => {
     setLastError(null)
   }
+  const handleRollClick = () => {
+    boardRef.current?.rollDice()
+    new Audio('/audio/dice-roll.mp3').play().catch(() => {})
+    diceRoll(activeGameId)
+  }
 
   return (
     <div className="relative flex h-screen w-full items-center justify-center overflow-hidden bg-ui-app-bg px-6 font-['Inter']">
@@ -389,7 +394,7 @@ const GamePage: React.FC = () => {
           <RollButton
             timeLeft={timeLeft}
             isMyTurn={isMyTurn && !isActionPending && !isPromptVisible}
-            onRoll={() => diceRoll(activeGameId)}
+            onRoll={handleRollClick}
           />
         )}
       </div>
