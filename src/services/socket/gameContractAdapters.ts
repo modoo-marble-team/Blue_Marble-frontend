@@ -467,7 +467,11 @@ const normalizePathSegment = (segment: string | number): string | number => {
   if (segment === 'current_tile_id') return 'position'
   if (segment === 'playerState') return 'state'
   if (segment === 'player_state') return 'state'
+  if (segment === 'money') return 'balance'
+  if (segment === 'cash') return 'balance'
   if (segment === 'ownedTiles') return 'owned_tiles'
+  if (segment === 'pending_prompt') return 'prompt'
+  if (segment === 'pendingPrompt') return 'prompt'
   if (segment === 'building_level') return 'building'
   if (segment === 'buildingLevel') return 'building'
   if (segment === 'tile_type') return 'type'
@@ -487,17 +491,27 @@ const normalizePatchSetValue = (
   }
 
   if (pathSegments.length === 1 && firstSegment === 'players') {
-    if (!Array.isArray(value)) {
-      return []
+    if (Array.isArray(value)) {
+      return value.map(normalizePlayerFromSnapshot)
     }
-    return value.map(normalizePlayerFromSnapshot)
+    if (isRecord(value)) {
+      return Object.values(value).map(normalizePlayerFromSnapshot)
+    }
+    return []
   }
 
   if (pathSegments.length === 1 && firstSegment === 'tiles') {
-    if (!Array.isArray(value)) {
-      return []
+    if (Array.isArray(value)) {
+      return value.map(normalizeTileFromSnapshot)
     }
-    return value.map(normalizeTileFromSnapshot)
+    if (isRecord(value)) {
+      return Object.values(value).map(normalizeTileFromSnapshot)
+    }
+    return []
+  }
+
+  if (pathSegments.length === 1 && firstSegment === 'prompt') {
+    return normalizePromptPayload(value)
   }
 
   if (lastSegment === 'state') {
@@ -509,6 +523,10 @@ const normalizePatchSetValue = (
   }
 
   if (lastSegment === 'position') {
+    return toFiniteInt(value, 0)
+  }
+
+  if (lastSegment === 'balance') {
     return toFiniteInt(value, 0)
   }
 

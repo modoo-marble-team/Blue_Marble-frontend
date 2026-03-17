@@ -262,6 +262,20 @@ describe('gameContractAdapters', () => {
           path: 'players.0.player_state',
           value: 'LOCKED',
         },
+        {
+          op: 'set',
+          path: 'players.0.money',
+          value: '450',
+        },
+        {
+          op: 'set',
+          path: 'pending_prompt',
+          value: {
+            promptId: 'p-10',
+            type: 'CONFIRM_ONLY',
+            choices: [{ value: 'confirm' }],
+          },
+        },
       ],
       events: [],
     })
@@ -306,6 +320,32 @@ describe('gameContractAdapters', () => {
         op: 'set',
         path: 'players.0.state',
         value: 'locked',
+      },
+      {
+        op: 'set',
+        path: 'players.0.balance',
+        value: 450,
+      },
+      {
+        op: 'set',
+        path: 'prompt',
+        value: {
+          id: 'p-10',
+          type: 'CONFIRM_ONLY',
+          playerId: null,
+          title: undefined,
+          message: undefined,
+          timeoutSec: undefined,
+          choices: [
+            {
+              id: 'confirm-0',
+              label: 'CONFIRM',
+              value: 'CONFIRM',
+              description: undefined,
+            },
+          ],
+          payload: undefined,
+        },
       },
     ])
   })
