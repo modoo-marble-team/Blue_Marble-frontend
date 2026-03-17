@@ -3,7 +3,10 @@ import {
   getOnlineUserAvatarBackground,
   getOnlineUserAvatarText,
   mapOnlineUsersToViewModel,
+  mergeOnlineUsersWithCurrentUser,
+  mergeOnlineUsersWithRoomPlayers,
 } from './onlineUsersModel'
+import { createOnlineUserFixture } from '../../test/fixtures'
 
 describe('getOnlineUserAvatarText', () => {
   it('앞뒤 공백을 제거한 닉네임 첫 글자를 대문자로 반환한다', () => {
@@ -46,5 +49,77 @@ describe('mapOnlineUsersToViewModel', () => {
     })
     expect(mapped[0].avatarBackground).toBeTruthy()
     expect(mapped[1].avatarBackground).toBeTruthy()
+  })
+})
+
+describe('mergeOnlineUsersWithCurrentUser', () => {
+  it('현재 사용자가 snapshot에 없으면 lobby 상태로 추가한다', () => {
+    const merged = mergeOnlineUsersWithCurrentUser(
+      [
+        createOnlineUserFixture({
+          id: 'user-2',
+          nickname: '상대방',
+          status: 'in_room',
+        }),
+      ],
+      {
+        id: 'user-1',
+        nickname: '테스터',
+        status: 'lobby',
+      }
+    )
+
+    expect(merged).toHaveLength(2)
+    expect(merged).toContainEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        nickname: '테스터',
+        status: 'lobby',
+        avatarText: '테',
+      })
+    )
+  })
+})
+
+describe('mergeOnlineUsersWithRoomPlayers', () => {
+  it('room.players 기준으로 참가자 상태와 닉네임을 덮어쓴다', () => {
+    const merged = mergeOnlineUsersWithRoomPlayers(
+      [
+        createOnlineUserFixture({
+          id: 'user-1',
+          nickname: '이전닉네임',
+          status: 'lobby',
+          avatarText: '이',
+        }),
+        createOnlineUserFixture({
+          id: 'user-2',
+          nickname: '상대방',
+          status: 'lobby',
+        }),
+      ],
+      [
+        {
+          id: 'user-1',
+          nickname: '방장',
+        },
+      ],
+      'in_room'
+    )
+
+    expect(merged).toContainEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        nickname: '방장',
+        status: 'in_room',
+        avatarText: '방',
+      })
+    )
+    expect(merged).toContainEqual(
+      expect.objectContaining({
+        id: 'user-2',
+        nickname: '상대방',
+        status: 'lobby',
+      })
+    )
   })
 })
