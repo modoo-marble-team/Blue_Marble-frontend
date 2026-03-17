@@ -172,6 +172,51 @@ describe('game store partial updates', () => {
     expect(nextState.eventQueue).toHaveLength(2)
   })
 
+  it('resolves id-based player and tile patch paths', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      revision: 1,
+      players: [
+        createPlayer({
+          id: 105,
+          balance: 500,
+          position: 2,
+        }),
+        createPlayer({
+          id: 'player-2',
+          balance: 400,
+          position: 1,
+        }),
+      ],
+      tiles: [
+        createTile({
+          index: 12,
+          ownerId: null,
+          owner_id: null,
+        }),
+      ],
+    })
+
+    store.applyPatchEnvelope({
+      revision: 2,
+      patch: [
+        { op: 'set', path: 'players.105.balance', value: 750 },
+        { op: 'set', path: ['players', 'player-2', 'position'], value: 9 },
+        { op: 'set', path: 'tiles.12.ownerId', value: 'player-2' },
+        { op: 'set', path: ['tiles', 12, 'building'], value: 3 },
+      ],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.players[0]?.balance).toBe(750)
+    expect(nextState.players[1]?.position).toBe(9)
+    expect(nextState.tiles[0]?.ownerId).toBe('player-2')
+    expect(nextState.tiles[0]?.owner_id).toBe('player-2')
+    expect(nextState.tiles[0]?.building).toBe(3)
+  })
+
   it('tracks pending actions, acknowledgements, prompts, and queue consumption', () => {
     const store = useGameStore.getState()
     const prompt: GamePrompt = {

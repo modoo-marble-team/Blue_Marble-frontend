@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ServerEvent } from '../../types/domain'
 import {
   normalizePatchEnvelopePayload,
   normalizePromptPayload,
@@ -34,6 +35,29 @@ describe('gameContractAdapters', () => {
       {
         id: 'skip-option',
         label: 'Skip',
+        value: 'SKIP',
+        description: undefined,
+      },
+    ])
+  })
+
+  it('normalizes prompt choices when server sends string arrays', () => {
+    const normalized = normalizePromptPayload({
+      promptId: 'prompt-string-choices',
+      type: 'BUY_OR_SKIP',
+      choices: ['buy', 'skip'],
+    })
+
+    expect(normalized?.choices).toEqual([
+      {
+        id: 'buy-0',
+        label: 'BUY',
+        value: 'BUY',
+        description: undefined,
+      },
+      {
+        id: 'skip-1',
+        label: 'SKIP',
         value: 'SKIP',
         description: undefined,
       },
@@ -96,6 +120,7 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players[0]).toMatchObject({
       id: 'player-1',
       position: 7,
+      balance: 3000000,
       owned_tiles: [2, 4],
       state: 'locked',
       is_in_jail: true,
@@ -108,11 +133,137 @@ describe('gameContractAdapters', () => {
       building: 3,
       type: 'property',
       transportType: 'PROPERTY',
+      price: 500000,
     })
     expect(normalized?.prompt).toMatchObject({
       id: 'prompt-1',
       timeoutSec: 10,
       choices: [{ value: 'CONFIRM' }],
+    })
+  })
+
+  it('normalizes snapshot aliases from real payload fields', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-2',
+        revision: 7,
+        phase: 'WAIT_ROLL',
+        turn: 2,
+        current_player_id: 105,
+        players: [
+          {
+            playerId: 105,
+            nickname: 'beta',
+            current_tile_id: '8',
+            money: '210',
+            ownedTiles: ['3', '5'],
+          },
+        ],
+        tiles: [
+          {
+            tileId: '3',
+            owner_player_id: 105,
+            building_level: 2,
+            tile_type: 'PROPERTY',
+          },
+        ],
+        pending_prompt: {
+          promptId: 'prompt-2',
+          type: 'BUY_OR_SKIP',
+          payload: {
+            player_id: 105,
+          },
+          choices: [{ value: 'buy' }, { value: 'skip' }],
+        },
+      },
+      {
+        envelopeRevision: 7,
+      }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized).toMatchObject({
+      currentPlayerId: 105,
+      currentTurn: 105,
+      phase: 'rolling',
+    })
+    expect(normalized?.players[0]).toMatchObject({
+      id: 105,
+      position: 8,
+      balance: 2100000,
+      owned_tiles: [3, 5],
+    })
+    expect(normalized?.tiles[0]).toMatchObject({
+      index: 3,
+      ownerId: 105,
+      building: 2,
+      type: 'property',
+    })
+    expect(normalized?.prompt).toMatchObject({
+      id: 'prompt-2',
+      playerId: 105,
+      choices: [{ value: 'BUY' }, { value: 'SKIP' }],
+    })
+  })
+
+  it('normalizes object-shaped snapshot collections', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-3',
+        revision: 4,
+        phase: 'MOVING',
+        players: {
+          a: {
+            id: 'user-a',
+            nickname: 'A',
+            balance: 300,
+          },
+        },
+        tiles: {
+          c1: {
+            index: 1,
+            tileType: 'PROPERTY',
+            purchase_price: 50,
+          },
+        },
+      },
+      { envelopeRevision: 4 }
+    )
+
+    expect(normalized?.players).toHaveLength(1)
+    expect(normalized?.players[0]).toMatchObject({
+      id: 'user-a',
+      balance: 3000000,
+    })
+    expect(normalized?.tiles).toHaveLength(1)
+    expect(normalized?.tiles[0]).toMatchObject({
+      index: 1,
+      type: 'property',
+      price: 500000,
+    })
+  })
+
+  it('falls back to default initial balance when snapshot player has no money field', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-5',
+        revision: 1,
+        phase: 'WAIT_ROLL',
+        players: [
+          {
+            id: 1,
+            nickname: 'no-balance-player',
+            currentTileId: 0,
+          },
+        ],
+        tiles: [],
+      },
+      { envelopeRevision: 1 }
+    )
+
+    expect(normalized?.players[0]).toMatchObject({
+      id: 1,
+      balance: 5000000000,
     })
   })
 
@@ -151,6 +302,30 @@ describe('gameContractAdapters', () => {
           path: 'tiles.1.tileType',
           value: 'MOVE_TO_ISLAND',
         },
+        {
+          op: 'set',
+          path: 'players.0.current_tile_id',
+          value: 11,
+        },
+        {
+          op: 'set',
+          path: 'players.0.player_state',
+          value: 'LOCKED',
+        },
+        {
+          op: 'set',
+          path: 'players.0.money',
+          value: '450',
+        },
+        {
+          op: 'set',
+          path: 'pending_prompt',
+          value: {
+            promptId: 'p-10',
+            type: 'CONFIRM_ONLY',
+            choices: [{ value: 'confirm' }],
+          },
+        },
       ],
       events: [],
     })
@@ -185,6 +360,97 @@ describe('gameContractAdapters', () => {
         op: 'set',
         path: 'tiles.1.type',
         value: 'go_to_island',
+      },
+      {
+        op: 'set',
+        path: 'players.0.position',
+        value: 11,
+      },
+      {
+        op: 'set',
+        path: 'players.0.state',
+        value: 'locked',
+      },
+      {
+        op: 'set',
+        path: 'players.0.balance',
+        value: 4500000,
+      },
+      {
+        op: 'set',
+        path: 'prompt',
+        value: {
+          id: 'p-10',
+          type: 'CONFIRM_ONLY',
+          playerId: null,
+          title: undefined,
+          message: undefined,
+          timeoutSec: undefined,
+          choices: [
+            {
+              id: 'confirm-0',
+              label: 'CONFIRM',
+              value: 'CONFIRM',
+              description: undefined,
+            },
+          ],
+          payload: undefined,
+        },
+      },
+    ])
+  })
+
+  it('normalizes patch inc money values and event aliases from real payload', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-4',
+      revision: 90,
+      patch: [
+        {
+          op: 'inc',
+          path: 'players.1.money',
+          value: 5000,
+        },
+      ],
+      events: [
+        {
+          eventType: 'DICE_ROLLED',
+          playerId: '1',
+          dice: [3, 2],
+        } as unknown as ServerEvent,
+        {
+          type: 'PAID_TOLL',
+          fromPlayerId: '2',
+          amount: 3500,
+        } as unknown as ServerEvent,
+      ],
+    })
+
+    expect(normalized.patch).toEqual([
+      {
+        op: 'inc',
+        path: 'players.1.balance',
+        value: 50000000,
+      },
+    ])
+    expect(normalized.events).toEqual([
+      {
+        eventType: 'DICE_ROLLED',
+        playerId: '1',
+        dice: [3, 2],
+        id: undefined,
+        type: 'DICE_ROLLED',
+        tileIndex: null,
+        amount: undefined,
+        payload: undefined,
+      },
+      {
+        type: 'PAID_TOLL',
+        fromPlayerId: '2',
+        id: undefined,
+        playerId: '2',
+        tileIndex: null,
+        amount: 35000000,
+        payload: undefined,
       },
     ])
   })

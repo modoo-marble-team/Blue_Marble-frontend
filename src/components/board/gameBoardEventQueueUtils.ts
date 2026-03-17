@@ -14,10 +14,28 @@ export type BoardEventAnimationKind =
 const normalizeEventType = (type: unknown) =>
   typeof type === 'string' ? type.trim().toUpperCase() : ''
 
+const EVENT_TYPE_ALIAS_MAP: Record<string, string> = {
+  DICE_ROLL: 'DICE_ROLLED',
+  DICE_ROLL_RESULT: 'DICE_ROLLED',
+  ROLLED_DICE: 'DICE_ROLLED',
+  PLAYER_MOVE: 'PLAYER_MOVED',
+  MOVED: 'PLAYER_MOVED',
+  LAND: 'LANDED',
+  TOLL_PAID: 'PAID_TOLL',
+  TURN_END: 'TURN_ENDED',
+  END_TURN: 'TURN_ENDED',
+  SYNC: 'SYNCED',
+}
+
+const toCanonicalEventType = (type: unknown) => {
+  const normalized = normalizeEventType(type)
+  return EVENT_TYPE_ALIAS_MAP[normalized] ?? normalized
+}
+
 export const resolveBoardEventAnimationKind = (
   event: ServerEvent
 ): BoardEventAnimationKind => {
-  const normalizedType = normalizeEventType(event.type)
+  const normalizedType = toCanonicalEventType(event.type)
 
   if (normalizedType === 'DICE_ROLLED') return 'dice'
   if (normalizedType === 'PLAYER_MOVED') return 'move'
@@ -76,6 +94,28 @@ const getPayloadNumber = (
   return null
 }
 
+const getEventRecord = (event: ServerEvent): Record<string, unknown> =>
+  event as unknown as Record<string, unknown>
+
+const getEventNumber = (event: ServerEvent, keys: string[]) => {
+  const eventRecord = getEventRecord(event)
+
+  for (const key of keys) {
+    const raw = eventRecord[key]
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return raw
+    }
+    if (typeof raw === 'string' && raw.trim() !== '') {
+      const parsed = Number.parseFloat(raw)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
 const resolvePlayerName = (
   players: PlayerState[],
   playerId: ServerEvent['playerId']
@@ -103,6 +143,11 @@ const resolveTileIndex = (event: ServerEvent) => {
     return event.tileIndex
   }
 
+  const eventLevelIndex = getEventNumber(event, ['toTileId', 'tileId'])
+  if (eventLevelIndex != null) {
+    return eventLevelIndex
+  }
+
   const payload = event.payload
   if (!payload) {
     return null
@@ -114,20 +159,35 @@ const resolveTileIndex = (event: ServerEvent) => {
 export const extractEventDice = (
   event: ServerEvent
 ): [number, number] | null => {
-  const normalizedType = normalizeEventType(event.type)
+  const normalizedType = toCanonicalEventType(event.type)
   if (normalizedType !== 'DICE_ROLLED') {
     return null
   }
 
   const payload = event.payload
-  if (!payload || !Array.isArray(payload.dice) || payload.dice.length < 2) {
-    return null
+
+  let first: number | null = null
+  let second: number | null = null
+
+  const eventRecord = getEventRecord(event)
+  const payloadDice = Array.isArray(payload?.dice) ? payload.dice : null
+
+  if (Array.isArray(eventRecord.dice) && eventRecord.dice.length >= 2) {
+    first = Number(eventRecord.dice[0])
+    second = Number(eventRecord.dice[1])
+  } else if (payloadDice && payloadDice.length >= 2) {
+    first = Number(payloadDice[0])
+    second = Number(payloadDice[1])
+  } else {
+    first =
+      getEventNumber(event, ['dice1', 'dice_1', 'firstDice', 'd1']) ??
+      getPayloadNumber(payload, ['dice1', 'dice_1', 'firstDice', 'd1'])
+    second =
+      getEventNumber(event, ['dice2', 'dice_2', 'secondDice', 'd2']) ??
+      getPayloadNumber(payload, ['dice2', 'dice_2', 'secondDice', 'd2'])
   }
 
-  const first = Number(payload.dice[0])
-  const second = Number(payload.dice[1])
-
-  if (!Number.isFinite(first) || !Number.isFinite(second)) {
+  if (first == null || second == null) {
     return null
   }
 
@@ -139,12 +199,13 @@ export const createBoardStatusFromEvent = (
   players: PlayerState[],
   tiles: TileData[]
 ) => {
-  const normalizedType = normalizeEventType(event.type)
+  const normalizedType = toCanonicalEventType(event.type)
   const playerName = resolvePlayerName(players, event.playerId)
 
   if (normalizedType === 'DICE_ROLLED') {
     const dice = extractEventDice(event)
     const total =
+      getEventNumber(event, ['total']) ??
       getPayloadNumber(event.payload, ['total']) ??
       (dice ? dice[0] + dice[1] : null)
 
@@ -169,7 +230,8 @@ export const createBoardStatusFromEvent = (
     const amount =
       typeof event.amount === 'number'
         ? event.amount
-        : (getPayloadNumber(event.payload, ['amount', 'toll', 'tollAmount']) ??
+        : (getEventNumber(event, ['amount', 'toll', 'tollAmount']) ??
+          getPayloadNumber(event.payload, ['amount', 'toll', 'tollAmount']) ??
           0)
     return `${playerName}님이 통행료 ${formatWon(amount)}을 지불했습니다.`
   }

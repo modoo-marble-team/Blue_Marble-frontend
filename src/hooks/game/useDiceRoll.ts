@@ -20,6 +20,9 @@ export const useDiceRoll = () => {
       emitGameAction({
         type: 'ROLL_DICE',
         gameId,
+        payload: {
+          diceId: 0,
+        },
       })
       return
     }
@@ -28,6 +31,9 @@ export const useDiceRoll = () => {
     emitGameAction({
       type: 'ROLL_DICE',
       gameId,
+      payload: {
+        diceId: 0,
+      },
     })
   }, [])
 }

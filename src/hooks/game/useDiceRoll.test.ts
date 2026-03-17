@@ -49,6 +49,9 @@ describe('useDiceRoll', () => {
     expect(emitGameAction).toHaveBeenCalledWith({
       type: 'ROLL_DICE',
       gameId: 'game-1',
+      payload: {
+        diceId: 0,
+      },
     })
   })
 
@@ -80,6 +83,9 @@ describe('useDiceRoll', () => {
     expect(emitGameAction).toHaveBeenCalledWith({
       type: 'ROLL_DICE',
       gameId: 'game-1',
+      payload: {
+        diceId: 0,
+      },
     })
   })
 
@@ -97,6 +103,9 @@ describe('useDiceRoll', () => {
     expect(emitGameAction).toHaveBeenCalledWith({
       type: 'ROLL_DICE',
       gameId: 'game-1',
+      payload: {
+        diceId: 0,
+      },
     })
   })
 

@@ -48,6 +48,28 @@ describe('gameBoardEventQueueUtils', () => {
     expect(extractEventDice(event)).toEqual([3, 4])
   })
 
+  it('extracts dice values from alias payload keys', () => {
+    const event: ServerEvent = {
+      type: 'DICE_ROLL_RESULT',
+      playerId: 1,
+      payload: {
+        dice1: 2,
+        dice2: 6,
+      },
+    }
+
+    expect(extractEventDice(event)).toEqual([2, 6])
+  })
+
+  it('extracts dice values from top-level event dice fields', () => {
+    const event = {
+      type: 'DICE_ROLLED',
+      playerId: 1,
+      dice: [4, 1],
+    }
+    expect(extractEventDice(event as unknown as ServerEvent)).toEqual([4, 1])
+  })
+
   it('returns move status message with player and tile name', () => {
     const event: ServerEvent = {
       type: 'PLAYER_MOVED',
@@ -57,6 +79,18 @@ describe('gameBoardEventQueueUtils', () => {
 
     expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
       '플레이어1님이 부산 칸으로 이동했습니다.'
+    )
+  })
+
+  it('resolves move destination from top-level toTileId', () => {
+    const event = {
+      type: 'PLAYER_MOVED',
+      playerId: 1,
+      toTileId: 1,
+    } as ServerEvent & { toTileId: number }
+
+    expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
+      '플레이어1님이 서울 칸으로 이동했습니다.'
     )
   })
 
@@ -116,6 +150,14 @@ describe('gameBoardEventQueueUtils', () => {
     expect(
       resolveBoardEventAnimationKind({ type: 'SOMETHING_ELSE' } as ServerEvent)
     ).toBe('none')
+    expect(
+      resolveBoardEventAnimationKind({
+        type: 'DICE_ROLL_RESULT',
+      } as ServerEvent)
+    ).toBe('dice')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'TURN_END' } as ServerEvent)
+    ).toBe('turn_end')
   })
 
   it('returns event-specific consume delays', () => {

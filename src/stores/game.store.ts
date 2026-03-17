@@ -41,6 +41,8 @@ type GameStoreState = GameState & GameActions
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
+const ARRAY_PATH_IDENTITY_KEYS = ['id', 'index', 'tileId', 'tile_id'] as const
+
 const normalizeTile = (tile: Tile): Tile => {
   const ownerId =
     tile.ownerId !== undefined ? tile.ownerId : (tile.owner_id ?? null)
@@ -118,6 +120,46 @@ const toPathSegments = (
     )
 }
 
+const resolveArraySegmentToIndex = (
+  target: unknown[],
+  segment: string | number
+): number | null => {
+  const segmentText = String(segment)
+  const identityMatchedIndex = target.findIndex((item) => {
+    if (!isRecord(item)) {
+      return false
+    }
+
+    return ARRAY_PATH_IDENTITY_KEYS.some((key) => {
+      const candidate = item[key]
+      return candidate !== undefined && candidate !== null
+        ? String(candidate) === segmentText
+        : false
+    })
+  })
+
+  if (identityMatchedIndex >= 0) {
+    return identityMatchedIndex
+  }
+
+  const parsedIndex =
+    typeof segment === 'number'
+      ? segment
+      : /^\d+$/.test(segment)
+        ? Number.parseInt(segment, 10)
+        : Number.NaN
+
+  if (
+    Number.isInteger(parsedIndex) &&
+    parsedIndex >= 0 &&
+    parsedIndex < target.length
+  ) {
+    return parsedIndex
+  }
+
+  return null
+}
+
 const getTargetContainer = (
   draft: Record<string, unknown>,
   path: Array<string | number>
@@ -126,8 +168,13 @@ const getTargetContainer = (
   let cursor: unknown = draft
 
   for (const segment of parentPath) {
-    if (Array.isArray(cursor) && typeof segment === 'number') {
-      cursor = cursor[segment]
+    if (Array.isArray(cursor)) {
+      const arrayIndex = resolveArraySegmentToIndex(cursor, segment)
+      if (arrayIndex == null) {
+        return null
+      }
+
+      cursor = cursor[arrayIndex]
       continue
     }
 
@@ -154,8 +201,13 @@ const setValueAtPath = (
     return
   }
 
-  if (Array.isArray(target) && typeof key === 'number') {
-    target[key] = value
+  if (Array.isArray(target)) {
+    const arrayIndex = resolveArraySegmentToIndex(target, key)
+    if (arrayIndex == null) {
+      return
+    }
+
+    target[arrayIndex] = value
     return
   }
 
@@ -171,8 +223,13 @@ const getValueAtPath = (
   let cursor: unknown = draft
 
   for (const segment of path) {
-    if (Array.isArray(cursor) && typeof segment === 'number') {
-      cursor = cursor[segment]
+    if (Array.isArray(cursor)) {
+      const arrayIndex = resolveArraySegmentToIndex(cursor, segment)
+      if (arrayIndex == null) {
+        return undefined
+      }
+
+      cursor = cursor[arrayIndex]
       continue
     }
 
@@ -212,6 +269,14 @@ const removeValueAtPath = (
 
   const container = getTargetContainer(draft, path)
   const key = path[path.length - 1]
+
+  if (key !== undefined && Array.isArray(container)) {
+    const arrayIndex = resolveArraySegmentToIndex(container, key)
+    if (arrayIndex != null) {
+      container.splice(arrayIndex, 1)
+    }
+    return
+  }
 
   if (key !== undefined && isRecord(container)) {
     delete container[String(key)]
