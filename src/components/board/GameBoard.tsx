@@ -3,6 +3,7 @@ import {
   useState,
   useEffect,
   useMemo,
+  useCallback,
   forwardRef,
   useImperativeHandle,
 } from 'react'
@@ -48,6 +49,7 @@ import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
   getBoardEventAnimationHoldMs,
+  resolveBoardEventTileIndex,
   type BoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
 import type {
@@ -67,8 +69,10 @@ import type {
 } from './gameBoard.types'
 import '../../styles/board.css'
 import { formatWon } from '../../lib/utils'
-import type { GamePrompt } from '../../types/domain'
+import type { GamePrompt, ServerEvent } from '../../types/domain'
 import { playLongSfx, stopLongSfx } from '../../lib/bgm'
+import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { emitGameAction } from '../../services/socket/game.handler'
 
 function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
   if (currentLevel === 0) return price * 0.5
@@ -272,6 +276,7 @@ function buildTileOwnersFromProps(
 const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   (
     {
+      gameId,
       players,
       curPlayer,
       suppressDiceTimerModal = false,
@@ -289,10 +294,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     )
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
+    const [isDiceRolling, setIsDiceRolling] = useState(false)
     const [status, setStatus] = useState(GAME_START_STATUS)
     const [eventFxKind, setEventFxKind] =
       useState<BoardEventAnimationKind>('none')
-    const rolling = eventFxKind === 'dice'
     const boardPageRef = useRef<HTMLDivElement | null>(null)
     const boardStatusRef = useRef<HTMLDivElement | null>(null)
     const [boardScale, setBoardScale] = useState(1)
@@ -302,14 +307,124 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     curPlayerRef.current = curPlayer
     playersRef.current = players
 
+    const isMockMode = IS_SOCKET_MOCK_ENABLED
+    const rollAnimationIntervalRef = useRef<number | null>(null)
+    const rollAnimationTimeoutRef = useRef<number | null>(null)
+    const freezeDiceRollValues = useCallback(() => {
+      if (rollAnimationIntervalRef.current !== null) {
+        window.clearInterval(rollAnimationIntervalRef.current)
+        rollAnimationIntervalRef.current = null
+      }
+    }, [])
+    const stopDiceRollAnimation = useCallback(() => {
+      freezeDiceRollValues()
+      if (rollAnimationTimeoutRef.current !== null) {
+        window.clearTimeout(rollAnimationTimeoutRef.current)
+        rollAnimationTimeoutRef.current = null
+      }
+      setIsDiceRolling(false)
+    }, [freezeDiceRollValues])
+    const flashDiceRollAnimation = useCallback(
+      (durationMs = 260) => {
+        stopDiceRollAnimation()
+        setIsDiceRolling(true)
+        rollAnimationTimeoutRef.current = window.setTimeout(() => {
+          stopDiceRollAnimation()
+        }, durationMs)
+      },
+      [stopDiceRollAnimation]
+    )
+    const triggerDiceRollAnimation = useCallback(
+      (durationMs = 520) => {
+        stopDiceRollAnimation()
+        setIsDiceRolling(true)
+
+        rollAnimationIntervalRef.current = window.setInterval(() => {
+          setDice1(Math.floor(Math.random() * 6) + 1)
+          setDice2(Math.floor(Math.random() * 6) + 1)
+        }, 80)
+
+        rollAnimationTimeoutRef.current = window.setTimeout(() => {
+          stopDiceRollAnimation()
+        }, durationMs)
+      },
+      [stopDiceRollAnimation]
+    )
+    const rolling = isMockMode ? isDiceRolling : eventFxKind === 'dice'
+    const emitMockEndTurn = useCallback(() => {
+      if (!isMockMode || !gameId) {
+        return
+      }
+
+      emitGameAction({
+        type: 'END_TURN',
+        gameId,
+      })
+    }, [isMockMode, gameId])
+    const handleBoardEventConsumed = useCallback(
+      (event: ServerEvent) => {
+        if (!isMockMode) {
+          return
+        }
+
+        const normalizedType =
+          typeof event.type === 'string' ? event.type.trim().toUpperCase() : ''
+        if (normalizedType === 'DICE_ROLLED') {
+          if (rollAnimationIntervalRef.current !== null) {
+            freezeDiceRollValues()
+          } else {
+            flashDiceRollAnimation()
+          }
+        }
+        if (normalizedType !== 'PLAYER_MOVED') {
+          return
+        }
+
+        const tileIndex = resolveBoardEventTileIndex(event)
+        if (tileIndex == null) {
+          return
+        }
+
+        const tile = TILES[tileIndex]
+        if (!tile || tile.type === 'PROPERTY') {
+          return
+        }
+
+        handleArrival(tileIndex, emitMockEndTurn)
+      },
+      [
+        isMockMode,
+        handleArrival,
+        emitMockEndTurn,
+        freezeDiceRollValues,
+        flashDiceRollAnimation,
+      ]
+    )
+    const handleEventAnimation = useCallback(
+      (kind: BoardEventAnimationKind) => {
+        if (isMockMode && kind !== 'dice') {
+          return
+        }
+
+        setEventFxKind(kind)
+      },
+      [isMockMode]
+    )
+
     useBoardEventQueue({
       enabled: true,
       playersRef,
       setStatus,
       setDice1,
       setDice2,
-      onEventAnimation: setEventFxKind,
+      onEventAnimation: handleEventAnimation,
+      onEventConsumed: handleBoardEventConsumed,
     })
+    useEffect(() => {
+      return () => {
+        stopDiceRollAnimation()
+      }
+    }, [stopDiceRollAnimation])
     useEffect(() => {
       if (eventFxKind === 'none') {
         return
@@ -768,6 +883,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     function rollDice(onDone?: () => void) {
+      triggerDiceRollAnimation()
       onDone?.()
     }
 
@@ -810,15 +926,55 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       submitPromptChoice(promptTollConfirmChoiceValue)
     }
 
+    function closeLocalSellModal() {
+      setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
+    }
+
     function handleCitySellCancel() {
-      submitPromptChoice(promptSellCancelChoiceValue)
+      if (isSellPromptOpen) {
+        submitPromptChoice(promptSellCancelChoiceValue)
+        return
+      }
+
+      closeLocalSellModal()
     }
 
     async function handleCitySellConfirm() {
       stopLongSfx()
       // 💰 매각 처리 (거래) 소리 재생
       new Audio('/audio/transaction.mp3').play().catch(() => {})
-      submitPromptChoice(promptSellConfirmChoiceValue)
+
+      if (isSellPromptOpen) {
+        submitPromptChoice(promptSellConfirmChoiceValue)
+        return
+      }
+
+      const tileId = citySellModal.tileId
+      if (tileId == null) {
+        closeLocalSellModal()
+        return
+      }
+
+      const owner = tileOwnersRef.current[tileId]
+      const activePlayer = playersRef.current[curPlayerRef.current]
+      if (
+        !owner ||
+        !activePlayer ||
+        String(owner.ownerId) !== String(activePlayer.id)
+      ) {
+        closeLocalSellModal()
+        return
+      }
+
+      emitGameAction({
+        type: 'SELL_PROPERTY',
+        gameId: gameId ?? undefined,
+        payload: {
+          tileId,
+          buildingLevel: owner.level,
+        },
+      })
+      closeLocalSellModal()
     }
 
     function handleInsufficientFundsConfirm() {
@@ -1027,15 +1183,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tollModalOpen = isTollPromptOpen
     const tollOwnerName = promptOwnerName
     const tollAmountText = formatWon(promptAmount ?? 0)
-    const sellTile = promptTile
-    const sellModalOpen = isSellPromptOpen
-    const sellOwnerName = promptSellerName
-    const sellCurrentLevel = promptCurrentLevel
-    const sellPrice =
-      promptSellPrice ??
-      (promptTileId != null
-        ? getBoardSellFallbackRefund(promptTileId, promptCurrentLevel)
-        : (sellTile?.price ?? 0))
+    const sellModalOpen = isSellPromptOpen || citySellModal.open
+    const sellTileId = isSellPromptOpen ? promptTileId : citySellModal.tileId
+    const sellTile = sellTileId != null ? TILES[sellTileId] : null
+    const sellOwnerName = isSellPromptOpen
+      ? promptSellerName
+      : citySellModal.ownerName
+    const sellCurrentLevel = isSellPromptOpen
+      ? promptCurrentLevel
+      : citySellModal.currentLevel
+    const sellPrice = isSellPromptOpen
+      ? (promptSellPrice ??
+        (sellTileId != null
+          ? getBoardSellFallbackRefund(sellTileId, promptCurrentLevel)
+          : (sellTile?.price ?? 0)))
+      : citySellModal.sellPrice ||
+        (sellTileId != null
+          ? getBoardSellFallbackRefund(sellTileId, sellCurrentLevel)
+          : (sellTile?.price ?? 0))
     const acquisitionTile = promptTile
     const acquisitionModalOpenRaw = isAcquisitionPromptOpen
     const acquisitionModalOpen =
@@ -1083,16 +1248,72 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
     const diceTimerModalOpen =
       !suppressDiceTimerModal && (showTimerModal || isDiceTimerPromptOpen)
+    const hasBlockingModal =
+      buyModalVisible ||
+      buildModalVisible ||
+      cardModal.open ||
+      travelModal.open ||
+      tollModalOpen ||
+      acquisitionModalOpen ||
+      sellModalOpen ||
+      insufficientFundsModal.open ||
+      aiModal.open ||
+      goToIslandModal.open ||
+      islandModal.open ||
+      diceTimerModalOpen ||
+      bankruptModal.open ||
+      gameResultModal.open
+    const activePlayerId = players[curPlayer]?.id ?? null
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
-    const isOwnedTileSellClickable = () => false
+    const isOwnedTileSellClickable = (tileId: number) => {
+      if (travelSelection.active || hasBlockingModal) {
+        return false
+      }
+      if (activePlayerId == null) {
+        return false
+      }
+
+      const owner = tileOwners[tileId]
+      if (!owner) {
+        return false
+      }
+
+      return String(owner.ownerId) === String(activePlayerId)
+    }
     const handleBoardTileClick = (tileId: number) => {
       if (travelSelection.active) {
         if (tileId !== players[curPlayer]?.pos) {
           handleTravelDestinationSelect(tileId)
         }
+        return
       }
+
+      if (!isOwnedTileSellClickable(tileId)) {
+        return
+      }
+
+      const owner = tileOwnersRef.current[tileId]
+      const activePlayer = playersRef.current[curPlayerRef.current]
+      if (
+        !owner ||
+        !activePlayer ||
+        String(owner.ownerId) !== String(activePlayer.id)
+      ) {
+        return
+      }
+
+      setCitySellModal({
+        open: true,
+        tileId,
+        ownerName: activePlayer.name ?? '',
+        currentLevel: owner.level,
+        sellPrice: getBoardSellFallbackRefund(tileId, owner.level),
+      })
     }
+
+    const displayEventFxKind =
+      isMockMode || eventFxKind === 'dice' ? 'none' : eventFxKind
 
     return (
       <div
@@ -1102,9 +1323,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       >
         <div
           className={
-            eventFxKind === 'none'
+            displayEventFxKind === 'none'
               ? 'board-status'
-              : `board-status board-status--${eventFxKind}`
+              : `board-status board-status--${displayEventFxKind}`
           }
           ref={boardStatusRef}
         >
@@ -1137,7 +1358,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
+                const isOwnedSellClickable = isOwnedTileSellClickable(id)
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1172,7 +1393,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
+                const isOwnedSellClickable = isOwnedTileSellClickable(id)
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1206,7 +1427,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {LEFT_COL.map((id, ri) =>
               (() => {
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
+                const isOwnedSellClickable = isOwnedTileSellClickable(id)
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1240,7 +1461,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {RIGHT_COL.map((id, ri) =>
               (() => {
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
+                const isOwnedSellClickable = isOwnedTileSellClickable(id)
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -1274,9 +1495,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
             <div
               className={
-                eventFxKind === 'none'
+                displayEventFxKind === 'none'
                   ? 'board-center'
-                  : `board-center board-center--${eventFxKind}`
+                  : `board-center board-center--${displayEventFxKind}`
               }
               style={{
                 gridRow: '2 / 9',
@@ -1358,6 +1579,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
+            // 💰 토지 구매 소리 재생
+            new Audio('/audio/land-buy.mp3').play().catch(() => {})
             submitPromptChoice(promptBuyChoiceValue)
           }}
           onPass={() => {
@@ -1394,6 +1617,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               return
             }
 
+            // 🏗️ 건설 목표 레벨에 따른 소리 재생
+            if (buildTargetLevel <= 3) {
+              new Audio('/audio/house-buy.mp3').play().catch(() => {})
+            } else if (buildTargetLevel <= 6) {
+              new Audio('/audio/hotel-build.mp3').play().catch(() => {})
+            } else {
+              new Audio('/audio/landmark-build.mp3').play().catch(() => {})
+            }
             submitPromptChoice(promptBuildConfirmChoiceValue)
           }}
           onCancel={() => submitPromptChoice(promptBuildCancelChoiceValue)}
