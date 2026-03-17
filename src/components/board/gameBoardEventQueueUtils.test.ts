@@ -48,6 +48,19 @@ describe('gameBoardEventQueueUtils', () => {
     expect(extractEventDice(event)).toEqual([3, 4])
   })
 
+  it('extracts dice values from alias payload keys', () => {
+    const event: ServerEvent = {
+      type: 'DICE_ROLL_RESULT',
+      playerId: 1,
+      payload: {
+        dice1: 2,
+        dice2: 6,
+      },
+    }
+
+    expect(extractEventDice(event)).toEqual([2, 6])
+  })
+
   it('returns move status message with player and tile name', () => {
     const event: ServerEvent = {
       type: 'PLAYER_MOVED',
@@ -116,6 +129,14 @@ describe('gameBoardEventQueueUtils', () => {
     expect(
       resolveBoardEventAnimationKind({ type: 'SOMETHING_ELSE' } as ServerEvent)
     ).toBe('none')
+    expect(
+      resolveBoardEventAnimationKind({
+        type: 'DICE_ROLL_RESULT',
+      } as ServerEvent)
+    ).toBe('dice')
+    expect(
+      resolveBoardEventAnimationKind({ type: 'TURN_END' } as ServerEvent)
+    ).toBe('turn_end')
   })
 
   it('returns event-specific consume delays', () => {

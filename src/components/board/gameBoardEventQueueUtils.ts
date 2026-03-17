@@ -14,10 +14,28 @@ export type BoardEventAnimationKind =
 const normalizeEventType = (type: unknown) =>
   typeof type === 'string' ? type.trim().toUpperCase() : ''
 
+const EVENT_TYPE_ALIAS_MAP: Record<string, string> = {
+  DICE_ROLL: 'DICE_ROLLED',
+  DICE_ROLL_RESULT: 'DICE_ROLLED',
+  ROLLED_DICE: 'DICE_ROLLED',
+  PLAYER_MOVE: 'PLAYER_MOVED',
+  MOVED: 'PLAYER_MOVED',
+  LAND: 'LANDED',
+  TOLL_PAID: 'PAID_TOLL',
+  TURN_END: 'TURN_ENDED',
+  END_TURN: 'TURN_ENDED',
+  SYNC: 'SYNCED',
+}
+
+const toCanonicalEventType = (type: unknown) => {
+  const normalized = normalizeEventType(type)
+  return EVENT_TYPE_ALIAS_MAP[normalized] ?? normalized
+}
+
 export const resolveBoardEventAnimationKind = (
   event: ServerEvent
 ): BoardEventAnimationKind => {
-  const normalizedType = normalizeEventType(event.type)
+  const normalizedType = toCanonicalEventType(event.type)
 
   if (normalizedType === 'DICE_ROLLED') return 'dice'
   if (normalizedType === 'PLAYER_MOVED') return 'move'
@@ -114,20 +132,28 @@ const resolveTileIndex = (event: ServerEvent) => {
 export const extractEventDice = (
   event: ServerEvent
 ): [number, number] | null => {
-  const normalizedType = normalizeEventType(event.type)
+  const normalizedType = toCanonicalEventType(event.type)
   if (normalizedType !== 'DICE_ROLLED') {
     return null
   }
 
   const payload = event.payload
-  if (!payload || !Array.isArray(payload.dice) || payload.dice.length < 2) {
+  if (!payload) {
     return null
   }
 
-  const first = Number(payload.dice[0])
-  const second = Number(payload.dice[1])
+  let first: number | null = null
+  let second: number | null = null
 
-  if (!Number.isFinite(first) || !Number.isFinite(second)) {
+  if (Array.isArray(payload.dice) && payload.dice.length >= 2) {
+    first = Number(payload.dice[0])
+    second = Number(payload.dice[1])
+  } else {
+    first = getPayloadNumber(payload, ['dice1', 'dice_1', 'firstDice', 'd1'])
+    second = getPayloadNumber(payload, ['dice2', 'dice_2', 'secondDice', 'd2'])
+  }
+
+  if (first == null || second == null) {
     return null
   }
 
@@ -139,7 +165,7 @@ export const createBoardStatusFromEvent = (
   players: PlayerState[],
   tiles: TileData[]
 ) => {
-  const normalizedType = normalizeEventType(event.type)
+  const normalizedType = toCanonicalEventType(event.type)
   const playerName = resolvePlayerName(players, event.playerId)
 
   if (normalizedType === 'DICE_ROLLED') {
