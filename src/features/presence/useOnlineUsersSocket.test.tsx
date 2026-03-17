@@ -160,6 +160,48 @@ describe('useOnlineUsersSocket', () => {
     })
   })
 
+  it('disconnect 이벤트는 재연결 대기 상태로 취급하고 즉시 에러로 표시하지 않는다', async () => {
+    getOnlineUsersSnapshotMock.mockResolvedValue([
+      createOnlineUserPayloadFixture({
+        id: 'user-4',
+        nickname: 'WaitingRoom',
+        status: 'in_room',
+      }),
+    ])
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      emitSocketEvent(socketOnMock, 'disconnect', undefined)
+    })
+
+    expect(result.current.isError).toBe(false)
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.data).toHaveLength(1)
+  })
+
+  it('connect_error 이벤트도 일시 재연결 경계로 취급하고 에러 문구를 띄우지 않는다', async () => {
+    getOnlineUsersSnapshotMock.mockResolvedValue([])
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      emitSocketEvent(socketOnMock, 'connect_error', undefined)
+    })
+
+    expect(result.current.isError).toBe(false)
+    expect(result.current.isLoading).toBe(false)
+    expect(result.current.data).toEqual([])
+  })
+
   it('refresh request 이벤트 수신 시 최신 REST snapshot으로 다시 동기화한다', async () => {
     getOnlineUsersSnapshotMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
       createOnlineUserPayloadFixture({
