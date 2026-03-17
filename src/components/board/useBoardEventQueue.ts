@@ -71,6 +71,10 @@ export function useBoardEventQueue({
 
       onEventConsumed?.(nextEvent)
 
+      if (import.meta.env.DEV) {
+        console.debug('[eventQueue] consumed', nextEvent.type, nextEvent)
+      }
+
       const dice = extractEventDice(nextEvent)
       if (dice) {
         setDice1(dice[0])
