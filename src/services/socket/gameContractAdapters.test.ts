@@ -41,6 +41,29 @@ describe('gameContractAdapters', () => {
     ])
   })
 
+  it('normalizes prompt choices when server sends string arrays', () => {
+    const normalized = normalizePromptPayload({
+      promptId: 'prompt-string-choices',
+      type: 'BUY_OR_SKIP',
+      choices: ['buy', 'skip'],
+    })
+
+    expect(normalized?.choices).toEqual([
+      {
+        id: 'buy-0',
+        label: 'BUY',
+        value: 'BUY',
+        description: undefined,
+      },
+      {
+        id: 'skip-1',
+        label: 'SKIP',
+        value: 'SKIP',
+        description: undefined,
+      },
+    ])
+  })
+
   it('normalizes canonical snapshot payload to internal snapshot shape', () => {
     const normalized = normalizeSnapshotPayload(
       {
@@ -217,6 +240,30 @@ describe('gameContractAdapters', () => {
       index: 1,
       type: 'property',
       price: 500000,
+    })
+  })
+
+  it('falls back to default initial balance when snapshot player has no money field', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-5',
+        revision: 1,
+        phase: 'WAIT_ROLL',
+        players: [
+          {
+            id: 1,
+            nickname: 'no-balance-player',
+            currentTileId: 0,
+          },
+        ],
+        tiles: [],
+      },
+      { envelopeRevision: 1 }
+    )
+
+    expect(normalized?.players[0]).toMatchObject({
+      id: 1,
+      balance: 5000000000,
     })
   })
 

@@ -23,6 +23,7 @@ type SnapshotNormalizeOptions = {
 
 const DEFAULT_TURN_TIMEOUT_SEC = 30
 const DEFAULT_PLAYER_COLOR = '#94A3B8'
+const DEFAULT_INITIAL_BALANCE = 5_000_000_000
 const MONEY_UNIT_SCALE = 10_000
 const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
 const MONEY_KEYS = new Set([
@@ -129,6 +130,25 @@ const normalizeMoneyToWon = (value: unknown, fallback = 0) => {
   }
 
   return raw * MONEY_UNIT_SCALE
+}
+
+const resolvePlayerBalance = (playerRecord: Record<string, unknown>) => {
+  const rawBalance =
+    playerRecord.balance ??
+    playerRecord.money ??
+    playerRecord.cash ??
+    playerRecord.initialBalance ??
+    playerRecord.initial_balance ??
+    playerRecord.startBalance ??
+    playerRecord.start_balance ??
+    playerRecord.funds ??
+    playerRecord.capital
+
+  if (rawBalance == null) {
+    return DEFAULT_INITIAL_BALANCE
+  }
+
+  return normalizeMoneyToWon(rawBalance, DEFAULT_INITIAL_BALANCE)
 }
 
 const normalizeMoneyRecord = (record: Record<string, unknown>) => {
@@ -246,6 +266,20 @@ const normalizePromptChoice = (
   choice: unknown,
   fallbackIndex: number
 ): GamePromptChoice | null => {
+  if (typeof choice === 'string') {
+    const value = normalizePromptChoiceValue(choice)
+    if (!value) {
+      return null
+    }
+
+    return {
+      id: `${value.toLowerCase()}-${fallbackIndex}`,
+      label: value,
+      value,
+      description: undefined,
+    }
+  }
+
   if (!isRecord(choice)) {
     return null
   }
@@ -404,13 +438,7 @@ const normalizePlayerFromSnapshot = (
         playerRecord.tileId,
       0
     ),
-    balance: toFiniteInt(
-      normalizeMoneyToWon(
-        playerRecord.balance ?? playerRecord.money ?? playerRecord.cash,
-        0
-      ),
-      0
-    ),
+    balance: toFiniteInt(resolvePlayerBalance(playerRecord), 0),
     owned_tiles: normalizeOwnedTileIds(
       playerRecord.owned_tiles ?? playerRecord.ownedTiles
     ),

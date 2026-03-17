@@ -88,7 +88,15 @@ const PROMPT_CHOICE_RULES: Record<
     fallbackIndex: 1,
   },
   timerConfirm: {
-    preferredTokens: ['END_TURN', 'CONFIRM', 'OK', 'SKIP', 'PASS'],
+    preferredTokens: [
+      'ROLL_DICE',
+      'ROLL',
+      'CONFIRM',
+      'OK',
+      'END_TURN',
+      'SKIP',
+      'PASS',
+    ],
     fallbackIndex: 0,
   },
 }
@@ -199,12 +207,13 @@ export const findPromptChoiceValue = (
     return null
   }
 
-  const matchedChoice = choices.find((choice) =>
-    preferredTokens.some((token) => hasMatchedChoiceToken(choice, token))
-  )
-
-  if (matchedChoice) {
-    return matchedChoice.value
+  for (const token of preferredTokens) {
+    const matchedChoiceByToken = choices.find((choice) =>
+      hasMatchedChoiceToken(choice, token)
+    )
+    if (matchedChoiceByToken) {
+      return matchedChoiceByToken.value
+    }
   }
 
   if (

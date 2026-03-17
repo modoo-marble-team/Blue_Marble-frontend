@@ -67,6 +67,21 @@ const GAME_ID_REQUIRED_ERROR: GameError = {
   message: 'Game events must include a valid gameId.',
 }
 
+const toFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
 const getResolvedGameId = (gameId?: GameId | null): GameId | null => {
   const gameStore = useGameStore.getState()
   return gameId ?? gameStore.gameId ?? gameStore.session.gameId ?? null
@@ -98,14 +113,19 @@ export const setupGameHandlers = (
 
   const handleGamePatch = (payload: GamePatchPayload) => {
     const gameStore = useGameStore.getState()
+    const revision = toFiniteNumber(payload.revision) ?? 0
+    const turn = toFiniteNumber(payload.turn) ?? undefined
+    const normalizedPatchEnvelope = normalizePatchEnvelopePayload({
+      gameId: typeof payload.gameId === 'string' ? payload.gameId : undefined,
+      revision,
+      turn,
+      patch: Array.isArray(payload.patch) ? payload.patch : [],
+      events: Array.isArray(payload.events) ? payload.events : [],
+    })
 
     if (payload.snapshot) {
       const normalizedSnapshot = normalizeSnapshotPayload(payload.snapshot, {
-        envelopeRevision:
-          typeof payload.revision === 'number' &&
-          Number.isFinite(payload.revision)
-            ? payload.revision
-            : 0,
+        envelopeRevision: normalizedPatchEnvelope.revision,
         envelopeGameId:
           typeof payload.gameId === 'string' ? payload.gameId : undefined,
       })
@@ -119,22 +139,14 @@ export const setupGameHandlers = (
       }
 
       gameStore.replaceFromSnapshot(normalizedSnapshot)
+      const normalizedEvents = normalizedPatchEnvelope.events ?? []
+      if (normalizedEvents.length > 0) {
+        gameStore.enqueueEvents(normalizedEvents)
+      }
       return
     }
 
-    gameStore.applyPatchEnvelope(
-      normalizePatchEnvelopePayload({
-        gameId: typeof payload.gameId === 'string' ? payload.gameId : undefined,
-        revision:
-          typeof payload.revision === 'number' &&
-          Number.isFinite(payload.revision)
-            ? payload.revision
-            : 0,
-        turn: typeof payload.turn === 'number' ? payload.turn : undefined,
-        patch: Array.isArray(payload.patch) ? payload.patch : [],
-        events: Array.isArray(payload.events) ? payload.events : [],
-      })
-    )
+    gameStore.applyPatchEnvelope(normalizedPatchEnvelope)
   }
 
   const handleGamePrompt = (promptPayload: unknown) => {

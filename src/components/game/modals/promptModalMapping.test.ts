@@ -121,6 +121,19 @@ describe('promptModalMapping', () => {
     expect(resolvePromptChoiceValue(prompt, 'timerConfirm')).toBe('END_TURN')
   })
 
+  it('prioritizes ROLL_DICE over END_TURN for timer confirm choice', () => {
+    const prompt = createPrompt({
+      type: 'TURN_TIMEOUT',
+      timeoutSec: 15,
+      choices: [
+        { id: 'end-turn', label: '턴 종료', value: 'END_TURN' },
+        { id: 'roll', label: '주사위 굴리기', value: 'ROLL_DICE' },
+      ],
+    })
+
+    expect(resolvePromptChoiceValue(prompt, 'timerConfirm')).toBe('ROLL_DICE')
+  })
+
   it('returns fallback label when choice label is missing', () => {
     const prompt = createPrompt({
       choices: [{ id: 'buy', label: '구매하기', value: 'BUY' }],
