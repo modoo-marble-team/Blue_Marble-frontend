@@ -49,7 +49,7 @@ export function DesktopViewportGuard({
       </div>
 
       {!isDesktopViewport ? (
-        <div className="fixed inset-0 z-[999] flex min-h-screen items-center justify-center bg-ui-app-bg px-5 py-8">
+        <div className="fixed inset-0 z-999 flex min-h-screen items-center justify-center bg-ui-app-bg px-5 py-8">
           <div className="w-full max-w-md rounded-[32px] border border-ui-border bg-ui-surface px-7 py-8 text-center shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
             <div className="mx-auto flex size-18 items-center justify-center rounded-3xl bg-ui-brand-soft text-ui-brand">
               <MonitorCog className="size-9" strokeWidth={2.1} />
