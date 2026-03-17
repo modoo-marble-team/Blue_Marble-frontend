@@ -21,6 +21,7 @@ import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSock
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import { removeMockOnlineUser } from '../../features/presence/mockData'
 import { cn } from '../../lib/utils'
+import { disconnectSocketAndClearAuth } from '../../lib/socket'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { WaitingRoomHeader } from './components/WaitingRoomHeader'
 import { WaitingSeatCard } from './components/WaitingSeatCard'
@@ -188,6 +189,7 @@ function WaitingRoomPage() {
     }
 
     clearSession()
+    disconnectSocketAndClearAuth()
     navigate('/', { replace: true })
   }, [clearSession, leaveRoom, navigate, session])
 

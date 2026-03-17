@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { completeKakaoLogin, getAuthErrorMessage } from '../features/auth/api'
 import { useAuthStore } from '../features/auth/store'
+import { disconnectSocketAndClearAuth } from '../lib/socket'
 
 // 카카오 로그인 redirect query를 받아 세션 저장과 후속 이동을 처리
 function KakaoLoginCallbackPage() {
@@ -43,6 +44,7 @@ function KakaoLoginCallbackPage() {
         }
 
         clearSession()
+        disconnectSocketAndClearAuth()
         setErrorMessage(
           getAuthErrorMessage(error, '카카오 로그인 처리에 실패했습니다.')
         )
