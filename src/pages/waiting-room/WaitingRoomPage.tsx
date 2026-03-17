@@ -16,11 +16,7 @@ import {
 } from '../../components/header/profileMenu'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
-import {
-  getOnlineUserAvatarBackground,
-  getOnlineUserAvatarText,
-} from '../../features/presence/onlineUsersModel'
-import type { OnlineUser } from '../../features/presence/types'
+import { mergeOnlineUsersWithRoomPlayers } from '../../features/presence/onlineUsersModel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import { removeMockOnlineUser } from '../../features/presence/mockData'
@@ -127,33 +123,11 @@ function WaitingRoomPage() {
       return users
     }
 
-    const currentRoomStatus = room.status === 'playing' ? 'playing' : 'in_room'
-    const mergedUsersById = new Map<string, OnlineUser>(
-      users.map((user) => [user.id, user])
+    return mergeOnlineUsersWithRoomPlayers(
+      users,
+      room.players,
+      room.status === 'playing' ? 'playing' : 'in_room'
     )
-
-    room.players.forEach((player) => {
-      const existingUser = mergedUsersById.get(player.id)
-
-      if (existingUser) {
-        mergedUsersById.set(player.id, {
-          ...existingUser,
-          nickname: player.nickname,
-          status: currentRoomStatus,
-        })
-        return
-      }
-
-      mergedUsersById.set(player.id, {
-        id: player.id,
-        nickname: player.nickname,
-        status: currentRoomStatus,
-        avatarText: getOnlineUserAvatarText(player.nickname),
-        avatarBackground: getOnlineUserAvatarBackground(player.id),
-      })
-    })
-
-    return Array.from(mergedUsersById.values())
   }, [room, users])
 
   const {

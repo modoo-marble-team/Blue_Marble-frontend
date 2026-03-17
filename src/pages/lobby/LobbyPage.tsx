@@ -13,11 +13,7 @@ import {
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
-import {
-  getOnlineUserAvatarBackground,
-  getOnlineUserAvatarText,
-} from '../../features/presence/onlineUsersModel'
-import type { OnlineUser } from '../../features/presence/types'
+import { mergeOnlineUsersWithCurrentUser } from '../../features/presence/onlineUsersModel'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import {
@@ -81,28 +77,11 @@ function LobbyPage() {
       return users
     }
 
-    const usersById = new Map<string, OnlineUser>(
-      users.map((user) => [user.id, user])
-    )
-    const currentUser = usersById.get(session.userId)
-
-    if (currentUser) {
-      usersById.set(session.userId, {
-        ...currentUser,
-        nickname: session.nickname,
-        status: 'lobby',
-      })
-    } else {
-      usersById.set(session.userId, {
-        id: session.userId,
-        nickname: session.nickname,
-        status: 'lobby',
-        avatarText: getOnlineUserAvatarText(session.nickname),
-        avatarBackground: getOnlineUserAvatarBackground(session.userId),
-      })
-    }
-
-    return Array.from(usersById.values())
+    return mergeOnlineUsersWithCurrentUser(users, {
+      id: session.userId,
+      nickname: session.nickname,
+      status: 'lobby',
+    })
   }, [session, users])
 
   const {
