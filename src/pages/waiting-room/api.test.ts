@@ -14,16 +14,25 @@ function createAxiosLikeError(options: {
   detail?: string
   message?: string
 }) {
+  const responseData =
+    options.code || options.detail
+      ? {
+          code: options.code,
+          detail: options.detail,
+        }
+      : undefined
+
   return {
     isAxiosError: true,
     message: options.message ?? 'Request failed',
-    response: {
-      status: options.status,
-      data: {
-        code: options.code,
-        detail: options.detail,
-      },
-    },
+    request: {},
+    response:
+      options.status || responseData
+        ? {
+            status: options.status,
+            data: responseData,
+          }
+        : undefined,
   }
 }
 
@@ -77,6 +86,18 @@ describe('waiting-room api error mapping', () => {
     expect(
       getWaitingRoomErrorMessage(error, '대기방 정보를 불러오지 못했습니다.')
     ).toBe('대기방 정보를 불러오지 못했습니다.')
+  })
+
+  it('네트워크/CORS 오류는 공통 네트워크 메시지로 정리한다', () => {
+    const error = createAxiosLikeError({
+      message: 'Network Error',
+    })
+
+    expect(
+      getWaitingRoomErrorMessage(error, '대기방 입장에 실패했습니다.')
+    ).toBe(
+      '네트워크 오류가 발생했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요.'
+    )
   })
 })
 

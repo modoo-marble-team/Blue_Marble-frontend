@@ -26,6 +26,30 @@ export function useOnlineUsersSocket() {
 
   useEffect(() => {
     let isActive = true
+    let latestSnapshotRequestId = 0
+
+    async function syncOnlineUsersSnapshot() {
+      const requestId = latestSnapshotRequestId + 1
+      latestSnapshotRequestId = requestId
+
+      try {
+        const payloadUsers = await getOnlineUsersSnapshot()
+        if (!isActive || requestId !== latestSnapshotRequestId) {
+          return
+        }
+
+        setUsers(mapOnlineUsersToViewModel(payloadUsers))
+        setIsLoading(false)
+        setIsError(false)
+      } catch {
+        // REST 초기화 실패 시 소켓 실시간 수신으로 복구를 시도
+        if (!isActive || requestId !== latestSnapshotRequestId) {
+          return
+        }
+
+        setIsLoading(false)
+      }
+    }
 
     // 접속자 이벤트 수신 시 목록과 상태를 갱신
     const handleOnlineUsers = (payload: OnlineUsersEventPayload | unknown) => {
@@ -52,6 +76,15 @@ export function useOnlineUsersSocket() {
       setIsError(true)
     }
 
+    // 실제 연결 성공 뒤 최신 snapshot을 다시 읽어 현재 사용자 포함 여부를 맞춘다
+    const handleConnect = () => {
+      if (!isActive) {
+        return
+      }
+
+      void syncOnlineUsersSnapshot()
+    }
+
     // 연결 종료 상태를 에러로 표시
     const handleDisconnect = () => {
       if (!isActive) {
@@ -71,35 +104,19 @@ export function useOnlineUsersSocket() {
     if (isOnlineUsersSocketMockMode()) {
       stopMockBroadcast = startOnlineUsersMockBroadcast()
     } else {
-      // 초기 진입 시 REST 스냅샷으로 첫 목록을 확보
-      void getOnlineUsersSnapshot()
-        .then((payloadUsers) => {
-          if (!isActive) {
-            return
-          }
-
-          setUsers(mapOnlineUsersToViewModel(payloadUsers))
-          setIsLoading(false)
-          setIsError(false)
-        })
-        .catch(() => {
-          // REST 초기화 실패 시 소켓 실시간 수신으로 복구를 시도
-          if (!isActive) {
-            return
-          }
-
-          setIsLoading(false)
-        })
-
       // 실제 소켓 모드에서는 연결 오류/끊김 이벤트를 구독
+      socket.on('connect', handleConnect)
       socket.on('connect_error', handleConnectError)
       socket.on('disconnect', handleDisconnect)
       ensureOnlineUsersSocketConnection()
+      // 초기 진입 시 REST 스냅샷으로 첫 목록을 확보
+      void syncOnlineUsersSnapshot()
     }
 
     return () => {
       isActive = false
       socket.off(ONLINE_USERS_EVENT_NAME, handleOnlineUsers)
+      socket.off('connect', handleConnect)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)
       stopMockBroadcast()

@@ -22,8 +22,8 @@ export function useLobbyRoomsQuery(params: GetLobbyRoomsParams) {
 
     socket.on(LOBBY_UPDATED_EVENT, handleLobbyUpdated)
 
-    // 실제 소켓 모드에서만 연결 상태를 확인해 connect 실행
-    if (!USE_SOCKET_MOCK && !socket.connected) {
+    // 실제 소켓 모드에서는 현재 세션 토큰 기준으로 연결 상태를 재동기화
+    if (!USE_SOCKET_MOCK) {
       connectSocketWithAuthIfNeeded()
     }
 

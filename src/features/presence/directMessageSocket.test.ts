@@ -115,6 +115,18 @@ describe('directMessageSocket', () => {
     })
   })
 
+  it('real 모드에서 이미 연결된 상태여도 auth 재동기화를 시도한다', async () => {
+    const { module, connectSocketWithAuthIfNeededMock } =
+      await loadDirectMessageSocketModule(false, true)
+
+    module.sendDirectMessage({
+      receiverId: 'user-2',
+      message: '테스트',
+    })
+
+    expect(connectSocketWithAuthIfNeededMock).toHaveBeenCalledTimes(1)
+  })
+
   it('공백 메시지는 real/mock 모드 모두 전송하지 않는다', async () => {
     const { module: realModule, socket: realSocket } =
       await loadDirectMessageSocketModule(false)

@@ -61,10 +61,7 @@ function connectSocketIfNeeded() {
     return
   }
 
-  // 연결이 닫혀 있으면 명시적으로 연결
-  if (!socket.connected) {
-    connectSocketWithAuthIfNeeded()
-  }
+  connectSocketWithAuthIfNeeded()
 }
 
 // 대기방에서 필요한 소켓 이벤트를 한 번에 구독

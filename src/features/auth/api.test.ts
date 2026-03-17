@@ -19,7 +19,9 @@ import type { AuthSession } from './types'
 function createAxiosError({
   status,
   data,
-  message = 'request failed',
+  message = status
+    ? `Request failed with status code ${status}`
+    : 'Network Error',
 }: {
   status?: number
   data?: unknown
@@ -428,6 +430,19 @@ describe('auth api integration helpers', () => {
       '일반 오류'
     )
     expect(getAuthErrorMessage({}, '기본 메시지')).toBe('기본 메시지')
+  })
+
+  it('getAuthErrorMessage는 네트워크 오류를 공통 fallback 문구로 정리한다', () => {
+    expect(
+      getAuthErrorMessage(
+        createAxiosError({
+          message: 'Network Error',
+        }),
+        '게스트 로그인에 실패했습니다.'
+      )
+    ).toBe(
+      '네트워크 오류가 발생했습니다. 연결 상태를 확인한 뒤 다시 시도해 주세요.'
+    )
   })
 
   it('shouldClearAuthSession은 401 AxiosError만 true를 반환한다', () => {

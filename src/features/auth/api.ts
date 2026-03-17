@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios'
 import { IS_DEMO_MOCK_ENABLED } from '../../config/env'
-import { parseApiError } from '../../lib/apiError'
+import { getParsedApiErrorMessage, parseApiError } from '../../lib/apiError'
 import { apiClient } from '../../lib/axios'
 import {
   mockGuestLogin,
@@ -233,8 +233,7 @@ export async function setNickname(params: {
       return {
         ok: false,
         code: 'FORBIDDEN',
-        message:
-          parsedError.detail ?? parsedError.message ?? '권한이 없습니다.',
+        message: getParsedApiErrorMessage(parsedError, '권한이 없습니다.'),
       }
     }
 
@@ -245,10 +244,10 @@ export async function setNickname(params: {
       return {
         ok: false,
         code: 'DUPLICATE',
-        message:
-          parsedError.detail ??
-          parsedError.message ??
-          '이미 사용 중인 닉네임입니다.',
+        message: getParsedApiErrorMessage(
+          parsedError,
+          '이미 사용 중인 닉네임입니다.'
+        ),
       }
     }
 
@@ -256,20 +255,20 @@ export async function setNickname(params: {
       return {
         ok: false,
         code: 'INVALID_FORMAT',
-        message:
-          parsedError.detail ??
-          parsedError.message ??
-          '닉네임 형식이 올바르지 않습니다.',
+        message: getParsedApiErrorMessage(
+          parsedError,
+          '닉네임 형식이 올바르지 않습니다.'
+        ),
       }
     }
 
     return {
       ok: false,
       code: 'INVALID_FORMAT',
-      message:
-        parsedError.detail ??
-        parsedError.message ??
-        '닉네임 설정에 실패했습니다.',
+      message: getParsedApiErrorMessage(
+        parsedError,
+        '닉네임 설정에 실패했습니다.'
+      ),
     }
   }
 }
@@ -292,17 +291,16 @@ export async function getMyPageProfile(
     return {
       ok: false,
       code: 'FORBIDDEN',
-      message:
-        parsedError.detail ??
-        parsedError.message ??
-        '프로필 정보를 불러오지 못했습니다.',
+      message: getParsedApiErrorMessage(
+        parsedError,
+        '프로필 정보를 불러오지 못했습니다.'
+      ),
     }
   }
 }
 
 export function getAuthErrorMessage(error: unknown, fallbackMessage: string) {
-  const parsedError = parseApiError(error)
-  return parsedError.detail ?? parsedError.message ?? fallbackMessage
+  return getParsedApiErrorMessage(parseApiError(error), fallbackMessage)
 }
 
 export function shouldClearAuthSession(error: unknown) {

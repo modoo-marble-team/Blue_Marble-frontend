@@ -138,7 +138,7 @@ describe('onlineUsersSocket', () => {
     expect(listenerMock).toHaveBeenCalledTimes(2)
   })
 
-  it('ensureOnlineUsersSocketConnection은 미연결 상태에서만 connect를 호출한다', async () => {
+  it('ensureOnlineUsersSocketConnection은 연결 상태와 무관하게 auth 기준 재동기화를 시도한다', async () => {
     const disconnected = await loadOnlineUsersSocketModule(true, false)
     disconnected.module.ensureOnlineUsersSocketConnection()
 
@@ -149,6 +149,6 @@ describe('onlineUsersSocket', () => {
     const connected = await loadOnlineUsersSocketModule(true, true)
     connected.module.ensureOnlineUsersSocketConnection()
 
-    expect(connected.connectSocketWithAuthIfNeededMock).not.toHaveBeenCalled()
+    expect(connected.connectSocketWithAuthIfNeededMock).toHaveBeenCalledTimes(1)
   })
 })
