@@ -289,10 +289,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     )
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
-    const rolling = false
     const [status, setStatus] = useState(GAME_START_STATUS)
     const [eventFxKind, setEventFxKind] =
       useState<BoardEventAnimationKind>('none')
+    const rolling = eventFxKind === 'dice'
     const boardPageRef = useRef<HTMLDivElement | null>(null)
     const boardStatusRef = useRef<HTMLDivElement | null>(null)
     const [boardScale, setBoardScale] = useState(1)

@@ -94,6 +94,28 @@ const getPayloadNumber = (
   return null
 }
 
+const getEventRecord = (event: ServerEvent): Record<string, unknown> =>
+  event as unknown as Record<string, unknown>
+
+const getEventNumber = (event: ServerEvent, keys: string[]) => {
+  const eventRecord = getEventRecord(event)
+
+  for (const key of keys) {
+    const raw = eventRecord[key]
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return raw
+    }
+    if (typeof raw === 'string' && raw.trim() !== '') {
+      const parsed = Number.parseFloat(raw)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
 const resolvePlayerName = (
   players: PlayerState[],
   playerId: ServerEvent['playerId']
@@ -121,6 +143,11 @@ const resolveTileIndex = (event: ServerEvent) => {
     return event.tileIndex
   }
 
+  const eventLevelIndex = getEventNumber(event, ['toTileId', 'tileId'])
+  if (eventLevelIndex != null) {
+    return eventLevelIndex
+  }
+
   const payload = event.payload
   if (!payload) {
     return null
@@ -138,19 +165,26 @@ export const extractEventDice = (
   }
 
   const payload = event.payload
-  if (!payload) {
-    return null
-  }
 
   let first: number | null = null
   let second: number | null = null
 
-  if (Array.isArray(payload.dice) && payload.dice.length >= 2) {
-    first = Number(payload.dice[0])
-    second = Number(payload.dice[1])
+  const eventRecord = getEventRecord(event)
+  const payloadDice = Array.isArray(payload?.dice) ? payload.dice : null
+
+  if (Array.isArray(eventRecord.dice) && eventRecord.dice.length >= 2) {
+    first = Number(eventRecord.dice[0])
+    second = Number(eventRecord.dice[1])
+  } else if (payloadDice && payloadDice.length >= 2) {
+    first = Number(payloadDice[0])
+    second = Number(payloadDice[1])
   } else {
-    first = getPayloadNumber(payload, ['dice1', 'dice_1', 'firstDice', 'd1'])
-    second = getPayloadNumber(payload, ['dice2', 'dice_2', 'secondDice', 'd2'])
+    first =
+      getEventNumber(event, ['dice1', 'dice_1', 'firstDice', 'd1']) ??
+      getPayloadNumber(payload, ['dice1', 'dice_1', 'firstDice', 'd1'])
+    second =
+      getEventNumber(event, ['dice2', 'dice_2', 'secondDice', 'd2']) ??
+      getPayloadNumber(payload, ['dice2', 'dice_2', 'secondDice', 'd2'])
   }
 
   if (first == null || second == null) {
@@ -171,6 +205,7 @@ export const createBoardStatusFromEvent = (
   if (normalizedType === 'DICE_ROLLED') {
     const dice = extractEventDice(event)
     const total =
+      getEventNumber(event, ['total']) ??
       getPayloadNumber(event.payload, ['total']) ??
       (dice ? dice[0] + dice[1] : null)
 
@@ -195,7 +230,8 @@ export const createBoardStatusFromEvent = (
     const amount =
       typeof event.amount === 'number'
         ? event.amount
-        : (getPayloadNumber(event.payload, ['amount', 'toll', 'tollAmount']) ??
+        : (getEventNumber(event, ['amount', 'toll', 'tollAmount']) ??
+          getPayloadNumber(event.payload, ['amount', 'toll', 'tollAmount']) ??
           0)
     return `${playerName}님이 통행료 ${formatWon(amount)}을 지불했습니다.`
   }

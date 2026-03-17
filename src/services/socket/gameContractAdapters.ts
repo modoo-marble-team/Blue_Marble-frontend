@@ -6,6 +6,7 @@ import type {
   GameSnapshot,
   Player,
   PlayerId,
+  ServerEvent,
   Tile,
 } from '../../types/domain'
 
@@ -22,6 +23,30 @@ type SnapshotNormalizeOptions = {
 
 const DEFAULT_TURN_TIMEOUT_SEC = 30
 const DEFAULT_PLAYER_COLOR = '#94A3B8'
+const MONEY_UNIT_SCALE = 10_000
+const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
+const MONEY_KEYS = new Set([
+  'amount',
+  'balance',
+  'buyoutCost',
+  'buyout_cost',
+  'cash',
+  'cost',
+  'landPrice',
+  'land_price',
+  'money',
+  'price',
+  'purchaseCost',
+  'purchase_cost',
+  'refund',
+  'sellPrice',
+  'sell_price',
+  'toll',
+  'tollAmount',
+  'toll_amount',
+  'acquisitionCost',
+  'acquisition_cost',
+])
 
 const PHASE_TO_INTERNAL_MAP: Record<string, GameSnapshot['phase']> = {
   WAIT_ROLL: 'rolling',
@@ -91,6 +116,79 @@ const toPlayerIdOrNull = (value: unknown): PlayerId | null => {
 
 const toPlayerId = (value: unknown, fallback: PlayerId): PlayerId =>
   toPlayerIdOrNull(value) ?? fallback
+
+const normalizeMoneyToWon = (value: unknown, fallback = 0) => {
+  const raw = toFiniteInt(value, fallback)
+
+  if (!Number.isFinite(raw) || raw === 0) {
+    return 0
+  }
+
+  if (Math.abs(raw) >= MONEY_ALREADY_WON_THRESHOLD) {
+    return raw
+  }
+
+  return raw * MONEY_UNIT_SCALE
+}
+
+const normalizeMoneyRecord = (record: Record<string, unknown>) => {
+  const normalized: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(record)) {
+    if (MONEY_KEYS.has(key)) {
+      normalized[key] = normalizeMoneyToWon(value, 0)
+      continue
+    }
+
+    normalized[key] = value
+  }
+
+  return normalized
+}
+
+const normalizeServerEvent = (eventPayload: unknown): ServerEvent | null => {
+  if (!isRecord(eventPayload)) {
+    return null
+  }
+
+  const eventType =
+    toStringOrNull(eventPayload.type) ??
+    toStringOrNull(eventPayload.eventType) ??
+    toStringOrNull(eventPayload.event_type) ??
+    ''
+
+  if (!eventType) {
+    return null
+  }
+
+  const payloadRecord =
+    eventPayload.payload && isRecord(eventPayload.payload)
+      ? normalizeMoneyRecord(eventPayload.payload)
+      : undefined
+
+  const normalizedAmountRaw =
+    eventPayload.amount ?? eventPayload.toll ?? eventPayload.tollAmount
+  const normalizedAmount =
+    normalizedAmountRaw !== undefined
+      ? normalizeMoneyToWon(normalizedAmountRaw, 0)
+      : undefined
+
+  return {
+    ...eventPayload,
+    id: toStringOrNull(eventPayload.id) ?? undefined,
+    type: eventType,
+    playerId:
+      toPlayerIdOrNull(eventPayload.playerId) ??
+      toPlayerIdOrNull(eventPayload.fromPlayerId) ??
+      toPlayerIdOrNull(eventPayload.from_player_id) ??
+      toPlayerIdOrNull(eventPayload.player_id) ??
+      null,
+    tileIndex:
+      toFiniteNumber(eventPayload.tileIndex ?? eventPayload.toTileId) ?? null,
+    amount: normalizedAmount,
+    payload: payloadRecord,
+  }
+}
 
 const normalizeTileType = (value: unknown): Tile['type'] => {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -190,10 +288,13 @@ export const normalizePromptPayload = (
     return null
   }
 
-  const payloadRecord =
+  const payloadRecordRaw =
     promptCompatPayload.payload && isRecord(promptCompatPayload.payload)
       ? promptCompatPayload.payload
       : undefined
+  const payloadRecord = payloadRecordRaw
+    ? normalizeMoneyRecord(payloadRecordRaw)
+    : undefined
 
   const timeoutSecFromPayload = toFiniteNumber(
     payloadRecord ? payloadRecord.timeoutSec : undefined
@@ -222,8 +323,8 @@ export const normalizePromptPayload = (
     : undefined
   const normalizedPromptPlayerId =
     toPlayerIdOrNull(promptCompatPayload.playerId) ??
-    toPlayerIdOrNull(payloadRecord?.playerId) ??
-    toPlayerIdOrNull(payloadRecord?.player_id)
+    toPlayerIdOrNull(payloadRecordRaw?.playerId) ??
+    toPlayerIdOrNull(payloadRecordRaw?.player_id)
 
   return {
     id: promptId,
@@ -304,7 +405,10 @@ const normalizePlayerFromSnapshot = (
       0
     ),
     balance: toFiniteInt(
-      playerRecord.balance ?? playerRecord.money ?? playerRecord.cash,
+      normalizeMoneyToWon(
+        playerRecord.balance ?? playerRecord.money ?? playerRecord.cash,
+        0
+      ),
       0
     ),
     owned_tiles: normalizeOwnedTileIds(
@@ -363,14 +467,21 @@ const normalizeTileFromSnapshot = (
     name: toStringOrNull(tileRecord.name) ?? `Tile ${index}`,
     type: normalizeTileType(tileTypeRaw),
     transportType: normalizeTransportTileType(tileTypeRaw),
-    price:
-      toFiniteNumber(
+    price: (() => {
+      const rawPrice =
         tileRecord.price ??
-          tileRecord.landPrice ??
-          tileRecord.purchasePrice ??
-          tileRecord.purchase_price ??
-          tileRecord.cost
-      ) ?? undefined,
+        tileRecord.landPrice ??
+        tileRecord.purchasePrice ??
+        tileRecord.purchase_price ??
+        tileRecord.cost
+
+      const normalizedPrice = toFiniteNumber(rawPrice)
+      if (normalizedPrice == null) {
+        return undefined
+      }
+
+      return normalizeMoneyToWon(normalizedPrice, 0)
+    })(),
     color: toStringOrNull(tileRecord.color) ?? undefined,
   }
 }
@@ -527,7 +638,11 @@ const normalizePatchSetValue = (
   }
 
   if (lastSegment === 'balance') {
-    return toFiniteInt(value, 0)
+    return normalizeMoneyToWon(value, 0)
+  }
+
+  if (lastSegment === 'price') {
+    return normalizeMoneyToWon(value, 0)
   }
 
   if (lastSegment === 'building') {
@@ -544,12 +659,25 @@ const normalizePatchSetValue = (
 const normalizePatchOperation = (operation: GamePatchOperation) => {
   const pathSegments = toPathSegments(operation.path).map(normalizePathSegment)
   const path = toPathLike(operation.path, pathSegments)
+  const lastSegment = pathSegments[pathSegments.length - 1]
 
   if (operation.op === 'set') {
     return {
       ...operation,
       path,
       value: normalizePatchSetValue(pathSegments, operation.value),
+    } as GamePatchOperation
+  }
+
+  if (operation.op === 'inc') {
+    const normalizedValue =
+      lastSegment === 'balance' || lastSegment === 'price'
+        ? normalizeMoneyToWon(operation.value, 0)
+        : toFiniteInt(operation.value, 0)
+    return {
+      ...operation,
+      path,
+      value: normalizedValue,
     } as GamePatchOperation
   }
 
@@ -567,5 +695,9 @@ export const normalizePatchEnvelopePayload = (
   patch: Array.isArray(payload.patch)
     ? payload.patch.map(normalizePatchOperation)
     : [],
-  events: Array.isArray(payload.events) ? payload.events : [],
+  events: Array.isArray(payload.events)
+    ? payload.events
+        .map(normalizeServerEvent)
+        .filter((event): event is ServerEvent => event !== null)
+    : [],
 })

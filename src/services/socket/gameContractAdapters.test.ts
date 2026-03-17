@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { ServerEvent } from '../../types/domain'
 import {
   normalizePatchEnvelopePayload,
   normalizePromptPayload,
@@ -96,6 +97,7 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players[0]).toMatchObject({
       id: 'player-1',
       position: 7,
+      balance: 3000000,
       owned_tiles: [2, 4],
       state: 'locked',
       is_in_jail: true,
@@ -108,6 +110,7 @@ describe('gameContractAdapters', () => {
       building: 3,
       type: 'property',
       transportType: 'PROPERTY',
+      price: 500000,
     })
     expect(normalized?.prompt).toMatchObject({
       id: 'prompt-1',
@@ -164,7 +167,7 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players[0]).toMatchObject({
       id: 105,
       position: 8,
-      balance: 210,
+      balance: 2100000,
       owned_tiles: [3, 5],
     })
     expect(normalized?.tiles[0]).toMatchObject({
@@ -207,13 +210,13 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players).toHaveLength(1)
     expect(normalized?.players[0]).toMatchObject({
       id: 'user-a',
-      balance: 300,
+      balance: 3000000,
     })
     expect(normalized?.tiles).toHaveLength(1)
     expect(normalized?.tiles[0]).toMatchObject({
       index: 1,
       type: 'property',
-      price: 50,
+      price: 500000,
     })
   })
 
@@ -324,7 +327,7 @@ describe('gameContractAdapters', () => {
       {
         op: 'set',
         path: 'players.0.balance',
-        value: 450,
+        value: 4500000,
       },
       {
         op: 'set',
@@ -346,6 +349,61 @@ describe('gameContractAdapters', () => {
           ],
           payload: undefined,
         },
+      },
+    ])
+  })
+
+  it('normalizes patch inc money values and event aliases from real payload', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-4',
+      revision: 90,
+      patch: [
+        {
+          op: 'inc',
+          path: 'players.1.money',
+          value: 5000,
+        },
+      ],
+      events: [
+        {
+          eventType: 'DICE_ROLLED',
+          playerId: '1',
+          dice: [3, 2],
+        } as unknown as ServerEvent,
+        {
+          type: 'PAID_TOLL',
+          fromPlayerId: '2',
+          amount: 3500,
+        } as unknown as ServerEvent,
+      ],
+    })
+
+    expect(normalized.patch).toEqual([
+      {
+        op: 'inc',
+        path: 'players.1.balance',
+        value: 50000000,
+      },
+    ])
+    expect(normalized.events).toEqual([
+      {
+        eventType: 'DICE_ROLLED',
+        playerId: '1',
+        dice: [3, 2],
+        id: undefined,
+        type: 'DICE_ROLLED',
+        tileIndex: null,
+        amount: undefined,
+        payload: undefined,
+      },
+      {
+        type: 'PAID_TOLL',
+        fromPlayerId: '2',
+        id: undefined,
+        playerId: '2',
+        tileIndex: null,
+        amount: 35000000,
+        payload: undefined,
       },
     ])
   })
