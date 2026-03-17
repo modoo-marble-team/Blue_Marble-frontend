@@ -119,7 +119,20 @@ const toPlayerId = (value: unknown, fallback: PlayerId): PlayerId =>
   toPlayerIdOrNull(value) ?? fallback
 
 const normalizeMoneyToWon = (value: unknown, fallback = 0) => {
-  const raw = toFiniteInt(value, fallback)
+  const numericValue = toFiniteNumber(value)
+
+  if (numericValue == null) {
+    const fallbackInt = Math.trunc(fallback)
+    if (!Number.isFinite(fallbackInt) || fallbackInt === 0) {
+      return 0
+    }
+    if (Math.abs(fallbackInt) >= MONEY_ALREADY_WON_THRESHOLD) {
+      return fallbackInt
+    }
+    return fallbackInt * MONEY_UNIT_SCALE
+  }
+
+  const raw = Math.trunc(numericValue)
 
   if (!Number.isFinite(raw) || raw === 0) {
     return 0
