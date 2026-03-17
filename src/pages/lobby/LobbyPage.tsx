@@ -138,7 +138,7 @@ function LobbyPage() {
   })
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-ui-app-bg">
+    <div className="relative min-h-screen bg-ui-app-bg">
       <div className="pointer-events-none absolute inset-x-0 bottom-0 top-14">
         <img
           src="/LobbyPage_background.webp"
