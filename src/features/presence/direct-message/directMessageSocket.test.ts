@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { DirectMessageReceiveSocketPayload } from './types'
+import type { DirectMessageReceiveSocketPayload } from '../types'
 
 interface MockSocket {
   connected: boolean
@@ -49,7 +49,7 @@ async function loadDirectMessageSocketModule(
     socket.connected = true
   })
 
-  vi.doMock('../../lib/socket', () => ({
+  vi.doMock('../../../lib/socket', () => ({
     socket,
     connectSocketWithAuthIfNeeded: connectSocketWithAuthIfNeededMock,
   }))

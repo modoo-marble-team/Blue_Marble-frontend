@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AuthSession } from '../auth/types'
+import type { AuthSession } from '../../auth/types'
 import {
   sendDirectMessage as sendDirectMessageSocket,
   subscribeDirectMessageSocketEvents,
 } from './directMessageSocket'
-import { isDirectMessageAllowed } from './status'
+import { isDirectMessageAllowed } from '../status'
 import type {
   DirectMessage,
   DirectMessageReceiveSocketPayload,
   OnlineUser,
-} from './types'
+} from '../types'
 
 // DM 컨트롤러 훅 입력값 타입
 interface UseDirectMessageControllerParams {
