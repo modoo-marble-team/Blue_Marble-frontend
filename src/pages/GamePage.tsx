@@ -267,7 +267,7 @@ const GamePage: React.FC = () => {
         />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.34),transparent_30%),linear-gradient(180deg,rgba(250,248,240,0.38),rgba(250,248,240,0.5))]" />
       </div>
-      <div className="absolute left-6 top-6 z-[70]">
+      <div className="absolute left-6 top-6 z-70">
         <button
           type="button"
           aria-label="나가기"
@@ -277,7 +277,7 @@ const GamePage: React.FC = () => {
           <ArrowLeft size={20} />
         </button>
       </div>
-      <div className="absolute right-6 top-6 z-20 flex w-[340px] flex-col gap-2">
+      <div className="absolute right-6 top-6 z-20 flex w-85 flex-col gap-2">
         {isActionPending && (
           <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs font-semibold text-[#1D4ED8]">
             Pending action: {pendingAction.type}
