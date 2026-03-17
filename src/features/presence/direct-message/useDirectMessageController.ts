@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AuthSession } from '../../auth/types'
+import type { AuthSession } from '../../auth/session/types'
 import {
   sendDirectMessage as sendDirectMessageSocket,
   subscribeDirectMessageSocketEvents,

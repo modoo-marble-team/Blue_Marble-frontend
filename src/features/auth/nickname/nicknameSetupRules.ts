@@ -1,4 +1,4 @@
-import type { NicknameValidationResult } from './types'
+import type { NicknameValidationResult } from '../session/types'
 
 export const NICKNAME_CHECK_DEBOUNCE_MS = 0
 export const VALIDATION_MESSAGE_DEBOUNCE_MS = 500

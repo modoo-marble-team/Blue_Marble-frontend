@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAuthSessionFixture } from '../../../test/fixtures'
+import { createAuthSessionFixture } from '../../../../test/fixtures'
 import { useAuthStore } from '../store'
 import { useAuthBootstrap } from './useAuthBootstrap'
 
@@ -11,7 +11,7 @@ const { restoreAuthSessionMock, shouldClearAuthSessionMock } = vi.hoisted(
   })
 )
 
-vi.mock('../api', () => ({
+vi.mock('../../api/api', () => ({
   restoreAuthSession: restoreAuthSessionMock,
   shouldClearAuthSession: shouldClearAuthSessionMock,
 }))

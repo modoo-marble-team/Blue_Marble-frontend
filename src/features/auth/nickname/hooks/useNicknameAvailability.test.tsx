@@ -31,7 +31,7 @@ afterEach(() => {
 
 describe('useNicknameAvailability (mock mode)', () => {
   it('mock 모드에서는 debounce 후 중복 확인 결과를 반영한다', async () => {
-    vi.doMock('../api', () => ({
+    vi.doMock('../../api/api', () => ({
       IS_AUTH_MOCK_ENABLED: true,
     }))
 
@@ -40,7 +40,7 @@ describe('useNicknameAvailability (mock mode)', () => {
       isAvailable: false,
     })
 
-    vi.doMock('../mockApi', () => ({
+    vi.doMock('../../api/mockApi', () => ({
       mockCheckNicknameAvailability,
     }))
 

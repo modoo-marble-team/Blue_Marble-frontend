@@ -1,4 +1,8 @@
-import type { AuthSession, MyPageProfileResult, MyPageStats } from '../types'
+import type {
+  AuthSession,
+  MyPageProfileResult,
+  MyPageStats,
+} from '../session/types'
 import { MOCK_AUTH_DELAY_MS } from './constants'
 import { delay } from './helpers'
 import { getOrCreateMockKakaoUser } from './storage'

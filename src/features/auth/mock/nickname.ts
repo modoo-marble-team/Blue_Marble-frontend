@@ -2,7 +2,7 @@ import type {
   AuthSession,
   NicknameAvailabilityResult,
   NicknameSetResult,
-} from '../types'
+} from '../session/types'
 import { MOCK_AUTH_DELAY_MS, MOCK_NICKNAME_CHECK_DELAY_MS } from './constants'
 import { delay } from './helpers'
 import {
@@ -11,7 +11,7 @@ import {
   isTakenNickname,
   persistMockKakaoNickname,
 } from './storage'
-import { validateNickname } from '../validation'
+import { validateNickname } from '../nickname/validation'
 
 interface MockSetNicknameParams {
   session: AuthSession

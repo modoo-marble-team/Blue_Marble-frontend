@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { getMyPageProfile } from '../api'
-import type { AuthSession } from '../types'
+import { getMyPageProfile } from '../../api/api'
+import type { AuthSession } from '../../session/types'
 
 const MY_PAGE_PROFILE_STALE_TIME_MS = 30_000
 

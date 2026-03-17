@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { IS_AUTH_MOCK_ENABLED } from '../api'
-import { mockCheckNicknameAvailability } from '../mockApi'
+import { IS_AUTH_MOCK_ENABLED } from '../../api/api'
+import { mockCheckNicknameAvailability } from '../../api/mockApi'
 import { NICKNAME_CHECK_DEBOUNCE_MS } from '../nicknameSetupRules'
-import type { NicknameValidationResult } from '../types'
+import type { NicknameValidationResult } from '../../session/types'
 import { validateNickname } from '../validation'
 
 interface UseNicknameAvailabilityResult {

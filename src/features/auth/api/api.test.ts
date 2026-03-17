@@ -1,6 +1,6 @@
 import { AxiosError } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiClient } from '../../lib/axios'
+import { apiClient } from '../../../lib/axios'
 import {
   buildAuthSession,
   completeKakaoLogin,
@@ -14,7 +14,7 @@ import {
   shouldClearAuthSession,
   startKakaoLogin,
 } from './api'
-import type { AuthSession } from './types'
+import type { AuthSession } from '../session/types'
 
 function createAxiosError({
   status,

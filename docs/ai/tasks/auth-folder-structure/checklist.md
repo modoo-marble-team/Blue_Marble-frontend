@@ -1,0 +1,7 @@
+- [x] `auth-folder-structure` 작업 범위와 제외 범위를 문서로 고정했다
+- [x] `src/features/auth` 파일을 책임 단위 폴더로 재배치했다
+- [x] 관련 import / `vi.mock()` 경로를 모두 갱신했다
+- [x] 관련 Vitest를 실행했다
+- [x] `npm run lint` 대상 범위를 실행했다
+- [x] `npm run build`를 실행했다
+- [x] 기능 변경 없이 구조만 바뀌었는지 최종 확인했다

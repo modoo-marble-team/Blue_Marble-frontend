@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
-import type { AuthSession } from '../../features/auth/types'
+import type { AuthSession } from '../../features/auth/session/types'
 import type { CreateRoomFormValues } from './CreateRoomModal'
 import {
   createWaitingRoom,

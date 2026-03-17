@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import type { AuthSession } from '../../../features/auth/types'
+import type { AuthSession } from '../../../features/auth/session/types'
 import { requestOnlineUsersSnapshotSync } from '../../../features/presence/online-users/onlineUsersSocket'
 import { mapWaitingRoomSnapshotPayload } from '../api/api'
 import { subscribeWaitingRoomSocketEvents } from '../socket/socket'

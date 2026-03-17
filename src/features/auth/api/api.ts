@@ -1,7 +1,7 @@
 import { isAxiosError } from 'axios'
-import { IS_DEMO_MOCK_ENABLED } from '../../config/env'
-import { getParsedApiErrorMessage, parseApiError } from '../../lib/apiError'
-import { apiClient } from '../../lib/axios'
+import { IS_DEMO_MOCK_ENABLED } from '../../../config/env'
+import { getParsedApiErrorMessage, parseApiError } from '../../../lib/apiError'
+import { apiClient } from '../../../lib/axios'
 import {
   mockGuestLogin,
   mockGetMyPageProfile,
@@ -14,7 +14,7 @@ import type {
   MyPageProfile,
   MyPageProfileResult,
   NicknameSetResult,
-} from './types'
+} from '../session/types'
 
 export const KAKAO_LOGIN_CALLBACK_PATH = '/auth/kakao/callback'
 export const IS_AUTH_MOCK_ENABLED = IS_DEMO_MOCK_ENABLED

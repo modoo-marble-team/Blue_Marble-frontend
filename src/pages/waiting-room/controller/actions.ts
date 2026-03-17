@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
-import type { AuthSession } from '../../../features/auth/types'
+import type { AuthSession } from '../../../features/auth/session/types'
 import {
   getWaitingRoomErrorMessage,
   leaveWaitingRoom,

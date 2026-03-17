@@ -1,4 +1,4 @@
-import type { NicknameValidationResult } from './types'
+import type { NicknameValidationResult } from '../session/types'
 
 export const NICKNAME_PATTERN = /^[A-Za-z0-9가-힣]{2,10}$/
 export const NICKNAME_WHITESPACE_ERROR_MESSAGE = '공백은 사용할 수 없습니다.'

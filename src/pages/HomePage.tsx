@@ -13,9 +13,9 @@ import {
   getAuthErrorMessage,
   loginAsGuest,
   startKakaoLogin,
-} from '../features/auth/api'
-import { useRedirectAuthenticatedToLobby } from '../features/auth/hooks/useRedirectAuthenticatedToLobby'
-import { useAuthStore } from '../features/auth/store'
+} from '../features/auth/api/api'
+import { useRedirectAuthenticatedToLobby } from '../features/auth/session/hooks/useRedirectAuthenticatedToLobby'
+import { useAuthStore } from '../features/auth/session/store'
 
 // 홈 하단 기능 소개 카드 메타데이터
 const featureCards = [

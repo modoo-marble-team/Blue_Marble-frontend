@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createAuthSessionFixture } from '../../../test/fixtures'
+import { createAuthSessionFixture } from '../../../../test/fixtures'
 import { useRedirectAuthenticatedToLobby } from './useRedirectAuthenticatedToLobby'
 
 const { navigateMock } = vi.hoisted(() => ({

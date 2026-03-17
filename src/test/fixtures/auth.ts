@@ -1,4 +1,4 @@
-import type { AuthSession } from '../../features/auth/types'
+import type { AuthSession } from '../../features/auth/session/types'
 
 // 인증 세션 fixture 생성
 export function createAuthSessionFixture(

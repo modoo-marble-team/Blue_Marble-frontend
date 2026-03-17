@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { AuthSession } from '../../../features/auth/types'
+import type { AuthSession } from '../../../features/auth/session/types'
 import type {
   GameStartEventPayload,
   WaitingRoomChatMessage,

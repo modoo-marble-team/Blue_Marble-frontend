@@ -1,6 +1,6 @@
 import { ArrowLeft, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useNicknameSetupForm } from '../features/auth/hooks/useNicknameSetupForm'
+import { useNicknameSetupForm } from '../features/auth/nickname/hooks/useNicknameSetupForm'
 
 // 최초 닉네임 설정 폼 화면 렌더링
 function NicknameSetupPage() {

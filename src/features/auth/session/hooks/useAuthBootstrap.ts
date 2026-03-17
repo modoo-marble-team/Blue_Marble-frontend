@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { restoreAuthSession, shouldClearAuthSession } from '../api'
+import { restoreAuthSession, shouldClearAuthSession } from '../../api/api'
 import { useAuthStore } from '../store'
-import { disconnectSocketAndClearAuth } from '../../../lib/socket'
+import { disconnectSocketAndClearAuth } from '../../../../lib/socket'
 
 interface UseAuthBootstrapParams {
   skip?: boolean

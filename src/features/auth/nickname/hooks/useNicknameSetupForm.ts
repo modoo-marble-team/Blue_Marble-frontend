@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useRequireNicknameSetupSession } from './useRequireNicknameSetupSession'
-import { setNickname as submitNickname } from '../api'
+import { useRequireNicknameSetupSession } from '../../session/hooks/useRequireNicknameSetupSession'
+import { setNickname as submitNickname } from '../../api/api'
 import {
   createNicknameHelperFeedback,
   VALIDATION_MESSAGE_DEBOUNCE_MS,
 } from '../nicknameSetupRules'
-import { useAuthStore } from '../store'
+import { useAuthStore } from '../../session/store'
 import { useNicknameAvailability } from './useNicknameAvailability'
 
 // 닉네임 설정 화면의 입력/검증/제출 상태를 통합 관리
