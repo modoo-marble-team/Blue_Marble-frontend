@@ -1,8 +1,8 @@
 import { ArrowLeft, Frown, Gamepad2, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useRequireActiveSession } from '../features/auth/hooks/useRequireActiveSession'
-import { useAuthStore } from '../features/auth/store'
-import { useMyPageProfileQuery } from '../features/auth/hooks/useMyPageProfileQuery'
+import { useRequireActiveSession } from '../features/auth/session/hooks/useRequireActiveSession'
+import { useAuthStore } from '../features/auth/session/store'
+import { useMyPageProfileQuery } from '../features/auth/profile/hooks/useMyPageProfileQuery'
 import { Avatar } from '../components/avatar/Avatar'
 import { getAvatarBackground } from '../components/header/profileMenu'
 
