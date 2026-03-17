@@ -49,13 +49,16 @@ vi.mock('./hooks', () => ({
   useLobbyRoomsQuery: useLobbyRoomsQueryMock,
 }))
 
-vi.mock('../../features/presence/useOnlineUsersSocket', () => ({
+vi.mock('../../features/presence/online-users/useOnlineUsersSocket', () => ({
   useOnlineUsersSocket: useOnlineUsersSocketMock,
 }))
 
-vi.mock('../../features/presence/useDirectMessageController', () => ({
-  useDirectMessageController: useDirectMessageControllerMock,
-}))
+vi.mock(
+  '../../features/presence/direct-message/useDirectMessageController',
+  () => ({
+    useDirectMessageController: useDirectMessageControllerMock,
+  })
+)
 
 vi.mock('../../lib/socket', () => ({
   disconnectSocketAndClearAuth: disconnectSocketAndClearAuthMock,

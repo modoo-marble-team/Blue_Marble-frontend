@@ -25,7 +25,7 @@ vi.mock('../socket', () => ({
   enterWaitingRoomSocket: enterWaitingRoomSocketMock,
 }))
 
-vi.mock('../../../features/presence/onlineUsersSocket', () => ({
+vi.mock('../../../features/presence/online-users/onlineUsersSocket', () => ({
   requestOnlineUsersSnapshotSync: requestOnlineUsersSnapshotSyncMock,
 }))
 

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '../../../lib/utils'
-import { emitDirectMessageReceiveMockForDev } from '../directMessageSocket'
-import { setMockOnlineUserStatus } from '../mockData'
+import { emitDirectMessageReceiveMockForDev } from '../direct-message/directMessageSocket'
+import { setMockOnlineUserStatus } from '../mock/mockData'
 import {
   emitMockOnlineUsersSnapshot,
   isOnlineUsersSocketMockMode,
-} from '../onlineUsersSocket'
+} from '../online-users/onlineUsersSocket'
 import type { OnlineUser, OnlineUserStatus } from '../types'
 
 // DEV 접속자 제어 패널 입력값 타입

@@ -1,5 +1,5 @@
 import { delay, http, HttpResponse } from 'msw'
-import { getMockOnlineUsersSnapshot } from '../features/presence/mockData'
+import { getMockOnlineUsersSnapshot } from '../features/presence/mock/mockData'
 import type { LobbyRoomPayload, LobbyRoomStatus } from '../pages/lobby/types'
 import { getMockLobbyRooms } from '../pages/waiting-room/mockGateway'
 import { gameHandlers } from './handlers/game.handler'

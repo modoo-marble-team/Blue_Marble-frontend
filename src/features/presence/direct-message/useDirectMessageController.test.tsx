@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createAuthSessionFixture,
   createOnlineUserFixture,
-} from '../../test/fixtures'
+} from '../../../test/fixtures'
 import { useDirectMessageController } from './useDirectMessageController'
-import type { OnlineUser } from './types'
+import type { OnlineUser } from '../types'
 
 const {
   sendDirectMessageSocketMock,

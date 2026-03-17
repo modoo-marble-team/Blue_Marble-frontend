@@ -3,9 +3,9 @@ import type {
   OnlineUser,
   OnlineUserStatus,
 } from '../../../features/presence/types'
-import { emitDirectMessageReceiveMockForDev } from '../../../features/presence/directMessageSocket'
-import { setMockOnlineUserStatus } from '../../../features/presence/mockData'
-import { emitMockOnlineUsersSnapshot } from '../../../features/presence/onlineUsersSocket'
+import { emitDirectMessageReceiveMockForDev } from '../../../features/presence/direct-message/directMessageSocket'
+import { setMockOnlineUserStatus } from '../../../features/presence/mock/mockData'
+import { emitMockOnlineUsersSnapshot } from '../../../features/presence/online-users/onlineUsersSocket'
 import { cn } from '../../../lib/utils'
 import { getWaitingRoomErrorMessage } from '../api'
 import {

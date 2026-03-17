@@ -1,12 +1,12 @@
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useOnlineUsersSocket } from './useOnlineUsersSocket'
-import type { OnlineUsersEventPayload } from './types'
-import { createOnlineUserPayloadFixture } from '../../test/fixtures'
+import type { OnlineUsersEventPayload } from '../types'
+import { createOnlineUserPayloadFixture } from '../../../test/fixtures'
 import {
   emitSocketEvent,
   getSocketEventHandler,
-} from '../../test/socketEmitter'
+} from '../../../test/socketEmitter'
 
 const {
   socketOnMock,
@@ -30,7 +30,7 @@ const {
   onlineUsersRefreshRequestEventName: 'online-users-refresh-request',
 }))
 
-vi.mock('../../lib/socket', () => ({
+vi.mock('../../../lib/socket', () => ({
   socket: {
     on: socketOnMock,
     off: socketOffMock,

@@ -79,13 +79,16 @@ vi.mock('./hooks', () => ({
   useWaitingRoomController: useWaitingRoomControllerMock,
 }))
 
-vi.mock('../../features/presence/useOnlineUsersSocket', () => ({
+vi.mock('../../features/presence/online-users/useOnlineUsersSocket', () => ({
   useOnlineUsersSocket: useOnlineUsersSocketMock,
 }))
 
-vi.mock('../../features/presence/useDirectMessageController', () => ({
-  useDirectMessageController: useDirectMessageControllerMock,
-}))
+vi.mock(
+  '../../features/presence/direct-message/useDirectMessageController',
+  () => ({
+    useDirectMessageController: useDirectMessageControllerMock,
+  })
+)
 
 // 테스트용 대기방 상태 생성
 function createWaitingRoomControllerState(

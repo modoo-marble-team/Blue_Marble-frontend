@@ -1,6 +1,6 @@
 import { socket } from '../../lib/socket'
 import { ROOM_PASSWORD_PATTERN } from '../../constants/room'
-import { setMockOnlineUserStatus } from '../../features/presence/mockData'
+import { setMockOnlineUserStatus } from '../../features/presence/mock/mockData'
 import { mockLobbyRooms } from '../lobby/mockData'
 import type { LobbyRoom, LobbyRoomStatus } from '../lobby/types'
 import { createSeededRoomPlayers } from './mockSeed'

@@ -1,9 +1,9 @@
-import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { connectSocketWithAuthIfNeeded, socket } from '../../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 import type {
   DirectMessageReceiveSocketPayload,
   DirectMessageSendSocketPayload,
-} from './types'
+} from '../types'
 
 // DM 송수신 소켓 이벤트 이름 맵
 const DIRECT_MESSAGE_EVENT_NAMES = {
