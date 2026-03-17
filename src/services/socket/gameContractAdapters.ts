@@ -220,6 +220,10 @@ export const normalizePromptPayload = (
         .map((choice, index) => normalizePromptChoice(choice, index))
         .filter((choice): choice is GamePromptChoice => choice !== null)
     : undefined
+  const normalizedPromptPlayerId =
+    toPlayerIdOrNull(promptCompatPayload.playerId) ??
+    toPlayerIdOrNull(payloadRecord?.playerId) ??
+    toPlayerIdOrNull(payloadRecord?.player_id)
 
   return {
     id: promptId,
@@ -228,15 +232,7 @@ export const normalizePromptPayload = (
       promptCompatPayload.type.trim().length > 0
         ? promptCompatPayload.type
         : 'UNKNOWN_PROMPT',
-    playerId:
-      promptCompatPayload.playerId === undefined &&
-      payloadRecord?.playerId === undefined &&
-      payloadRecord?.player_id === undefined
-        ? null
-        : (promptCompatPayload.playerId ??
-          payloadRecord?.playerId ??
-          payloadRecord?.player_id ??
-          null),
+    playerId: normalizedPromptPlayerId,
     title:
       typeof promptCompatPayload.title === 'string' &&
       promptCompatPayload.title.trim().length > 0
