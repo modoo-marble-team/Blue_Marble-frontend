@@ -1,0 +1,147 @@
+name: AI Review Lite
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-lite-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ai-review-lite:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Collect changed files
+        id: changed-files
+        run: |
+          git diff --name-only --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" > /tmp/changed-files.txt
+
+          count="$(wc -l < /tmp/changed-files.txt | tr -d ' ')"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: Run AI self review
+        if: steps.changed-files.outputs.count != '0'
+        run: |
+          mapfile -t changed_files < /tmp/changed-files.txt
+          npm run ai:self-review -- --files "${changed_files[@]}" | tee /tmp/ai-self-review.txt
+
+      - name: Write empty self review fallback
+        if: steps.changed-files.outputs.count == '0'
+        run: |
+          echo "No changed files detected for this pull request." > /tmp/ai-self-review.txt
+
+      - name: Run AI UI check plan
+        if: steps.changed-files.outputs.count != '0'
+        run: |
+          mapfile -t changed_files < /tmp/changed-files.txt
+          npm run ai:check:ui -- --plan --files "${changed_files[@]}" | tee /tmp/ai-ui-check-plan.txt
+
+      - name: Write empty UI plan fallback
+        if: steps.changed-files.outputs.count == '0'
+        run: |
+          echo "No UI checks selected because there are no changed files." > /tmp/ai-ui-check-plan.txt
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs')
+
+            const marker = '<!-- ai-review-lite -->'
+            const maxSectionLength = 24000
+            const issueNumber = context.issue.number
+            const { owner, repo } = context.repo
+
+            function readFile(path) {
+              return fs.existsSync(path) ? fs.readFileSync(path, 'utf8').trim() : ''
+            }
+
+            function truncate(value) {
+              if (value.length <= maxSectionLength) {
+                return value
+              }
+
+              return `${value.slice(0, maxSectionLength)}\n\n...truncated`
+            }
+
+            const selfReview = truncate(readFile('/tmp/ai-self-review.txt'))
+            const uiPlan = truncate(readFile('/tmp/ai-ui-check-plan.txt'))
+            const changedFiles = readFile('/tmp/changed-files.txt')
+            const changedFileList = changedFiles
+              ? changedFiles
+                  .split('\n')
+                  .filter(Boolean)
+                  .map((file) => `- \`${file}\``)
+                  .join('\n')
+              : '- none'
+
+            const body = `${marker}
+            ## 🤖 AI Review Lite
+
+            이 코멘트는 PR 변경 파일 기준으로 자동 갱신됩니다.
+            기존 CI를 대체하지 않고, diff 기반 self-review와 UI 검증 계획을 요약합니다.
+
+            ### Changed Files
+            ${changedFileList}
+
+            ### Self Review
+            \`\`\`text
+            ${selfReview || 'No self-review output.'}
+            \`\`\`
+
+            ### UI Check Plan
+            \`\`\`text
+            ${uiPlan || 'No UI check output.'}
+            \`\`\`
+            `
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+            })
+
+            const existingComment = comments.find((comment) => {
+              return comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            })
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body,
+              })
+              return
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body,
+            })
