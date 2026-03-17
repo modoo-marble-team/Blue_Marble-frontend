@@ -46,6 +46,9 @@ describe('DesktopViewportGuard', () => {
 
     expect(screen.getByText('앱 본문')).toBeInTheDocument()
     expect(screen.getByText('넓은 화면이 필요합니다')).toBeInTheDocument()
+    expect(
+      screen.getByText('최소 권장 폭은 1366px 입니다.')
+    ).toBeInTheDocument()
     expect(unmountSpy).not.toHaveBeenCalled()
   })
 })

@@ -1,7 +1,7 @@
 import { MonitorCog, TabletSmartphone } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-const MIN_DESKTOP_VIEWPORT_WIDTH = 1280
+const MIN_DESKTOP_VIEWPORT_WIDTH = 1366
 
 // 현재 브라우저 폭을 읽어 데스크톱 지원 여부를 판단
 function readViewportWidth() {

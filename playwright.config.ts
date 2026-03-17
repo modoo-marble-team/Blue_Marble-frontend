@@ -7,6 +7,8 @@ const isLocalDebugRun =
     process.env.PWDEBUG === 'console' ||
     process.env.PW_LOCAL_DEBUG === 'true')
 
+const desktopViewport = { width: 1536, height: 960 }
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
@@ -23,10 +25,14 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        viewport: desktopViewport,
         ...(isLocalDebugRun
           ? {
-              viewport: { width: 1536, height: 960 },
-              launchOptions: { args: ['--window-size=1536,960'] },
+              launchOptions: {
+                args: [
+                  `--window-size=${desktopViewport.width},${desktopViewport.height}`,
+                ],
+              },
             }
           : {}),
       },
