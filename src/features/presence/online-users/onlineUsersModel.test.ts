@@ -6,7 +6,7 @@ import {
   mergeOnlineUsersWithCurrentUser,
   mergeOnlineUsersWithRoomPlayers,
 } from './onlineUsersModel'
-import { createOnlineUserFixture } from '../../test/fixtures'
+import { createOnlineUserFixture } from '../../../test/fixtures'
 
 describe('getOnlineUserAvatarText', () => {
   it('앞뒤 공백을 제거한 닉네임 첫 글자를 대문자로 반환한다', () => {

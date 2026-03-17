@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { socket } from '../../lib/socket'
+import { socket } from '../../../lib/socket'
 import { getOnlineUsersSnapshot, normalizeOnlineUsersPayload } from './api'
 import { mapOnlineUsersToViewModel } from './onlineUsersModel'
 import {
@@ -9,7 +9,7 @@ import {
   ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME,
   startOnlineUsersMockBroadcast,
 } from './onlineUsersSocket'
-import type { OnlineUser, OnlineUsersEventPayload } from './types'
+import type { OnlineUser, OnlineUsersEventPayload } from '../types'
 
 interface OnlineUsersSyncState {
   latestSnapshotRequestId: number

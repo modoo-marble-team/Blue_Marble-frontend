@@ -1,10 +1,10 @@
-import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { connectSocketWithAuthIfNeeded, socket } from '../../../lib/socket'
+import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 import {
   getMockOnlineUsersSnapshot,
   subscribeMockOnlineUsersChange,
-} from './mockData'
-import type { OnlineUserPayload, OnlineUsersEventPayload } from './types'
+} from '../mock/mockData'
+import type { OnlineUserPayload, OnlineUsersEventPayload } from '../types'
 
 // 접속자 목록 소켓 이벤트 이름
 export const ONLINE_USERS_EVENT_NAME = 'online_users'

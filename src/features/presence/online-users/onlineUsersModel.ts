@@ -1,8 +1,8 @@
-import type { OnlineUser, OnlineUserPayload } from './types'
+import type { OnlineUser, OnlineUserPayload } from '../types'
 import {
   getAvatarBackgroundColor,
   getAvatarText,
-} from '../../components/avatar/avatarModel'
+} from '../../../components/avatar/avatarModel'
 
 // 닉네임 첫 글자를 아바타 텍스트로 변환
 export function getOnlineUserAvatarText(nickname: string) {

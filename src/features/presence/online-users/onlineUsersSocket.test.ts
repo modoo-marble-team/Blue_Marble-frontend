@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { OnlineUserPayload } from './types'
+import type { OnlineUserPayload } from '../types'
 
 interface MockSocket {
   connected: boolean
@@ -50,12 +50,12 @@ async function loadOnlineUsersSocketModule(
     }
   )
 
-  vi.doMock('../../lib/socket', () => ({
+  vi.doMock('../../../lib/socket', () => ({
     socket,
     connectSocketWithAuthIfNeeded: connectSocketWithAuthIfNeededMock,
   }))
 
-  vi.doMock('./mockData', () => ({
+  vi.doMock('../mock/mockData', () => ({
     getMockOnlineUsersSnapshot: getMockOnlineUsersSnapshotMock,
     subscribeMockOnlineUsersChange: subscribeMockOnlineUsersChangeMock,
   }))

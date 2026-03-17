@@ -13,13 +13,13 @@ import {
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { DevPresenceControlPanel } from '../../features/presence/components/DevPresenceControlPanel'
-import { mergeOnlineUsersWithCurrentUser } from '../../features/presence/onlineUsersModel'
-import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
-import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
+import { useDirectMessageController } from '../../features/presence/direct-message/useDirectMessageController'
 import {
   removeMockOnlineUser,
   setMockOnlineUserStatus,
-} from '../../features/presence/mockData'
+} from '../../features/presence/mock/mockData'
+import { mergeOnlineUsersWithCurrentUser } from '../../features/presence/online-users/onlineUsersModel'
+import { useOnlineUsersSocket } from '../../features/presence/online-users/useOnlineUsersSocket'
 import type { LobbyRoomFilter } from './api'
 import { useLobbyRoomsQuery } from './hooks'
 import { LobbyControls } from './LobbyControls'

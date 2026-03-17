@@ -1,5 +1,5 @@
-import { apiClient } from '../../lib/axios'
-import type { OnlineUserPayload, OnlineUserStatus } from './types'
+import { apiClient } from '../../../lib/axios'
+import type { OnlineUserPayload, OnlineUserStatus } from '../types'
 
 // 접속자 목록 초기 스냅샷 응답 타입
 interface OnlineUsersResponsePayload {
