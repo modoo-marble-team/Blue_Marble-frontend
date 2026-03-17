@@ -221,7 +221,16 @@ export const setupGameHandlers = (
   }
 
   const handleGamePrompt = (promptPayload: unknown) => {
+    if (import.meta.env.DEV) {
+      console.debug('[game:prompt] raw payload', promptPayload)
+    }
+
     const normalizedPrompt = normalizePromptPayload(promptPayload)
+
+    if (import.meta.env.DEV) {
+      console.debug('[game:prompt] normalized', normalizedPrompt)
+    }
+
     if (!normalizedPrompt) {
       useGameStore.getState().setLastError(PROMPT_ID_REQUIRED_ERROR)
       return

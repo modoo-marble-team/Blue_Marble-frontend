@@ -375,7 +375,7 @@ export const useGameStore = create<GameStoreState>()(
 
     applyPatchEnvelope: (envelope) =>
       set((draft) => {
-        if (envelope.revision <= draft.revision) {
+        if (envelope.revision < draft.revision) {
           return
         }
 

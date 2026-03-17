@@ -224,6 +224,7 @@ interface GameBoardProps {
     owner_id?: string | number | null
     building: number
     level?: number
+    price?: number
   }>
 }
 
@@ -461,6 +462,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [tiles, players]
     )
     const tileOwners = derivedTileOwners
+    const serverTilePriceMap = useMemo(() => {
+      const map: Record<number, number> = {}
+      for (const t of tiles) {
+        if (typeof t.index === 'number' && typeof t.price === 'number') {
+          map[t.index] = t.price
+        }
+      }
+      return map
+    }, [tiles])
+    const getTileWithServerPrice = (id: number) => {
+      const base = TILES[id]
+      if (id in serverTilePriceMap) {
+        return { ...base, price: serverTilePriceMap[id] }
+      }
+      return base
+    }
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
@@ -1279,6 +1296,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
     const isOwnedTileSellClickable = (tileId: number) => {
+      if (!isMockMode) {
+        return false
+      }
       if (travelSelection.active || hasBlockingModal) {
         return false
       }
@@ -1390,7 +1410,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={TILES[id]}
+                      tile={getTileWithServerPrice(id)}
                       dir={isCornerTile ? 'corner' : 'top'}
                       tokens={byTile[id] ?? []}
                       tileOwner={tileOwners[id]}
@@ -1425,7 +1445,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={TILES[id]}
+                      tile={getTileWithServerPrice(id)}
                       dir={isCornerTile ? 'corner' : 'bottom'}
                       tokens={byTile[id] ?? []}
                       tileOwner={tileOwners[id]}
@@ -1459,7 +1479,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={TILES[id]}
+                      tile={getTileWithServerPrice(id)}
                       dir="left"
                       tokens={byTile[id] ?? []}
                       tileOwner={tileOwners[id]}
@@ -1493,7 +1513,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={TILES[id]}
+                      tile={getTileWithServerPrice(id)}
                       dir="right"
                       tokens={byTile[id] ?? []}
                       tileOwner={tileOwners[id]}
