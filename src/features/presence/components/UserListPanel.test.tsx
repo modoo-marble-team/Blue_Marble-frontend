@@ -62,4 +62,51 @@ describe('UserListPanel', () => {
       '마블러 채팅',
     ])
   })
+
+  it('같은 사용자의 unread 개수는 badge 숫자로 표시된다', () => {
+    render(
+      <UserListPanel
+        users={[
+          createOnlineUserFixture({
+            id: 'u-1',
+            nickname: '상대유저',
+            status: 'lobby',
+          }),
+        ]}
+        isLoading={false}
+        isError={false}
+        isOpen
+        currentUserId="u-me"
+        unreadDirectMessageCountByUserId={{ 'u-1': 3 }}
+        onToggle={vi.fn()}
+        onOpenDirectMessage={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('3')).toBeInTheDocument()
+  })
+
+  it('현재 열려 있는 DM 대상에게는 unread badge를 숨긴다', () => {
+    render(
+      <UserListPanel
+        users={[
+          createOnlineUserFixture({
+            id: 'u-1',
+            nickname: '상대유저',
+            status: 'lobby',
+          }),
+        ]}
+        isLoading={false}
+        isError={false}
+        isOpen
+        currentUserId="u-me"
+        activeDirectMessageUserId="u-1"
+        unreadDirectMessageCountByUserId={{ 'u-1': 3 }}
+        onToggle={vi.fn()}
+        onOpenDirectMessage={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByText('3')).not.toBeInTheDocument()
+  })
 })

@@ -44,6 +44,7 @@ export function useWaitingRoomController({
   const hasEnteredRoomRef = useRef(false)
   const hasLeftRoomRef = useRef(false)
   const hasInitializedPreJoinRef = useRef(false)
+  const hasReceivedRoomUpdatedRef = useRef(false)
   const shouldSkipNextCleanupLeaveRef = useRef(import.meta.env.DEV)
   const leaveInFlightRef = useRef<Promise<WaitingRoomActionResult> | null>(null)
   const sessionRef = useRef<AuthSession | null>(session)
@@ -65,6 +66,7 @@ export function useWaitingRoomController({
 
   const handleRoomRemoved = useCallback(() => {
     roomRef.current = null
+    hasReceivedRoomUpdatedRef.current = false
     hasEnteredRoomRef.current = false
     hasLeftRoomRef.current = true
     hasInitializedPreJoinRef.current = false
@@ -78,6 +80,7 @@ export function useWaitingRoomController({
     session,
     fallbackRoomTitle,
     preJoinedSnapshot,
+    hasReceivedRoomUpdatedRef,
     hasEnteredRoomRef,
     hasLeftRoomRef,
     hasInitializedPreJoinRef,
@@ -93,6 +96,7 @@ export function useWaitingRoomController({
     roomId,
     session,
     activeRoomId,
+    hasReceivedRoomUpdatedRef,
     onGameStart,
     onRoomRemoved: handleRoomRemoved,
     setRoom,

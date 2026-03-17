@@ -8,6 +8,8 @@ import type { OnlineUserPayload, OnlineUsersEventPayload } from './types'
 
 // 접속자 목록 소켓 이벤트 이름
 export const ONLINE_USERS_EVENT_NAME = 'online_users'
+export const ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME =
+  'online-users-refresh-request'
 const SOCKET_MOCK_INTERVAL_MS = 5_000
 const USE_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
@@ -59,4 +61,13 @@ export function startOnlineUsersMockBroadcast() {
 // 실제 소켓 모드에서 연결이 없으면 명시적으로 연결
 export function ensureOnlineUsersSocketConnection() {
   connectSocketWithAuthIfNeeded()
+}
+
+// 로컬 사용자 상태 변화 직후 접속자 스냅샷 재동기화를 요청
+export function requestOnlineUsersSnapshotSync() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(new Event(ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME))
 }

@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Dispatch, SetStateAction } from 'react'
 import { createAuthSessionFixture } from '../../../test/fixtures'
@@ -9,18 +9,32 @@ import type {
   HostChangedEventPayload,
   LobbyUpdatedEventPayload,
   PlayerReadyEventPayload,
+  RoomUpdatedEventPayload,
   WaitingRoomSnapshot,
 } from '../types'
 
-const { subscribeWaitingRoomSocketEventsMock, unsubscribeMock } = vi.hoisted(
-  () => ({
-    subscribeWaitingRoomSocketEventsMock: vi.fn(),
-    unsubscribeMock: vi.fn(),
-  })
-)
+const {
+  subscribeWaitingRoomSocketEventsMock,
+  unsubscribeMock,
+  mapWaitingRoomSnapshotPayloadMock,
+  requestOnlineUsersSnapshotSyncMock,
+} = vi.hoisted(() => ({
+  subscribeWaitingRoomSocketEventsMock: vi.fn(),
+  unsubscribeMock: vi.fn(),
+  mapWaitingRoomSnapshotPayloadMock: vi.fn(),
+  requestOnlineUsersSnapshotSyncMock: vi.fn(),
+}))
 
 vi.mock('../socket', () => ({
   subscribeWaitingRoomSocketEvents: subscribeWaitingRoomSocketEventsMock,
+}))
+
+vi.mock('../api', () => ({
+  mapWaitingRoomSnapshotPayload: mapWaitingRoomSnapshotPayloadMock,
+}))
+
+vi.mock('../../../features/presence/onlineUsersSocket', () => ({
+  requestOnlineUsersSnapshotSync: requestOnlineUsersSnapshotSyncMock,
 }))
 
 function createRoomSnapshot(): WaitingRoomSnapshot {
@@ -38,10 +52,43 @@ function createRoomSnapshot(): WaitingRoomSnapshot {
   }
 }
 
+function createJoinedRoomSnapshotPayload(): WaitingRoomSnapshot {
+  return {
+    roomId: 'room-5',
+    title: '즐거운 게임 한판!',
+    status: 'waiting',
+    maxPlayers: 4,
+    isPrivate: false,
+    players: [
+      { id: 'user-1', nickname: '테스터', isReady: false, isHost: true },
+      { id: 'user-2', nickname: '상대', isReady: false, isHost: false },
+      { id: 'user-3', nickname: '새 참가자', isReady: false, isHost: false },
+    ],
+    chatMessages: [],
+  }
+}
+
+function createRoomUpdatedPayload(): RoomUpdatedEventPayload {
+  return {
+    room_id: 'room-5',
+    title: '즐거운 게임 한판!',
+    status: 'waiting',
+    max_players: 4,
+    is_private: false,
+    players: [
+      { id: 'user-1', nickname: '테스터', is_ready: false, is_host: true },
+      { id: 'user-2', nickname: '상대', is_ready: false, is_host: false },
+      { id: 'user-3', nickname: '새 참가자', is_ready: false, is_host: false },
+    ],
+    chat_messages: [],
+  }
+}
+
 interface SocketSyncHookParams {
   roomId: string
   session: ReturnType<typeof createAuthSessionFixture> | null
   activeRoomId?: string
+  hasReceivedRoomUpdatedRef: { current: boolean }
   onGameStart: (payload: GameStartEventPayload) => void
   onRoomRemoved: () => void
   setRoom: Dispatch<SetStateAction<WaitingRoomSnapshot | null>>
@@ -61,6 +108,7 @@ function createBaseParams(): SocketSyncHookParams {
       nickname: '테스터',
     }),
     activeRoomId: 'room-5',
+    hasReceivedRoomUpdatedRef: { current: false },
     onGameStart: vi.fn(),
     onRoomRemoved: vi.fn(),
     setRoom: setRoomMock as unknown as Dispatch<
@@ -78,11 +126,14 @@ describe('useWaitingRoomSocketSync', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     subscribeWaitingRoomSocketEventsMock.mockReturnValue(unsubscribeMock)
+    mapWaitingRoomSnapshotPayloadMock.mockReturnValue(
+      createJoinedRoomSnapshotPayload()
+    )
   })
 
-  it('핵심 입력값(roomId/session/activeRoomId)이 없으면 구독을 생략한다', () => {
+  it('핵심 입력값(roomId/session)이 없으면 구독을 생략한다', () => {
     const params = createBaseParams()
-    params.activeRoomId = undefined
+    params.session = null
 
     renderHook(() => useWaitingRoomSocketSync(params))
 
@@ -252,5 +303,55 @@ describe('useWaitingRoomSocketSync', () => {
     expect(params.setRoomMock).toHaveBeenCalledWith(null)
     expect(params.setChatMessagesMock).toHaveBeenCalledWith([])
     expect(params.onRoomRemoved).toHaveBeenCalledTimes(1)
+  })
+
+  it('room_updated는 현재 방 snapshot을 반영해 플레이어 목록을 갱신한다', async () => {
+    const params = createBaseParams()
+    renderHook(() => useWaitingRoomSocketSync(params))
+
+    const handlers = subscribeWaitingRoomSocketEventsMock.mock
+      .calls[0]?.[0] as {
+      onRoomUpdated: (payload: RoomUpdatedEventPayload) => void
+    }
+
+    act(() => {
+      handlers.onRoomUpdated(createRoomUpdatedPayload())
+    })
+
+    await waitFor(() => {
+      expect(mapWaitingRoomSnapshotPayloadMock).toHaveBeenCalledWith(
+        createRoomUpdatedPayload()
+      )
+    })
+
+    expect(params.setRoomMock).toHaveBeenCalledWith(
+      createJoinedRoomSnapshotPayload()
+    )
+    expect(params.setChatMessagesMock).toHaveBeenCalledWith([])
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledTimes(1)
+    expect(params.hasReceivedRoomUpdatedRef.current).toBe(true)
+  })
+
+  it('activeRoomId가 없어도 route roomId 기준으로 room_updated를 반영한다', async () => {
+    const params = createBaseParams()
+    params.activeRoomId = undefined
+    renderHook(() => useWaitingRoomSocketSync(params))
+
+    expect(subscribeWaitingRoomSocketEventsMock).toHaveBeenCalledTimes(1)
+
+    const handlers = subscribeWaitingRoomSocketEventsMock.mock
+      .calls[0]?.[0] as {
+      onRoomUpdated: (payload: RoomUpdatedEventPayload) => void
+    }
+
+    act(() => {
+      handlers.onRoomUpdated(createRoomUpdatedPayload())
+    })
+
+    await waitFor(() => {
+      expect(mapWaitingRoomSnapshotPayloadMock).toHaveBeenCalledWith(
+        createRoomUpdatedPayload()
+      )
+    })
   })
 })

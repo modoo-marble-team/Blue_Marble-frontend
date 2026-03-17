@@ -15,6 +15,7 @@ interface UserListPanelProps {
   isOpen: boolean
   onToggle: () => void
   currentUserId?: string
+  activeDirectMessageUserId?: string
   unreadDirectMessageCountByUserId?: Record<string, number>
   onOpenDirectMessage?: (user: OnlineUser) => void
   heightMode?: 'screen' | 'full'
@@ -36,6 +37,7 @@ export function UserListPanel({
   isOpen,
   onToggle,
   currentUserId,
+  activeDirectMessageUserId,
   unreadDirectMessageCountByUserId = {},
   onOpenDirectMessage,
   heightMode = 'screen',
@@ -144,7 +146,9 @@ export function UserListPanel({
                   user={user}
                   isCurrentUser={currentUserId === user.id}
                   unreadDirectMessageCount={
-                    unreadDirectMessageCountByUserId[user.id] ?? 0
+                    user.id === activeDirectMessageUserId
+                      ? 0
+                      : (unreadDirectMessageCountByUserId[user.id] ?? 0)
                   }
                   onOpenDirectMessage={onOpenDirectMessage}
                 />
@@ -187,7 +191,8 @@ export function UserListPanel({
                       ONLINE_USER_STATUS_DOT_CLASS_MAP[user.status]
                     )}
                   />
-                  {(unreadDirectMessageCountByUserId[user.id] ?? 0) > 0 ? (
+                  {user.id !== activeDirectMessageUserId &&
+                  (unreadDirectMessageCountByUserId[user.id] ?? 0) > 0 ? (
                     <span className="absolute -left-1 -top-1 inline-flex h-4 min-w-4 select-none items-center justify-center rounded-full border border-white bg-ui-danger px-1 text-[9px] font-semibold leading-none tracking-tight text-white">
                       {formatUnreadBadgeCount(
                         unreadDirectMessageCountByUserId[user.id] ?? 0

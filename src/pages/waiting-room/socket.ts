@@ -13,6 +13,7 @@ import type {
   LobbyUpdatedEventPayload,
   LeaveRoomSocketPayload,
   PlayerReadyEventPayload,
+  RoomUpdatedEventPayload,
   SendChatSocketPayload,
 } from './types'
 
@@ -26,6 +27,7 @@ const WAITING_ROOM_EVENT_NAMES = {
   chat: 'chat',
   gameStart: 'game_start',
   lobbyUpdated: 'lobby_updated',
+  roomUpdated: 'room_updated',
 } as const
 
 const USE_WAITING_ROOM_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
@@ -53,6 +55,7 @@ interface WaitingRoomSocketHandlers {
   onChat: (payload: ChatEventPayload) => void
   onGameStart: (payload: GameStartEventPayload) => void
   onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => void
+  onRoomUpdated: (payload: RoomUpdatedEventPayload) => void
 }
 
 // 실소켓 모드에서만 연결 상태를 확인해 connect 실행
@@ -73,6 +76,7 @@ export function subscribeWaitingRoomSocketEvents(
   socket.on(WAITING_ROOM_EVENT_NAMES.chat, handlers.onChat)
   socket.on(WAITING_ROOM_EVENT_NAMES.gameStart, handlers.onGameStart)
   socket.on(WAITING_ROOM_EVENT_NAMES.lobbyUpdated, handlers.onLobbyUpdated)
+  socket.on(WAITING_ROOM_EVENT_NAMES.roomUpdated, handlers.onRoomUpdated)
 
   connectSocketIfNeeded()
 
@@ -82,6 +86,7 @@ export function subscribeWaitingRoomSocketEvents(
     socket.off(WAITING_ROOM_EVENT_NAMES.chat, handlers.onChat)
     socket.off(WAITING_ROOM_EVENT_NAMES.gameStart, handlers.onGameStart)
     socket.off(WAITING_ROOM_EVENT_NAMES.lobbyUpdated, handlers.onLobbyUpdated)
+    socket.off(WAITING_ROOM_EVENT_NAMES.roomUpdated, handlers.onRoomUpdated)
   }
 }
 

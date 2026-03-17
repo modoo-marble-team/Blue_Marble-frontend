@@ -54,6 +54,20 @@ export function useWaitingRoomActions({
   setIsStartPending,
   setIsLeavePending,
 }: UseWaitingRoomActionsParams) {
+  useEffect(() => {
+    const markBrowserUnload = () => {
+      shouldSkipNextCleanupLeaveRef.current = true
+    }
+
+    window.addEventListener('beforeunload', markBrowserUnload)
+    window.addEventListener('pagehide', markBrowserUnload)
+
+    return () => {
+      window.removeEventListener('beforeunload', markBrowserUnload)
+      window.removeEventListener('pagehide', markBrowserUnload)
+    }
+  }, [shouldSkipNextCleanupLeaveRef])
+
   // 수동 퇴장과 언마운트 cleanup에서 재사용하는 공통 퇴장 시퀀스
   const runLeaveRoomSequence = useCallback(
     async ({
@@ -147,6 +161,11 @@ export function useWaitingRoomActions({
       // StrictMode 첫 cleanup은 테스트성 호출이므로 1회 스킵
       if (shouldSkipNextCleanupLeaveRef.current) {
         shouldSkipNextCleanupLeaveRef.current = false
+        return
+      }
+
+      // 브라우저 새로고침/탭 종료처럼 문서가 hidden 상태면 cleanup leave를 보내지 않는다.
+      if (document.visibilityState === 'hidden') {
         return
       }
 

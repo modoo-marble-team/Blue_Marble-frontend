@@ -234,7 +234,7 @@ function mapChatMessage(payload: WaitingRoomChatPayload) {
 }
 
 // 계약 검증된 입장 응답 payload를 대기방 스냅샷으로 변환
-function mapJoinResponse(
+export function mapWaitingRoomSnapshotPayload(
   payload: JoinWaitingRoomResponsePayload
 ): WaitingRoomSnapshot {
   return {
@@ -307,7 +307,7 @@ export async function joinWaitingRoom(params: JoinWaitingRoomParams) {
   )
 
   const joinPayload = parseJoinWaitingRoomPayload(data)
-  return mapJoinResponse(joinPayload)
+  return mapWaitingRoomSnapshotPayload(joinPayload)
 }
 
 // 대기방 퇴장 API 호출 또는 목 게이트웨이 호출

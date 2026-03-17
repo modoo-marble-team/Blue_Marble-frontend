@@ -6,6 +6,7 @@ import {
   ensureOnlineUsersSocketConnection,
   isOnlineUsersSocketMockMode,
   ONLINE_USERS_EVENT_NAME,
+  ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME,
   startOnlineUsersMockBroadcast,
 } from './onlineUsersSocket'
 import type { OnlineUser, OnlineUsersEventPayload } from './types'
@@ -85,6 +86,15 @@ export function useOnlineUsersSocket() {
       void syncOnlineUsersSnapshot()
     }
 
+    // room enter/refresh 같은 로컬 상태 변화 직후 snapshot 재동기화를 허용
+    const handleRefreshRequest = () => {
+      if (!isActive || isOnlineUsersSocketMockMode()) {
+        return
+      }
+
+      void syncOnlineUsersSnapshot()
+    }
+
     // 연결 종료 상태를 에러로 표시
     const handleDisconnect = () => {
       if (!isActive) {
@@ -113,12 +123,25 @@ export function useOnlineUsersSocket() {
       void syncOnlineUsersSnapshot()
     }
 
+    if (typeof window !== 'undefined') {
+      window.addEventListener(
+        ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME,
+        handleRefreshRequest
+      )
+    }
+
     return () => {
       isActive = false
       socket.off(ONLINE_USERS_EVENT_NAME, handleOnlineUsers)
       socket.off('connect', handleConnect)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)
+      if (typeof window !== 'undefined') {
+        window.removeEventListener(
+          ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME,
+          handleRefreshRequest
+        )
+      }
       stopMockBroadcast()
     }
   }, [])

@@ -10,6 +10,7 @@ import type {
   HostChangedEventPayload,
   LobbyUpdatedEventPayload,
   PlayerReadyEventPayload,
+  RoomUpdatedEventPayload,
   WaitingRoomChatMessage,
   WaitingRoomChatPayload,
   WaitingRoomSnapshot,
@@ -225,6 +226,26 @@ function getLobbyUpdatedPayload(
   }
 }
 
+// room_updated 브로드캐스트에 맞는 대기방 snapshot payload 생성
+function getRoomUpdatedPayload(room: MockRoom): RoomUpdatedEventPayload {
+  return {
+    room_id: room.id,
+    title: room.title,
+    status: room.status,
+    max_players: room.max_players,
+    is_private: room.is_private,
+    players: room.players.map((player) => ({
+      id: player.id,
+      nickname: player.nickname,
+      is_ready: player.is_ready,
+      is_host: player.is_host,
+    })),
+    chat_messages: room.chat_messages.map((chatMessage) => ({
+      ...chatMessage,
+    })),
+  }
+}
+
 // 소켓 이벤트를 직접 리스너에 전달하는 목 emit 유틸
 function emitSocketEvent<TPayload>(eventName: string, payload: TPayload) {
   const socketWithListeners = socket as unknown as SocketWithListeners
@@ -242,6 +263,12 @@ function emitLobbyUpdated(
 ) {
   const payload = getLobbyUpdatedPayload(room, action)
   emitSocketEvent<LobbyUpdatedEventPayload>('lobby_updated', payload)
+}
+
+// 대기방 내부 인원/상태 변경을 snapshot 이벤트로 반영
+function emitRoomUpdated(room: MockRoom) {
+  const payload = getRoomUpdatedPayload(room)
+  emitSocketEvent<RoomUpdatedEventPayload>('room_updated', payload)
 }
 
 // 시작 가능 조건(2명 이상 + 방장 제외 전원 ready) 판별
@@ -389,6 +416,7 @@ export async function mockJoinWaitingRoom({
   // 이미 입장한 사용자는 현재 스냅샷 그대로 반환
   if (existingPlayer) {
     emitLobbyUpdated(room, 'updated')
+    emitRoomUpdated(room)
     setMockOnlineUserStatus(existingPlayer.id, 'in_room')
     return toWaitingRoomSnapshot(room)
   }
@@ -410,6 +438,7 @@ export async function mockJoinWaitingRoom({
   setMockOnlineUserStatus(userId, 'in_room', nickname)
 
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
   return toWaitingRoomSnapshot(room)
 }
 
@@ -526,6 +555,7 @@ export async function mockLeaveWaitingRoom({
   }
 
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
 
   return {
     success: true,
@@ -726,6 +756,7 @@ export function mockDevAddWaitingRoomParticipant(roomId: string) {
   room.players.push(createdBot)
   setMockOnlineUserStatus(createdBot.id, 'in_room', createdBot.nickname)
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
 
   return toWaitingRoomSnapshot(room)
 }
@@ -780,6 +811,7 @@ export function mockDevRemoveWaitingRoomParticipant(
     setMockOnlineUserStatus(removedPlayer.id, 'lobby')
   }
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
 
   return toWaitingRoomSnapshot(room)
 }
@@ -818,6 +850,7 @@ export function mockDevSeedStartCondition(roomId: string) {
 
   const snapshot = mockDevSetAllNonHostReady(roomId, true)
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
   return snapshot
 }
 
@@ -859,6 +892,7 @@ export function mockDevTransferWaitingRoomHost(roomId: string) {
 
   applyHostTransfer(room, nextHost.id)
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
 
   return toWaitingRoomSnapshot(room)
 }
@@ -899,6 +933,7 @@ export function mockDevResetWaitingRoom(
   // 멀티 클라이언트에서도 방장 표시가 즉시 맞도록 host_changed를 함께 발행
   applyHostTransfer(room, currentUserId)
   emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
 
   return toWaitingRoomSnapshot(room)
 }

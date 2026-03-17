@@ -17,6 +17,7 @@ const {
   startOnlineUsersMockBroadcastMock,
   stopMockBroadcastMock,
   ensureOnlineUsersSocketConnectionMock,
+  onlineUsersRefreshRequestEventName,
 } = vi.hoisted(() => ({
   socketOnMock: vi.fn(),
   socketOffMock: vi.fn(),
@@ -26,6 +27,7 @@ const {
   startOnlineUsersMockBroadcastMock: vi.fn(),
   stopMockBroadcastMock: vi.fn(),
   ensureOnlineUsersSocketConnectionMock: vi.fn(),
+  onlineUsersRefreshRequestEventName: 'online-users-refresh-request',
 }))
 
 vi.mock('../../lib/socket', () => ({
@@ -42,6 +44,7 @@ vi.mock('./api', () => ({
 
 vi.mock('./onlineUsersSocket', () => ({
   ONLINE_USERS_EVENT_NAME: 'online_users',
+  ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME: onlineUsersRefreshRequestEventName,
   isOnlineUsersSocketMockMode: isOnlineUsersSocketMockModeMock,
   startOnlineUsersMockBroadcast: startOnlineUsersMockBroadcastMock,
   ensureOnlineUsersSocketConnection: ensureOnlineUsersSocketConnectionMock,
@@ -154,6 +157,36 @@ describe('useOnlineUsersSocket', () => {
       id: 'user-2',
       nickname: 'Relogin',
       status: 'lobby',
+    })
+  })
+
+  it('refresh request 이벤트 수신 시 최신 REST snapshot으로 다시 동기화한다', async () => {
+    getOnlineUsersSnapshotMock.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      createOnlineUserPayloadFixture({
+        id: 'user-3',
+        nickname: 'Waiting',
+        status: 'in_room',
+      }),
+    ])
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event(onlineUsersRefreshRequestEventName))
+    })
+
+    await waitFor(() => {
+      expect(result.current.data).toHaveLength(1)
+    })
+
+    expect(result.current.data[0]).toMatchObject({
+      id: 'user-3',
+      nickname: 'Waiting',
+      status: 'in_room',
     })
   })
 

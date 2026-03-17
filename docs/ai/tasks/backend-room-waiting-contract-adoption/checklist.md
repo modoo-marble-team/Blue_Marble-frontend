@@ -7,7 +7,9 @@
 - [x] 로비 방 생성 후 `create -> join -> enter_room` 흐름을 구현했다
 - [x] waiting-room 초기 상태를 join 응답 snapshot 기준으로 정리했다
 - [x] `lobby_updated` 타입을 `removed` / full payload로 분리했다
+- [x] waiting-room이 `room_updated` 이벤트로 최신 플레이어 snapshot을 직접 반영한다
 - [x] waiting-room에서 방 삭제 이벤트를 구독하고 로비 복귀 흐름을 구현했다
+- [x] viewport guard가 waiting-room을 unmount시키지 않도록 overlay 방식으로 유지했다
 - [x] mock/real 경로를 함께 확인했다
 - [x] 관련 테스트 기대값을 계약 기준으로 갱신했다
 

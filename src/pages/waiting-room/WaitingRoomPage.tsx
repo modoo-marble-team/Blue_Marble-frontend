@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import {
+  useLocation,
+  useNavigate,
+  useNavigationType,
+  useParams,
+} from 'react-router-dom'
 import { useRequireActiveSession } from '../../features/auth/hooks/useRequireActiveSession'
 import { useAuthStore } from '../../features/auth/store'
 import {
@@ -11,6 +16,11 @@ import {
 } from '../../components/header/profileMenu'
 import { DirectMessagePanel } from '../../features/presence/components/DirectMessagePanel'
 import { UserListPanel } from '../../features/presence/components/UserListPanel'
+import {
+  getOnlineUserAvatarBackground,
+  getOnlineUserAvatarText,
+} from '../../features/presence/onlineUsersModel'
+import type { OnlineUser } from '../../features/presence/types'
 import { useOnlineUsersSocket } from '../../features/presence/useOnlineUsersSocket'
 import { useDirectMessageController } from '../../features/presence/useDirectMessageController'
 import { removeMockOnlineUser } from '../../features/presence/mockData'
@@ -48,6 +58,7 @@ function WaitingRoomPage() {
   const currentRoomId = roomId ?? ''
   const location = useLocation()
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
   const session = useAuthStore((state) => state.session)
   const clearSession = useAuthStore((state) => state.clearSession)
   const [isUserListOpen, setIsUserListOpen] = useState(true)
@@ -55,10 +66,12 @@ function WaitingRoomPage() {
 
   const locationState = location.state as WaitingRoomLocationState | null
   const isSameRoomState = locationState?.roomId === currentRoomId
+  const shouldUsePreJoinedSnapshot = navigationType !== 'POP'
   const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
-  const preJoinedSnapshot = isSameRoomState
-    ? (locationState?.preJoinedSnapshot ?? null)
-    : null
+  const preJoinedSnapshot =
+    isSameRoomState && shouldUsePreJoinedSnapshot
+      ? (locationState?.preJoinedSnapshot ?? null)
+      : null
 
   const handleGameStart = useCallback(
     (payload: GameStartEventPayload) => {
@@ -109,6 +122,40 @@ function WaitingRoomPage() {
     isError: isUsersError,
   } = useOnlineUsersSocket()
 
+  const waitingRoomUsers = useMemo(() => {
+    if (!room) {
+      return users
+    }
+
+    const currentRoomStatus = room.status === 'playing' ? 'playing' : 'in_room'
+    const mergedUsersById = new Map<string, OnlineUser>(
+      users.map((user) => [user.id, user])
+    )
+
+    room.players.forEach((player) => {
+      const existingUser = mergedUsersById.get(player.id)
+
+      if (existingUser) {
+        mergedUsersById.set(player.id, {
+          ...existingUser,
+          nickname: player.nickname,
+          status: currentRoomStatus,
+        })
+        return
+      }
+
+      mergedUsersById.set(player.id, {
+        id: player.id,
+        nickname: player.nickname,
+        status: currentRoomStatus,
+        avatarText: getOnlineUserAvatarText(player.nickname),
+        avatarBackground: getOnlineUserAvatarBackground(player.id),
+      })
+    })
+
+    return Array.from(mergedUsersById.values())
+  }, [room, users])
+
   const {
     dmTargetUser,
     directMessagesByUserId,
@@ -118,7 +165,7 @@ function WaitingRoomPage() {
     sendDirectMessage,
   } = useDirectMessageController({
     session,
-    users,
+    users: waitingRoomUsers,
     onBlockedByPlaying: () => {
       toast.error('게임중인 유저에게는 DM을 보낼 수 없습니다.')
     },
@@ -310,11 +357,12 @@ function WaitingRoomPage() {
 
           <div className="min-h-0 xl:h-full xl:shrink-0">
             <UserListPanel
-              users={users}
+              users={waitingRoomUsers}
               isLoading={isUsersLoading}
               isError={isUsersError}
               isOpen={isUserListOpen}
               currentUserId={session.userId}
+              activeDirectMessageUserId={dmTargetUser?.id}
               unreadDirectMessageCountByUserId={
                 unreadDirectMessageCountByUserId
               }
