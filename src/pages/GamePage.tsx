@@ -348,6 +348,7 @@ const GamePage: React.FC = () => {
               activePrompt={activeBoardPrompt}
               promptSubmittingChoice={promptSubmittingChoice}
               onPromptChoice={handlePromptChoice}
+              localPlayerId={currentUserId}
             />
           </div>
         </div>
