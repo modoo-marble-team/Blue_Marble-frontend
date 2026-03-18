@@ -1,3 +1,4 @@
+import { LoaderCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
@@ -63,23 +64,43 @@ function KakaoLoginCallbackPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-ui-app-bg px-4">
-      <div className="w-full max-w-md rounded-3xl border border-ui-border bg-ui-surface px-6 py-8 text-center shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
-        <h1 className="text-2xl font-bold text-ui-text-strong">
-          카카오 로그인 처리 중
-        </h1>
-        <p className="mt-3 text-sm font-medium text-ui-text-muted">
-          {errorMessage ??
-            '인증 정보를 확인하고 있습니다. 잠시만 기다려 주세요.'}
-        </p>
+      <div className="w-full max-w-sm rounded-[28px] border border-ui-border bg-ui-surface px-6 py-8 text-center shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
         {errorMessage ? (
-          <button
-            type="button"
-            onClick={() => navigate('/', { replace: true })}
-            className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-ui-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-ui-brand-strong"
+          <>
+            <h1 className="text-xl font-bold text-ui-text-strong">
+              카카오 로그인에 실패했어요
+            </h1>
+            <p className="mt-3 text-sm font-medium leading-relaxed text-ui-text-muted">
+              {errorMessage}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/', { replace: true })}
+              className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-ui-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-ui-brand-strong"
+            >
+              홈으로 돌아가기
+            </button>
+          </>
+        ) : (
+          <div
+            className="flex flex-col items-center"
+            role="status"
+            aria-live="polite"
           >
-            홈으로 돌아가기
-          </button>
-        ) : null}
+            <div className="flex size-16 items-center justify-center rounded-full bg-[#fee500]/20 ring-1 ring-[#fee500]/50">
+              <LoaderCircle
+                className="size-8 animate-spin text-[#3b2a10]"
+                strokeWidth={2.25}
+              />
+            </div>
+            <h1 className="mt-5 text-xl font-bold text-ui-text-strong">
+              로그인 정보를 확인하고 있어요
+            </h1>
+            <p className="mt-2 text-sm font-medium text-ui-text-muted">
+              카카오 계정을 확인한 뒤 바로 입장할게요.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

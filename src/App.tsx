@@ -1,3 +1,4 @@
+import { LoaderCircle } from 'lucide-react'
 import { Suspense, lazy } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { DesktopViewportGuard } from './components/DesktopViewportGuard'
@@ -20,9 +21,26 @@ const WaitingRoomPage = lazy(
 function RouteLoadingScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-ui-app-bg px-4">
-      <p className="text-sm font-medium text-ui-text-muted">
-        화면을 불러오고 있습니다.
-      </p>
+      <div className="w-full max-w-sm rounded-[28px] border border-ui-border bg-ui-surface px-6 py-8 text-center shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+        <div
+          className="flex flex-col items-center"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex size-16 items-center justify-center rounded-full bg-ui-brand/12 ring-1 ring-ui-brand/20">
+            <LoaderCircle
+              className="size-8 animate-spin text-ui-brand"
+              strokeWidth={2.25}
+            />
+          </div>
+          <h1 className="mt-5 text-xl font-bold text-ui-text-strong">
+            화면을 준비하고 있어요
+          </h1>
+          <p className="mt-2 text-sm font-medium text-ui-text-muted">
+            필요한 화면을 불러온 뒤 바로 보여드릴게요.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
