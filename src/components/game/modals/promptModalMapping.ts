@@ -7,6 +7,7 @@ export type PromptModalKind =
   | 'sell'
   | 'acquisition'
   | 'dice_timer'
+  | 'travel'
   | 'unknown'
 
 export type PromptChoiceRuleKey =
@@ -19,6 +20,8 @@ export type PromptChoiceRuleKey =
   | 'sellCancel'
   | 'acquisitionConfirm'
   | 'acquisitionCancel'
+  | 'travelConfirm'
+  | 'travelCancel'
   | 'timerConfirm'
 
 const BUY_TYPE_TOKENS = ['BUY_OR_SKIP', 'BUY_PROPERTY', 'BUY_PROMPT']
@@ -40,6 +43,12 @@ const ACQUISITION_TYPE_TOKENS = [
   'ACQUIRE_CITY',
   'PURCHASE_CITY',
   'TAKEOVER_CITY',
+]
+const TRAVEL_TYPE_TOKENS = [
+  'TRAVEL',
+  'DOMESTIC_TRAVEL',
+  'TRAVEL_PROMPT',
+  'MOVE_TO',
 ]
 const DICE_TIMER_TYPE_TOKENS = [
   'DICE_TIMEOUT',
@@ -88,6 +97,14 @@ const PROMPT_CHOICE_RULES: Record<
     fallbackIndex: 0,
   },
   acquisitionCancel: {
+    preferredTokens: ['SKIP', 'PASS', 'CANCEL', 'NO'],
+    fallbackIndex: 1,
+  },
+  travelConfirm: {
+    preferredTokens: ['TRAVEL', 'DESTINATION', 'SELECT', 'CONFIRM', 'YES'],
+    fallbackIndex: 0,
+  },
+  travelCancel: {
     preferredTokens: ['SKIP', 'PASS', 'CANCEL', 'NO'],
     fallbackIndex: 1,
   },
@@ -180,6 +197,13 @@ export const resolvePromptModalKind = (
       hasChoiceToken(prompt, ['SKIP', 'PASS', 'CANCEL']))
   ) {
     return 'acquisition'
+  }
+
+  if (
+    hasTypeToken(prompt, TRAVEL_TYPE_TOKENS) ||
+    hasChoiceToken(prompt, ['TRAVEL', 'DESTINATION'])
+  ) {
+    return 'travel'
   }
 
   if (

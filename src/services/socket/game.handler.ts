@@ -54,6 +54,7 @@ type PromptResponsePayload = GamePromptResponse & {
 
 let teardownGameHandlersRef: Teardown | null = null
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
+let lastDiceRolledEnqueuedAt = 0
 
 const createActionId = () => `game-action-${Date.now()}`
 
@@ -119,17 +120,23 @@ export const setupGameHandlers = (
         ? (ackPayload!.dice as number[])
         : null
 
+      const ackReceivedAt = Date.now()
+
       setTimeout(() => {
-        const hasDiceEvent = gameStore.eventQueue.some(
-          (event) =>
-            typeof event.type === 'string' &&
-            [
-              'DICE_ROLLED',
-              'DICE_ROLL',
-              'DICE_ROLL_RESULT',
-              'ROLLED_DICE',
-            ].includes(event.type.trim().toUpperCase())
-        )
+        const hasDiceEvent =
+          lastDiceRolledEnqueuedAt >= ackReceivedAt ||
+          useGameStore
+            .getState()
+            .eventQueue.some(
+              (event) =>
+                typeof event.type === 'string' &&
+                [
+                  'DICE_ROLLED',
+                  'DICE_ROLL',
+                  'DICE_ROLL_RESULT',
+                  'ROLLED_DICE',
+                ].includes(event.type.trim().toUpperCase())
+            )
 
         if (!hasDiceEvent) {
           const syntheticDice: [number, number] =
@@ -177,6 +184,19 @@ export const setupGameHandlers = (
     const envelopeEvents = Array.isArray(payload.events) ? payload.events : []
     const mergedEvents =
       envelopeEvents.length > 0 ? envelopeEvents : snapshotEvents
+
+    const hasDiceRolledInEvents = mergedEvents.some(
+      (e: unknown) =>
+        e != null &&
+        typeof e === 'object' &&
+        'type' in e &&
+        typeof (e as { type: unknown }).type === 'string' &&
+        ((e as { type: string }).type.trim().toUpperCase() === 'DICE_ROLLED' ||
+          (e as { type: string }).type.trim().toUpperCase() === 'DICE_ROLL')
+    )
+    if (hasDiceRolledInEvents) {
+      lastDiceRolledEnqueuedAt = Date.now()
+    }
 
     const normalizedPatchEnvelope = normalizePatchEnvelopePayload({
       gameId: typeof payload.gameId === 'string' ? payload.gameId : undefined,
