@@ -35,6 +35,8 @@ export const mapStorePlayersToBoardPlayers = (storePlayers: Player[]) =>
         pos: storePlayer.position,
         money: storePlayer.balance,
         skipTurns: storePlayer.jail_turn_count,
+        state: storePlayer.state ?? initialPlayer.state,
+        stateDuration: storePlayer.stateDuration ?? initialPlayer.stateDuration,
       }
     }
   )

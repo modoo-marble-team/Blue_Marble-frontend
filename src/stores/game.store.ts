@@ -65,14 +65,13 @@ const normalizeState = (state: Partial<GameState>): Partial<GameState> => {
   const normalizedState: Partial<GameState> = { ...state }
 
   if ('currentPlayerId' in state || 'currentTurn' in state) {
-    const currentPlayerId =
+    const canonicalCurrentPlayerId =
       state.currentPlayerId !== undefined
         ? state.currentPlayerId
         : (state.currentTurn ?? null)
 
-    normalizedState.currentPlayerId = currentPlayerId
-    normalizedState.currentTurn =
-      state.currentTurn !== undefined ? state.currentTurn : currentPlayerId
+    normalizedState.currentPlayerId = canonicalCurrentPlayerId
+    normalizedState.currentTurn = canonicalCurrentPlayerId
   }
 
   if ('tiles' in state) {
