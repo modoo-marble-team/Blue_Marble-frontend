@@ -19,6 +19,8 @@ const {
   useDirectMessageControllerMock,
   navigateMock,
   disconnectSocketAndClearAuthMock,
+  logoutAuthSessionMock,
+  getAuthErrorMessageMock,
   createWaitingRoomMock,
   getWaitingRoomErrorMessageMock,
   isJoinPasswordMismatchErrorMock,
@@ -29,6 +31,8 @@ const {
   useDirectMessageControllerMock: vi.fn(),
   navigateMock: vi.fn(),
   disconnectSocketAndClearAuthMock: vi.fn(),
+  logoutAuthSessionMock: vi.fn(),
+  getAuthErrorMessageMock: vi.fn(),
   createWaitingRoomMock: vi.fn(),
   getWaitingRoomErrorMessageMock: vi.fn(),
   isJoinPasswordMismatchErrorMock: vi.fn(),
@@ -62,6 +66,11 @@ vi.mock(
 
 vi.mock('../../lib/socket', () => ({
   disconnectSocketAndClearAuth: disconnectSocketAndClearAuthMock,
+}))
+
+vi.mock('../../features/auth/api/api', () => ({
+  logoutAuthSession: logoutAuthSessionMock,
+  getAuthErrorMessage: getAuthErrorMessageMock,
 }))
 
 vi.mock('../waiting-room/api/api', () => ({
@@ -177,6 +186,10 @@ describe('LobbyPage filter and toggle regression', () => {
       closeDirectMessage: vi.fn(),
       sendDirectMessage: vi.fn(),
     })
+    logoutAuthSessionMock.mockResolvedValue(undefined)
+    getAuthErrorMessageMock.mockReturnValue(
+      '로그아웃 처리 중 문제가 있었지만 현재 기기 세션은 종료했어요.'
+    )
 
     createWaitingRoomMock.mockResolvedValue({
       roomId: 'room-10',
@@ -484,8 +497,11 @@ describe('LobbyPage filter and toggle regression', () => {
     await user.click(screen.getByRole('button', { name: '프로필 메뉴 열기' }))
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
-    expect(disconnectSocketAndClearAuthMock).toHaveBeenCalledTimes(1)
-    expect(navigateMock).toHaveBeenCalledWith('/', { replace: true })
-    expect(useAuthStore.getState().session).toBeNull()
+    await waitFor(() => {
+      expect(logoutAuthSessionMock).toHaveBeenCalledTimes(1)
+      expect(disconnectSocketAndClearAuthMock).toHaveBeenCalledTimes(1)
+      expect(navigateMock).toHaveBeenCalledWith('/', { replace: true })
+      expect(useAuthStore.getState().session).toBeNull()
+    })
   })
 })

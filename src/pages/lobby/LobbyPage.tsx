@@ -4,6 +4,10 @@ import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
 import Header from '../../components/header/Header'
 import { useRequireActiveSession } from '../../features/auth/session/hooks/useRequireActiveSession'
+import {
+  getAuthErrorMessage,
+  logoutAuthSession,
+} from '../../features/auth/api/api'
 import { useAuthStore } from '../../features/auth/session/store'
 import {
   createProfileMenuItems,
@@ -109,9 +113,20 @@ function LobbyPage() {
     setMockOnlineUserStatus(session.userId, 'lobby', session.nickname)
   }, [session])
 
-  function handleLogout() {
+  async function handleLogout() {
     if (IS_SOCKET_MOCK_ENABLED && session) {
       removeMockOnlineUser(session.userId)
+    }
+
+    try {
+      await logoutAuthSession()
+    } catch (error) {
+      toast.error(
+        getAuthErrorMessage(
+          error,
+          '로그아웃 처리 중 문제가 있었지만 현재 기기 세션은 종료했어요.'
+        )
+      )
     }
 
     clearSession()
@@ -134,7 +149,9 @@ function LobbyPage() {
   const headerMenuItems = createProfileMenuItems({
     isGuest: session.isGuest,
     onGoMyPage: handleGoMyPage,
-    onLogout: handleLogout,
+    onLogout: () => {
+      void handleLogout()
+    },
   })
 
   return (

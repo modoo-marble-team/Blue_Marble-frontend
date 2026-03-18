@@ -1,7 +1,12 @@
-import { isAxiosError } from 'axios'
+import { AxiosHeaders, isAxiosError } from 'axios'
 import { IS_DEMO_MOCK_ENABLED } from '../../../config/env'
 import { getParsedApiErrorMessage, parseApiError } from '../../../lib/apiError'
-import { apiClient } from '../../../lib/axios'
+import {
+  apiClient,
+  requestAccessTokenRefresh,
+  requestAuthLogout,
+  type RefreshAccessTokenResponsePayload,
+} from '../../../lib/axios'
 import {
   mockGuestLogin,
   mockGetMyPageProfile,
@@ -31,6 +36,11 @@ interface AuthResponsePayload {
   access_token: string
   user: AuthUserPayload
   is_new_user: boolean
+}
+
+interface AuthSessionResponse {
+  user: AuthUserPayload
+  accessToken: string
 }
 
 type AuthSessionPayload = AuthUserPayload
@@ -131,13 +141,25 @@ function buildApiPath(path: string) {
 }
 
 async function getAuthSessionWithToken(accessToken: string) {
-  const { data } = await apiClient.get<AuthSessionPayload>('/auth/session', {
+  const response = await apiClient.get<AuthSessionPayload>('/auth/session', {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
   })
 
-  return data
+  const resolvedAuthorization = AxiosHeaders.from(response.config?.headers).get(
+    'Authorization'
+  )
+  const resolvedAccessToken =
+    typeof resolvedAuthorization === 'string' &&
+    resolvedAuthorization.startsWith('Bearer ')
+      ? resolvedAuthorization.slice('Bearer '.length).trim()
+      : accessToken
+
+  return {
+    user: response.data,
+    accessToken: resolvedAccessToken,
+  } satisfies AuthSessionResponse
 }
 
 export function shouldUseFallbackSessionForRestore({
@@ -158,14 +180,15 @@ export async function restoreAuthSession({
     return fallbackSession
   }
 
-  const user = await getAuthSessionWithToken(accessToken)
+  const restored = await getAuthSessionWithToken(accessToken)
 
   return buildAuthSession({
-    accessToken,
-    user,
+    accessToken: restored.accessToken,
+    user: restored.user,
     provider: fallbackSession?.provider,
     needsNicknameSetup:
-      fallbackSession?.needsNicknameSetup && user.nickname.trim().length === 0,
+      fallbackSession?.needsNicknameSetup &&
+      restored.user.nickname.trim().length === 0,
   })
 }
 
@@ -173,14 +196,26 @@ export async function completeKakaoLogin({
   accessToken,
   isNewUser,
 }: CompleteKakaoLoginParams) {
-  const user = await getAuthSessionWithToken(accessToken)
+  const restored = await getAuthSessionWithToken(accessToken)
 
   return buildAuthSession({
-    accessToken,
-    user,
+    accessToken: restored.accessToken,
+    user: restored.user,
     provider: 'kakao',
-    needsNicknameSetup: isNewUser || user.nickname.trim().length === 0,
+    needsNicknameSetup: isNewUser || restored.user.nickname.trim().length === 0,
   })
+}
+
+export async function refreshAccessToken() {
+  if (IS_AUTH_MOCK_ENABLED) {
+    return {
+      access_token: '',
+      token_type: 'Bearer',
+      expires_in: 0,
+    } satisfies RefreshAccessTokenResponsePayload
+  }
+
+  return requestAccessTokenRefresh()
 }
 
 export async function loginAsGuest() {
@@ -297,6 +332,14 @@ export async function getMyPageProfile(
       ),
     }
   }
+}
+
+export async function logoutAuthSession() {
+  if (IS_AUTH_MOCK_ENABLED) {
+    return
+  }
+
+  await requestAuthLogout()
 }
 
 export function getAuthErrorMessage(error: unknown, fallbackMessage: string) {

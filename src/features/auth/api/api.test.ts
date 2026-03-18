@@ -1,4 +1,4 @@
-import { AxiosError } from 'axios'
+import axios, { AxiosError, AxiosHeaders } from 'axios'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiClient } from '../../../lib/axios'
 import {
@@ -7,7 +7,9 @@ import {
   getAuthErrorMessage,
   getMyPageProfile,
   loginAsGuest,
+  logoutAuthSession,
   mapMyPageProfile,
+  refreshAccessToken,
   restoreAuthSession,
   setNickname,
   shouldUseFallbackSessionForRestore,
@@ -176,6 +178,29 @@ describe('auth api integration helpers', () => {
     expect(restored.needsNicknameSetup).toBe(true)
   })
 
+  it('restoreAuthSession은 refresh 이후 응답 config의 Authorization 헤더를 최신 access token으로 반영한다', async () => {
+    vi.spyOn(apiClient, 'get').mockResolvedValue({
+      data: {
+        id: 11,
+        nickname: '',
+        is_guest: false,
+        profile_image_url: null,
+      },
+      config: {
+        headers: new AxiosHeaders({
+          Authorization: 'Bearer refreshed-token',
+        }),
+      },
+    } as never)
+
+    const restored = await restoreAuthSession({
+      accessToken: 'persisted-token',
+      fallbackSession: baseSession,
+    })
+
+    expect(restored.accessToken).toBe('refreshed-token')
+  })
+
   it('mock 모드에서는 persisted fallback session을 그대로 복구에 사용한다', () => {
     expect(
       shouldUseFallbackSessionForRestore({
@@ -255,6 +280,47 @@ describe('auth api integration helpers', () => {
     expect(result).toBeNull()
     expect(assignSpy).toHaveBeenCalledWith(
       'http://localhost:3000/api/auth/kakao/login'
+    )
+  })
+
+  it('refreshAccessToken은 auth refresh endpoint를 withCredentials로 호출한다', async () => {
+    const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        access_token: 'refreshed-token',
+        token_type: 'Bearer',
+        expires_in: 3600,
+      },
+    } as never)
+
+    const result = await refreshAccessToken()
+
+    expect(result).toEqual({
+      access_token: 'refreshed-token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    })
+    expect(postSpy).toHaveBeenCalledWith(
+      'http://localhost:3000/api/auth/refresh',
+      undefined,
+      expect.objectContaining({
+        withCredentials: true,
+      })
+    )
+  })
+
+  it('logoutAuthSession은 auth logout endpoint를 withCredentials로 호출한다', async () => {
+    const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: null,
+    } as never)
+
+    await logoutAuthSession()
+
+    expect(postSpy).toHaveBeenCalledWith(
+      'http://localhost:3000/api/auth/logout',
+      undefined,
+      expect.objectContaining({
+        withCredentials: true,
+      })
     )
   })
 

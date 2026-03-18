@@ -1,13 +1,18 @@
-import { AxiosHeaders, type InternalAxiosRequestConfig } from 'axios'
-import { afterEach, describe, expect, it } from 'vitest'
+import axios, {
+  AxiosError,
+  AxiosHeaders,
+  type InternalAxiosRequestConfig,
+} from 'axios'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../features/auth/session/store'
-import { apiClient } from './axios'
+import { apiClient, buildAuthTransportUrl } from './axios'
 
 interface RequestInterceptorManagerLike {
   handlers?: Array<{
     fulfilled?: (
       config: InternalAxiosRequestConfig
     ) => InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>
+    rejected?: (error: unknown) => unknown
   }>
 }
 
@@ -35,8 +40,38 @@ function runRequestInterceptor(config: InternalAxiosRequestConfig) {
   return nextConfig
 }
 
+function runResponseErrorInterceptor(error: unknown) {
+  const responseInterceptors = apiClient.interceptors
+    .response as RequestInterceptorManagerLike
+  const rejectedHandler = responseInterceptors.handlers?.[0]?.rejected
+  if (!rejectedHandler) {
+    throw new Error('response interceptor is not registered')
+  }
+
+  return rejectedHandler(error)
+}
+
+function createAxiosError(config: InternalAxiosRequestConfig, status: number) {
+  return new AxiosError(
+    `Request failed with status code ${status}`,
+    undefined,
+    config,
+    undefined,
+    {
+      status,
+      statusText: 'error',
+      headers: {},
+      config,
+      data: {
+        detail: status === 401 ? 'Token expired' : 'error',
+      },
+    }
+  )
+}
+
 describe('apiClient request interceptor', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     useAuthStore.getState().clearSession()
   })
 
@@ -78,5 +113,77 @@ describe('apiClient request interceptor', () => {
     expect(
       AxiosHeaders.from(config.headers).get('Authorization')
     ).toBeUndefined()
+  })
+
+  it('기본적으로 withCredentials를 켠다', () => {
+    expect(apiClient.defaults.withCredentials).toBe(true)
+  })
+
+  it('401 응답이면 refresh 후 access token을 갱신하고 요청을 1회 재시도한다', async () => {
+    useAuthStore.getState().setSession({
+      accessToken: 'expired-token',
+      userId: '1',
+      nickname: '마블러',
+      profileImage: null,
+      isGuest: false,
+      needsNicknameSetup: false,
+      provider: 'kakao',
+    })
+
+    const refreshSpy = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: {
+        access_token: 'refreshed-token',
+        token_type: 'Bearer',
+        expires_in: 3600,
+      },
+    } as never)
+    const retrySpy = vi.spyOn(apiClient, 'request').mockResolvedValue({
+      data: { ok: true },
+    } as never)
+
+    const result = await runResponseErrorInterceptor(
+      createAxiosError(createRequestConfig(), 401)
+    )
+
+    expect(refreshSpy).toHaveBeenCalledWith(
+      buildAuthTransportUrl('/refresh'),
+      undefined,
+      expect.objectContaining({
+        withCredentials: true,
+      })
+    )
+    expect(retrySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _retry: true,
+        headers: expect.objectContaining({
+          Authorization: 'Bearer refreshed-token',
+        }),
+      })
+    )
+    expect(useAuthStore.getState().session?.accessToken).toBe('refreshed-token')
+    expect(result).toEqual({
+      data: { ok: true },
+    })
+  })
+
+  it('refresh가 실패하면 세션을 정리하고 원본 요청을 종료한다', async () => {
+    useAuthStore.getState().setSession({
+      accessToken: 'expired-token',
+      userId: '1',
+      nickname: '마블러',
+      profileImage: null,
+      isGuest: false,
+      needsNicknameSetup: false,
+      provider: 'kakao',
+    })
+
+    const refreshError = new Error('refresh failed')
+    vi.spyOn(axios, 'post').mockRejectedValue(refreshError)
+
+    await expect(
+      runResponseErrorInterceptor(createAxiosError(createRequestConfig(), 401))
+    ).rejects.toBe(refreshError)
+
+    expect(useAuthStore.getState().session).toBeNull()
   })
 })
