@@ -5,19 +5,26 @@ interface TravelModalProps {
   title?: string
   description?: string
   confirmLabel?: string
+  cancelLabel?: string
+  showCancel?: boolean
   onConfirm?: () => void
+  onCancel?: () => void
 }
 
 const DEFAULT_TITLE = '국내여행'
 const DEFAULT_DESCRIPTION = '원하는 도시를 클릭하여 이동할 수 있습니다'
 const DEFAULT_CONFIRM_LABEL = '확인'
+const DEFAULT_CANCEL_LABEL = '건너뛰기'
 
 const TravelModal: React.FC<TravelModalProps> = ({
   open,
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
   confirmLabel = DEFAULT_CONFIRM_LABEL,
+  cancelLabel = DEFAULT_CANCEL_LABEL,
+  showCancel = false,
   onConfirm,
+  onCancel,
 }) => {
   if (!open) {
     return null
@@ -49,6 +56,16 @@ const TravelModal: React.FC<TravelModalProps> = ({
         >
           {confirmLabel}
         </button>
+
+        {showCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="mx-auto mt-3 flex h-18.5 w-full max-w-102 items-center justify-center rounded-[22px] border border-[#D0D7E2] bg-white text-[24px] font-black tracking-tight text-[#5A6D8A] transition-colors hover:bg-[#F8FAFC]"
+          >
+            {cancelLabel}
+          </button>
+        )}
       </div>
     </div>
   )

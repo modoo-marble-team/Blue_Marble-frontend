@@ -490,6 +490,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isTollPromptOpen = promptModalKind === 'toll'
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
+    const isTravelPromptOpen = promptModalKind === 'travel'
     const isDiceTimerPromptOpen = promptModalKind === 'dice_timer'
 
     const promptTileId = getPromptPayloadNumber(activePrompt, [
@@ -621,6 +622,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const promptAcquisitionCancelChoiceValue = resolvePromptChoiceValue(
       activePrompt,
       'acquisitionCancel'
+    )
+    const promptTravelConfirmChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'travelConfirm'
+    )
+    const promptTravelCancelChoiceValue = resolvePromptChoiceValue(
+      activePrompt,
+      'travelCancel'
     )
     const promptTimerConfirmChoiceValue = resolvePromptChoiceValue(
       activePrompt,
@@ -813,6 +822,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [travelSelection, setTravelSelection] = useState(
       INITIAL_TRAVEL_SELECTION_STATE
     )
+
+    useEffect(() => {
+      if (isTravelPromptOpen && !travelModal.open && !travelSelection.active) {
+        setTravelModal({ open: true })
+      }
+    }, [isTravelPromptOpen, travelModal.open, travelSelection.active])
+
     const [tollModal, setTollModal] = useState<TollModalState>({
       open: false,
       tileId: null,
@@ -1085,11 +1101,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     function handleTravelConfirm() {
       const { onDoneCallback } = travelModal
       setTravelModal({ open: false })
+      submitPromptChoice(promptTravelConfirmChoiceValue)
       setTravelSelection({
         active: true,
         onDoneCallback,
       })
       setStatus('국내여행: 이동할 칸을 클릭하세요.')
+    }
+
+    function handleTravelCancel() {
+      setTravelModal({ open: false })
+      submitPromptChoice(promptTravelCancelChoiceValue)
     }
 
     function handleTravelDestinationSelect(tileId: number) {
@@ -1732,7 +1754,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           variant={cardModal.variant}
           onConfirm={handleCardConfirm}
         />
-        <TravelModal open={travelModal.open} onConfirm={handleTravelConfirm} />
+        <TravelModal
+          open={travelModal.open}
+          onConfirm={handleTravelConfirm}
+          onCancel={handleTravelCancel}
+          showCancel={isTravelPromptOpen && !!promptTravelCancelChoiceValue}
+        />
         <AIPenaltyModal
           open={aiModal.open}
           status={aiModal.status}
