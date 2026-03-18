@@ -276,10 +276,128 @@ jobs:
                 })
             }
 
+            function hasRequiredManualEvidence(section, files) {
+              const manualLines = section
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line.startsWith('- '))
+
+              if (manualLines.length === 0) {
+                return false
+              }
+
+              const requiredManuals = []
+
+              if (
+                files.some((file) =>
+                  startsWithAnyPrefix(file, [
+                    'src/pages/lobby/',
+                    'src/features/presence/',
+                    'src/features/room-chat/',
+                  ])
+                )
+              ) {
+                requiredManuals.push('docs/ai/manuals/lobby.md')
+              }
+
+              if (files.some((file) => file.startsWith('src/pages/waiting-room/'))) {
+                requiredManuals.push('docs/ai/manuals/waiting-room.md')
+              }
+
+              if (
+                files.some((file) =>
+                  startsWithAnyPrefix(file, [
+                    'src/pages/GamePage.tsx',
+                    'src/components/game/',
+                    'src/components/board/',
+                    'src/hooks/game/',
+                    'src/services/socket/game.handler.ts',
+                    'src/stores/game.store.ts',
+                    'src/mocks/handlers/game.handler.ts',
+                  ])
+                )
+              ) {
+                requiredManuals.push('docs/ai/manuals/game-runtime.md')
+              }
+
+              if (
+                files.some((file) =>
+                  startsWithAnyPrefix(file, [
+                    'src/contracts/socket/',
+                    'mock-socket-server/',
+                    'src/lib/socket.ts',
+                  ])
+                )
+              ) {
+                requiredManuals.push('docs/socket-mock-server.md')
+              }
+
+              if (requiredManuals.length === 0) {
+                return true
+              }
+
+              return requiredManuals.every((manual) =>
+                manualLines.some((line) => line.includes(manual))
+              )
+            }
+
+            function hasCheckedRole(section, roleName) {
+              if (!section) {
+                return false
+              }
+
+              const rolePattern = new RegExp(`- \\[x\\] ${escapeRegExp(roleName)}\\b`)
+              return rolePattern.test(section)
+            }
+
+            function extractCommandMentions(section) {
+              if (!section) {
+                return new Set()
+              }
+
+              const commands = section
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .flatMap((line) => {
+                  const checkedQuotedMatch = line.match(
+                    /^- \[x\]\s+`([^`]+)`$/i
+                  )
+                  if (checkedQuotedMatch) {
+                    return [checkedQuotedMatch[1]]
+                  }
+
+                  if (/^- \[ \]\s+`[^`]+`$/.test(line)) {
+                    return []
+                  }
+
+                  const quotedMatches = [...line.matchAll(/`([^`]+)`/g)].map(
+                    (match) => match[1]
+                  )
+
+                  if (quotedMatches.length > 0) {
+                    return quotedMatches
+                  }
+
+                  const commandMatch = line.match(/^- (npm run .+)$/)
+                  return commandMatch ? [commandMatch[1]] : []
+                })
+
+              return new Set(commands)
+            }
+
             const pullRequestBody = context.payload.pull_request?.body ?? ''
             const taskSection = extractSection(
               pullRequestBody,
               '## 🧠 Task 문서 (큰 작업이면 필수)'
+            )
+            const manualSection = extractSection(
+              pullRequestBody,
+              '## 📚 참고한 기준 문서'
+            )
+            const roleSection = extractSection(
+              pullRequestBody,
+              '## 👥 역할 수행'
             )
             const validationSection = extractSection(
               pullRequestBody,
@@ -317,15 +435,51 @@ jobs:
               )
             }
 
+            const requiredValidationCommands = extractBulletLines(
+              extractScriptSection(validationPlan, 'Required checks:', [
+                'Suggested checks:',
+              ])
+            ).map((line) => line.replace(/^- /, ''))
+            const mentionedValidationCommands =
+              extractCommandMentions(validationSection)
+
+            if (
+              isLargeChange &&
+              !hasRequiredManualEvidence(manualSection, changedFileArray)
+            ) {
+              workflowWarnings.push(
+                '고위험 변경으로 보이지만 참고한 기준 문서 섹션에 필요한 manual 근거가 없습니다.'
+              )
+            }
+
+            if (
+              isLargeChange &&
+              !['Planner', 'Reviewer', 'Tester'].every((role) =>
+                hasCheckedRole(roleSection, role)
+              )
+            ) {
+              workflowWarnings.push(
+                '큰 변경으로 보이지만 Planner / Reviewer / Tester 역할 수행 흔적이 충분하지 않습니다.'
+              )
+            }
+
+            if (hasMeaningfulValidationContent(validationSection)) {
+              const missingRequiredChecks = requiredValidationCommands.filter(
+                (command) => !mentionedValidationCommands.has(command)
+              )
+
+              if (missingRequiredChecks.length > 0) {
+                workflowWarnings.push(
+                  `Required check 중 PR 본문 실행한 검증에 보이지 않는 항목이 있습니다: ${missingRequiredChecks.join(', ')}`
+                )
+              }
+            }
+
             const warningSection = workflowWarnings.length
               ? workflowWarnings.map((warning) => `- ${warning}`).join('\n')
               : '- none'
             const validationRequired = formatBulletSection(
-              extractBulletLines(
-                extractScriptSection(validationPlan, 'Required checks:', [
-                  'Suggested checks:',
-                ])
-              )
+              requiredValidationCommands.map((command) => `- ${command}`)
             )
             const validationSuggested = formatBulletSection(
               extractBulletLines(
