@@ -11,7 +11,7 @@ import {
   parseTaskNewArgs,
 } from './task-new.mjs'
 
-const tempDirs = []
+const tempDirs: string[] = []
 
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -53,8 +53,11 @@ describe('task-new', () => {
     )
     expect(contents.plan).toContain('작업 이름: Auth Refresh Cookie Flow')
     expect(contents.plan).toContain('`src/lib/axios.ts`')
+    expect(contents.plan).toContain('## Role Plan')
     expect(contents.context).toContain('`docs/ai/manuals/common.md`')
+    expect(contents.context).toContain('## Relevant Manuals')
     expect(contents.checklist).toContain('`npm run lint`')
+    expect(contents.checklist).toContain('Planner 기준 정리 완료')
   })
 
   it('creates a task workspace and blocks overwrite by default', () => {

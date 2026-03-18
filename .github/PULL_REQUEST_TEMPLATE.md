@@ -21,6 +21,28 @@
 
 ---
 
+## 📚 참고한 기준 문서
+
+> 이번 작업에서 실제로 읽고 기준으로 삼은 문서를 적어주세요.
+
+- `AGENTS.md`
+- `docs/rules.md`
+- `docs/testing.md`
+- 추가 manual / 문서:
+
+---
+
+## 👥 역할 수행
+
+> 큰 변경이면 Planner / Reviewer / Tester 흔적이 PR에서 보여야 합니다.
+
+- [ ] Planner
+- [ ] Implementer
+- [ ] Reviewer
+- [ ] Tester
+
+---
+
 ## 🧪 실행한 검증
 
 > 실제로 실행한 명령만 적어주세요.
@@ -46,6 +68,8 @@
 - [ ] 불필요한 console.log 제거
 - [ ] 관련 이슈 연결 완료
 - [ ] 큰 작업이면 task 문서 링크를 남겼다
+- [ ] 참고한 기준 문서를 PR 본문에 남겼다
+- [ ] 큰 작업이면 Planner / Reviewer / Tester 역할 흔적을 남겼다
 - [ ] 실행한 검증과 남은 리스크를 PR 본문에 적었다
 
 ---
