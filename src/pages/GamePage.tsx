@@ -17,13 +17,20 @@ import { playBgm, stopBgm } from '../lib/bgm'
 import { socket } from '../lib/socket'
 import { emitPromptResponse } from '../services/socket/game.handler'
 import { useGameStore } from '../stores/game.store'
-import type { ChatMessage, GamePromptChoice } from '../types/domain'
+import type { GamePromptChoice } from '../types/domain'
 import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
   calcPlayerTotalAssets,
 } from './game/gameViewModel'
+import {
+  consumePendingGameChatEcho,
+  createOptimisticGameChatMessage,
+  mapGameChatEventToMessage,
+  reconcileGameChatMessages,
+  type PendingGameChatEcho,
+} from './game/gameChat'
 import { sendWaitingRoomChat } from './waiting-room/socket/socket'
 import type { ChatEventPayload } from './waiting-room/api/types'
 
@@ -44,17 +51,6 @@ const FALLBACK_PROMPT_CHOICES: GamePromptChoice[] = [
     value: 'confirm',
   },
 ]
-
-function mapGameChatEventToMessage(payload: ChatEventPayload): ChatMessage {
-  return {
-    id: `${payload.room_id}-${payload.sender_id}-${payload.sent_at}`,
-    sender_id: payload.sender_id,
-    sender_nickname: payload.sender_nickname,
-    content: payload.message,
-    timestamp: payload.sent_at,
-    type: 'talk',
-  }
-}
 
 interface GamePageLocationState {
   roomId?: string
@@ -94,6 +90,7 @@ const GamePage: React.FC = () => {
   >(null)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const boardRef = useRef<BoardGameHandle>(null)
+  const pendingGameChatEchoesRef = useRef<PendingGameChatEcho[]>([])
 
   // 🎵 배경음악 (BGM) — 게임 진입 시 즉시 재생, 퇴장 시 정지
   useEffect(() => {
@@ -183,16 +180,21 @@ const GamePage: React.FC = () => {
       }
 
       const nextMessage = mapGameChatEventToMessage(payload)
-      const gameStore = useGameStore.getState()
-      const hasSameMessage = gameStore.messages.some(
-        (message) => message.id === nextMessage.id
-      )
+      const consumedPendingEcho = consumePendingGameChatEcho({
+        pendingEchoes: pendingGameChatEchoesRef.current,
+        incomingMessage: nextMessage,
+        currentUserId,
+      })
 
-      if (hasSameMessage) {
-        return
-      }
+      pendingGameChatEchoesRef.current = consumedPendingEcho.pendingEchoes
 
-      gameStore.addMessage(nextMessage)
+      useGameStore.setState((state) => ({
+        messages: reconcileGameChatMessages({
+          previousMessages: state.messages,
+          incomingMessage: nextMessage,
+          matchedPendingId: consumedPendingEcho.matchedPendingId,
+        }),
+      }))
     }
 
     socket.on('chat', handleChat)
@@ -200,16 +202,36 @@ const GamePage: React.FC = () => {
     return () => {
       socket.off('chat', handleChat)
     }
-  }, [activeRoomId])
+  }, [activeRoomId, currentUserId])
 
   const handleSendMessage = (content: string) => {
     if (!activeRoomId) {
       return
     }
 
+    const senderId = currentUserId ?? DEFAULT_GUEST_ID
+    const optimisticMessage = createOptimisticGameChatMessage({
+      roomId: activeRoomId,
+      senderId,
+      senderNickname: currentNickname,
+      message: content,
+    })
+
+    pendingGameChatEchoesRef.current = [
+      ...pendingGameChatEchoesRef.current,
+      {
+        id: optimisticMessage.id,
+        senderId,
+        content,
+        createdAtMs: Date.parse(optimisticMessage.timestamp),
+      },
+    ]
+
+    useGameStore.getState().addMessage(optimisticMessage)
+
     sendWaitingRoomChat({
       roomId: activeRoomId,
-      senderId: currentUserId ?? DEFAULT_GUEST_ID,
+      senderId,
       senderNickname: currentNickname,
       message: content,
     })
