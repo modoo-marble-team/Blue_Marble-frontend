@@ -30,6 +30,16 @@ docs/ai/tasks/game-prompt-normalization/
 4. `checklist.md`에 구현/테스트/리뷰 체크박스를 만든다.
 5. 새 세션에서 해당 문서 3개를 다시 읽고 구현을 시작한다.
 
+수동 복사가 번거로우면 아래 스크립트로 초안을 만들 수 있다.
+
+```bash
+npm run ai:task:new -- auth-refresh-cookie-flow
+npm run ai:task:new -- auth-refresh-cookie-flow --files src/lib/axios.ts src/features/auth/api/api.ts
+```
+
+- `--files`를 주면 관련 manual과 최소 검증 명령 초안을 함께 채운다.
+- 이미 같은 slug가 있으면 실패하고, 의도적으로 덮어쓰려면 `--force`를 사용한다.
+
 ## example-\* 디렉토리
 
 `example-*` 디렉토리는 실제 작업 방식 예시를 보여주기 위한 샘플이다.
