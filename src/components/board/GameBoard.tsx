@@ -226,6 +226,7 @@ interface GameBoardProps {
     level?: number
     price?: number
   }>
+  localPlayerId?: string | number | null
 }
 
 function toBoardBuildingLevel(
@@ -285,6 +286,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       promptSubmittingChoice = null,
       onPromptChoice,
       tiles = [],
+      localPlayerId,
     },
     ref
   ) => {
@@ -374,6 +376,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             flashDiceRollAnimation()
           }
 
+          const dicePayload = event.payload as
+            | { dice?: [number, number] }
+            | undefined
+          if (dicePayload?.dice && dicePayload.dice.length >= 2) {
+            setDice1(dicePayload.dice[0])
+            setDice2(dicePayload.dice[1])
+          }
+
           try {
             new Audio('/audio/dice-roll.mp3').play().catch(() => {})
           } catch {
@@ -382,10 +392,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
 
         if (normalizedType !== 'PLAYER_MOVED') {
-          return
-        }
-
-        if (!isMockMode) {
           return
         }
 
@@ -402,7 +408,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         handleArrival(tileIndex, emitMockEndTurn)
       },
       [
-        isMockMode,
         handleArrival,
         emitMockEndTurn,
         freezeDiceRollValues,
@@ -1107,6 +1112,16 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       playersRef.current = updatedPlayers
       setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
 
+      if (!isMockMode) {
+        emitGameAction({
+          type: 'TRAVEL',
+          gameId,
+          payload: {
+            toIndex: tileId,
+          },
+        })
+      }
+
       const destinationName =
         TILES[tileId]?.name.replace('\n', ' ') || '선택 칸'
       setStatus(
@@ -1296,9 +1311,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
     const isOwnedTileSellClickable = (tileId: number) => {
-      if (!isMockMode) {
-        return false
-      }
       if (travelSelection.active || hasBlockingModal) {
         return false
       }
@@ -1309,6 +1321,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const owner = tileOwners[tileId]
       if (!owner) {
         return false
+      }
+
+      // ⚠️ 실서버 모드에서는 내 땅만 매각 가능해야 함 (다른 사람 턴이어도 내 땅만)
+      if (localPlayerId != null) {
+        return String(owner.ownerId) === String(localPlayerId)
       }
 
       return String(owner.ownerId) === String(activePlayerId)
