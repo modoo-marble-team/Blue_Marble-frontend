@@ -69,7 +69,7 @@ import type {
 } from './gameBoard.types'
 import '../../styles/board.css'
 import { formatWon } from '../../lib/utils'
-import type { GamePrompt, ServerEvent } from '../../types/domain'
+import type { GamePrompt, PlayerId, ServerEvent } from '../../types/domain'
 import { playLongSfx, stopLongSfx } from '../../lib/bgm'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { emitGameAction } from '../../services/socket/game.handler'
@@ -405,7 +405,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           return
         }
 
-        handleArrival(tileIndex, emitMockEndTurn)
+        handleArrival(tileIndex, emitMockEndTurn, event.playerId ?? null)
       },
       [
         handleArrival,
@@ -1158,8 +1158,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }, 300)
     }
 
-    function handleArrival(tileId: number, onDone?: () => void) {
+    function handleArrival(
+      tileId: number,
+      onDone?: () => void,
+      eventPlayerId?: PlayerId | null
+    ) {
       const tile = TILES[tileId]
+
+      const isLocalPlayerTurn =
+        localPlayerId == null ||
+        eventPlayerId == null ||
+        String(eventPlayerId) === String(localPlayerId)
 
       if (tile.type === 'START') {
         setStatus('시작 칸에 도착!')
@@ -1169,18 +1178,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       if (tile.type === 'MOVE_TO_ISLAND') {
         setStatus('무인도로 이동!')
-        setGoToIslandModal({ open: true, onDoneCallback: onDone })
-        // 🏝️ 무인도 칸 도착 소리 재생
-        new Audio('/audio/island-trap.mp3').play().catch(() => {})
+        if (isLocalPlayerTurn) {
+          setGoToIslandModal({ open: true, onDoneCallback: onDone })
+          new Audio('/audio/island-trap.mp3').play().catch(() => {})
+        } else {
+          onDone?.()
+        }
         return
       }
 
       if (tile.type === 'ISLAND') {
         setStatus('무인도 칸에 도착!')
-        // 🏝️ 무인도(직접 도착) 칸 소리 재생
-        new Audio('/audio/island-trap.mp3').play().catch(() => {})
-
-        setIslandModal({ open: true, onDoneCallback: onDone })
+        if (isLocalPlayerTurn) {
+          new Audio('/audio/island-trap.mp3').play().catch(() => {})
+          setIslandModal({ open: true, onDoneCallback: onDone })
+        } else {
+          onDone?.()
+        }
         return
       }
 
@@ -1191,10 +1205,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'TRAVEL') {
-        setTravelModal({
-          open: true,
-          onDoneCallback: onDone,
-        })
+        if (isLocalPlayerTurn) {
+          setTravelModal({
+            open: true,
+            onDoneCallback: onDone,
+          })
+        } else {
+          onDone?.()
+        }
         return
       }
 
@@ -1202,25 +1220,29 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         tile.type === 'AI' ||
         (tile.type === 'EVENT' && tile.emoji === '🤖')
       ) {
-        // 🤖 AI 칸 도착 소리 재생
-        playLongSfx('/audio/AI.mp3')
-
-        handleAITile(onDone)
+        if (isLocalPlayerTurn) {
+          playLongSfx('/audio/AI.mp3')
+          handleAITile(onDone)
+        } else {
+          onDone?.()
+        }
         return
       }
 
       if (tile.type === 'CHANCE' || tile.type === 'EVENT') {
-        setCardModal({
-          open: true,
-          variant: tile.type === 'CHANCE' ? 'CHANCE' : 'EVENT',
-          onDoneCallback: onDone,
-        })
-
-        // 🃏 찬스/강화 이벤트 소리 재생
-        if (tile.type === 'CHANCE') {
-          new Audio('/audio/chance.mp3').play().catch(() => {})
+        if (isLocalPlayerTurn) {
+          setCardModal({
+            open: true,
+            variant: tile.type === 'CHANCE' ? 'CHANCE' : 'EVENT',
+            onDoneCallback: onDone,
+          })
+          if (tile.type === 'CHANCE') {
+            new Audio('/audio/chance.mp3').play().catch(() => {})
+          } else {
+            new Audio('/audio/event.mp3').play().catch(() => {})
+          }
         } else {
-          new Audio('/audio/event.mp3').play().catch(() => {})
+          onDone?.()
         }
         return
       }
