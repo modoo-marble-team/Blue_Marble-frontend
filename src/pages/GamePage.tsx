@@ -12,7 +12,6 @@ import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatContro
 import RoomChat from '../features/room-chat/RoomChat'
 import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useGameState } from '../hooks/game/useGameState'
-import { useGameTimer } from '../hooks/game/useGameTimer'
 import { useTurn } from '../hooks/game/useTurn'
 import { playBgm, stopBgm } from '../lib/bgm'
 import { socket } from '../lib/socket'
@@ -67,23 +66,19 @@ const GamePage: React.FC = () => {
   const location = useLocation()
   const locationState = location.state as GamePageLocationState | null
   const authSession = useAuthStore((state) => state.session)
-  const {
-    currentTurn,
-    phase,
-    messages,
-    turnTimeoutSec,
-    turnTimerKey,
-    players: storePlayers,
-    tiles: storeTiles,
-    prompt,
-    pendingAction,
-    lastAck,
-    lastError,
-    session: gameSession,
-    gameId: storeGameId,
-    clearPrompt,
-    setLastError,
-  } = useGameStore()
+  const currentTurn = useGameStore((s) => s.currentTurn)
+  const phase = useGameStore((s) => s.phase)
+  const messages = useGameStore((s) => s.messages)
+  const storePlayers = useGameStore((s) => s.players)
+  const storeTiles = useGameStore((s) => s.tiles)
+  const prompt = useGameStore((s) => s.prompt)
+  const pendingAction = useGameStore((s) => s.pendingAction)
+  const lastAck = useGameStore((s) => s.lastAck)
+  const lastError = useGameStore((s) => s.lastError)
+  const gameSession = useGameStore((s) => s.session)
+  const storeGameId = useGameStore((s) => s.gameId)
+  const clearPrompt = useGameStore((s) => s.clearPrompt)
+  const setLastError = useGameStore((s) => s.setLastError)
   const activeGameId =
     locationState?.gameId ??
     routeGameId ??
@@ -95,10 +90,6 @@ const GamePage: React.FC = () => {
     string | null
   >(null)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
-  const [timeLeft] = useGameTimer({
-    initialTime: turnTimeoutSec,
-    resetSignal: turnTimerKey,
-  })
   const boardRef = useRef<BoardGameHandle>(null)
 
   // 🎵 배경음악 (BGM) — 게임 진입 시 즉시 재생, 퇴장 시 정지
@@ -265,6 +256,17 @@ const GamePage: React.FC = () => {
     diceRoll(activeGameId)
   }
 
+  const isWaitingForServerState =
+    !USE_GAME_SOCKET_MOCK && storePlayers.length === 0
+
+  if (isWaitingForServerState) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-ui-app-bg font-['Inter']">
+        <div className="text-lg font-bold text-[#45556C]">게임 로딩 중...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative flex h-screen w-full items-center justify-center overflow-hidden bg-ui-app-bg px-6 font-['Inter']">
       <div className="pointer-events-none absolute inset-0 z-0">
@@ -397,7 +399,6 @@ const GamePage: React.FC = () => {
       <div className="absolute bottom-10 right-10 z-20">
         {!isCurrentPlayerSkipped && !isCurrentPlayerBankrupt && (
           <RollButton
-            timeLeft={timeLeft}
             isMyTurn={isMyTurn && !isActionPending && !isPromptVisible}
             onRoll={handleRollClick}
           />

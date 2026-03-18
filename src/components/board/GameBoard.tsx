@@ -43,6 +43,7 @@ import {
   TileOwner,
   BuildingLevel,
   DICE_TIMEOUT,
+  type TileData,
 } from './board.constants'
 
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
@@ -98,6 +99,7 @@ function calcToll(price: number, level: BuildingLevel): number {
 }
 
 const DEFAULT_OPPONENT_NAME = '상대방'
+const EMPTY_TOKENS: PlayerState[] = []
 const GAME_START_STATUS = '게임 시작!'
 const BOARD_GRID_BASE_SIZE = CORNER_SIZE * 2 + STRAIGHT_SIZE * 7 + GRID_GAP * 8
 const BOARD_INNER_PADDING = 10 * 2
@@ -290,8 +292,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     },
     ref
   ) => {
-    const [localTimeLeft, setLocalTimeLeft] = useState(DICE_TIMEOUT)
-    const [showTimerModal, setShowTimerModal] = useState(false)
+    const localTimeLeftRef = useRef(DICE_TIMEOUT)
+    const [isTimerUrgent, setIsTimerUrgent] = useState(false)
     const [promptTimerLeftSec, setPromptTimerLeftSec] = useState<number | null>(
       null
     )
@@ -467,22 +469,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [tiles, players]
     )
     const tileOwners = derivedTileOwners
-    const serverTilePriceMap = useMemo(() => {
-      const map: Record<number, number> = {}
+    const tilesWithServerPrice = useMemo(() => {
+      const priceMap: Record<number, number> = {}
       for (const t of tiles) {
         if (typeof t.index === 'number' && typeof t.price === 'number') {
-          map[t.index] = t.price
+          priceMap[t.index] = t.price
         }
+      }
+      const map: Record<number, TileData> = {}
+      for (let i = 0; i < TILES.length; i++) {
+        map[i] = i in priceMap ? { ...TILES[i], price: priceMap[i] } : TILES[i]
       }
       return map
     }, [tiles])
-    const getTileWithServerPrice = (id: number) => {
-      const base = TILES[id]
-      if (id in serverTilePriceMap) {
-        return { ...base, price: serverTilePriceMap[id] }
-      }
-      return base
-    }
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
@@ -710,8 +709,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     // 타이머 관리
     useEffect(() => {
-      setLocalTimeLeft(DICE_TIMEOUT)
-      setShowTimerModal(false)
+      localTimeLeftRef.current = DICE_TIMEOUT
+      setIsTimerUrgent(false)
       setPromptTimerLeftSec(null)
 
       // Close all other modals when turn changes
@@ -747,13 +746,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (rolling) return
 
       const timer = setInterval(() => {
-        setLocalTimeLeft((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer) // Stop once triggered
-            return 0
-          }
-          return prev - 1
-        })
+        const prev = localTimeLeftRef.current
+        if (prev <= 1) {
+          localTimeLeftRef.current = 0
+          clearInterval(timer)
+          setIsTimerUrgent(false)
+          return
+        }
+        const next = prev - 1
+        localTimeLeftRef.current = next
+        const wasUrgent = prev <= 10 && prev > 0
+        const isNowUrgent = next <= 10 && next > 0
+        if (wasUrgent !== isNowUrgent) {
+          setIsTimerUrgent(isNowUrgent)
+        }
       }, 1000)
 
       return () => clearInterval(timer)
@@ -1042,8 +1048,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      setShowTimerModal(false)
-
       const hasUnderlyingModal =
         buyModal.open ||
         buildModal.open ||
@@ -1250,12 +1254,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       advanceTurn(onDone)
     }
 
-    const byTile: Record<number, PlayerState[]> = {}
-    players.forEach((p) => {
-      if (p.state === 'bankrupt' || p.money <= 0) return
-      if (!byTile[p.pos]) byTile[p.pos] = []
-      byTile[p.pos].push(p)
-    })
+    const byTile = useMemo(() => {
+      const map: Record<number, PlayerState[]> = {}
+      players.forEach((p) => {
+        if (p.state === 'bankrupt' || p.money <= 0) return
+        if (!map[p.pos]) map[p.pos] = []
+        map[p.pos].push(p)
+      })
+      return map
+    }, [players])
 
     const CS = CORNER_SIZE
     const SS = STRAIGHT_SIZE
@@ -1334,8 +1341,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       '확인'
     )
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
-    const diceTimerModalOpen =
-      !suppressDiceTimerModal && (showTimerModal || isDiceTimerPromptOpen)
+    const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
     const hasBlockingModal =
       buyModalVisible ||
       buildModalVisible ||
@@ -1471,11 +1477,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={getTileWithServerPrice(id)}
+                      tile={tilesWithServerPrice[id]}
                       dir={isCornerTile ? 'corner' : 'top'}
-                      tokens={byTile[id] ?? []}
+                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
-                      timeLeft={localTimeLeft}
+                      isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
                     />
                   </div>
@@ -1506,11 +1512,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={getTileWithServerPrice(id)}
+                      tile={tilesWithServerPrice[id]}
                       dir={isCornerTile ? 'corner' : 'bottom'}
-                      tokens={byTile[id] ?? []}
+                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
-                      timeLeft={localTimeLeft}
+                      isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
                     />
                   </div>
@@ -1540,11 +1546,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={getTileWithServerPrice(id)}
+                      tile={tilesWithServerPrice[id]}
                       dir="left"
-                      tokens={byTile[id] ?? []}
+                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
-                      timeLeft={localTimeLeft}
+                      isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
                     />
                   </div>
@@ -1574,11 +1580,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={getTileWithServerPrice(id)}
+                      tile={tilesWithServerPrice[id]}
                       dir="right"
-                      tokens={byTile[id] ?? []}
+                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
-                      timeLeft={localTimeLeft}
+                      isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
                     />
                   </div>
