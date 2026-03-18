@@ -38,6 +38,7 @@ npm run ai:task:new -- auth-refresh-cookie-flow --files src/lib/axios.ts src/fea
 ```
 
 - `--files`를 주면 관련 manual과 최소 검증 명령 초안을 함께 채운다.
+- 생성 문서에는 `Relevant Manuals`, `Role Plan`, `Review/Tester` 체크 초안이 함께 들어간다.
 - 이미 같은 slug가 있으면 실패하고, 의도적으로 덮어쓰려면 `--force`를 사용한다.
 
 ## example-\* 디렉토리

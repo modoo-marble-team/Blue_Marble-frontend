@@ -10,6 +10,46 @@ import { getManualsForFiles, getSuggestedScripts } from './lib.mjs'
 const TASKS_ROOT = path.join('docs', 'ai', 'tasks')
 const TEMPLATE_ROOT = path.join(TASKS_ROOT, '_template')
 
+/**
+ * @typedef {Object} ParsedTaskNewArgs
+ * @property {string | undefined} slug
+ * @property {string[]} files
+ * @property {boolean} force
+ */
+
+/**
+ * @typedef {Object} TaskFileContentsOptions
+ * @property {string} slug
+ * @property {string[]} files
+ * @property {string} [date]
+ */
+
+/**
+ * @typedef {Object} TaskFileContents
+ * @property {string} plan
+ * @property {string} context
+ * @property {string} checklist
+ */
+
+/**
+ * @typedef {Object} CreateTaskWorkspaceOptions
+ * @property {string} slug
+ * @property {string[]} [files]
+ * @property {boolean} [force]
+ * @property {string} [cwd]
+ * @property {string} [date]
+ */
+
+/**
+ * @typedef {Object} CreateTaskWorkspaceResult
+ * @property {string} taskDir
+ * @property {string[]} createdFiles
+ */
+
+/**
+ * @param {string} slug
+ * @returns {string}
+ */
 export function humanizeSlug(slug) {
   return slug
     .split('-')
@@ -18,16 +58,24 @@ export function humanizeSlug(slug) {
     .join(' ')
 }
 
+/**
+ * @returns {string}
+ */
 export function getTodayDate() {
   return new Date().toISOString().slice(0, 10)
 }
 
+/**
+ * @param {string[]} argv
+ * @returns {ParsedTaskNewArgs}
+ */
 export function parseTaskNewArgs(argv) {
   const args = argv.slice(2)
   const force = args.includes('--force')
   const filesIndex = args.indexOf('--files')
   const slug = args.find((value) => !value.startsWith('--'))
 
+  /** @type {string[]} */
   let files = []
 
   if (filesIndex !== -1) {
@@ -43,14 +91,11 @@ export function parseTaskNewArgs(argv) {
   }
 }
 
-function formatBulletList(items, fallback = '- 직접 채워주세요') {
-  if (!items.length) {
-    return fallback
-  }
-
-  return items.map((item) => `- ${item}`).join('\n')
-}
-
+/**
+ * @param {string[]} items
+ * @param {string} [fallback='- 직접 채워주세요']
+ * @returns {string}
+ */
 function formatCodeBulletList(items, fallback = '- 직접 채워주세요') {
   if (!items.length) {
     return fallback
@@ -59,6 +104,10 @@ function formatCodeBulletList(items, fallback = '- 직접 채워주세요') {
   return items.map((item) => `- \`${item}\``).join('\n')
 }
 
+/**
+ * @param {TaskFileContentsOptions} options
+ * @returns {TaskFileContents}
+ */
 export function buildTaskFileContents({ slug, files, date = getTodayDate() }) {
   const manuals = getManualsForFiles(files)
   const suggestedScripts = getSuggestedScripts(files, {
@@ -106,6 +155,13 @@ ${targetFiles}
 - 사용자 관점에서 완료 기준을 직접 채워주세요
 - 관련 코드, 문서, 테스트 범위를 직접 확인해주세요
 
+## Role Plan
+
+- Planner: 범위 / 완료 기준 / 참고 문서 정리
+- Implementer: 최소 범위 구현
+- Reviewer: diff / self-review / 위험 신호 확인
+- Tester: 검증 명령 실행과 결과 정리
+
 ## Test Plan
 
 ${validationCommands}
@@ -121,9 +177,13 @@ ${validationCommands}
 
 ${relatedFiles}
 
-## Constraints
+## Relevant Manuals
 
 ${manualNotes}
+
+## Constraints
+
+- 유지해야 하는 계약과 제약을 직접 정리해주세요
 
 ## Decision Notes
 
@@ -155,6 +215,10 @@ ${
 
 ## Review
 
+- [ ] Planner 기준 정리 완료
+- [ ] Implementer 범위 구현 완료
+- [ ] Reviewer self-review 확인
+- [ ] Tester 검증 실행
 - [ ] \`docs/rules.md\` 기준으로 셀프 리뷰했다
 - [ ] 리다이렉트, cleanup, 중복 구독, 에러 처리 경계를 확인했다
 - [ ] 변경 파일 / 실행한 검증 / 남은 리스크를 정리했다
@@ -162,6 +226,10 @@ ${
   }
 }
 
+/**
+ * @param {CreateTaskWorkspaceOptions} options
+ * @returns {CreateTaskWorkspaceResult}
+ */
 export function createTaskWorkspace({
   slug,
   files = [],
@@ -207,12 +275,19 @@ export function createTaskWorkspace({
   }
 }
 
+/**
+ * @returns {void}
+ */
 function validateEnvironment() {
   if (!fs.existsSync(TEMPLATE_ROOT)) {
     throw new Error(`task template 경로를 찾을 수 없습니다: ${TEMPLATE_ROOT}`)
   }
 }
 
+/**
+ * @param {string[]} [argv=process.argv]
+ * @returns {void}
+ */
 export function main(argv = process.argv) {
   validateEnvironment()
 
