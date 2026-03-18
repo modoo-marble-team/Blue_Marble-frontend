@@ -3,7 +3,7 @@
 ## Implementation
 
 - [x] PR 템플릿에 task 문서 링크, 실행한 검증, 남은 리스크 섹션을 추가했다
-- [x] `pull_request` 이벤트용 `ai-review-lite.yml` workflow를 추가했다
+- [x] `pull_request` 이벤트용 `ai-review.yml` workflow를 추가했다
 - [x] changed files 기준으로 `ai:self-review`와 `ai:check:ui -- --plan`을 실행하도록 구성했다
 - [x] 동일 PR에 기존 봇 코멘트를 업데이트하는 방식으로 중복 코멘트를 줄였다
 

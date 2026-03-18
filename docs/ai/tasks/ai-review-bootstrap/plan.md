@@ -9,7 +9,7 @@
 ## 대상 파일
 
 - `.github/PULL_REQUEST_TEMPLATE.md`
-- `.github/workflows/ai-review-lite.yml`
+- `.github/workflows/ai-review.yml`
 - 필요 시 이번 작업용 task 문서
 
 ## 완료 기준
@@ -20,5 +20,5 @@
 
 ## 최소 검증
 
-- `npm run ai:self-review -- --files .github/PULL_REQUEST_TEMPLATE.md .github/workflows/ai-review-lite.yml docs/ai/tasks/ai-review-lite-bootstrap/plan.md docs/ai/tasks/ai-review-lite-bootstrap/context.md docs/ai/tasks/ai-review-lite-bootstrap/checklist.md`
-- `npx prettier --check .github/PULL_REQUEST_TEMPLATE.md .github/workflows/ai-review-lite.yml docs/ai/tasks/ai-review-lite-bootstrap/plan.md docs/ai/tasks/ai-review-lite-bootstrap/context.md docs/ai/tasks/ai-review-lite-bootstrap/checklist.md`
+- `npm run ai:self-review -- --files .github/PULL_REQUEST_TEMPLATE.md .github/workflows/ai-review.yml docs/ai/tasks/ai-review-bootstrap/plan.md docs/ai/tasks/ai-review-bootstrap/context.md docs/ai/tasks/ai-review-bootstrap/checklist.md`
+- `npx prettier --check .github/PULL_REQUEST_TEMPLATE.md .github/workflows/ai-review.yml docs/ai/tasks/ai-review-bootstrap/plan.md docs/ai/tasks/ai-review-bootstrap/context.md docs/ai/tasks/ai-review-bootstrap/checklist.md`

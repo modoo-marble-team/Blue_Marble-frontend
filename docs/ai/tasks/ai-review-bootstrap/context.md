@@ -18,4 +18,4 @@
 - inline code review comment 자동화
 - branch protection에 AI 리뷰를 필수 게이트로 묶는 작업
 
-위 항목은 경량 AI 리뷰가 안정화된 뒤 후속 작업으로 분리한다.
+위 항목은 AI 리뷰가 안정화된 뒤 후속 작업으로 분리한다.
