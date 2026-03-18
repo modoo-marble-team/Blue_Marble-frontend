@@ -71,6 +71,9 @@ const GamePage: React.FC = () => {
   const messages = useGameStore((s) => s.messages)
   const storePlayers = useGameStore((s) => s.players)
   const storeTiles = useGameStore((s) => s.tiles)
+  const gameResult = useGameStore((s) => s.gameResult)
+  const isGameOver = useGameStore((s) => s.isGameOver)
+  const winnerId = useGameStore((s) => s.winnerId)
   const prompt = useGameStore((s) => s.prompt)
   const pendingAction = useGameStore((s) => s.pendingAction)
   const lastAck = useGameStore((s) => s.lastAck)
@@ -352,6 +355,9 @@ const GamePage: React.FC = () => {
               promptSubmittingChoice={promptSubmittingChoice}
               onPromptChoice={handlePromptChoice}
               localPlayerId={currentUserId}
+              gameResult={gameResult}
+              isGameOver={isGameOver}
+              winnerId={winnerId}
             />
           </div>
         </div>
