@@ -1,0 +1,284 @@
+name: AI Review
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  ai-review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Collect changed files
+        id: changed-files
+        run: |
+          git diff --name-only --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" > /tmp/changed-files.txt
+
+          count="$(wc -l < /tmp/changed-files.txt | tr -d ' ')"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+
+      - name: Run AI self review
+        if: steps.changed-files.outputs.count != '0'
+        run: |
+          mapfile -t changed_files < /tmp/changed-files.txt
+          npm run ai:self-review -- --files "${changed_files[@]}" | tee /tmp/ai-self-review.txt
+
+      - name: Write empty self review fallback
+        if: steps.changed-files.outputs.count == '0'
+        run: |
+          echo "No changed files detected for this pull request." > /tmp/ai-self-review.txt
+
+      - name: Run AI UI check plan
+        if: steps.changed-files.outputs.count != '0'
+        run: |
+          mapfile -t changed_files < /tmp/changed-files.txt
+          npm run ai:check:ui -- --plan --files "${changed_files[@]}" | tee /tmp/ai-ui-check-plan.txt
+
+      - name: Write empty UI plan fallback
+        if: steps.changed-files.outputs.count == '0'
+        run: |
+          echo "No UI checks selected because there are no changed files." > /tmp/ai-ui-check-plan.txt
+
+      - name: Upsert PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs')
+
+            const marker = '<!-- ai-review -->'
+            const maxSectionLength = 24000
+            const issueNumber = context.issue.number
+            const { owner, repo } = context.repo
+            const highRiskPrefixes = [
+              'src/pages/lobby/',
+              'src/features/presence/',
+              'src/features/room-chat/',
+              'src/pages/waiting-room/',
+              'src/pages/GamePage.tsx',
+              'src/components/game/',
+              'src/components/board/',
+              'src/hooks/game/',
+              'src/services/socket/game.handler.ts',
+              'src/stores/game.store.ts',
+              'src/lib/socket.ts',
+            ]
+            const largeChangeFileCountThreshold = 8
+
+            function readFile(path) {
+              return fs.existsSync(path) ? fs.readFileSync(path, 'utf8').trim() : ''
+            }
+
+            function truncate(value) {
+              if (value.length <= maxSectionLength) {
+                return value
+              }
+
+              return `${value.slice(0, maxSectionLength)}\n\n...truncated`
+            }
+
+            const selfReview = truncate(readFile('/tmp/ai-self-review.txt'))
+            const uiPlan = truncate(readFile('/tmp/ai-ui-check-plan.txt'))
+            const changedFiles = readFile('/tmp/changed-files.txt')
+            const changedFileArray = changedFiles
+              ? changedFiles.split('\n').filter(Boolean)
+              : []
+
+            function startsWithAnyPrefix(file, prefixes) {
+              return prefixes.some((prefix) => file.startsWith(prefix))
+            }
+
+            function extractSection(body, heading) {
+              const start = body.indexOf(heading)
+
+              if (start === -1) {
+                return ''
+              }
+
+              const rest = body.slice(start + heading.length)
+              const nextHeadingIndex = rest.search(/\n##\s/)
+              return (nextHeadingIndex === -1 ? rest : rest.slice(0, nextHeadingIndex)).trim()
+            }
+
+            function hasTaskDocumentLinks(body) {
+              return [
+                /docs\/ai\/tasks\/[^\s)]+\/plan\.md/,
+                /docs\/ai\/tasks\/[^\s)]+\/context\.md/,
+                /docs\/ai\/tasks\/[^\s)]+\/checklist\.md/,
+              ].every((pattern) => pattern.test(body))
+            }
+
+            function hasMeaningfulValidationContent(section) {
+              return section
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .some((line) => {
+                  if (line.startsWith('>')) {
+                    return false
+                  }
+
+                  if (
+                    [
+                      '- [ ] `npm run lint`',
+                      '- [ ] `npm run test`',
+                      '- [ ] `npm run build`',
+                      '- [ ] 기타:',
+                    ].includes(line)
+                  ) {
+                    return false
+                  }
+
+                  if (line.startsWith('- [x]')) {
+                    return true
+                  }
+
+                  if (/^- \[ \] 기타:\s*\S+/.test(line)) {
+                    return true
+                  }
+
+                  if (/^- `.+`$/.test(line) || /^- npm run /.test(line)) {
+                    return true
+                  }
+
+                  return false
+                })
+            }
+
+            function hasMeaningfulRiskContent(section) {
+              return section
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .some((line) => {
+                  if (line.startsWith('>')) {
+                    return false
+                  }
+
+                  if (line === '- 없음 / 또는 리스크 작성') {
+                    return false
+                  }
+
+                  return line.startsWith('- ')
+                })
+            }
+
+            const changedFileList = changedFileArray.length
+              ? changedFileArray.map((file) => `- \`${file}\``).join('\n')
+              : '- none'
+            const pullRequestBody = context.payload.pull_request?.body ?? ''
+            const taskSection = extractSection(
+              pullRequestBody,
+              '## 🧠 Task 문서 (큰 작업이면 필수)'
+            )
+            const validationSection = extractSection(
+              pullRequestBody,
+              '## 🧪 실행한 검증'
+            )
+            const riskSection = extractSection(
+              pullRequestBody,
+              '## ⚠️ 남은 리스크'
+            )
+            const isLargeChange =
+              changedFileArray.length >= largeChangeFileCountThreshold ||
+              changedFileArray.some((file) =>
+                startsWithAnyPrefix(file, highRiskPrefixes)
+              )
+            const workflowWarnings = []
+
+            if (isLargeChange && !hasTaskDocumentLinks(taskSection)) {
+              workflowWarnings.push(
+                `큰 변경으로 보이지만 task 문서 링크(plan/context/checklist)가 PR 본문에 없습니다. 기준: 파일 ${largeChangeFileCountThreshold}개 이상 또는 고위험 경로 변경.`
+              )
+            }
+
+            if (!hasMeaningfulValidationContent(validationSection)) {
+              workflowWarnings.push(
+                '`실행한 검증` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
+              )
+            }
+
+            if (!hasMeaningfulRiskContent(riskSection)) {
+              workflowWarnings.push(
+                '`남은 리스크` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
+              )
+            }
+
+            const warningSection = workflowWarnings.length
+              ? workflowWarnings.map((warning) => `- ${warning}`).join('\n')
+              : '- none'
+
+            const body = `${marker}
+            ## 🤖 AI Review
+
+            이 코멘트는 PR 변경 파일 기준으로 자동 갱신됩니다.
+            기존 CI를 대체하지 않고, diff 기반 self-review와 UI 검증 계획을 요약합니다.
+
+            ### Changed Files
+            ${changedFileList}
+
+            ### Workflow Warnings
+            ${warningSection}
+
+            ### Self Review
+            \`\`\`text
+            ${selfReview || 'No self-review output.'}
+            \`\`\`
+
+            ### UI Check Plan
+            \`\`\`text
+            ${uiPlan || 'No UI check output.'}
+            \`\`\`
+            `
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: issueNumber,
+            })
+
+            const existingComment = comments.find((comment) => {
+              return comment.user?.type === 'Bot' && comment.body?.includes(marker)
+            })
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existingComment.id,
+                body,
+              })
+              return
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: issueNumber,
+              body,
+            })
