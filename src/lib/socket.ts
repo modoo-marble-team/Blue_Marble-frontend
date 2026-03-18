@@ -43,6 +43,22 @@ export function connectSocketWithAuthIfNeeded() {
   socket.connect()
 }
 
+// 이미 연결된 소켓만 새 토큰으로 재인증하고, 비연결 상태에서는 auth 값만 동기화
+export function reconnectSocketWithUpdatedAuthIfConnected() {
+  const previousToken = getSocketAuthToken()
+  syncSocketAuthToken()
+  const nextToken = getSocketAuthToken()
+
+  if (!socket.connected) {
+    return
+  }
+
+  if (previousToken !== nextToken) {
+    socket.disconnect()
+    socket.connect()
+  }
+}
+
 // 세션 종료 시 소켓 연결과 auth 컨텍스트를 함께 초기화
 export function disconnectSocketAndClearAuth() {
   socket.auth = {}
