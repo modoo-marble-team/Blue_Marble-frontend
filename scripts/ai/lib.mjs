@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { execSync, spawnSync } from 'node:child_process'
 import process from 'node:process'
 
@@ -23,6 +24,14 @@ function splitLines(value) {
 
 function unique(values) {
   return [...new Set(values)]
+}
+
+function readWorkspaceFile(path) {
+  try {
+    return fs.readFileSync(path, 'utf8')
+  } catch {
+    return ''
+  }
 }
 
 export function parseScriptArgs(argv) {
@@ -234,6 +243,156 @@ export function getSuggestedScripts(files, options = {}) {
   }
 
   return unique(scripts)
+}
+
+function hasMatchingTest(files, matcher) {
+  return files.some((file) => isTestFile(file) && matcher(file))
+}
+
+export function getReviewInsights(files, options = {}) {
+  const diffText = options.diffText ?? getDiffText()
+  const readFile = options.readFile ?? readWorkspaceFile
+  const classified = classifyFiles(files)
+  const findings = []
+  const testGaps = []
+  const warnings = []
+
+  const authTransportChanged = files.some((file) =>
+    [
+      'src/lib/axios.ts',
+      'src/features/auth/api/api.ts',
+      'src/lib/socket.ts',
+      'src/features/auth/session/hooks/useAuthBootstrap.ts',
+    ].includes(file)
+  )
+
+  const authTransportTestsChanged = files.some((file) =>
+    [
+      'src/lib/axios.test.ts',
+      'src/features/auth/api/api.test.ts',
+      'src/lib/socket.test.ts',
+      'src/features/auth/session/hooks/useAuthBootstrap.test.tsx',
+      'src/pages/lobby/LobbyPage.test.tsx',
+      'src/pages/waiting-room/page/WaitingRoomPage.test.tsx',
+      'src/pages/waiting-room/page/WaitingRoomFlow.test.tsx',
+    ].includes(file)
+  )
+
+  if (authTransportChanged) {
+    const axiosSource = readFile('src/lib/axios.ts')
+
+    if (axiosSource && !axiosSource.includes('withCredentials: true')) {
+      findings.push(
+        'auth transport 변경이 있지만 `withCredentials: true` 설정이 보이지 않습니다.'
+      )
+    }
+
+    if (
+      axiosSource &&
+      (!axiosSource.includes('/api/auth/refresh') ||
+        !axiosSource.includes('/api/auth/logout'))
+    ) {
+      findings.push(
+        'auth refresh/logout 경로가 현재 `/api/auth/*` 계약과 다를 수 있습니다.'
+      )
+    }
+
+    if (!authTransportTestsChanged) {
+      testGaps.push(
+        'auth transport 변경이 있지만 axios/api/socket/session 관련 테스트 변경이 diff에 없습니다.'
+      )
+    }
+  }
+
+  if (
+    classified.hasLobby &&
+    !hasMatchingTest(
+      files,
+      (file) =>
+        file.startsWith('src/pages/lobby/') ||
+        file.startsWith('src/features/presence/') ||
+        file.startsWith('src/features/room-chat/')
+    )
+  ) {
+    testGaps.push(
+      'lobby/presence/room-chat 변경이 있지만 관련 테스트 변경이 diff에 없습니다.'
+    )
+  }
+
+  if (
+    classified.hasWaitingRoom &&
+    !hasMatchingTest(files, (file) =>
+      file.startsWith('src/pages/waiting-room/')
+    )
+  ) {
+    testGaps.push(
+      'waiting-room 변경이 있지만 관련 테스트 변경이 diff에 없습니다.'
+    )
+  }
+
+  if (
+    classified.hasGame &&
+    !hasMatchingTest(
+      files,
+      (file) =>
+        file.startsWith('src/components/game/') ||
+        file.startsWith('src/components/board/') ||
+        file.startsWith('src/hooks/game/') ||
+        file === 'src/pages/GamePage.test.tsx' ||
+        file === 'src/mocks/handlers/game.handler.test.ts'
+    )
+  ) {
+    testGaps.push(
+      'game runtime 변경이 있지만 관련 테스트 변경이 diff에 없습니다.'
+    )
+  }
+
+  if (
+    classified.hasSocketInfra &&
+    !hasMatchingTest(
+      files,
+      (file) =>
+        file.startsWith('src/lib/socket.test.') ||
+        file.startsWith('src/services/socket/') ||
+        file.startsWith('src/contracts/socket/')
+    )
+  ) {
+    testGaps.push(
+      'socket infra 변경이 있지만 subscribe/cleanup 또는 계약 테스트 변경이 diff에 없습니다.'
+    )
+  }
+
+  if (
+    classified.hasSourceChanges &&
+    !classified.hasTestChanges &&
+    testGaps.length === 0
+  ) {
+    testGaps.push(
+      '소스 파일이 바뀌었지만 이번 diff에는 테스트 파일 변경이 없습니다.'
+    )
+  }
+
+  if (
+    classified.hasSocketInfra &&
+    /\+.*\bsocket\.on\(/.test(diffText) &&
+    !/\+.*\bsocket\.off\(/.test(diffText)
+  ) {
+    warnings.push(
+      'socket subscribe 변경 흔적은 있지만 cleanup 짝이 diff에서 바로 보이지 않습니다.'
+    )
+  }
+
+  if (classified.docsOnly) {
+    warnings.push(
+      '현재 diff는 문서 중심입니다. 코드 품질 체크보다 문서-코드 정합성 검토가 우선입니다.'
+    )
+  }
+
+  return {
+    findings: unique(findings),
+    testGaps: unique(testGaps),
+    warnings: unique(warnings),
+  }
 }
 
 export function getValidationOrchestration(files) {
