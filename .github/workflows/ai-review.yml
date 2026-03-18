@@ -60,10 +60,21 @@ jobs:
           mapfile -t changed_files < /tmp/changed-files.txt
           npm run ai:check:ui -- --plan --files "${changed_files[@]}" | tee /tmp/ai-ui-check-plan.txt
 
+      - name: Run AI validation orchestration plan
+        if: steps.changed-files.outputs.count != '0'
+        run: |
+          mapfile -t changed_files < /tmp/changed-files.txt
+          npm run ai:validation-plan -- --files "${changed_files[@]}" | tee /tmp/ai-validation-plan.txt
+
       - name: Write empty UI plan fallback
         if: steps.changed-files.outputs.count == '0'
         run: |
           echo "No UI checks selected because there are no changed files." > /tmp/ai-ui-check-plan.txt
+
+      - name: Write empty validation plan fallback
+        if: steps.changed-files.outputs.count == '0'
+        run: |
+          echo "No validation orchestration selected because there are no changed files." > /tmp/ai-validation-plan.txt
 
       - name: Upsert PR comment
         uses: actions/github-script@v7
@@ -104,6 +115,7 @@ jobs:
 
             const selfReview = truncate(readFile('/tmp/ai-self-review.txt'))
             const uiPlan = truncate(readFile('/tmp/ai-ui-check-plan.txt'))
+            const validationPlan = truncate(readFile('/tmp/ai-validation-plan.txt'))
             const changedFiles = readFile('/tmp/changed-files.txt')
             const changedFileArray = changedFiles
               ? changedFiles.split('\n').filter(Boolean)
@@ -244,6 +256,11 @@ jobs:
 
             ### Workflow Warnings
             ${warningSection}
+
+            ### Validation Orchestration
+            \`\`\`text
+            ${validationPlan || 'No validation orchestration output.'}
+            \`\`\`
 
             ### Self Review
             \`\`\`text
