@@ -249,7 +249,8 @@ jobs:
             ## 🤖 AI Review
 
             이 코멘트는 PR 변경 파일 기준으로 자동 갱신됩니다.
-            기존 CI를 대체하지 않고, diff 기반 self-review와 UI 검증 계획을 요약합니다.
+            기존 CI를 대체하지 않고, deterministic warning / validation / self-review 결과를 요약합니다.
+            생성형 PR summary와 code review는 Gemini Code Assist가 담당합니다.
 
             ### Changed Files
             ${changedFileList}
