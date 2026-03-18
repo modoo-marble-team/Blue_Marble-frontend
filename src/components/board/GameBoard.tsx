@@ -313,6 +313,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     playersRef.current = players
 
     const isMockMode = IS_SOCKET_MOCK_ENABLED
+    const handleArrivalRef = useRef<
+      (
+        tileId: number,
+        onDone?: () => void,
+        eventPlayerId?: PlayerId | null
+      ) => void
+    >(() => {})
     const rollAnimationIntervalRef = useRef<number | null>(null)
     const rollAnimationTimeoutRef = useRef<number | null>(null)
     const freezeDiceRollValues = useCallback(() => {
@@ -407,14 +414,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           return
         }
 
-        handleArrival(tileIndex, emitMockEndTurn, event.playerId ?? null)
+        handleArrivalRef.current(
+          tileIndex,
+          emitMockEndTurn,
+          event.playerId ?? null
+        )
       },
-      [
-        handleArrival,
-        emitMockEndTurn,
-        freezeDiceRollValues,
-        flashDiceRollAnimation,
-      ]
+      [emitMockEndTurn, freezeDiceRollValues, flashDiceRollAnimation]
     )
     const handleEventAnimation = useCallback(
       (kind: BoardEventAnimationKind) => {
@@ -1253,6 +1259,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       advanceTurn(onDone)
     }
+    handleArrivalRef.current = handleArrival
 
     const byTile = useMemo(() => {
       const map: Record<number, PlayerState[]> = {}
