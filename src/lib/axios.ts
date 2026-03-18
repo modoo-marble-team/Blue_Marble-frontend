@@ -44,13 +44,13 @@ function getApiOrigin(baseURL = apiClient.defaults.baseURL) {
   return new URL(String(baseURL), fallbackOrigin).origin
 }
 
-export function buildVersionedAuthUrl(path: '/refresh' | '/logout') {
-  return new URL(`/v1/auth${path}`, getApiOrigin()).toString()
+export function buildAuthTransportUrl(path: '/refresh' | '/logout') {
+  return new URL(`/api/auth${path}`, getApiOrigin()).toString()
 }
 
 export async function requestAccessTokenRefresh() {
   const { data } = await axios.post<RefreshAccessTokenResponsePayload>(
-    buildVersionedAuthUrl('/refresh'),
+    buildAuthTransportUrl('/refresh'),
     undefined,
     {
       timeout: apiClient.defaults.timeout,
@@ -65,7 +65,7 @@ export async function requestAccessTokenRefresh() {
 }
 
 export async function requestAuthLogout() {
-  await axios.post(buildVersionedAuthUrl('/logout'), undefined, {
+  await axios.post(buildAuthTransportUrl('/logout'), undefined, {
     timeout: apiClient.defaults.timeout,
     withCredentials: true,
     headers: {

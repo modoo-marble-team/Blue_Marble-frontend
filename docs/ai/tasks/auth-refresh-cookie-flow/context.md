@@ -22,11 +22,11 @@
 
 ## Backend Contract Notes
 
-- refresh endpoint는 `POST /v1/auth/refresh`다.
+- refresh endpoint는 `POST /api/auth/refresh`다.
 - refresh 성공 응답 body는 `access_token`, `token_type`, `expires_in`만 포함한다.
 - refresh token은 HttpOnly cookie only로 전달되며 body에는 포함되지 않는다.
 - refresh token TTL은 14일이고, refresh 성공 시 rotation이 적용된다.
-- logout endpoint는 `POST /v1/auth/logout`이며 refresh 무효화와 cookie 삭제를 함께 처리한다.
+- logout endpoint는 `POST /api/auth/logout`이며 refresh 무효화와 cookie 삭제를 함께 처리한다.
 - access token 만료/무효와 refresh token 만료/무효는 모두 401을 반환한다.
 - 소켓은 connect 시점에만 토큰 검증하므로 refresh 성공 후 새 access token으로 재연결하면 된다.
 
@@ -34,7 +34,7 @@
 
 - access token은 현재처럼 프론트 session 상태에 유지할 수 있지만, refresh token은 프론트 상태에 저장하면 안 된다.
 - cookie 전송을 위해 refresh/logout 호출은 `withCredentials: true` 전제를 만족해야 한다.
-- 실제 cookie path는 `/v1/auth`이므로 `VITE_API_URL`과 auth endpoint 경로 정합성을 확인해야 한다.
+- refresh/logout 경로가 `/api/auth/*`로 확정됐으므로, cookie path와 함께 정합성을 재확인해야 한다.
 - mock 모드와 실제 모드가 공존하므로 mock 경로를 불필요하게 깨지 않도록 주의한다.
 - 소켓 재연결은 이미 연결 중인 room/lobby 흐름을 과하게 흔들지 않아야 한다.
 

@@ -5,7 +5,7 @@ import axios, {
 } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useAuthStore } from '../features/auth/session/store'
-import { apiClient, buildVersionedAuthUrl } from './axios'
+import { apiClient, buildAuthTransportUrl } from './axios'
 
 interface RequestInterceptorManagerLike {
   handlers?: Array<{
@@ -146,7 +146,7 @@ describe('apiClient request interceptor', () => {
     )
 
     expect(refreshSpy).toHaveBeenCalledWith(
-      buildVersionedAuthUrl('/refresh'),
+      buildAuthTransportUrl('/refresh'),
       undefined,
       expect.objectContaining({
         withCredentials: true,

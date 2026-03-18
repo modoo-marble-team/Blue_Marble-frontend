@@ -283,7 +283,7 @@ describe('auth api integration helpers', () => {
     )
   })
 
-  it('refreshAccessToken은 versioned auth refresh endpoint를 withCredentials로 호출한다', async () => {
+  it('refreshAccessToken은 auth refresh endpoint를 withCredentials로 호출한다', async () => {
     const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({
       data: {
         access_token: 'refreshed-token',
@@ -300,7 +300,7 @@ describe('auth api integration helpers', () => {
       expires_in: 3600,
     })
     expect(postSpy).toHaveBeenCalledWith(
-      'http://localhost:3000/v1/auth/refresh',
+      'http://localhost:3000/api/auth/refresh',
       undefined,
       expect.objectContaining({
         withCredentials: true,
@@ -308,7 +308,7 @@ describe('auth api integration helpers', () => {
     )
   })
 
-  it('logoutAuthSession은 versioned auth logout endpoint를 withCredentials로 호출한다', async () => {
+  it('logoutAuthSession은 auth logout endpoint를 withCredentials로 호출한다', async () => {
     const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({
       data: null,
     } as never)
@@ -316,7 +316,7 @@ describe('auth api integration helpers', () => {
     await logoutAuthSession()
 
     expect(postSpy).toHaveBeenCalledWith(
-      'http://localhost:3000/v1/auth/logout',
+      'http://localhost:3000/api/auth/logout',
       undefined,
       expect.objectContaining({
         withCredentials: true,
