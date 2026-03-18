@@ -70,7 +70,12 @@ import type {
 } from './gameBoard.types'
 import '../../styles/board.css'
 import { formatWon } from '../../lib/utils'
-import type { GamePrompt, PlayerId, ServerEvent } from '../../types/domain'
+import type {
+  GamePrompt,
+  GameResult,
+  PlayerId,
+  ServerEvent,
+} from '../../types/domain'
 import { playLongSfx, stopLongSfx } from '../../lib/bgm'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { emitGameAction } from '../../services/socket/game.handler'
@@ -229,6 +234,9 @@ interface GameBoardProps {
     price?: number
   }>
   localPlayerId?: string | number | null
+  gameResult?: GameResult | null
+  isGameOver?: boolean
+  winnerId?: PlayerId | null
 }
 
 function toBoardBuildingLevel(
@@ -289,6 +297,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onPromptChoice,
       tiles = [],
       localPlayerId,
+      gameResult = null,
+      isGameOver = false,
+      winnerId = null,
     },
     ref
   ) => {
@@ -880,12 +891,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       open: false,
     })
 
-    function getPlayerResults() {
-      const results = playersRef.current.map((player, index) => {
+    useEffect(() => {
+      const shouldOpenGameResultModal = isGameOver || gameResult != null
+      if (shouldOpenGameResultModal) {
+        setGameResultModal((prev) => (prev.open ? prev : { open: true }))
+        return
+      }
+
+      setGameResultModal({ open: false })
+    }, [gameResult, isGameOver])
+
+    const getPlayerResults = useCallback(() => {
+      const results = players.map((player, index) => {
         let propertyValue = 0
         let cityCount = 0
 
-        Object.entries(tileOwnersRef.current).forEach(([tileId, owner]) => {
+        Object.entries(tileOwners).forEach(([tileId, owner]) => {
           if (String(owner.ownerId) !== String(player.id)) {
             return
           }
@@ -917,7 +938,58 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
         return right.totalAsset - left.totalAsset
       })
-    }
+    }, [players, tileOwners])
+    const fallbackPlayerResults = useMemo(
+      () => getPlayerResults(),
+      [getPlayerResults]
+    )
+    const serverResultRows = useMemo(() => {
+      const rankings = gameResult?.rankings
+      if (!rankings || rankings.length === 0) {
+        return []
+      }
+
+      return [...rankings].sort((left, right) => left.rank - right.rank)
+    }, [gameResult])
+    const resultModalRows = useMemo(() => {
+      if (serverResultRows.length > 0) {
+        return serverResultRows.map((result) => ({
+          id: String(result.player_id),
+          nickname: result.nickname,
+          totalAssetText: formatWon(result.final_assets),
+          ownedCityCountText: '-',
+        }))
+      }
+
+      return fallbackPlayerResults.map((result) => ({
+        id: result.id,
+        nickname: result.nickname,
+        totalAssetText: formatWon(result.totalAsset),
+        ownedCityCountText: `${result.ownedCityCount}개`,
+      }))
+    }, [fallbackPlayerResults, serverResultRows])
+    const resultModalWinnerName = useMemo(() => {
+      if (serverResultRows.length > 0) {
+        const winnerByFlag = serverResultRows.find((result) => result.is_winner)
+        const winnerById =
+          winnerId == null
+            ? null
+            : serverResultRows.find(
+                (result) => String(result.player_id) === String(winnerId)
+              )
+        return (
+          winnerByFlag?.nickname ??
+          winnerById?.nickname ??
+          serverResultRows[0]?.nickname ??
+          '승리자'
+        )
+      }
+
+      return (
+        fallbackPlayerResults.find((result) => !result.isBankrupt)?.nickname ??
+        '승리자'
+      )
+    }, [fallbackPlayerResults, serverResultRows, winnerId])
 
     function handleBankruptConfirm() {
       const { onDoneCallback } = bankruptModal
@@ -1833,15 +1905,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         />
         <GameResultModal
           open={gameResultModal.open}
-          winnerName={
-            getPlayerResults().find((r) => !r.isBankrupt)?.nickname ?? '승리자'
-          }
-          results={getPlayerResults().map((r) => ({
-            id: r.id,
-            nickname: r.nickname,
-            totalAssetText: formatWon(r.totalAsset),
-            ownedCityCountText: `${r.ownedCityCount}개`,
-          }))}
+          winnerName={resultModalWinnerName}
+          results={resultModalRows}
           onBackToLobby={() => {
             setGameResultModal({ open: false })
             window.location.href = '/' // Redirect to home/lobby
