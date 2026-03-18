@@ -129,7 +129,7 @@ interface BoardTileProps {
   dir: TileDir
   tokens: PlayerState[]
   tileOwner?: TileOwner
-  timeLeft?: number
+  isUrgent?: boolean
   isActivePlayerTile?: boolean
 }
 
@@ -138,7 +138,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
   dir,
   tokens,
   tileOwner,
-  timeLeft = 0,
+  isUrgent: isUrgentProp = false,
   isActivePlayerTile = false,
 }) => {
   const isProperty = tile.type === 'PROPERTY'
@@ -168,8 +168,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
   const tileBg = ownerStyle ? ownerStyle.bg : '#FFFFFF'
   const outerBorderColor = ownerStyle ? ownerStyle.strip : '#E2E8F0'
 
-  // 턴 진행 중인 플레이어가 위치한 칸이고 시간이 10초 이하일 때 애니메이션 강조
-  const isUrgent = isActivePlayerTile && timeLeft <= 10 && timeLeft > 0
+  const isUrgent = isActivePlayerTile && isUrgentProp
 
   // ── 실제 코너 (START, ISLAND, MOVE_TO_ISLAND) ─────────────────────
   const isActualCorner = ['START', 'ISLAND', 'MOVE_TO_ISLAND'].includes(
@@ -470,4 +469,4 @@ const BoardTile: React.FC<BoardTileProps> = ({
   )
 }
 
-export default BoardTile
+export default React.memo(BoardTile)

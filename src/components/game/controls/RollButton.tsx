@@ -1,18 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { useGameStore } from '../../../stores/game.store'
+import { useGameTimer } from '../../../hooks/game/useGameTimer'
 
 interface RollControlProps {
-  timeLeft: number
   isMyTurn: boolean
   onRoll: () => void
 }
 
-const RollControl: React.FC<RollControlProps> = ({
-  timeLeft,
-  isMyTurn,
-  onRoll,
-}) => {
+const RollControl: React.FC<RollControlProps> = ({ isMyTurn, onRoll }) => {
+  const turnTimeoutSec = useGameStore((s) => s.turnTimeoutSec)
+  const turnTimerKey = useGameStore((s) => s.turnTimerKey)
+  const [timeLeft] = useGameTimer({
+    initialTime: turnTimeoutSec,
+    resetSignal: turnTimerKey,
+  })
+
   const dashArray = 251 // Approx circumference for r=40
-  const dashOffset = dashArray * (1 - timeLeft / 30)
+  const dashOffset = dashArray * (1 - timeLeft / (turnTimeoutSec || 30))
   const previousTimeLeftRef = useRef<number | null>(null)
   const [shouldAnimate, setShouldAnimate] = useState(false)
 

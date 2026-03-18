@@ -366,6 +366,12 @@ export const useGameStore = create<GameStoreState>()(
     replaceFromSnapshot: (snapshot) =>
       set((draft) => {
         Object.assign(draft, normalizeState(snapshot))
+        if (!('prompt' in snapshot)) {
+          draft.prompt = null
+        }
+        if (!('pendingAction' in snapshot)) {
+          draft.pendingAction = null
+        }
         draft.session.roomId = snapshot.roomId ?? draft.session.roomId
         draft.session.gameId = snapshot.gameId ?? draft.session.gameId
         draft.session.transport = 'event-socket'
@@ -375,7 +381,8 @@ export const useGameStore = create<GameStoreState>()(
 
     applyPatchEnvelope: (envelope) =>
       set((draft) => {
-        if (envelope.revision < draft.revision) {
+        const hasRevision = envelope.revision > 0
+        if (hasRevision && envelope.revision < draft.revision) {
           return
         }
 
@@ -425,7 +432,9 @@ export const useGameStore = create<GameStoreState>()(
           }
         }
 
-        draft.revision = envelope.revision
+        if (hasRevision) {
+          draft.revision = envelope.revision
+        }
         draft.eventQueue.push(...(envelope.events ?? []))
         Object.assign(draft, normalizeState(draft))
       }),
