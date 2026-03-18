@@ -19,6 +19,7 @@
     "ai:check:waiting-room-e2e": "playwright test e2e/waiting-room-start-flow.spec.ts",
     "ai:check:build": "npm run build",
     "ai:self-review": "node scripts/ai/self-review.mjs",
+    "ai:validation-plan": "node scripts/ai/validation-plan.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

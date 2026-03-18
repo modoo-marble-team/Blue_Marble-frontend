@@ -224,12 +224,59 @@ export function getSuggestedScripts(files, options = {}) {
       scripts.push('ai:check:waiting-room-e2e')
     }
 
-    if (classified.hasUiFiles || classified.hasGame || classified.hasConfigLikeChanges) {
+    if (
+      classified.hasUiFiles ||
+      classified.hasGame ||
+      classified.hasConfigLikeChanges
+    ) {
       scripts.push('ai:check:build')
     }
   }
 
   return unique(scripts)
+}
+
+export function getValidationOrchestration(files) {
+  const required = getSuggestedScripts(files)
+  const suggested = getSuggestedScripts(files, {
+    includeUiChecks: true,
+  }).filter((scriptName) => !required.includes(scriptName))
+  const classified = classifyFiles(files)
+  const reasons = []
+
+  if (classified.hasLobby) {
+    reasons.push(
+      'Lobby/presence/room-chat 변경이 있어 관련 lobby 검증을 우선 확인합니다.'
+    )
+  }
+
+  if (classified.hasWaitingRoom) {
+    reasons.push(
+      'Waiting-room 변경이 있어 waiting-room 전용 검증을 우선 확인합니다.'
+    )
+  }
+
+  if (classified.hasGame) {
+    reasons.push(
+      'Game runtime 변경이 있어 game 검증과 후속 build 확인이 중요합니다.'
+    )
+  }
+
+  if (classified.hasUiFiles && !classified.docsOnly) {
+    reasons.push(
+      'UI 변경이 있어 build/E2E 성격의 추가 검증을 suggested로 확인합니다.'
+    )
+  }
+
+  if (classified.hasConfigLikeChanges) {
+    reasons.push('설정 파일 변경이 있어 build 기반 확인이 필요할 수 있습니다.')
+  }
+
+  return {
+    required,
+    suggested,
+    reasons: unique(reasons),
+  }
 }
 
 export function runNpmScript(scriptName) {
@@ -265,6 +312,58 @@ export function printScriptPlan(title, files, scripts) {
 
   console.log('Selected scripts:')
   for (const scriptName of scripts) {
+    console.log(`- npm run ${scriptName}`)
+  }
+}
+
+export function printValidationOrchestrationPlan(title, files, plan) {
+  console.log(title)
+  console.log('')
+
+  if (files.length === 0) {
+    console.log('No changed files detected.')
+    return
+  }
+
+  console.log(`Changed files: ${files.length}`)
+  for (const file of files) {
+    console.log(`- ${file}`)
+  }
+
+  console.log('')
+
+  if (plan.reasons.length === 0) {
+    console.log('Reasons:')
+    console.log('- none')
+  } else {
+    console.log('Reasons:')
+    for (const reason of plan.reasons) {
+      console.log(`- ${reason}`)
+    }
+  }
+
+  console.log('')
+
+  if (plan.required.length === 0) {
+    console.log('Required checks:')
+    console.log('- none')
+  } else {
+    console.log('Required checks:')
+    for (const scriptName of plan.required) {
+      console.log(`- npm run ${scriptName}`)
+    }
+  }
+
+  console.log('')
+
+  if (plan.suggested.length === 0) {
+    console.log('Suggested checks:')
+    console.log('- none')
+    return
+  }
+
+  console.log('Suggested checks:')
+  for (const scriptName of plan.suggested) {
     console.log(`- npm run ${scriptName}`)
   }
 }
