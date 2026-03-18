@@ -20,6 +20,7 @@
     "ai:check:build": "npm run build",
     "ai:self-review": "node scripts/ai/self-review.mjs",
     "ai:validation-plan": "node scripts/ai/validation-plan.mjs",
+    "ai:task:new": "node scripts/ai/task-new.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

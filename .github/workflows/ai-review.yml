@@ -47,29 +47,18 @@ jobs:
         if: steps.changed-files.outputs.count != '0'
         run: |
           mapfile -t changed_files < /tmp/changed-files.txt
-          npm run ai:self-review -- --files "${changed_files[@]}" | tee /tmp/ai-self-review.txt
+          node scripts/ai/self-review.mjs --files "${changed_files[@]}" > /tmp/ai-self-review.txt
 
       - name: Write empty self review fallback
         if: steps.changed-files.outputs.count == '0'
         run: |
           echo "No changed files detected for this pull request." > /tmp/ai-self-review.txt
 
-      - name: Run AI UI check plan
-        if: steps.changed-files.outputs.count != '0'
-        run: |
-          mapfile -t changed_files < /tmp/changed-files.txt
-          npm run ai:check:ui -- --plan --files "${changed_files[@]}" | tee /tmp/ai-ui-check-plan.txt
-
       - name: Run AI validation orchestration plan
         if: steps.changed-files.outputs.count != '0'
         run: |
           mapfile -t changed_files < /tmp/changed-files.txt
-          npm run ai:validation-plan -- --files "${changed_files[@]}" | tee /tmp/ai-validation-plan.txt
-
-      - name: Write empty UI plan fallback
-        if: steps.changed-files.outputs.count == '0'
-        run: |
-          echo "No UI checks selected because there are no changed files." > /tmp/ai-ui-check-plan.txt
+          node scripts/ai/validation-plan.mjs --files "${changed_files[@]}" > /tmp/ai-validation-plan.txt
 
       - name: Write empty validation plan fallback
         if: steps.changed-files.outputs.count == '0'
@@ -113,8 +102,65 @@ jobs:
               return `${value.slice(0, maxSectionLength)}\n\n...truncated`
             }
 
+            function escapeRegExp(value) {
+              return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+            }
+
+            function extractScriptSection(text, heading, nextHeadings = []) {
+              if (!text) {
+                return ''
+              }
+
+              const escapedHeading = escapeRegExp(heading)
+              const escapedNextHeadings = nextHeadings.map(escapeRegExp).join('|')
+              const boundary = escapedNextHeadings
+                ? `(?:\\n(?:${escapedNextHeadings})\\n|$)`
+                : '$'
+              const pattern = new RegExp(
+                `${escapedHeading}\\n([\\s\\S]*?)${boundary}`
+              )
+              const match = text.match(pattern)
+
+              return match?.[1]?.trim() ?? ''
+            }
+
+            function extractBulletLines(section) {
+              if (!section) {
+                return []
+              }
+
+              return section
+                .split('\n')
+                .map((line) => line.trim())
+                .filter((line) => line.startsWith('- '))
+            }
+
+            function formatBulletSection(lines, emptyFallback = '- none') {
+              if (!lines.length) {
+                return emptyFallback
+              }
+
+              return lines.join('\n')
+            }
+
+            function formatChangedFiles(files, maxItems = 8) {
+              if (!files.length) {
+                return '- none'
+              }
+
+              const visibleFiles = files
+                .slice(0, maxItems)
+                .map((file) => `- \`${file}\``)
+              const remainingCount = files.length - maxItems
+
+              if (remainingCount > 0) {
+                visibleFiles.push(`- ...and ${remainingCount} more`)
+              }
+
+              return visibleFiles.join('\n')
+            }
+
             const selfReview = truncate(readFile('/tmp/ai-self-review.txt'))
-            const uiPlan = truncate(readFile('/tmp/ai-ui-check-plan.txt'))
             const validationPlan = truncate(readFile('/tmp/ai-validation-plan.txt'))
             const changedFiles = readFile('/tmp/changed-files.txt')
             const changedFileArray = changedFiles
@@ -143,6 +189,36 @@ jobs:
                 /docs\/ai\/tasks\/[^\s)]+\/context\.md/,
                 /docs\/ai\/tasks\/[^\s)]+\/checklist\.md/,
               ].every((pattern) => pattern.test(body))
+            }
+
+            function hasTaskDocumentTripletInChangedFiles(files) {
+              if (!Array.isArray(files) || files.length === 0) {
+                return false
+              }
+
+              const groupedKindsBySlug = new Map()
+
+              for (const file of files) {
+                const match = file.match(
+                  /^docs\/ai\/tasks\/([^/]+)\/(plan|context|checklist)\.md$/
+                )
+
+                if (!match) {
+                  continue
+                }
+
+                const [, slug, kind] = match
+                const kinds = groupedKindsBySlug.get(slug) ?? new Set()
+                kinds.add(kind)
+                groupedKindsBySlug.set(slug, kinds)
+              }
+
+              return Array.from(groupedKindsBySlug.values()).some(
+                (kinds) =>
+                  kinds.has('plan') &&
+                  kinds.has('context') &&
+                  kinds.has('checklist')
+              )
             }
 
             function hasMeaningfulValidationContent(section) {
@@ -200,9 +276,6 @@ jobs:
                 })
             }
 
-            const changedFileList = changedFileArray.length
-              ? changedFileArray.map((file) => `- \`${file}\``).join('\n')
-              : '- none'
             const pullRequestBody = context.payload.pull_request?.body ?? ''
             const taskSection = extractSection(
               pullRequestBody,
@@ -221,11 +294,14 @@ jobs:
               changedFileArray.some((file) =>
                 startsWithAnyPrefix(file, highRiskPrefixes)
               )
+            const hasTaskDocumentEvidence =
+              hasTaskDocumentLinks(taskSection) ||
+              hasTaskDocumentTripletInChangedFiles(changedFileArray)
             const workflowWarnings = []
 
-            if (isLargeChange && !hasTaskDocumentLinks(taskSection)) {
+            if (isLargeChange && !hasTaskDocumentEvidence) {
               workflowWarnings.push(
-                `큰 변경으로 보이지만 task 문서 링크(plan/context/checklist)가 PR 본문에 없습니다. 기준: 파일 ${largeChangeFileCountThreshold}개 이상 또는 고위험 경로 변경.`
+                `큰 변경으로 보이지만 task 문서 근거(plan/context/checklist)가 없습니다. PR 본문 Task 섹션 또는 changed files 안의 task 문서 3종 세트가 필요합니다. 기준: 파일 ${largeChangeFileCountThreshold}개 이상 또는 고위험 경로 변경.`
               )
             }
 
@@ -244,34 +320,77 @@ jobs:
             const warningSection = workflowWarnings.length
               ? workflowWarnings.map((warning) => `- ${warning}`).join('\n')
               : '- none'
+            const validationRequired = formatBulletSection(
+              extractBulletLines(
+                extractScriptSection(validationPlan, 'Required checks:', [
+                  'Suggested checks:',
+                ])
+              )
+            )
+            const validationSuggested = formatBulletSection(
+              extractBulletLines(
+                extractScriptSection(validationPlan, 'Suggested checks:')
+              )
+            )
+            const relevantManuals = formatBulletSection(
+              extractBulletLines(
+                extractScriptSection(selfReview, 'Relevant Manuals', [
+                  'Findings',
+                ])
+              )
+            )
+            const selfReviewFindings = formatBulletSection(
+              extractBulletLines(
+                extractScriptSection(selfReview, 'Findings', ['Test Gaps'])
+              )
+            )
+            const selfReviewTestGaps = formatBulletSection(
+              extractBulletLines(
+                extractScriptSection(selfReview, 'Test Gaps', ['Warnings'])
+              )
+            )
+            const selfReviewWarnings = formatBulletSection(
+              extractBulletLines(
+                extractScriptSection(selfReview, 'Warnings', [
+                  'Suggested Validation Commands',
+                ])
+              )
+            )
+            const changedFilesSection = `- Total: ${changedFileArray.length}\n${formatChangedFiles(
+              changedFileArray
+            )}`
 
             const body = `${marker}
             ## 🤖 AI Review
 
             이 코멘트는 PR 변경 파일 기준으로 자동 갱신됩니다.
-            기존 CI를 대체하지 않고, deterministic warning / validation / self-review 결과를 요약합니다.
+            기존 CI를 대체하지 않고, deterministic warning / validation 결과를 짧게 요약합니다.
             생성형 PR summary와 code review는 Gemini Code Assist가 담당합니다.
 
             ### Changed Files
-            ${changedFileList}
+            ${changedFilesSection}
 
             ### Workflow Warnings
             ${warningSection}
 
-            ### Validation Orchestration
-            \`\`\`text
-            ${validationPlan || 'No validation orchestration output.'}
-            \`\`\`
+            ### Findings
+            ${selfReviewFindings}
 
-            ### Self Review
-            \`\`\`text
-            ${selfReview || 'No self-review output.'}
-            \`\`\`
+            ### Test Gaps
+            ${selfReviewTestGaps}
 
-            ### UI Check Plan
-            \`\`\`text
-            ${uiPlan || 'No UI check output.'}
-            \`\`\`
+            ### Required Checks
+            ${validationRequired}
+
+            ### Suggested Checks
+            ${validationSuggested}
+
+            ### Self Review Notes
+            Relevant manuals:
+            ${relevantManuals}
+
+            Review warnings:
+            ${selfReviewWarnings}
             `
 
             const comments = await github.paginate(github.rest.issues.listComments, {
