@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { MemoryRouterProps } from 'react-router-dom'
 import { Route, Routes } from 'react-router-dom'
@@ -414,6 +414,32 @@ describe('WaitingRoomPage interaction', () => {
     await waitFor(() => {
       expect(screen.getAllByText('대기방')).toHaveLength(2)
     })
+  })
+
+  it('online snapshot에 없는 room player는 접속자 목록에 다시 추가하지 않는다', async () => {
+    useOnlineUsersSocketMock.mockReturnValue({
+      data: [
+        {
+          id: 'user-1',
+          nickname: '테스터',
+          status: 'lobby',
+          avatarText: '테',
+          avatarBackground: '#ef4444',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    })
+
+    renderWaitingRoomPage()
+
+    const userListPanel = screen.getByText('접속자 목록').closest('aside')
+
+    expect(userListPanel).not.toBeNull()
+    expect(within(userListPanel as HTMLElement).getByText('1명')).toBeVisible()
+    expect(
+      within(userListPanel as HTMLElement).queryByText('상대방')
+    ).not.toBeInTheDocument()
   })
 
   it('초기 진입(POP)에서는 location.state의 preJoinedSnapshot을 재사용하지 않는다', () => {

@@ -122,4 +122,48 @@ describe('mergeOnlineUsersWithRoomPlayers', () => {
       })
     )
   })
+
+  it('online snapshot에 없는 room player는 기본값으로 다시 추가하지 않는다', () => {
+    const merged = mergeOnlineUsersWithRoomPlayers(
+      [
+        createOnlineUserFixture({
+          id: 'user-1',
+          nickname: '테스터',
+          status: 'lobby',
+        }),
+      ],
+      [
+        {
+          id: 'user-2',
+          nickname: '상대방',
+        },
+      ],
+      'in_room'
+    )
+
+    expect(merged).toHaveLength(1)
+    expect(merged.find((user) => user.id === 'user-2')).toBeUndefined()
+  })
+
+  it('옵션을 주면 snapshot에 없는 room player도 fallback으로 포함할 수 있다', () => {
+    const merged = mergeOnlineUsersWithRoomPlayers(
+      [],
+      [
+        {
+          id: 'user-2',
+          nickname: '상대방',
+        },
+      ],
+      'in_room',
+      { includeMissingPlayers: true }
+    )
+
+    expect(merged).toContainEqual(
+      expect.objectContaining({
+        id: 'user-2',
+        nickname: '상대방',
+        status: 'in_room',
+      })
+    )
+  })
 })

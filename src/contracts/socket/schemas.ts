@@ -3,6 +3,12 @@ import { SOCKET_EVENTS } from './events'
 
 // 사용자 상태 enum을 계약 스키마로 고정
 export const contractUserStatusSchema = z.enum(['lobby', 'in_room', 'playing'])
+export const contractUserRealtimeStatusSchema = z.enum([
+  'lobby',
+  'in_room',
+  'playing',
+  'offline',
+])
 
 export const contractOnlineUserSchema = z.object({
   id: z.string().min(1),
@@ -12,6 +18,12 @@ export const contractOnlineUserSchema = z.object({
 
 export const onlineUsersEventSchema = z.object({
   users: z.array(contractOnlineUserSchema),
+})
+
+export const userStatusChangedEventSchema = z.object({
+  id: z.union([z.string().min(1), z.number()]),
+  nickname: z.string().min(1),
+  status: contractUserRealtimeStatusSchema,
 })
 
 export const directMessageSendEventSchema = z.object({
@@ -75,6 +87,7 @@ export const gameStartEventSchema = z.object({
 
 export const eventPayloadSchemas = {
   [SOCKET_EVENTS.onlineUsers]: onlineUsersEventSchema,
+  [SOCKET_EVENTS.userStatusChanged]: userStatusChangedEventSchema,
   [SOCKET_EVENTS.enterRoom]: enterRoomEventSchema,
   [SOCKET_EVENTS.leaveRoom]: leaveRoomEventSchema,
   [SOCKET_EVENTS.sendChat]: sendChatEventSchema,

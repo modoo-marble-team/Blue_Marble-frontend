@@ -8,6 +8,7 @@ import type { OnlineUserPayload, OnlineUsersEventPayload } from '../types'
 
 // 접속자 목록 소켓 이벤트 이름
 export const ONLINE_USERS_EVENT_NAME = 'online_users'
+export const ONLINE_USER_STATUS_CHANGED_EVENT_NAME = 'user_status_changed'
 export const ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME =
   'online-users-refresh-request'
 const SOCKET_MOCK_INTERVAL_MS = 5_000

@@ -1,6 +1,7 @@
 // 소켓 도메인 이벤트 이름을 단일 상수로 관리
 export const SOCKET_EVENTS = {
   onlineUsers: 'online_users',
+  userStatusChanged: 'user_status_changed',
   enterRoom: 'enter_room',
   leaveRoom: 'leave_room',
   sendChat: 'send_chat',
@@ -25,6 +26,7 @@ export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS]
 
 // 접속 상태 표현은 정의서 기준 값으로 고정
 export type ContractUserStatus = 'lobby' | 'in_room' | 'playing'
+export type ContractUserRealtimeStatus = ContractUserStatus | 'offline'
 
 // 접속자 목록 기본 모델
 export interface ContractOnlineUser {
@@ -35,6 +37,12 @@ export interface ContractOnlineUser {
 
 export interface OnlineUsersEventPayload {
   users: ContractOnlineUser[]
+}
+
+export interface UserStatusChangedEventPayload {
+  id: string | number
+  nickname: string
+  status: ContractUserRealtimeStatus
 }
 
 // 1:1 DM 이벤트 모델

@@ -22,7 +22,10 @@ import { DirectMessagePanel } from '../../../features/presence/components/Direct
 import { UserListPanel } from '../../../features/presence/components/UserListPanel'
 import { useDirectMessageController } from '../../../features/presence/direct-message/useDirectMessageController'
 import { removeMockOnlineUser } from '../../../features/presence/mock/mockData'
-import { mergeOnlineUsersWithRoomPlayers } from '../../../features/presence/online-users/onlineUsersModel'
+import {
+  mergeOnlineUsersWithCurrentUser,
+  mergeOnlineUsersWithRoomPlayers,
+} from '../../../features/presence/online-users/onlineUsersModel'
 import { useOnlineUsersSocket } from '../../../features/presence/online-users/useOnlineUsersSocket'
 import { cn } from '../../../lib/utils'
 import { disconnectSocketAndClearAuth } from '../../../lib/socket'
@@ -124,16 +127,23 @@ function WaitingRoomPage() {
   } = useOnlineUsersSocket()
 
   const waitingRoomUsers = useMemo(() => {
-    if (!room) {
+    if (!room || !session) {
       return users
     }
 
-    return mergeOnlineUsersWithRoomPlayers(
+    const roomStatus = room.status === 'playing' ? 'playing' : 'in_room'
+    const mergedUsers = mergeOnlineUsersWithRoomPlayers(
       users,
       room.players,
-      room.status === 'playing' ? 'playing' : 'in_room'
+      roomStatus
     )
-  }, [room, users])
+
+    return mergeOnlineUsersWithCurrentUser(mergedUsers, {
+      id: session.userId,
+      nickname: session.nickname,
+      status: roomStatus,
+    })
+  }, [room, session, users])
 
   const {
     dmTargetUser,
