@@ -66,8 +66,8 @@ const GamePage: React.FC = () => {
   const location = useLocation()
   const locationState = location.state as GamePageLocationState | null
   const authSession = useAuthStore((state) => state.session)
+  const currentPlayerId = useGameStore((s) => s.currentPlayerId)
   const currentTurn = useGameStore((s) => s.currentTurn)
-  const phase = useGameStore((s) => s.phase)
   const messages = useGameStore((s) => s.messages)
   const storePlayers = useGameStore((s) => s.players)
   const storeTiles = useGameStore((s) => s.tiles)
@@ -108,12 +108,14 @@ const GamePage: React.FC = () => {
   const currentNickname =
     authSession?.nickname ??
     (USE_GAME_SOCKET_MOCK ? DEFAULT_MOCK_NICKNAME : 'Guest')
+  const effectiveCurrentTurn = currentPlayerId ?? currentTurn
   const normalizedCurrentTurn =
     USE_GAME_SOCKET_MOCK &&
-    (currentTurn === 'me' || currentTurn === DEFAULT_MOCK_PLAYER_ID) &&
+    (effectiveCurrentTurn === 'me' ||
+      effectiveCurrentTurn === DEFAULT_MOCK_PLAYER_ID) &&
     currentUserId
       ? currentUserId
-      : currentTurn
+      : effectiveCurrentTurn
 
   const boardPlayers = useMemo(
     () => mapStorePlayersToBoardPlayers(storePlayers),
@@ -130,9 +132,7 @@ const GamePage: React.FC = () => {
   const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
   const isMyTurn = USE_GAME_SOCKET_MOCK
     ? ALLOW_ALL_MOCK_TURNS || boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
-    : normalizedCurrentTurn === null
-      ? true
-      : isMyTurnFromStore
+    : isMyTurnFromStore
   const isPromptTargetedToCurrentUser =
     prompt?.playerId == null ||
     (currentUserId != null && String(prompt.playerId) === String(currentUserId))
@@ -216,11 +216,12 @@ const GamePage: React.FC = () => {
 
   const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
-  const isCurrentPlayerBankrupt = currentPlayerState?.money <= 0
+  const isCurrentPlayerBankrupt =
+    currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
   const isCurrentPlayerSkipped =
-    !USE_GAME_SOCKET_MOCK && phase === 'rolling'
-      ? false
-      : (currentPlayerState?.skipTurns ?? 0) > 0
+    (currentPlayerState?.skipTurns ?? 0) > 0 ||
+    currentPlayerState?.state === 'locked' ||
+    currentPlayerState?.state === 'island'
   const roomChatSenderOptions = useMemo(
     () =>
       storePlayers.map((player) => ({

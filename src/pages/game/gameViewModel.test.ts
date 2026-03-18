@@ -15,9 +15,11 @@ describe('game view model mapper', () => {
         position: 4,
         balance: 900,
         owned_tiles: [],
-        is_in_jail: false,
-        jail_turn_count: 0,
+        is_in_jail: true,
+        jail_turn_count: 2,
         is_bankrupt: false,
+        state: 'locked',
+        stateDuration: 2,
         color: '#111111',
       },
     ])
@@ -28,6 +30,9 @@ describe('game view model mapper', () => {
       pos: 4,
       money: 900,
       color: '#111111',
+      skipTurns: 2,
+      state: 'locked',
+      stateDuration: 2,
     })
     expect(boardPlayers).toHaveLength(1)
   })

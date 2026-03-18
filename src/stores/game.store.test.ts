@@ -217,6 +217,30 @@ describe('game store partial updates', () => {
     expect(nextState.tiles[0]?.building).toBe(3)
   })
 
+  it('synchronizes currentTurn alias when currentPlayerId is patched', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      revision: 1,
+      currentTurn: 'player-1',
+      currentPlayerId: 'player-1',
+      players: [
+        createPlayer({ id: 'player-1' }),
+        createPlayer({ id: 'player-2' }),
+      ],
+    })
+
+    store.applyPatchEnvelope({
+      revision: 2,
+      patch: [{ op: 'set', path: 'currentPlayerId', value: 'player-2' }],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.currentPlayerId).toBe('player-2')
+    expect(nextState.currentTurn).toBe('player-2')
+  })
+
   it('tracks pending actions, acknowledgements, prompts, and queue consumption', () => {
     const store = useGameStore.getState()
     const prompt: GamePrompt = {
