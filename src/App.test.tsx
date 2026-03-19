@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { createAuthSessionFixture } from './test/fixtures'
 
-const { useAuthBootstrapMock, useAuthStoreMock } = vi.hoisted(() => ({
-  useAuthBootstrapMock: vi.fn(),
-  useAuthStoreMock: vi.fn(),
-}))
+const { useAuthBootstrapMock, useAuthResumeNavigationMock, useAuthStoreMock } =
+  vi.hoisted(() => ({
+    useAuthBootstrapMock: vi.fn(),
+    useAuthResumeNavigationMock: vi.fn(),
+    useAuthStoreMock: vi.fn(),
+  }))
 
 vi.mock('./components/DesktopViewportGuard', () => ({
   DesktopViewportGuard: ({ children }: { children: ReactNode }) => (
@@ -18,6 +20,10 @@ vi.mock('./components/DesktopViewportGuard', () => ({
 
 vi.mock('./features/auth/session/hooks/useAuthBootstrap', () => ({
   useAuthBootstrap: useAuthBootstrapMock,
+}))
+
+vi.mock('./features/auth/session/hooks/useAuthResumeNavigation', () => ({
+  useAuthResumeNavigation: useAuthResumeNavigationMock,
 }))
 
 vi.mock('./features/auth/session/store', () => ({
@@ -63,6 +69,7 @@ function renderApp(initialEntry: string) {
 describe('App auth bootstrap gating', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAuthResumeNavigationMock.mockReturnValue(false)
     useAuthStoreMock.mockImplementation((selector) =>
       selector({
         session: null,
@@ -112,5 +119,26 @@ describe('App auth bootstrap gating', () => {
       screen.queryByText('세션 정보를 확인하고 있습니다.')
     ).not.toBeInTheDocument()
     expect(await screen.findByText('로비 페이지')).toBeInTheDocument()
+  })
+
+  it('세션이 있는 상태에서 참가 컨텍스트를 확인 중이면 복귀 확인 화면을 보여준다', () => {
+    useAuthBootstrapMock.mockReturnValue(false)
+    useAuthResumeNavigationMock.mockReturnValue(true)
+    useAuthStoreMock.mockImplementation((selector) =>
+      selector({
+        session: createAuthSessionFixture({
+          accessToken: 'persisted-token',
+          userId: 'user-1',
+          nickname: '테스터',
+        }),
+      })
+    )
+
+    renderApp('/')
+
+    expect(
+      screen.getByText('참가 정보를 확인하고 있습니다.')
+    ).toBeInTheDocument()
+    expect(screen.queryByText('홈 페이지')).not.toBeInTheDocument()
   })
 })
