@@ -43,6 +43,7 @@ import {
   BuildingLevel,
   DICE_TIMEOUT,
   type TileData,
+  LEVEL_LABELS,
 } from './board.constants'
 
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
@@ -130,6 +131,11 @@ const INITIAL_CITY_SELL_MODAL_STATE: CitySellModalState = {
   currentLevel: 0,
   sellPrice: 0,
   showBuildOnCancel: false,
+}
+
+const INITIAL_CITY_BUILD_MODAL_STATE: BuildModalState = {
+  open: false,
+  tileId: null,
 }
 
 const INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE: InsufficientFundsModalState = {
@@ -804,6 +810,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
       setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
       setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
+      setCityBuildModal(INITIAL_CITY_BUILD_MODAL_STATE)
       setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
       setAiModal({ open: false, status: 'loading' })
       setGoToIslandModal({ open: false })
@@ -927,6 +934,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       useState<CityAcquisitionModalState>(INITIAL_CITY_ACQUISITION_MODAL_STATE)
     const [citySellModal, setCitySellModal] = useState<CitySellModalState>(
       INITIAL_CITY_SELL_MODAL_STATE
+    )
+    const [cityBuildModal, setCityBuildModal] = useState<BuildModalState>(
+      INITIAL_CITY_BUILD_MODAL_STATE
     )
     const [insufficientFundsModal, setInsufficientFundsModal] =
       useState<InsufficientFundsModalState>(
@@ -1559,7 +1569,28 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       return String(owner.ownerId) === String(activePlayerId)
     }
+
+    const isOwnedTileUpgradeClickable = (tileId: number) => {
+      // 업그레이드는 본인 턴일 때만 가능
+      const isMyTurn = String(players[curPlayer]?.id) === String(localPlayerId)
+      if (!isMyTurn) return false
+
+      const owner = tileOwners[tileId]
+      if (!owner || String(owner.ownerId) !== String(localPlayerId)) {
+        return false
+      }
+
+      // 이미 최대 레벨(7)이면 업그레이드 불가
+      if (owner.level >= 7) return false
+
+      return true
+    }
     const handleBoardTileClick = (tileId: number) => {
+      if (isGameOver) return
+
+      // 주사위가 굴러가는 중이거나 애니메이션 중이면 클릭 차단
+      if (isDiceRolling || isAnimatingRef.current) return
+
       if (travelSelection.active) {
         if (tileId !== players[curPlayer]?.pos) {
           handleTravelDestinationSelect(tileId)
@@ -1567,27 +1598,54 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      if (!isOwnedTileSellClickable(tileId)) {
-        return
-      }
+      const isMyTurn = String(players[curPlayer]?.id) === String(localPlayerId)
 
-      const owner = tileOwnersRef.current[tileId]
-      const activePlayer = playersRef.current[curPlayerRef.current]
-      if (
-        !owner ||
-        !activePlayer ||
-        String(owner.ownerId) !== String(activePlayer.id)
-      ) {
-        return
+      // 본인 땅인 경우
+      if (isOwnedTileSellClickable(tileId)) {
+        if (isMyTurn && isOwnedTileUpgradeClickable(tileId)) {
+          // 본인 턴이고 업그레이드 가능하면 바로 업그레이드 모달
+          setCityBuildModal({ open: true, tileId })
+        } else {
+          // 본인 턴이 아니거나 이미 최대 레벨이면 바로 매각 모달
+          handleTileSellClick(tileId)
+        }
       }
+    }
+
+    const handleTileSellClick = (tileId: number) => {
+      const owner = tileOwners[tileId]
+      const ownerPlayer = players.find(
+        (p) => String(p.id) === String(owner?.ownerId)
+      )
+      if (!owner || !ownerPlayer) return
 
       setCitySellModal({
         open: true,
         tileId,
-        ownerName: activePlayer.name ?? '',
+        ownerName: ownerPlayer.name ?? '',
         currentLevel: owner.level,
         sellPrice: getBoardSellFallbackRefund(tileId, owner.level),
       })
+    }
+
+    const handleCityBuildConfirm = (tileId: number) => {
+      setCityBuildModal(INITIAL_CITY_BUILD_MODAL_STATE)
+      emitGameAction({
+        type: 'CITY_BUILD',
+        payload: {
+          tileId,
+        },
+      })
+    }
+
+    const handleCityBuildCancel = () => {
+      const tileId = cityBuildModal.tileId
+      setCityBuildModal(INITIAL_CITY_BUILD_MODAL_STATE)
+
+      if (tileId != null) {
+        // 업그레이드 취소 시 매각 모달로 연결
+        handleTileSellClick(tileId)
+      }
     }
 
     const displayEventFxKind =
@@ -2039,6 +2097,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={canShowModal && islandModal.open}
           onConfirm={handleIslandConfirm}
         />
+        {/* 수동 건설 모달 (상시 클릭용) */}
+        {cityBuildModal.open && cityBuildModal.tileId != null && (
+          <BuildModal
+            open={true}
+            cityName={
+              TILES[cityBuildModal.tileId]?.name.replace('\n', ' ') || ''
+            }
+            nextLevel={
+              ((tileOwners[cityBuildModal.tileId]?.level || 0) +
+                1) as BuildingLevel
+            }
+            nextLevelLabel={
+              LEVEL_LABELS[
+                (tileOwners[cityBuildModal.tileId]?.level || 0) + 1
+              ] || ''
+            }
+            buildCostText={formatWon(
+              getBuildCost(
+                TILES[cityBuildModal.tileId]?.price || 0,
+                (tileOwners[cityBuildModal.tileId]?.level || 0) as BuildingLevel
+              )
+            )}
+            nextTollText={formatWon(
+              getTollCost(
+                TILES[cityBuildModal.tileId]?.price || 0,
+                ((tileOwners[cityBuildModal.tileId]?.level || 0) +
+                  1) as BuildingLevel
+              )
+            )}
+            onConfirm={() => handleCityBuildConfirm(cityBuildModal.tileId!)}
+            onCancel={handleCityBuildCancel}
+          />
+        )}
       </div>
     )
   }
