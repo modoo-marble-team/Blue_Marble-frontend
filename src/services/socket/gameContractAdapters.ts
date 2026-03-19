@@ -104,6 +104,27 @@ const toFiniteInt = (value: unknown, fallback = 0) => {
 const toStringOrNull = (value: unknown): string | null =>
   typeof value === 'string' && value.trim().length > 0 ? value : null
 
+const toRemainingSeconds = (
+  secCandidates: unknown[],
+  msCandidates: unknown[]
+): number | null => {
+  for (const candidate of secCandidates) {
+    const secValue = toFiniteNumber(candidate)
+    if (secValue != null) {
+      return secValue
+    }
+  }
+
+  for (const candidate of msCandidates) {
+    const msValue = toFiniteNumber(candidate)
+    if (msValue != null) {
+      return Math.ceil(msValue / 1000)
+    }
+  }
+
+  return null
+}
+
 const toPlayerIdOrNull = (value: unknown): PlayerId | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return Math.trunc(value)
@@ -787,33 +808,83 @@ export const normalizeTimerSyncPayload = (
     return null
   }
 
+  const promptRecord =
+    payload.prompt && isRecord(payload.prompt)
+      ? (payload.prompt as Record<string, unknown>)
+      : null
+  const serverTimeMs = toFiniteNumber(
+    payload.serverTimeMs ?? payload.server_time_ms
+  )
+  const turnDeadlineAtMs = toFiniteNumber(
+    payload.turnDeadlineAtMs ?? payload.turn_deadline_at_ms
+  )
+
+  const turnRemainingSecFromDeadline =
+    serverTimeMs != null && turnDeadlineAtMs != null
+      ? Math.max(0, Math.ceil((turnDeadlineAtMs - serverTimeMs) / 1000))
+      : null
+
   const gameId =
     toStringOrNull(payload.gameId) ?? toStringOrNull(payload.game_id)
   const turnRemainingSec =
-    toFiniteNumber(
-      payload.turnRemainingSec ??
-        payload.turn_remaining_sec ??
-        payload.turnLeftSec ??
-        payload.turn_left_sec ??
-        payload.remainingTurnSec ??
-        payload.remaining_turn_sec
-    ) ?? null
+    toRemainingSeconds(
+      [
+        payload.turnRemainingSec,
+        payload.turn_remaining_sec,
+        payload.turnLeftSec,
+        payload.turn_left_sec,
+        payload.remainingTurnSec,
+        payload.remaining_turn_sec,
+      ],
+      [
+        payload.turnRemainingMs,
+        payload.turn_remaining_ms,
+        payload.turnLeftMs,
+        payload.turn_left_ms,
+        payload.remainingTurnMs,
+        payload.remaining_turn_ms,
+      ]
+    ) ?? turnRemainingSecFromDeadline
   const promptId =
-    toStringOrNull(payload.promptId) ?? toStringOrNull(payload.prompt_id)
-  const promptRemainingSec =
-    toFiniteNumber(
-      payload.promptRemainingSec ??
-        payload.prompt_remaining_sec ??
-        payload.promptLeftSec ??
-        payload.prompt_left_sec ??
-        payload.remainingPromptSec ??
-        payload.remaining_prompt_sec
-    ) ?? null
+    toStringOrNull(payload.promptId) ??
+    toStringOrNull(payload.prompt_id) ??
+    toStringOrNull(promptRecord?.promptId) ??
+    toStringOrNull(promptRecord?.prompt_id) ??
+    toStringOrNull(promptRecord?.id)
+  const promptRemainingSec = toRemainingSeconds(
+    [
+      payload.promptRemainingSec,
+      payload.prompt_remaining_sec,
+      payload.promptLeftSec,
+      payload.prompt_left_sec,
+      payload.remainingPromptSec,
+      payload.remaining_prompt_sec,
+      promptRecord?.remainingSec,
+      promptRecord?.remaining_sec,
+      promptRecord?.promptRemainingSec,
+      promptRecord?.prompt_remaining_sec,
+    ],
+    [
+      payload.promptRemainingMs,
+      payload.prompt_remaining_ms,
+      payload.promptLeftMs,
+      payload.prompt_left_ms,
+      payload.remainingPromptMs,
+      payload.remaining_prompt_ms,
+      promptRecord?.remainingMs,
+      promptRecord?.remaining_ms,
+      promptRecord?.promptRemainingMs,
+      promptRecord?.prompt_remaining_ms,
+    ]
+  )
+  const syncedAtFromMs =
+    serverTimeMs != null ? new Date(serverTimeMs).toISOString() : null
   const syncedAt =
     toStringOrNull(payload.syncedAt) ??
     toStringOrNull(payload.synced_at) ??
     toStringOrNull(payload.serverTime) ??
-    toStringOrNull(payload.server_time)
+    toStringOrNull(payload.server_time) ??
+    syncedAtFromMs
 
   return {
     gameId,

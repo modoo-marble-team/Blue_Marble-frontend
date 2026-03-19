@@ -12,6 +12,9 @@ const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 export const useGameState = (gameId: string | null) => {
   const syncedGameIdRef = useRef<string | null>(null)
+  const currentTurn = useGameStore((state) => {
+    return state.currentPlayerId ?? state.currentTurn
+  })
 
   useEffect(() => {
     if (!gameId) {
@@ -72,6 +75,15 @@ export const useGameState = (gameId: string | null) => {
       teardownHandlers()
     }
   }, [gameId])
+
+  useEffect(() => {
+    if (!gameId || currentTurn == null) {
+      return
+    }
+
+    // 턴 변경 시 서버 기준 남은 시간을 다시 받아서 0초 고정 상태를 방지한다.
+    emitGameSyncTimer({ gameId })
+  }, [gameId, currentTurn])
 
   return {}
 }
