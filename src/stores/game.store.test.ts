@@ -355,6 +355,27 @@ describe('game store partial updates', () => {
     expect(nextState.revision).toBe(5)
   })
 
+  it('marks game over when phase is patched to finished', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      revision: 10,
+      phase: 'rolling',
+      isGameOver: false,
+    })
+
+    store.applyPatchEnvelope({
+      revision: 11,
+      patch: [{ op: 'set', path: 'phase', value: 'finished' }],
+      events: [],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.phase).toBe('finished')
+    expect(nextState.isGameOver).toBe(true)
+  })
+
   it('applies timer sync to turn timer and prompt timeout when prompt id matches', () => {
     const store = useGameStore.getState()
 

@@ -104,6 +104,10 @@ const normalizeState = (state: Partial<GameState>): Partial<GameState> => {
     normalizedState.eventQueue = state.eventQueue ?? []
   }
 
+  if (normalizedState.phase === 'finished') {
+    normalizedState.isGameOver = true
+  }
+
   return normalizedState
 }
 
