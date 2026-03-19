@@ -430,12 +430,16 @@ const GamePage: React.FC = () => {
       </div>
 
       <div className="absolute bottom-10 right-10 z-20">
-        {!isCurrentPlayerSkipped && !isCurrentPlayerBankrupt && (
-          <RollButton
-            isMyTurn={isMyTurn && !isActionPending && !isPromptVisible}
-            onRoll={handleRollClick}
-          />
-        )}
+        <RollButton
+          isMyTurn={
+            isMyTurn &&
+            !isActionPending &&
+            !isPromptVisible &&
+            !isCurrentPlayerSkipped &&
+            !isCurrentPlayerBankrupt
+          }
+          onRoll={handleRollClick}
+        />
       </div>
 
       {isPromptVisible && prompt && !isBoardHandledPrompt && (
