@@ -68,10 +68,10 @@ const getTileGridPos = (
   if (topIdx !== -1) return { row: 1, col: topIdx + 1, dir: 'top' }
 
   const bottomIdx = BOTTOM_ROW.indexOf(id)
-  if (bottomIdx !== -1) return { row: 9, col: bottomIdx + 1, dir: 'bottom' }
+  if (bottomIdx !== -1) return { row: 9, col: 9 - bottomIdx, dir: 'bottom' }
 
   const leftIdx = LEFT_COL.indexOf(id)
-  if (leftIdx !== -1) return { row: 7 - leftIdx + 2, col: 1, dir: 'left' }
+  if (leftIdx !== -1) return { row: 8 - leftIdx, col: 1, dir: 'left' }
 
   const rightIdx = RIGHT_COL.indexOf(id)
   if (rightIdx !== -1) return { row: rightIdx + 2, col: 9, dir: 'right' }
@@ -1738,7 +1738,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }
                     style={{
                       gridRow: 9,
-                      gridColumn: ci + 1,
+                      gridColumn: 9 - ci,
                       cursor: isClickable ? 'pointer' : 'default',
                       borderRadius: isCornerTile ? 18 : 13,
                       boxShadow: isTravelSelectable
@@ -1770,7 +1770,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       isClickable ? () => handleBoardTileClick(id) : undefined
                     }
                     style={{
-                      gridRow: ri + 2,
+                      gridRow: 8 - ri,
                       gridColumn: 1,
                       cursor: isClickable ? 'pointer' : 'default',
                       borderRadius: 13,
