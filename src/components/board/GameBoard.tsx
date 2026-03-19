@@ -7,7 +7,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from 'react'
-import BoardTile from './BoardTile'
+import BoardTile, { PlayerToken } from './BoardTile'
 import BuyModal from '../game/modals/BuyModal'
 import BuildModal from '../game/modals/BuildModal'
 import CardModal from '../game/modals/CardModal'
@@ -52,6 +52,32 @@ import {
   resolveBoardEventTileIndex,
   type BoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
+
+import { getBuildCost, getTollCost } from './board.constants'
+
+import { TileDir } from './board.constants'
+
+/**
+ * 타일 ID를 기반으로 CSS Grid 상의 위치(row, col)와 방향(dir)을 반환합니다.
+ */
+const getTileGridPos = (
+  id: number
+): { row: number; col: number; dir: TileDir } => {
+  const topIdx = TOP_ROW.indexOf(id)
+  if (topIdx !== -1) return { row: 1, col: topIdx + 1, dir: 'top' }
+
+  const bottomIdx = BOTTOM_ROW.indexOf(id)
+  if (bottomIdx !== -1) return { row: 9, col: bottomIdx + 1, dir: 'bottom' }
+
+  const leftIdx = LEFT_COL.indexOf(id)
+  if (leftIdx !== -1) return { row: 7 - leftIdx + 2, col: 1, dir: 'left' }
+
+  const rightIdx = RIGHT_COL.indexOf(id)
+  if (rightIdx !== -1) return { row: rightIdx + 2, col: 9, dir: 'right' }
+
+  return { row: 1, col: 1, dir: 'corner' }
+}
+
 import type {
   AIPenaltyModalState,
   BankruptModalState,
@@ -79,31 +105,7 @@ import { playLongSfx, stopLongSfx } from '../../lib/bgm'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { emitGameAction } from '../../services/socket/game.handler'
 
-function getUpgradeCost(price: number, currentLevel: BuildingLevel): number {
-  if (currentLevel === 0) return price * 0.5
-  if (currentLevel === 1) return price * 0.5
-  if (currentLevel === 2) return price * 0.5
-  if (currentLevel === 3) return price * 1.0
-  if (currentLevel === 4) return price * 1.0
-  if (currentLevel === 5) return price * 1.0
-  if (currentLevel === 6) return price * 2.0
-  return 0
-}
-
-function calcToll(price: number, level: BuildingLevel): number {
-  if (level === 0) return price
-  if (level === 1) return price * 2
-  if (level === 2) return price * 3
-  if (level === 3) return price * 5
-  if (level === 4) return price * 7
-  if (level === 5) return price * 9
-  if (level === 6) return price * 12
-  if (level === 7) return price * 15
-  return price
-}
-
 const DEFAULT_OPPONENT_NAME = '상대방'
-const EMPTY_TOKENS: PlayerState[] = []
 const GAME_START_STATUS = '게임 시작!'
 const BOARD_GRID_BASE_SIZE = CORNER_SIZE * 2 + STRAIGHT_SIZE * 7 + GRID_GAP * 8
 const BOARD_INNER_PADDING = 10 * 2
@@ -316,6 +318,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const boardPageRef = useRef<HTMLDivElement | null>(null)
     const boardStatusRef = useRef<HTMLDivElement | null>(null)
     const [boardScale, setBoardScale] = useState(1)
+    const [animatedPositions, setAnimatedPositions] = useState<
+      Record<string, number>
+    >({})
+    const isAnimatingRef = useRef(false)
 
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
@@ -373,6 +379,57 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [stopDiceRollAnimation]
     )
     const rolling = isDiceRolling || eventFxKind === 'dice'
+    const delay = (ms: number) =>
+      new Promise((resolve) => window.setTimeout(resolve, ms))
+
+    const movePlayerSequentially = useCallback(
+      async (playerId: PlayerId, from: number, to: number) => {
+        isAnimatingRef.current = true
+        const totalTiles = TILES.length
+        let current = from
+
+        // 주사위 결과 확인을 위한 대기 (사용자 요청: 주사위 결과 확인 -> 이동)
+        await delay(800)
+
+        // 한 칸씩 이동
+        while (current !== to) {
+          current = (current + 1) % totalTiles
+          setAnimatedPositions((prev) => ({
+            ...prev,
+            [String(playerId)]: current,
+          }))
+
+          // 이동 효과음
+          new Audio('/audio/move.mp3').play().catch(() => {})
+
+          await delay(350) // 한 칸 이동 간격 (전보다 조금 천천히)
+        }
+
+        // 마지막 도착 칸에서 잠시 대기
+        await delay(400)
+
+        // 애니메이션 종료 후 로컬 상태 정리 (스토어 위치와 동기화될 때까지 대기하여 점프 방지)
+        // 만약 스토어의 위치가 아직 목적지에 도달하지 않았다면 도달할 때까지 대기합니다.
+        let retryCount = 0
+        while (
+          playersRef.current.find((p) => String(p.id) === String(playerId))
+            ?.pos !== to &&
+          retryCount < 50 // 최대 5초 대기 (안전장치)
+        ) {
+          await delay(100)
+          retryCount++
+        }
+
+        setAnimatedPositions((prev) => {
+          const next = { ...prev }
+          delete next[String(playerId)]
+          return next
+        })
+        isAnimatingRef.current = false
+      },
+      []
+    )
+
     const emitMockEndTurn = useCallback(() => {
       if (!isMockMode || !gameId) {
         return
@@ -410,27 +467,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
         }
 
-        if (normalizedType !== 'PLAYER_MOVED') {
+        if (normalizedType === 'PLAYER_MOVED') {
+          const tileIndex = resolveBoardEventTileIndex(event)
+          if (tileIndex == null) {
+            return
+          }
+
+          const fromIndex =
+            (event.payload as { fromIndex?: number })?.fromIndex ??
+            playersRef.current.find(
+              (p) => String(p.id) === String(event.playerId)
+            )?.pos ??
+            0
+
+          // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
+          movePlayerSequentially(event.playerId!, fromIndex, tileIndex).then(
+            () => {
+              // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
+              handleArrivalRef.current(
+                tileIndex,
+                emitMockEndTurn,
+                event.playerId ?? null
+              )
+            }
+          )
           return
         }
-
-        const tileIndex = resolveBoardEventTileIndex(event)
-        if (tileIndex == null) {
-          return
-        }
-
-        const tile = TILES[tileIndex]
-        if (!tile || tile.type === 'PROPERTY') {
-          return
-        }
-
-        handleArrivalRef.current(
-          tileIndex,
-          emitMockEndTurn,
-          event.playerId ?? null
-        )
       },
-      [emitMockEndTurn, freezeDiceRollValues, flashDiceRollAnimation]
+      [
+        emitMockEndTurn,
+        freezeDiceRollValues,
+        flashDiceRollAnimation,
+        movePlayerSequentially,
+      ]
     )
     const handleEventAnimation = useCallback(
       (kind: BoardEventAnimationKind) => {
@@ -1008,15 +1077,26 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       },
     }))
 
-    function handleGoToIslandConfirm() {
+    async function handleGoToIslandConfirm() {
       stopLongSfx()
       const { onDoneCallback } = goToIslandModal
       setGoToIslandModal({ open: false })
 
       const playerIdx = curPlayerRef.current
-      const updatedPlayers = [...playersRef.current]
+      const player = playersRef.current[playerIdx]
+      if (!player) return
+
       const islandTile = TILES.find((t) => t.type === 'ISLAND')
       if (islandTile) {
+        // 무인도 이동 칸(24)에서 무인도(8)까지 전진 애니메이션
+        // (24 -> 25 -> ... -> 31 -> 0 -> ... -> 8)
+        await movePlayerSequentially(
+          player.id,
+          player.pos === islandTile.id ? 24 : player.pos,
+          islandTile.id
+        )
+
+        const updatedPlayers = [...playersRef.current]
         updatedPlayers[playerIdx] = {
           ...updatedPlayers[playerIdx],
           pos: islandTile.id,
@@ -1024,6 +1104,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
         playersRef.current = updatedPlayers
       }
+
       setIslandModal({
         open: true,
         onDoneCallback,
@@ -1257,6 +1338,18 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           if (goToIslandModal.open || islandModal.open) {
             return
           }
+
+          // 만약 이미 스토어 위치가 8(무인도)로 바뀌어 있다면,
+          // 애니메이션이 끝나고 삭제되면서 8로 점프하는 것을 막기 위해
+          // 현재 칸(24)에 애니메이션 위치를 고정(Pin)합니다.
+          const pid = eventPlayerId ?? localPlayerId
+          if (pid != null) {
+            setAnimatedPositions((prev) => ({
+              ...prev,
+              [String(pid)]: 24,
+            }))
+          }
+
           setGoToIslandModal({ open: true, onDoneCallback: onDone })
           new Audio('/audio/island-trap.mp3').play().catch(() => {})
         } else {
@@ -1322,11 +1415,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const map: Record<number, PlayerState[]> = {}
       players.forEach((p) => {
         if (p.state === 'bankrupt' || p.money <= 0) return
-        if (!map[p.pos]) map[p.pos] = []
-        map[p.pos].push(p)
+        const pos =
+          animatedPositions[String(p.id)] !== undefined
+            ? animatedPositions[String(p.id)]
+            : p.pos
+        if (!map[pos]) map[pos] = []
+        map[pos].push(p)
       })
       return map
-    }, [players])
+    }, [players, animatedPositions])
 
     const CS = CORNER_SIZE
     const SS = STRAIGHT_SIZE
@@ -1362,11 +1459,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           : (sellTile?.price ?? 0))
     const acquisitionTile = promptTile
     const acquisitionModalOpenRaw = isAcquisitionPromptOpen
-    const acquisitionModalOpen =
-      acquisitionModalOpenRaw && !tollModalOpen && !insufficientFundsModal.open
     const acquisitionOwnerName = promptOwnerName
     const acquisitionCurrentLevel = promptCurrentLevel
     const acquisitionCost = promptAcquisitionCost ?? acquisitionTile?.price ?? 0
+
     const buyCost =
       getPromptPayloadNumber(activePrompt, [
         'price',
@@ -1376,11 +1472,28 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       ]) ??
       buyTile?.price ??
       0
+
     const isBuyPromptDismissed =
       activePrompt?.id != null && dismissedBuyPromptId === activePrompt.id
+
+    const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
+    const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
+    const hasAnimationBlocking = isAnimatingRef.current || rolling
+    const canShowModal = !hasAnimationBlocking
+
     const buyModalVisible =
-      buyModalOpen && !isBuyPromptDismissed && !insufficientFundsModal.open
-    const buildModalVisible = buildModalOpen && !insufficientFundsModal.open
+      canShowModal &&
+      buyModalOpen &&
+      !isBuyPromptDismissed &&
+      !insufficientFundsModal.open
+    const buildModalVisible =
+      canShowModal && buildModalOpen && !insufficientFundsModal.open
+    const acquisitionModalOpen =
+      canShowModal &&
+      acquisitionModalOpenRaw &&
+      !tollModalOpen &&
+      !insufficientFundsModal.open
+
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const buildCost =
       getPromptPayloadNumber(activePrompt, [
@@ -1388,7 +1501,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         'build_cost',
         'cost',
         'price',
-      ]) ?? getUpgradeCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
+      ]) ?? getBuildCost(buildTile?.price ?? 0, currentLevel as BuildingLevel)
     const nextTollCost =
       getPromptPayloadNumber(activePrompt, [
         'nextToll',
@@ -1396,7 +1509,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         'toll',
         'toll_amount',
         'amount',
-      ]) ?? calcToll(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
+      ]) ??
+      getTollCost(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
+
     const diceTimerTitle = activePrompt?.title
     const diceTimerMessage = activePrompt?.message
     const diceTimerConfirmLabel = getPromptChoiceLabel(
@@ -1404,23 +1519,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       promptTimerConfirmChoiceValue,
       '확인'
     )
-    const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
-    const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
+
     const hasBlockingModal =
-      buyModalVisible ||
-      buildModalVisible ||
-      cardModal.open ||
-      travelModal.open ||
-      tollModalOpen ||
-      acquisitionModalOpen ||
-      sellModalOpen ||
-      insufficientFundsModal.open ||
-      aiModal.open ||
-      goToIslandModal.open ||
-      islandModal.open ||
-      diceTimerModalOpen ||
-      bankruptModal.open ||
-      gameResultModal.open
+      canShowModal &&
+      (buyModalVisible ||
+        buildModalVisible ||
+        cardModal.open ||
+        travelModal.open ||
+        tollModalOpen ||
+        acquisitionModalOpen ||
+        sellModalOpen ||
+        insufficientFundsModal.open ||
+        aiModal.open ||
+        goToIslandModal.open ||
+        islandModal.open ||
+        diceTimerModalOpen ||
+        bankruptModal.open ||
+        gameResultModal.open)
     const activePlayerId = players[curPlayer]?.id ?? null
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
@@ -1543,7 +1658,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     <BoardTile
                       tile={tilesWithServerPrice[id]}
                       dir={isCornerTile ? 'corner' : 'top'}
-                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
@@ -1578,7 +1692,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     <BoardTile
                       tile={tilesWithServerPrice[id]}
                       dir={isCornerTile ? 'corner' : 'bottom'}
-                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
@@ -1612,7 +1725,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     <BoardTile
                       tile={tilesWithServerPrice[id]}
                       dir="left"
-                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
@@ -1646,7 +1758,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     <BoardTile
                       tile={tilesWithServerPrice[id]}
                       dir="right"
-                      tokens={byTile[id] ?? EMPTY_TOKENS}
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
@@ -1655,6 +1766,41 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 )
               })()
             )}
+
+            {/* ─── 플레이어 토큰 레이어 (중앙 집중 렌더링) ──────────────── */}
+            {Object.entries(byTile).map(([tileIdStr, tokens]) => {
+              const tileId = parseInt(tileIdStr, 10)
+              const { row, col } = getTileGridPos(tileId)
+              const hasStrip = ![
+                'START',
+                'ISLAND',
+                'MOVE_TO_ISLAND',
+                'TRAVEL',
+                'CHANCE',
+                'EVENT',
+              ].includes(TILES[tileId].type)
+
+              return (
+                <div
+                  key={`tokens-at-${tileId}`}
+                  style={{
+                    gridRow: row,
+                    gridColumn: col,
+                    position: 'relative',
+                    pointerEvents: 'none', // 토큰이 타일 클릭을 방해하지 않도록
+                    zIndex: 100,
+                  }}
+                >
+                  {tokens.map((p) => (
+                    <PlayerToken
+                      key={p.id}
+                      player={p}
+                      stripOffset={hasStrip ? 7 : 0}
+                    />
+                  ))}
+                </div>
+              )
+            })}
 
             <div
               className={
@@ -1808,7 +1954,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           nextTollText={formatWon(nextTollCost)}
         />
         <TollModal
-          open={tollModalOpen}
+          open={canShowModal && tollModalOpen}
           onConfirm={() => {
             void handleTollModalConfirm()
           }}
@@ -1832,7 +1978,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onAcquire={handleCityAcquisitionConfirm}
         />
         <CitySellModal
-          open={sellModalOpen}
+          open={canShowModal && sellModalOpen}
           ownerName={sellOwnerName}
           currentLevel={sellCurrentLevel}
           sellPriceText={formatWon(sellPrice)}
@@ -1842,23 +1988,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <CardModal
-          open={cardModal.open}
+          open={canShowModal && cardModal.open}
           variant={cardModal.variant}
           onConfirm={handleCardConfirm}
         />
         <TravelModal
-          open={travelModal.open}
+          open={canShowModal && travelModal.open}
           onConfirm={handleTravelConfirm}
           onCancel={handleTravelCancel}
           showCancel={isTravelPromptOpen && !!promptTravelCancelChoiceValue}
         />
         <BankruptModal
-          open={bankruptModal.open}
+          open={canShowModal && bankruptModal.open}
           playerName={bankruptModal.playerName}
           onConfirm={handleBankruptConfirm}
         />
         <DiceTimerModal
-          open={diceTimerModalOpen}
+          open={canShowModal && diceTimerModalOpen}
           title={diceTimerTitle}
           description={diceTimerMessage}
           timeLeftSec={
@@ -1876,7 +2022,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleDiceTimerConfirm}
         />
         <GameResultModal
-          open={gameResultModal.open}
+          open={canShowModal && gameResultModal.open}
           winnerName={resultModalWinnerName}
           results={resultModalRows}
           onBackToLobby={() => {
@@ -1885,11 +2031,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <GoToIslandModal
-          open={goToIslandModal.open}
+          open={canShowModal && goToIslandModal.open}
           onConfirm={handleGoToIslandConfirm}
         />
         {/* 🏝️ 무인도 (직접 도착) 팝업 */}
-        <IslandModal open={islandModal.open} onConfirm={handleIslandConfirm} />
+        <IslandModal
+          open={canShowModal && islandModal.open}
+          onConfirm={handleIslandConfirm}
+        />
       </div>
     )
   }
