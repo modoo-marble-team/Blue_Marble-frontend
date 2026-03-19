@@ -26,44 +26,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-
-      - run: npm ci
-
       - name: Collect changed files
         id: changed-files
         run: |
           git diff --name-only --diff-filter=ACMR \
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.event.pull_request.head.sha }}" > /tmp/changed-files.txt
-
-          count="$(wc -l < /tmp/changed-files.txt | tr -d ' ')"
-          echo "count=$count" >> "$GITHUB_OUTPUT"
-
-      - name: Run AI self review
-        if: steps.changed-files.outputs.count != '0'
-        run: |
-          mapfile -t changed_files < /tmp/changed-files.txt
-          node scripts/ai/self-review.mjs --files "${changed_files[@]}" > /tmp/ai-self-review.txt
-
-      - name: Write empty self review fallback
-        if: steps.changed-files.outputs.count == '0'
-        run: |
-          echo "No changed files detected for this pull request." > /tmp/ai-self-review.txt
-
-      - name: Run AI validation orchestration plan
-        if: steps.changed-files.outputs.count != '0'
-        run: |
-          mapfile -t changed_files < /tmp/changed-files.txt
-          node scripts/ai/validation-plan.mjs --files "${changed_files[@]}" > /tmp/ai-validation-plan.txt
-
-      - name: Write empty validation plan fallback
-        if: steps.changed-files.outputs.count == '0'
-        run: |
-          echo "No validation orchestration selected because there are no changed files." > /tmp/ai-validation-plan.txt
 
       - name: Upsert PR comment
         uses: actions/github-script@v7
@@ -72,7 +40,6 @@ jobs:
             const fs = require('node:fs')
 
             const marker = '<!-- ai-review -->'
-            const maxSectionLength = 24000
             const issueNumber = context.issue.number
             const { owner, repo } = context.repo
             const highRiskPrefixes = [
@@ -94,81 +61,12 @@ jobs:
               return fs.existsSync(path) ? fs.readFileSync(path, 'utf8').trim() : ''
             }
 
-            function truncate(value) {
-              if (value.length <= maxSectionLength) {
-                return value
-              }
-
-              return `${value.slice(0, maxSectionLength)}\n\n...truncated`
+            function startsWithAnyPrefix(file, prefixes) {
+              return prefixes.some((prefix) => file.startsWith(prefix))
             }
 
             function escapeRegExp(value) {
               return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            }
-
-            function extractScriptSection(text, heading, nextHeadings = []) {
-              if (!text) {
-                return ''
-              }
-
-              const escapedHeading = escapeRegExp(heading)
-              const escapedNextHeadings = nextHeadings.map(escapeRegExp).join('|')
-              const boundary = escapedNextHeadings
-                ? `(?:\\n(?:${escapedNextHeadings})\\n|$)`
-                : '$'
-              const pattern = new RegExp(
-                `${escapedHeading}\\n([\\s\\S]*?)${boundary}`
-              )
-              const match = text.match(pattern)
-
-              return match?.[1]?.trim() ?? ''
-            }
-
-            function extractBulletLines(section) {
-              if (!section) {
-                return []
-              }
-
-              return section
-                .split('\n')
-                .map((line) => line.trim())
-                .filter((line) => line.startsWith('- '))
-            }
-
-            function formatBulletSection(lines, emptyFallback = '- none') {
-              if (!lines.length) {
-                return emptyFallback
-              }
-
-              return lines.join('\n')
-            }
-
-            function formatChangedFiles(files, maxItems = 8) {
-              if (!files.length) {
-                return '- none'
-              }
-
-              const visibleFiles = files
-                .slice(0, maxItems)
-                .map((file) => `- \`${file}\``)
-              const remainingCount = files.length - maxItems
-
-              if (remainingCount > 0) {
-                visibleFiles.push(`- ...and ${remainingCount} more`)
-              }
-
-              return visibleFiles.join('\n')
-            }
-
-            const selfReview = truncate(readFile('/tmp/ai-self-review.txt'))
-            const validationPlan = truncate(readFile('/tmp/ai-validation-plan.txt'))
-            const changedFiles = readFile('/tmp/changed-files.txt')
-            const changedFileArray = changedFiles
-              ? changedFiles.split('\n').filter(Boolean)
-              : []
-
-            function startsWithAnyPrefix(file, prefixes) {
-              return prefixes.some((prefix) => file.startsWith(prefix))
             }
 
             function extractSection(body, heading) {
@@ -341,52 +239,12 @@ jobs:
               )
             }
 
-            function hasCheckedRole(section, roleName) {
-              if (!section) {
-                return false
-              }
-
-              const rolePattern = new RegExp(`- \\[x\\] ${escapeRegExp(roleName)}\\b`)
-              return rolePattern.test(section)
-            }
-
-            function extractCommandMentions(section) {
-              if (!section) {
-                return new Set()
-              }
-
-              const commands = section
-                .split('\n')
-                .map((line) => line.trim())
-                .filter(Boolean)
-                .flatMap((line) => {
-                  const checkedQuotedMatch = line.match(
-                    /^- \[x\]\s+`([^`]+)`$/i
-                  )
-                  if (checkedQuotedMatch) {
-                    return [checkedQuotedMatch[1]]
-                  }
-
-                  if (/^- \[ \]\s+`[^`]+`$/.test(line)) {
-                    return []
-                  }
-
-                  const quotedMatches = [...line.matchAll(/`([^`]+)`/g)].map(
-                    (match) => match[1]
-                  )
-
-                  if (quotedMatches.length > 0) {
-                    return quotedMatches
-                  }
-
-                  const commandMatch = line.match(/^- (npm run .+)$/)
-                  return commandMatch ? [commandMatch[1]] : []
-                })
-
-              return new Set(commands)
-            }
-
             const pullRequestBody = context.payload.pull_request?.body ?? ''
+            const changedFiles = readFile('/tmp/changed-files.txt')
+            const changedFileArray = changedFiles
+              ? changedFiles.split('\n').filter(Boolean)
+              : []
+
             const taskSection = extractSection(
               pullRequestBody,
               '## 🧠 Task 문서 (큰 작업이면 필수)'
@@ -394,10 +252,6 @@ jobs:
             const manualSection = extractSection(
               pullRequestBody,
               '## 📚 참고한 기준 문서'
-            )
-            const roleSection = extractSection(
-              pullRequestBody,
-              '## 👥 역할 수행'
             )
             const validationSection = extractSection(
               pullRequestBody,
@@ -407,6 +261,7 @@ jobs:
               pullRequestBody,
               '## ⚠️ 남은 리스크'
             )
+
             const isLargeChange =
               changedFileArray.length >= largeChangeFileCountThreshold ||
               changedFileArray.some((file) =>
@@ -415,136 +270,47 @@ jobs:
             const hasTaskDocumentEvidence =
               hasTaskDocumentLinks(taskSection) ||
               hasTaskDocumentTripletInChangedFiles(changedFileArray)
-            const workflowWarnings = []
+            const warnings = []
 
             if (isLargeChange && !hasTaskDocumentEvidence) {
-              workflowWarnings.push(
-                `큰 변경으로 보이지만 task 문서 근거(plan/context/checklist)가 없습니다. PR 본문 Task 섹션 또는 changed files 안의 task 문서 3종 세트가 필요합니다. 기준: 파일 ${largeChangeFileCountThreshold}개 이상 또는 고위험 경로 변경.`
+              warnings.push(
+                `큰 변경으로 보이지만 task 문서 근거(plan/context/checklist)가 없습니다. 기준: 파일 ${largeChangeFileCountThreshold}개 이상 또는 고위험 경로 변경.`
               )
             }
-
-            if (!hasMeaningfulValidationContent(validationSection)) {
-              workflowWarnings.push(
-                '`실행한 검증` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
-              )
-            }
-
-            if (!hasMeaningfulRiskContent(riskSection)) {
-              workflowWarnings.push(
-                '`남은 리스크` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
-              )
-            }
-
-            const requiredValidationCommands = extractBulletLines(
-              extractScriptSection(validationPlan, 'Required checks:', [
-                'Suggested checks:',
-              ])
-            ).map((line) => line.replace(/^- /, ''))
-            const mentionedValidationCommands =
-              extractCommandMentions(validationSection)
 
             if (
               isLargeChange &&
               !hasRequiredManualEvidence(manualSection, changedFileArray)
             ) {
-              workflowWarnings.push(
+              warnings.push(
                 '고위험 변경으로 보이지만 참고한 기준 문서 섹션에 필요한 manual 근거가 없습니다.'
               )
             }
 
-            if (
-              isLargeChange &&
-              !['Planner', 'Reviewer', 'Tester'].every((role) =>
-                hasCheckedRole(roleSection, role)
-              )
-            ) {
-              workflowWarnings.push(
-                '큰 변경으로 보이지만 Planner / Reviewer / Tester 역할 수행 흔적이 충분하지 않습니다.'
+            if (!hasMeaningfulValidationContent(validationSection)) {
+              warnings.push(
+                '`실행한 검증` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
               )
             }
 
-            if (hasMeaningfulValidationContent(validationSection)) {
-              const missingRequiredChecks = requiredValidationCommands.filter(
-                (command) => !mentionedValidationCommands.has(command)
+            if (!hasMeaningfulRiskContent(riskSection)) {
+              warnings.push(
+                '`남은 리스크` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
               )
-
-              if (missingRequiredChecks.length > 0) {
-                workflowWarnings.push(
-                  `Required check 중 PR 본문 실행한 검증에 보이지 않는 항목이 있습니다: ${missingRequiredChecks.join(', ')}`
-                )
-              }
             }
 
-            const warningSection = workflowWarnings.length
-              ? workflowWarnings.map((warning) => `- ${warning}`).join('\n')
+            const warningSection = warnings.length
+              ? warnings.map((warning) => `- ${warning}`).join('\n')
               : '- none'
-            const validationRequired = formatBulletSection(
-              requiredValidationCommands.map((command) => `- ${command}`)
-            )
-            const validationSuggested = formatBulletSection(
-              extractBulletLines(
-                extractScriptSection(validationPlan, 'Suggested checks:')
-              )
-            )
-            const relevantManuals = formatBulletSection(
-              extractBulletLines(
-                extractScriptSection(selfReview, 'Relevant Manuals', [
-                  'Findings',
-                ])
-              )
-            )
-            const selfReviewFindings = formatBulletSection(
-              extractBulletLines(
-                extractScriptSection(selfReview, 'Findings', ['Test Gaps'])
-              )
-            )
-            const selfReviewTestGaps = formatBulletSection(
-              extractBulletLines(
-                extractScriptSection(selfReview, 'Test Gaps', ['Warnings'])
-              )
-            )
-            const selfReviewWarnings = formatBulletSection(
-              extractBulletLines(
-                extractScriptSection(selfReview, 'Warnings', [
-                  'Suggested Validation Commands',
-                ])
-              )
-            )
-            const changedFilesSection = `- Total: ${changedFileArray.length}\n${formatChangedFiles(
-              changedFileArray
-            )}`
 
             const body = `${marker}
-            ## 🤖 AI Review
+            ## 🛡️ PR Guard
 
-            이 코멘트는 PR 변경 파일 기준으로 자동 갱신됩니다.
-            기존 CI를 대체하지 않고, deterministic warning / validation 결과를 짧게 요약합니다.
-            생성형 PR summary와 code review는 Gemini Code Assist가 담당합니다.
+            이 코멘트는 PR 본문에서 빠진 근거를 확인하기 위한 경량 검수입니다.
+            코드 품질 검사는 CI가, 생성형 리뷰는 Gemini Code Assist가 담당합니다.
 
-            ### Changed Files
-            ${changedFilesSection}
-
-            ### Workflow Warnings
+            ### PR 경고
             ${warningSection}
-
-            ### Findings
-            ${selfReviewFindings}
-
-            ### Test Gaps
-            ${selfReviewTestGaps}
-
-            ### Required Checks
-            ${validationRequired}
-
-            ### Suggested Checks
-            ${validationSuggested}
-
-            ### Self Review Notes
-            Relevant manuals:
-            ${relevantManuals}
-
-            Review warnings:
-            ${selfReviewWarnings}
             `
 
             const comments = await github.paginate(github.rest.issues.listComments, {
