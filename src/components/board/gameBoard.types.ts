@@ -1,5 +1,10 @@
 import type { BuildingLevel } from './board.constants'
 
+export interface CityActionModalState {
+  open: boolean
+  tileId: number | null
+}
+
 export interface BuyModalState {
   open: boolean
   tileId: number | null

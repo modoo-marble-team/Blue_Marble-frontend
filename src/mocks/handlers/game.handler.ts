@@ -748,6 +748,87 @@ const handleSellPropertyAction = (action: MockResolvedGameAction) => {
   ])
 }
 
+const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
+  const tileIndex = Number(action.payload?.tileId)
+  const player = getCurrentPlayer()
+  const tile = getTileByIndex(tileIndex)
+
+  if (!player || !isOwnableTile(tile)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'TILE_NOT_UPGRADABLE',
+        message: '건설할 수 없는 타일입니다.',
+      },
+    })
+    return
+  }
+
+  if (String(tile.owner_id) !== String(player.id)) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'FORBIDDEN_BUILD',
+        message: '본인 소유 타일만 건설할 수 있습니다.',
+      },
+    })
+    return
+  }
+
+  if (tile.building >= 7) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'MAX_LEVEL_REACHED',
+        message: '이미 최대 단계입니다.',
+      },
+    })
+    return
+  }
+
+  if (player.balance < MOCK_BUILD_COST) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'INSUFFICIENT_BALANCE',
+        message: '보유 금액이 부족합니다.',
+      },
+    })
+    return
+  }
+
+  player.balance -= MOCK_BUILD_COST
+  tile.building = (tile.building + 1) as BuildingLevel
+  const revision = nextRevision()
+
+  emitGameAck({
+    actionId: action.actionId,
+    type: action.type,
+    ok: true,
+    revision,
+  })
+
+  emitSnapshotPatch(action.gameId, [
+    {
+      type: 'BOUGHT_BUILDING', // 또는 UPGRADED_PROPERTY
+      playerId: player.id,
+      tileIndex,
+      amount: MOCK_BUILD_COST,
+      payload: {
+        buildingLevel: tile.building,
+      },
+    },
+  ])
+}
+
 const handleEndTurnAction = (action: MockResolvedGameAction) => {
   advanceMockTurn()
   mockGameState.phase = 'rolling'
@@ -865,6 +946,9 @@ export const mockEmitGameAction = ({
         break
       case 'SELL_PROPERTY':
         handleSellPropertyAction(action)
+        break
+      case 'CITY_BUILD':
+        handleBuildPropertyAction(action)
         break
       case 'END_TURN':
         handleEndTurnAction(action)
