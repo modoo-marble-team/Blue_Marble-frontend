@@ -6,13 +6,14 @@ import {
   extractEventDice,
   getBoardEventAnimationHoldMs,
   getBoardEventConsumeDelayMs,
+  resolveBoardCardModalContentFromEvent,
   resolveBoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
 
 const players: PlayerState[] = [
   {
     id: 1,
-    name: '플레이어1',
+    name: 'Player 1',
     color: '#f00',
     pos: 0,
     money: 1000,
@@ -20,7 +21,7 @@ const players: PlayerState[] = [
   },
   {
     id: 2,
-    name: '플레이어2',
+    name: 'Player 2',
     color: '#0f0',
     pos: 0,
     money: 1000,
@@ -30,8 +31,10 @@ const players: PlayerState[] = [
 
 const tiles: TileData[] = [
   { id: 0, name: 'START', type: 'START' },
-  { id: 1, name: '서울', type: 'PROPERTY', price: 1000, color: '#f00' },
-  { id: 2, name: '부산', type: 'PROPERTY', price: 1000, color: '#0f0' },
+  { id: 1, name: 'Seoul', type: 'PROPERTY', price: 1000, color: '#f00' },
+  { id: 2, name: 'Busan', type: 'PROPERTY', price: 1000, color: '#0f0' },
+  { id: 3, name: 'Chance', type: 'CHANCE' },
+  { id: 4, name: 'Event', type: 'EVENT' },
 ]
 
 describe('gameBoardEventQueueUtils', () => {
@@ -67,6 +70,7 @@ describe('gameBoardEventQueueUtils', () => {
       playerId: 1,
       dice: [4, 1],
     }
+
     expect(extractEventDice(event as unknown as ServerEvent)).toEqual([4, 1])
   })
 
@@ -78,7 +82,7 @@ describe('gameBoardEventQueueUtils', () => {
     }
 
     expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
-      '플레이어1님이 부산 칸으로 이동했습니다.'
+      'Player 1님이 Busan 칸으로 이동했습니다.'
     )
   })
 
@@ -90,7 +94,7 @@ describe('gameBoardEventQueueUtils', () => {
     } as ServerEvent & { toTileId: number }
 
     expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
-      '플레이어1님이 서울 칸으로 이동했습니다.'
+      'Player 1님이 Seoul 칸으로 이동했습니다.'
     )
   })
 
@@ -100,14 +104,14 @@ describe('gameBoardEventQueueUtils', () => {
       playerId: 2,
       tile: {
         tileId: 1,
-        name: '서울',
+        name: 'Seoul',
       },
     } as ServerEvent & {
       tile: { tileId: number; name: string }
     }
 
     expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
-      '플레이어2님이 서울 칸에 도착했습니다.'
+      'Player 2님이 Seoul 칸에 도착했습니다.'
     )
   })
 
@@ -118,7 +122,7 @@ describe('gameBoardEventQueueUtils', () => {
       chance: {
         type: 'GAIN_MONEY',
         power: 300,
-        description: '보너스 300만원을 획득합니다.',
+        description: 'Gain 300',
       },
     } as ServerEvent & {
       chance: {
@@ -128,9 +132,59 @@ describe('gameBoardEventQueueUtils', () => {
       }
     }
 
-    expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
-      '보너스 300만원을 획득합니다.'
-    )
+    expect(createBoardStatusFromEvent(event, players, tiles)).toBe('Gain 300')
+  })
+
+  it('resolves card modal content from CHANCE_RESOLVED with chance tile', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 1,
+      tileId: 3,
+      chance: {
+        description: 'Chance card line',
+      },
+    } as ServerEvent & {
+      tileId: number
+      chance: { description: string }
+    }
+
+    expect(resolveBoardCardModalContentFromEvent(event, tiles)).toEqual({
+      variant: 'CHANCE',
+      descriptionLine1: 'Chance card line',
+      descriptionLine2: '',
+    })
+  })
+
+  it('resolves card modal content from nested tile with event variant', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 1,
+      tile: {
+        tileId: 4,
+        type: 'EVENT',
+      },
+      chance: {
+        description: 'Event card line1\nline2',
+      },
+    } as ServerEvent & {
+      tile: { tileId: number; type: string }
+      chance: { description: string }
+    }
+
+    expect(resolveBoardCardModalContentFromEvent(event, tiles)).toEqual({
+      variant: 'EVENT',
+      descriptionLine1: 'Event card line1',
+      descriptionLine2: 'line2',
+    })
+  })
+
+  it('returns null card modal content for unsupported event types', () => {
+    const event: ServerEvent = {
+      type: 'PLAYER_MOVED',
+      playerId: 1,
+    }
+
+    expect(resolveBoardCardModalContentFromEvent(event, tiles)).toBeNull()
   })
 
   it('returns toll status with formatted amount', () => {
@@ -141,7 +195,7 @@ describe('gameBoardEventQueueUtils', () => {
     }
 
     expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
-      '플레이어2님이 통행료 2.5억을 지불했습니다.'
+      'Player 2님이 통행료 2.5억을 지불했습니다.'
     )
   })
 

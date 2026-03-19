@@ -50,6 +50,7 @@ import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
   getBoardEventAnimationHoldMs,
+  resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
   type BoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
@@ -442,6 +443,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       (event: ServerEvent) => {
         const normalizedType =
           typeof event.type === 'string' ? event.type.trim().toUpperCase() : ''
+        const isLocalPlayerEvent =
+          localPlayerId == null ||
+          event.playerId == null ||
+          String(event.playerId) === String(localPlayerId)
 
         if (normalizedType === 'DICE_ROLLED') {
           if (rollAnimationIntervalRef.current !== null) {
@@ -491,11 +496,42 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           )
           return
         }
+
+        if (normalizedType === 'CHANCE_RESOLVED') {
+          if (!isLocalPlayerEvent) {
+            return
+          }
+
+          const cardModalContent = resolveBoardCardModalContentFromEvent(
+            event,
+            TILES
+          )
+
+          if (!cardModalContent) {
+            return
+          }
+
+          setCardModal({
+            open: true,
+            variant: cardModalContent.variant,
+            title: cardModalContent.title,
+            descriptionLine1: cardModalContent.descriptionLine1,
+            descriptionLine2: cardModalContent.descriptionLine2,
+            onDoneCallback: undefined,
+          })
+
+          if (cardModalContent.variant === 'CHANCE') {
+            new Audio('/audio/chance.mp3').play().catch(() => {})
+          } else {
+            new Audio('/audio/event.mp3').play().catch(() => {})
+          }
+        }
       },
       [
         emitMockEndTurn,
         freezeDiceRollValues,
         flashDiceRollAnimation,
+        localPlayerId,
         movePlayerSequentially,
       ]
     )
@@ -1410,6 +1446,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
       if (tile.type === 'CHANCE' || tile.type === 'EVENT') {
+        if (!isMockMode) {
+          onDone?.()
+          return
+        }
+
         if (isLocalPlayerTurn) {
           setCardModal({
             open: true,
@@ -2075,6 +2116,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         <CardModal
           open={canShowModal && cardModal.open}
           variant={cardModal.variant}
+          title={cardModal.title}
+          descriptionLine1={cardModal.descriptionLine1}
+          descriptionLine2={cardModal.descriptionLine2}
+          highlightText={cardModal.highlightText}
           onConfirm={handleCardConfirm}
         />
         <TravelModal
