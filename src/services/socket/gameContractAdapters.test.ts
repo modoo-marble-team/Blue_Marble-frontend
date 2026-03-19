@@ -65,6 +65,27 @@ describe('gameContractAdapters', () => {
     ])
   })
 
+  it('normalizes build prompt money fields with consistent unit policy', () => {
+    const normalized = normalizePromptPayload({
+      promptId: 'prompt-build-money',
+      type: 'BUILD_OR_SKIP',
+      payload: {
+        buildCost: 260,
+        nextToll: '520',
+        build_cost: '130',
+        next_toll: 390,
+      },
+      choices: [{ value: 'build' }, { value: 'skip' }],
+    })
+
+    expect(normalized?.payload).toMatchObject({
+      buildCost: 260000000,
+      nextToll: 520000000,
+      build_cost: 130000000,
+      next_toll: 390000000,
+    })
+  })
+
   it('normalizes canonical snapshot payload to internal snapshot shape', () => {
     const normalized = normalizeSnapshotPayload(
       {
