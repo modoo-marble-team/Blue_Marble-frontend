@@ -98,6 +98,7 @@ import type {
 import '../../styles/board.css'
 import { formatWon } from '../../lib/utils'
 import type {
+  GamePhase,
   GamePrompt,
   GameResult,
   PlayerId,
@@ -230,6 +231,8 @@ interface GameBoardProps {
   gameId?: string | null
   players: PlayerState[]
   curPlayer: number
+  gamePhase?: GamePhase | null
+  allowAssetActions?: boolean
   suppressDiceTimerModal?: boolean
   activePrompt?: GamePrompt | null
   promptSubmittingChoice?: string | null
@@ -299,6 +302,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       gameId,
       players,
       curPlayer,
+      gamePhase = null,
+      allowAssetActions = false,
       suppressDiceTimerModal = false,
       activePrompt = null,
       promptSubmittingChoice = null,
@@ -1601,10 +1606,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         bankruptModal.open ||
         gameResultModal.open)
     const activePlayerId = players[curPlayer]?.id ?? null
+    const isAssetActionPhase =
+      gamePhase === 'rolling' || gamePhase === 'resolving'
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
     const isOwnedTileSellClickable = (tileId: number) => {
-      if (travelSelection.active || hasBlockingModal) {
+      if (
+        travelSelection.active ||
+        hasBlockingModal ||
+        !allowAssetActions ||
+        !isAssetActionPhase
+      ) {
         return false
       }
       if (activePlayerId == null) {
@@ -1640,6 +1652,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const effectiveLocalPlayerId = localPlayerId ?? players[curPlayer]?.id
       const isMyTurn =
         String(players[curPlayer]?.id) === String(effectiveLocalPlayerId)
+      if (!allowAssetActions || !isAssetActionPhase || !isMyTurn) {
+        return
+      }
 
       // 본인 땅인 경우
       const owner = tileOwners[tileId]
