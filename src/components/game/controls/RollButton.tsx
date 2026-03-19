@@ -5,15 +5,26 @@ import { useGameTimer } from '../../../hooks/game/useGameTimer'
 interface RollControlProps {
   isMyTurn: boolean
   onRoll: () => void
+  mode?: 'roll' | 'end_turn'
+  onEndTurn?: () => void
 }
 
-const RollControl: React.FC<RollControlProps> = ({ isMyTurn, onRoll }) => {
+const RollControl: React.FC<RollControlProps> = ({
+  isMyTurn,
+  onRoll,
+  mode = 'roll',
+  onEndTurn,
+}) => {
   const turnTimeoutSec = useGameStore((s) => s.turnTimeoutSec)
   const turnTimerKey = useGameStore((s) => s.turnTimerKey)
   const [timeLeft] = useGameTimer({
     initialTime: turnTimeoutSec,
     resetSignal: turnTimerKey,
   })
+  const isEndTurnMode = mode === 'end_turn'
+  const canClick =
+    isMyTurn && (!isEndTurnMode || typeof onEndTurn === 'function')
+  const handleClick = isEndTurnMode ? (onEndTurn ?? onRoll) : onRoll
 
   const dashArray = 251 // Approx circumference for r=40
   const dashOffset = dashArray * (1 - timeLeft / (turnTimeoutSec || 30))
@@ -71,13 +82,19 @@ const RollControl: React.FC<RollControlProps> = ({ isMyTurn, onRoll }) => {
       </div>
 
       <button
-        onClick={onRoll}
-        disabled={!isMyTurn}
-        className="group relative flex h-24 w-24 flex-col items-center justify-center gap-0.5 rounded-3xl border-4 border-[#BEDBFF] bg-linear-to-br from-[#2B7FFF] to-[#4F39F6] text-white shadow-[0_0_0_4px_rgba(255,255,255,0.5),0_20px_25px_-5px_rgba(142,197,255,0.5)] transition-all hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0.5 active:scale-95 disabled:grayscale disabled:opacity-50"
+        onClick={handleClick}
+        disabled={!canClick}
+        className={`group relative flex h-24 w-24 flex-col items-center justify-center gap-0.5 rounded-3xl border-4 text-white shadow-[0_0_0_4px_rgba(255,255,255,0.5),0_20px_25px_-5px_rgba(142,197,255,0.5)] transition-all hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0.5 active:scale-95 disabled:grayscale disabled:opacity-50 ${
+          isEndTurnMode
+            ? 'border-[#FCD34D] bg-linear-to-br from-[#F59E0B] to-[#F97316]'
+            : 'border-[#BEDBFF] bg-linear-to-br from-[#2B7FFF] to-[#4F39F6]'
+        }`}
       >
-        <span className="text-3xl leading-none drop-shadow-md">🎲</span>
+        <span className="text-3xl leading-none drop-shadow-md">
+          {isEndTurnMode ? '⏭' : '🎲'}
+        </span>
         <span className="text-[10px] font-black tracking-widest opacity-90 uppercase">
-          ROLL
+          {isEndTurnMode ? 'END' : 'ROLL'}
         </span>
       </button>
     </div>
