@@ -324,6 +324,7 @@ describe('auth api integration helpers', () => {
       configurable: true,
       value: {
         ...window.location,
+        origin: 'http://localhost:5173',
         assign: assignSpy,
       },
     })
@@ -332,7 +333,7 @@ describe('auth api integration helpers', () => {
 
     expect(result).toBeNull()
     expect(assignSpy).toHaveBeenCalledWith(
-      'http://localhost:3000/api/auth/kakao/login'
+      'http://localhost:3000/api/auth/kakao/login?frontend_redirect=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fkakao%2Fcallback'
     )
   })
 

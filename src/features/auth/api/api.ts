@@ -171,6 +171,10 @@ function buildApiPath(path: string) {
   return `${baseUrl}${path}`
 }
 
+function buildFrontendCallbackRedirect() {
+  return new URL(KAKAO_LOGIN_CALLBACK_PATH, window.location.origin).toString()
+}
+
 async function getAuthSessionWithToken(accessToken: string) {
   const response = await apiClient.get<AuthSessionPayload>('/auth/session', {
     headers: {
@@ -285,7 +289,13 @@ export async function startKakaoLogin() {
     return mockKakaoLogin()
   }
 
-  window.location.assign(buildApiPath('/auth/kakao/login'))
+  const loginStartUrl = new URL(buildApiPath('/auth/kakao/login'))
+  loginStartUrl.searchParams.set(
+    'frontend_redirect',
+    buildFrontendCallbackRedirect()
+  )
+
+  window.location.assign(loginStartUrl.toString())
   return null
 }
 
