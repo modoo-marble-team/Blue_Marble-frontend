@@ -199,11 +199,11 @@ export function CreateRoomModal({
           {isPrivateRoomEnabled ? (
             <input
               name="room-access-code"
-              type="password"
+              type="text"
               inputMode="numeric"
               pattern="[0-9]*"
               maxLength={ROOM_PASSWORD_LENGTH}
-              autoComplete="new-password"
+              autoComplete="off"
               data-1p-ignore="true"
               data-lpignore="true"
               value={roomPassword}
