@@ -22,7 +22,7 @@ const IslandModal: React.FC<IslandModalProps> = ({ open, onConfirm }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2438]/30 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2438]/30">
       <div className="flex w-[340px] flex-col items-center rounded-[32px] bg-white px-6 pb-8 pt-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)]">
         {/* Icon */}
         <div className="mb-4 text-[72px] leading-none drop-shadow-md">

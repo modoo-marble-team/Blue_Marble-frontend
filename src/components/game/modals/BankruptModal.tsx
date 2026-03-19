@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 
 interface BankruptModalProps {
   open: boolean
@@ -24,7 +24,7 @@ const BankruptModal: React.FC<BankruptModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)]">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-11 shadow-2xl">
         <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#FFE0DF] bg-[#FFF2F1]">
           <svg

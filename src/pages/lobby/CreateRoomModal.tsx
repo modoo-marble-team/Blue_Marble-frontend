@@ -78,7 +78,7 @@ export function CreateRoomModal({
   }, [handleClose])
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.35)] p-4 backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.35)] p-4">
       <motion.div
         className="absolute inset-0"
         onClick={handleClose}

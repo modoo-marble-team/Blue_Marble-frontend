@@ -20,7 +20,7 @@ function Header({
   menuItems = [],
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-ui-border bg-ui-surface/95 px-4 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-ui-border bg-ui-surface/95 px-4 sm:px-6">
       <BrandLockup compact />
 
       <ProfileDropdown

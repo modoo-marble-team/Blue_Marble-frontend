@@ -25,7 +25,7 @@ const GoToIslandModal: React.FC<GoToIslandModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)]">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-11 pt-12 shadow-2xl">
         {/* Icon */}
         <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-3xl bg-[#FFF3E5] text-[64px]">

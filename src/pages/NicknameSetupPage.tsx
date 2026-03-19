@@ -49,7 +49,7 @@ function NicknameSetupPage() {
 
       <main className="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10 sm:px-6">
         <motion.section
-          className="w-full max-w-[520px] rounded-[32px] border border-ui-border bg-ui-surface/94 px-8 py-9 shadow-[0_18px_42px_rgba(15,23,42,0.08)] backdrop-blur-sm"
+          className="w-full max-w-[520px] rounded-[32px] border border-ui-border bg-ui-surface/94 px-8 py-9 shadow-[0_18px_42px_rgba(15,23,42,0.08)]"
           initial={{ opacity: 0, y: 22, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.34, ease: [0.18, 0.9, 0.28, 1] }}
