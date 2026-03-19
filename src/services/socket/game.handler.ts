@@ -205,6 +205,31 @@ export const setupGameHandlers = (
       patch: Array.isArray(payload.patch) ? payload.patch : [],
       events: mergedEvents,
     })
+    const normalizedEvents = normalizedPatchEnvelope.events ?? []
+    const isSyncOnlyEnvelope =
+      normalizedPatchEnvelope.patch.length === 0 &&
+      normalizedEvents.length > 0 &&
+      normalizedEvents.every(
+        (event) =>
+          typeof event.type === 'string' &&
+          event.type.trim().toUpperCase() === 'SYNCED'
+      )
+    const shouldSkipDuplicateSyncSnapshot =
+      Boolean(payload.snapshot) &&
+      normalizedPatchEnvelope.revision > 0 &&
+      normalizedPatchEnvelope.revision === gameStore.revision &&
+      gameStore.players.length > 0 &&
+      isSyncOnlyEnvelope
+
+    if (shouldSkipDuplicateSyncSnapshot) {
+      if (import.meta.env.DEV) {
+        console.debug(
+          '[game:patch] skip duplicate SYNCED snapshot',
+          normalizedPatchEnvelope.revision
+        )
+      }
+      return
+    }
 
     if (payload.snapshot) {
       const normalizedSnapshot = normalizeSnapshotPayload(payload.snapshot, {
@@ -223,14 +248,10 @@ export const setupGameHandlers = (
 
       if (import.meta.env.DEV) {
         console.debug('[game:patch] normalized snapshot', normalizedSnapshot)
-        console.debug(
-          '[game:patch] events to enqueue',
-          normalizedPatchEnvelope.events
-        )
+        console.debug('[game:patch] events to enqueue', normalizedEvents)
       }
 
       gameStore.replaceFromSnapshot(normalizedSnapshot)
-      const normalizedEvents = normalizedPatchEnvelope.events ?? []
       if (normalizedEvents.length > 0) {
         gameStore.enqueueEvents(normalizedEvents)
       }
