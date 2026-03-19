@@ -75,6 +75,14 @@ export function useWaitingRoomController({
     onRoomRemoved()
   }, [onRoomRemoved])
 
+  const handleGameStartPreservingRoomMembership = useCallback(
+    (payload: GameStartEventPayload) => {
+      shouldSkipNextCleanupLeaveRef.current = true
+      onGameStart(payload)
+    },
+    [onGameStart]
+  )
+
   useWaitingRoomLifecycle({
     roomId,
     session,
@@ -97,7 +105,7 @@ export function useWaitingRoomController({
     session,
     activeRoomId,
     hasReceivedRoomUpdatedRef,
-    onGameStart,
+    onGameStart: handleGameStartPreservingRoomMembership,
     onRoomRemoved: handleRoomRemoved,
     setRoom,
     setChatMessages,
