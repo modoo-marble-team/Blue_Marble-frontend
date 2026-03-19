@@ -224,6 +224,14 @@ export interface GamePatchEnvelope {
   events?: ServerEvent[]
 }
 
+export interface GameTimerSync {
+  gameId?: GameId | null
+  turnRemainingSec?: number | null
+  promptId?: string | null
+  promptRemainingSec?: number | null
+  syncedAt?: string | null
+}
+
 export interface GameState extends GameSnapshot {
   messages: ChatMessage[]
   // 기존 화면과의 호환을 위해 currentTurn alias를 유지한다.

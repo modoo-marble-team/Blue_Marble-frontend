@@ -568,7 +568,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
-    /* isBuildPromptOpen suppressed to prioritize manual click */
+    const isBuildPromptOpen = promptModalKind === 'build'
     const isTollPromptOpen = promptModalKind === 'toll'
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
@@ -727,6 +727,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onSuccess?.()
       return true
     }
+
+    useEffect(() => {
+      if (!activePrompt) {
+        return
+      }
+
+      if (promptSubmittingChoice !== null) {
+        setStatus('선택을 전송했습니다. 서버 응답을 기다리는 중...')
+        return
+      }
+
+      const promptTitle =
+        typeof activePrompt.title === 'string' &&
+        activePrompt.title.trim() !== ''
+          ? activePrompt.title.trim()
+          : '선택'
+      setStatus(`${promptTitle} 진행 중`)
+    }, [activePrompt, promptSubmittingChoice])
 
     useEffect(() => {
       tileOwnersRef.current = derivedTileOwners
@@ -1286,7 +1304,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
 
         setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
-        setStatus('서버 선택 요청을 기다리는 중...')
+        setStatus('선택을 전송했습니다. 서버 응답을 기다리는 중...')
         return
       }
       const updatedPlayers = [...playersRef.current]
@@ -1375,7 +1393,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'PROPERTY') {
-        setStatus('서버 선택 요청을 기다리는 중...')
+        setStatus('다음 선택지를 준비하는 중...')
         onDone?.()
         return
       }
@@ -1436,6 +1454,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const buyTile = promptTile
     const buyModalOpen = isBuyPromptOpen
+    const buildModalOpen = isBuildPromptOpen
     const buildTile = promptTile
     const currentLevel = promptCurrentLevel
     const buildTargetLevel = promptNextLevel
@@ -1491,7 +1510,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canShowModal && cityBuildModal.open && !insufficientFundsModal.open
+      canShowModal && buildModalOpen && !insufficientFundsModal.open
     const acquisitionModalOpen =
       canShowModal &&
       acquisitionModalOpenRaw &&

@@ -9,6 +9,7 @@ import type {
   GameResult,
   GameSnapshot,
   GameState,
+  GameTimerSync,
   PendingGameAction,
   Player,
   PlayerId,
@@ -26,6 +27,7 @@ interface GameActions {
   addMessage: (message: ChatMessage) => void
   replaceFromSnapshot: (snapshot: GameSnapshot) => void
   applyPatchEnvelope: (envelope: GamePatchEnvelope) => void
+  applyTimerSync: (timerSync: GameTimerSync) => void
   setPendingAction: (action: PendingGameAction | null) => void
   resolveAck: (ack: GameAck) => void
   setPrompt: (prompt: GameState['prompt']) => void
@@ -436,6 +438,40 @@ export const useGameStore = create<GameStoreState>()(
         }
         draft.eventQueue.push(...(envelope.events ?? []))
         Object.assign(draft, normalizeState(draft))
+      }),
+
+    applyTimerSync: (timerSync) =>
+      set((draft) => {
+        const nowIso = new Date().toISOString()
+
+        if (timerSync.gameId != null) {
+          draft.gameId = timerSync.gameId
+          draft.session.gameId = timerSync.gameId
+        }
+
+        if (typeof timerSync.turnRemainingSec === 'number') {
+          const normalizedTurnRemainingSec = Math.max(
+            0,
+            Math.trunc(timerSync.turnRemainingSec)
+          )
+          draft.turnTimeoutSec = normalizedTurnRemainingSec
+          draft.turnTimerKey = Date.now()
+        }
+
+        if (
+          draft.prompt &&
+          typeof timerSync.promptId === 'string' &&
+          draft.prompt.id === timerSync.promptId &&
+          typeof timerSync.promptRemainingSec === 'number'
+        ) {
+          draft.prompt.timeoutSec = Math.max(
+            0,
+            Math.trunc(timerSync.promptRemainingSec)
+          )
+        }
+
+        draft.session.transport = 'event-socket'
+        draft.session.syncedAt = timerSync.syncedAt ?? nowIso
       }),
 
     setPendingAction: (action) =>

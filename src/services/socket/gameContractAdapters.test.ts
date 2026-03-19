@@ -4,6 +4,7 @@ import {
   normalizePatchEnvelopePayload,
   normalizePromptPayload,
   normalizeSnapshotPayload,
+  normalizeTimerSyncPayload,
 } from './gameContractAdapters'
 
 describe('gameContractAdapters', () => {
@@ -585,5 +586,41 @@ describe('gameContractAdapters', () => {
         }),
       },
     ])
+  })
+
+  it('normalizes game:timer_sync payload with canonical fields', () => {
+    const normalized = normalizeTimerSyncPayload({
+      gameId: 'game-10',
+      turnRemainingSec: 18,
+      promptId: 'prompt-1',
+      promptRemainingSec: 7,
+      syncedAt: '2026-03-19T10:00:00.000Z',
+    })
+
+    expect(normalized).toEqual({
+      gameId: 'game-10',
+      turnRemainingSec: 18,
+      promptId: 'prompt-1',
+      promptRemainingSec: 7,
+      syncedAt: '2026-03-19T10:00:00.000Z',
+    })
+  })
+
+  it('normalizes game:timer_sync payload with legacy aliases', () => {
+    const normalized = normalizeTimerSyncPayload({
+      game_id: 'game-11',
+      turn_remaining_sec: '9',
+      prompt_id: 'prompt-legacy',
+      prompt_left_sec: '4',
+      server_time: '2026-03-19T10:01:00.000Z',
+    })
+
+    expect(normalized).toEqual({
+      gameId: 'game-11',
+      turnRemainingSec: 9,
+      promptId: 'prompt-legacy',
+      promptRemainingSec: 4,
+      syncedAt: '2026-03-19T10:01:00.000Z',
+    })
   })
 })
