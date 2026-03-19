@@ -6,7 +6,6 @@ import {
   getStripColor,
   TileOwner,
   PLAYER_COLORS,
-  STRAIGHT_SIZE,
   LEVEL_LABELS,
 } from './board.constants'
 import BuildingBadge from './BuildingBadge'
@@ -343,7 +342,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
   }
 
   // ── 좌측 / 우측 (중간 칸들) ─────────────────────────────────────────
-  const isLeft = dir === 'left'
   const isSpecial = ['CHANCE', 'EVENT', 'TRAVEL'].includes(tile.type)
 
   return (
@@ -366,17 +364,17 @@ const BoardTile: React.FC<BoardTileProps> = ({
           backgroundColor: tileBg,
           borderRadius: 9,
           display: 'flex',
-          flexDirection: isLeft ? 'row-reverse' : 'row',
+          flexDirection: 'column',
           overflow: 'hidden',
         }}
       >
         {strip && (
           <div
             style={{
-              width: 14,
-              height: '100%',
+              height: 14,
               backgroundColor: strip,
               flexShrink: 0,
+              borderRadius: '7px 7px 0 0',
             }}
           />
         )}
@@ -386,17 +384,17 @@ const BoardTile: React.FC<BoardTileProps> = ({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: isProperty ? 'flex-start' : 'center',
+            padding: isProperty ? '2px 3px' : '2px 3px',
             position: 'relative',
           }}
         >
           <div
             style={{
-              transform: isLeft ? 'rotate(90deg)' : 'rotate(-90deg)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              width: STRAIGHT_SIZE,
+              width: '100%',
             }}
           >
             {isProperty && (
@@ -405,9 +403,12 @@ const BoardTile: React.FC<BoardTileProps> = ({
                   style={{
                     fontSize: 15,
                     fontWeight: 800,
+                    color: '#374151',
+                    textAlign: 'center',
                     lineHeight: '14px',
                     height: 14,
-                    marginBottom: 1,
+                    marginTop: 2,
+                    marginBottom: -1,
                     display: 'flex',
                     alignItems: 'center',
                   }}
@@ -416,12 +417,13 @@ const BoardTile: React.FC<BoardTileProps> = ({
                 </span>
                 <div
                   style={{
-                    height: 28,
+                    flex: 1,
+                    minHeight: 22,
                     width: '100%',
                     display: 'flex',
                     alignItems: 'flex-start',
                     justifyContent: 'center',
-                    paddingTop: 2,
+                    paddingTop: 1,
                   }}
                 >
                   {hasBuilding && (
@@ -438,7 +440,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     color: tileOwner ? '#1E293B' : '#64748B',
                     fontSize: 10,
                     fontWeight: 900,
-                    padding: '2px 5px',
+                    padding: '1px 5px',
                     borderRadius: 10,
                     marginTop: 0,
                   }}
