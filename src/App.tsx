@@ -4,6 +4,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { DesktopViewportGuard } from './components/DesktopViewportGuard'
 import { KAKAO_LOGIN_CALLBACK_PATH } from './features/auth/api/api'
 import { useAuthBootstrap } from './features/auth/session/hooks/useAuthBootstrap'
+import { useAuthResumeNavigation } from './features/auth/session/hooks/useAuthResumeNavigation'
 import { useAuthStore } from './features/auth/session/store'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -51,31 +52,36 @@ function App() {
   const session = useAuthStore((state) => state.session)
   const isHomeRoute = location.pathname === '/'
   const isKakaoCallbackRoute = location.pathname === KAKAO_LOGIN_CALLBACK_PATH
+  const isNicknameSetupRoute = location.pathname === '/nickname-setup'
   const hasPersistedSession = Boolean(session)
   const isAuthBootstrapping = useAuthBootstrap({
     skip: isKakaoCallbackRoute,
   })
+  const isAuthResumeRouting = useAuthResumeNavigation({
+    session,
+    skip: isAuthBootstrapping || isKakaoCallbackRoute || isNicknameSetupRoute,
+  })
   const shouldShowBootstrapScreen =
-    isAuthBootstrapping &&
-    !hasPersistedSession &&
-    !isHomeRoute &&
-    !isKakaoCallbackRoute
+    ((isAuthBootstrapping && !hasPersistedSession && !isHomeRoute) ||
+      (isAuthResumeRouting && hasPersistedSession)) &&
+    !isKakaoCallbackRoute &&
+    !isNicknameSetupRoute
+  const bootstrapMessage = isAuthResumeRouting
+    ? '참가 정보를 확인하고 있습니다.'
+    : '세션 정보를 확인하고 있습니다.'
 
   return (
     <DesktopViewportGuard>
       {shouldShowBootstrapScreen ? (
         <div className="flex min-h-screen items-center justify-center bg-ui-app-bg px-4">
           <p className="text-sm font-medium text-ui-text-muted">
-            세션 정보를 확인하고 있습니다.
+            {bootstrapMessage}
           </p>
         </div>
       ) : (
         <Suspense fallback={<RouteLoadingScreen />}>
           <Routes>
-            <Route
-              path="/"
-              element={<HomePage isAuthBootstrapping={isAuthBootstrapping} />}
-            />
+            <Route path="/" element={<HomePage />} />
             <Route
               path={KAKAO_LOGIN_CALLBACK_PATH}
               element={<KakaoLoginCallbackPage />}

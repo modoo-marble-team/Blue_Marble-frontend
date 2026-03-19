@@ -1,4 +1,8 @@
-export { mockKakaoLogin, mockGuestLogin } from '../mock/session'
+export {
+  mockGetMyContext,
+  mockKakaoLogin,
+  mockGuestLogin,
+} from '../mock/session'
 export { validateNickname } from '../nickname/validation'
 export {
   mockCheckNicknameAvailability,

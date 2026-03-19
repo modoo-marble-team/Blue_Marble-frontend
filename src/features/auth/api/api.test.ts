@@ -5,9 +5,11 @@ import {
   buildAuthSession,
   completeKakaoLogin,
   getAuthErrorMessage,
+  getMyContext,
   getMyPageProfile,
   loginAsGuest,
   logoutAuthSession,
+  mapAuthResumeContext,
   mapMyPageProfile,
   refreshAccessToken,
   restoreAuthSession,
@@ -128,6 +130,28 @@ describe('mapMyPageProfile', () => {
   })
 })
 
+describe('mapAuthResumeContext', () => {
+  it('users/me/context 응답을 내부 resume context 모델로 변환한다', () => {
+    const context = mapAuthResumeContext({
+      room_id: 'room-7',
+      room_title: '친구방',
+      room_status: 'playing',
+      game_id: '17',
+      presence_status: 'playing',
+      resume_target: 'game',
+    })
+
+    expect(context).toEqual({
+      roomId: 'room-7',
+      roomTitle: '친구방',
+      roomStatus: 'playing',
+      gameId: '17',
+      presenceStatus: 'playing',
+      resumeTarget: 'game',
+    })
+  })
+})
+
 describe('auth api integration helpers', () => {
   const originalBaseUrl = apiClient.defaults.baseURL
   const originalLocation = window.location
@@ -235,6 +259,35 @@ describe('auth api integration helpers', () => {
     expect(restored.userId).toBe('14')
     expect(restored.needsNicknameSetup).toBe(true)
     expect(restored.provider).toBe('kakao')
+  })
+
+  it('getMyContext는 Authorization 헤더로 참가 컨텍스트를 조회한다', async () => {
+    const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({
+      data: {
+        room_id: 'room-7',
+        room_title: '친구방',
+        room_status: 'playing',
+        game_id: '17',
+        presence_status: 'playing',
+        resume_target: 'game',
+      },
+    })
+
+    const context = await getMyContext('persisted-token')
+
+    expect(getSpy).toHaveBeenCalledWith('/users/me/context', {
+      headers: {
+        Authorization: 'Bearer persisted-token',
+      },
+    })
+    expect(context).toEqual({
+      roomId: 'room-7',
+      roomTitle: '친구방',
+      roomStatus: 'playing',
+      gameId: '17',
+      presenceStatus: 'playing',
+      resumeTarget: 'game',
+    })
   })
 
   it('loginAsGuest는 실제 계약 응답을 프론트 세션으로 매핑한다', async () => {

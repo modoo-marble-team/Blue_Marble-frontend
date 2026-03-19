@@ -14,7 +14,6 @@ import {
   loginAsGuest,
   startKakaoLogin,
 } from '../features/auth/api/api'
-import { useRedirectAuthenticatedToLobby } from '../features/auth/session/hooks/useRedirectAuthenticatedToLobby'
 import { useAuthStore } from '../features/auth/session/store'
 
 // 홈 하단 기능 소개 카드 메타데이터
@@ -40,21 +39,12 @@ const featureCards = [
 ]
 
 // 로그인 진입 홈 화면 렌더링과 인증 흐름 제어
-interface HomePageProps {
-  isAuthBootstrapping?: boolean
-}
-
-function HomePage({ isAuthBootstrapping = false }: HomePageProps) {
+function HomePage() {
   const navigate = useNavigate()
-  const session = useAuthStore((state) => state.session)
   const setSession = useAuthStore((state) => state.setSession)
 
   const [isKakaoLoading, setIsKakaoLoading] = useState(false)
   const [isGuestLoading, setIsGuestLoading] = useState(false)
-
-  useRedirectAuthenticatedToLobby(session, {
-    skip: isAuthBootstrapping,
-  })
 
   const isAnyLoading = isKakaoLoading || isGuestLoading
 
