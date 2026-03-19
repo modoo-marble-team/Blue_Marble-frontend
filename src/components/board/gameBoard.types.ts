@@ -20,6 +20,10 @@ export interface BuildModalState {
 export interface CardModalState {
   open: boolean
   variant: 'EVENT' | 'CHANCE'
+  title?: string
+  descriptionLine1?: string
+  descriptionLine2?: string
+  highlightText?: string
   onDoneCallback?: () => void
 }
 

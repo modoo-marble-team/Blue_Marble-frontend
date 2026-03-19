@@ -67,6 +67,7 @@ const GamePage: React.FC = () => {
   const authSession = useAuthStore((state) => state.session)
   const currentPlayerId = useGameStore((s) => s.currentPlayerId)
   const currentTurn = useGameStore((s) => s.currentTurn)
+  const phase = useGameStore((s) => s.phase)
   const messages = useGameStore((s) => s.messages)
   const storePlayers = useGameStore((s) => s.players)
   const storeTiles = useGameStore((s) => s.tiles)
@@ -91,7 +92,6 @@ const GamePage: React.FC = () => {
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
-  const [hasRolledThisTurn, setHasRolledThisTurn] = useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const boardRef = useRef<BoardGameHandle>(null)
   const pendingGameChatEchoesRef = useRef<PendingGameChatEcho[]>([])
@@ -174,17 +174,6 @@ const GamePage: React.FC = () => {
   }, [lastError])
 
   useEffect(() => {
-    if (lastAck?.type === 'ROLL_DICE' && !lastAck.ok) {
-      setHasRolledThisTurn(false)
-      return
-    }
-
-    if (lastAck?.type === 'END_TURN' && lastAck.ok) {
-      setHasRolledThisTurn(false)
-    }
-  }, [lastAck])
-
-  useEffect(() => {
     if (!activeRoomId) {
       return
     }
@@ -258,25 +247,23 @@ const GamePage: React.FC = () => {
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
     currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
-  const isCurrentPlayerSkipped =
-    (currentPlayerState?.skipTurns ?? 0) > 0 ||
-    currentPlayerState?.state === 'locked' ||
-    currentPlayerState?.state === 'island'
+  const isRollPhase = phase === 'rolling'
+  const isEndTurnPhase = phase === 'resolving' && !prompt
   const canControlTurn =
     isMyTurn &&
     !isActionPending &&
     !isPromptVisible &&
-    !isCurrentPlayerSkipped &&
-    !isCurrentPlayerBankrupt
-  const rollButtonMode: 'roll' | 'end_turn' = hasRolledThisTurn
+    !isCurrentPlayerBankrupt &&
+    (isRollPhase || isEndTurnPhase)
+  const rollButtonMode: 'roll' | 'end_turn' = isEndTurnPhase
     ? 'end_turn'
     : 'roll'
-
-  useEffect(() => {
-    if (!isMyTurn) {
-      setHasRolledThisTurn(false)
-    }
-  }, [currentTurn, isMyTurn])
+  const canManageAssetsThisTurn =
+    isMyTurn &&
+    !isActionPending &&
+    !isPromptVisible &&
+    !isCurrentPlayerBankrupt &&
+    (phase === 'rolling' || phase === 'resolving')
   const roomChatSenderOptions = useMemo(
     () =>
       storePlayers.map((player) => ({
@@ -311,7 +298,15 @@ const GamePage: React.FC = () => {
     setLastError(null)
   }
   const handleRollClick = () => {
-    if (hasRolledThisTurn) {
+    if (
+      !isMyTurn ||
+      isActionPending ||
+      isPromptVisible ||
+      isCurrentPlayerBankrupt
+    ) {
+      return
+    }
+    if (!isRollPhase) {
       return
     }
     if (!activeGameId) {
@@ -324,10 +319,20 @@ const GamePage: React.FC = () => {
     boardRef.current?.rollDice()
     new Audio('/audio/dice-roll.mp3').play().catch(() => {})
     diceRoll(activeGameId)
-    setHasRolledThisTurn(true)
   }
 
   const handleEndTurnClick = () => {
+    if (
+      !isMyTurn ||
+      isActionPending ||
+      isPromptVisible ||
+      isCurrentPlayerBankrupt
+    ) {
+      return
+    }
+    if (!isEndTurnPhase) {
+      return
+    }
     if (!activeGameId || pendingAction !== null) {
       return
     }
@@ -436,6 +441,8 @@ const GamePage: React.FC = () => {
               promptSubmittingChoice={promptSubmittingChoice}
               onPromptChoice={handlePromptChoice}
               localPlayerId={currentUserId}
+              gamePhase={phase}
+              allowAssetActions={canManageAssetsThisTurn}
               gameResult={gameResult}
               isGameOver={isGameOver}
               winnerId={winnerId}

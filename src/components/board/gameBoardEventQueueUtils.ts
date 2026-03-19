@@ -11,6 +11,13 @@ export type BoardEventAnimationKind =
   | 'turn_end'
   | 'sync'
 
+export type BoardCardModalContent = {
+  variant: 'EVENT' | 'CHANCE'
+  title?: string
+  descriptionLine1?: string
+  descriptionLine2?: string
+}
+
 const normalizeEventType = (type: unknown) =>
   typeof type === 'string' ? type.trim().toUpperCase() : ''
 
@@ -234,6 +241,79 @@ const resolveChanceDescription = (event: ServerEvent) => {
     getRecordString(chanceRecord, ['description']) ??
     getRecordString(event.payload ?? null, ['description'])
   )
+}
+
+const resolveCardModalVariant = (
+  event: ServerEvent,
+  tiles: TileData[]
+): 'EVENT' | 'CHANCE' => {
+  const eventRecord = getEventRecord(event)
+  const eventTile = getEventTileRecord(event)
+  const explicitTileType =
+    getRecordString(eventRecord, ['tileType', 'tile_type']) ??
+    getRecordString(eventTile, ['type', 'tileType', 'tile_type']) ??
+    getRecordString(event.payload ?? null, ['tileType', 'tile_type'])
+
+  const normalizedTileType = explicitTileType?.trim().toUpperCase()
+  if (normalizedTileType === 'CHANCE') {
+    return 'CHANCE'
+  }
+  if (normalizedTileType === 'EVENT') {
+    return 'EVENT'
+  }
+
+  const tileIndex = resolveBoardEventTileIndex(event)
+  if (tileIndex != null && tiles[tileIndex]?.type === 'CHANCE') {
+    return 'CHANCE'
+  }
+
+  return 'EVENT'
+}
+
+const splitCardDescriptionLines = (description: string) => {
+  const lines = description
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+
+  if (lines.length === 0) {
+    return { descriptionLine1: undefined, descriptionLine2: '' }
+  }
+
+  if (lines.length === 1) {
+    return { descriptionLine1: lines[0], descriptionLine2: '' }
+  }
+
+  return {
+    descriptionLine1: lines[0],
+    descriptionLine2: lines.slice(1).join(' '),
+  }
+}
+
+export const resolveBoardCardModalContentFromEvent = (
+  event: ServerEvent,
+  tiles: TileData[]
+): BoardCardModalContent | null => {
+  const normalizedType = toCanonicalEventType(event.type)
+  if (normalizedType !== 'CHANCE_RESOLVED') {
+    return null
+  }
+
+  const variant = resolveCardModalVariant(event, tiles)
+  const chanceDescription = resolveChanceDescription(event)
+
+  if (!chanceDescription) {
+    return { variant }
+  }
+
+  const { descriptionLine1, descriptionLine2 } =
+    splitCardDescriptionLines(chanceDescription)
+
+  return {
+    variant,
+    descriptionLine1,
+    descriptionLine2,
+  }
 }
 
 export const extractEventDice = (
