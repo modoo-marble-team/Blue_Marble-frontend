@@ -435,7 +435,7 @@ describe('LobbyPage filter and toggle regression', () => {
     await user.type(screen.getByPlaceholderText('비밀번호 입력'), '1234')
     expect(screen.getByPlaceholderText('비밀번호 입력')).toHaveAttribute(
       'autocomplete',
-      'new-password'
+      'off'
     )
     await user.click(screen.getByRole('button', { name: '입장' }))
 
