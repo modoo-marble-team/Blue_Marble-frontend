@@ -1,15 +1,28 @@
 import { useEffect, useState } from 'react'
 import { socket } from '../../../lib/socket'
-import { getOnlineUsersSnapshot, normalizeOnlineUsersPayload } from './api'
-import { mapOnlineUsersToViewModel } from './onlineUsersModel'
+import {
+  getOnlineUsersSnapshot,
+  normalizeOnlineUserStatusChangedPayload,
+  normalizeOnlineUsersPayload,
+} from './api'
+import {
+  getOnlineUserAvatarBackground,
+  getOnlineUserAvatarText,
+  mapOnlineUsersToViewModel,
+} from './onlineUsersModel'
 import {
   ensureOnlineUsersSocketConnection,
+  ONLINE_USER_STATUS_CHANGED_EVENT_NAME,
   isOnlineUsersSocketMockMode,
   ONLINE_USERS_EVENT_NAME,
   ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME,
   startOnlineUsersMockBroadcast,
 } from './onlineUsersSocket'
-import type { OnlineUser, OnlineUsersEventPayload } from '../types'
+import type {
+  OnlineUser,
+  OnlineUsersEventPayload,
+  OnlineUserStatusChangedEventPayload,
+} from '../types'
 
 interface OnlineUsersSyncState {
   latestSnapshotRequestId: number
@@ -34,6 +47,10 @@ function createOnlineUsersSyncState(): OnlineUsersSyncState {
 function startSnapshotRequest(syncState: OnlineUsersSyncState) {
   syncState.latestSnapshotRequestId += 1
   return syncState.latestSnapshotRequestId
+}
+
+function invalidatePendingSnapshotResults(syncState: OnlineUsersSyncState) {
+  syncState.latestSnapshotRequestId += 1
 }
 
 function isStaleSnapshotResult(
@@ -62,6 +79,35 @@ function mapOnlineUsersEventPayloadToViewModel(
   return mapOnlineUsersToViewModel(
     normalizeOnlineUsersPayload(readOnlineUsersEventPayloadUsers(payload))
   )
+}
+
+function applyOnlineUserStatusChangedEvent(
+  previousUsers: OnlineUser[],
+  payload: OnlineUserStatusChangedEventPayload | unknown
+) {
+  const normalizedPayload = normalizeOnlineUserStatusChangedPayload(payload)
+
+  if (!normalizedPayload) {
+    return previousUsers
+  }
+
+  if (normalizedPayload.status === 'offline') {
+    return previousUsers.filter((user) => user.id !== normalizedPayload.id)
+  }
+
+  const nextUsersById = new Map<string, OnlineUser>(
+    previousUsers.map((user) => [user.id, user])
+  )
+
+  nextUsersById.set(normalizedPayload.id, {
+    id: normalizedPayload.id,
+    nickname: normalizedPayload.nickname,
+    status: normalizedPayload.status,
+    avatarText: getOnlineUserAvatarText(normalizedPayload.nickname),
+    avatarBackground: getOnlineUserAvatarBackground(normalizedPayload.id),
+  })
+
+  return Array.from(nextUsersById.values())
 }
 
 function applyReconnectPendingState(
@@ -104,6 +150,18 @@ export function useOnlineUsersSocket() {
       )
     }
 
+    const updateUsers = (
+      updater: (previousUsers: OnlineUser[]) => OnlineUser[]
+    ) => {
+      setUsers((previousUsers) => {
+        const nextUsers = updater(previousUsers)
+        syncState.latestUsersCount = nextUsers.length
+        return nextUsers
+      })
+      setIsLoading(false)
+      setIsError(false)
+    }
+
     async function syncOnlineUsersSnapshot() {
       const requestId = startSnapshotRequest(syncState)
 
@@ -130,7 +188,23 @@ export function useOnlineUsersSocket() {
         return
       }
 
+      // 실시간 이벤트를 먼저 반영했으면, 이미 진행 중이던 이전 snapshot 응답이
+      // 늦게 도착해도 최신 접속자 목록을 다시 덮어쓰지 못하게 막는다.
+      invalidatePendingSnapshotResults(syncState)
       applyNextUsers(mapOnlineUsersEventPayloadToViewModel(payload))
+    }
+
+    const handleUserStatusChanged = (
+      payload: OnlineUserStatusChangedEventPayload | unknown
+    ) => {
+      if (!isActive) {
+        return
+      }
+
+      invalidatePendingSnapshotResults(syncState)
+      updateUsers((previousUsers) =>
+        applyOnlineUserStatusChangedEvent(previousUsers, payload)
+      )
     }
 
     // 새로고침/재인증 경계의 connect_error는 일시 상태일 수 있어 즉시 hard error로 노출하지 않는다.
@@ -170,6 +244,7 @@ export function useOnlineUsersSocket() {
     }
 
     socket.on(ONLINE_USERS_EVENT_NAME, handleOnlineUsers)
+    socket.on(ONLINE_USER_STATUS_CHANGED_EVENT_NAME, handleUserStatusChanged)
 
     let stopMockBroadcast = () => {
       // no-op
@@ -198,6 +273,7 @@ export function useOnlineUsersSocket() {
     return () => {
       isActive = false
       socket.off(ONLINE_USERS_EVENT_NAME, handleOnlineUsers)
+      socket.off(ONLINE_USER_STATUS_CHANGED_EVENT_NAME, handleUserStatusChanged)
       socket.off('connect', handleConnect)
       socket.off('connect_error', handleConnectError)
       socket.off('disconnect', handleDisconnect)

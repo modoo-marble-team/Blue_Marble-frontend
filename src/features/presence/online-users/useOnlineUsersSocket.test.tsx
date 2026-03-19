@@ -13,21 +13,25 @@ const {
   socketOffMock,
   getOnlineUsersSnapshotMock,
   normalizeOnlineUsersPayloadMock,
+  normalizeOnlineUserStatusChangedPayloadMock,
   isOnlineUsersSocketMockModeMock,
   startOnlineUsersMockBroadcastMock,
   stopMockBroadcastMock,
   ensureOnlineUsersSocketConnectionMock,
   onlineUsersRefreshRequestEventName,
+  onlineUserStatusChangedEventName,
 } = vi.hoisted(() => ({
   socketOnMock: vi.fn(),
   socketOffMock: vi.fn(),
   getOnlineUsersSnapshotMock: vi.fn(),
   normalizeOnlineUsersPayloadMock: vi.fn((users) => users),
+  normalizeOnlineUserStatusChangedPayloadMock: vi.fn((payload) => payload),
   isOnlineUsersSocketMockModeMock: vi.fn(),
   startOnlineUsersMockBroadcastMock: vi.fn(),
   stopMockBroadcastMock: vi.fn(),
   ensureOnlineUsersSocketConnectionMock: vi.fn(),
   onlineUsersRefreshRequestEventName: 'online-users-refresh-request',
+  onlineUserStatusChangedEventName: 'user_status_changed',
 }))
 
 vi.mock('../../../lib/socket', () => ({
@@ -40,10 +44,13 @@ vi.mock('../../../lib/socket', () => ({
 vi.mock('./api', () => ({
   getOnlineUsersSnapshot: getOnlineUsersSnapshotMock,
   normalizeOnlineUsersPayload: normalizeOnlineUsersPayloadMock,
+  normalizeOnlineUserStatusChangedPayload:
+    normalizeOnlineUserStatusChangedPayloadMock,
 }))
 
 vi.mock('./onlineUsersSocket', () => ({
   ONLINE_USERS_EVENT_NAME: 'online_users',
+  ONLINE_USER_STATUS_CHANGED_EVENT_NAME: onlineUserStatusChangedEventName,
   ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME: onlineUsersRefreshRequestEventName,
   isOnlineUsersSocketMockMode: isOnlineUsersSocketMockModeMock,
   startOnlineUsersMockBroadcast: startOnlineUsersMockBroadcastMock,
@@ -64,6 +71,34 @@ describe('useOnlineUsersSocket', () => {
             nickname: user.nickname.trim(),
           }))
         : []
+    )
+    normalizeOnlineUserStatusChangedPayloadMock.mockImplementation(
+      (payload) => {
+        if (!payload || typeof payload !== 'object') {
+          return null
+        }
+
+        const normalizedPayload = payload as {
+          id?: unknown
+          nickname?: unknown
+          status?: unknown
+        }
+
+        if (
+          (typeof normalizedPayload.id !== 'string' &&
+            typeof normalizedPayload.id !== 'number') ||
+          typeof normalizedPayload.nickname !== 'string' ||
+          typeof normalizedPayload.status !== 'string'
+        ) {
+          return null
+        }
+
+        return {
+          id: String(normalizedPayload.id),
+          nickname: normalizedPayload.nickname.trim(),
+          status: normalizedPayload.status,
+        }
+      }
     )
     startOnlineUsersMockBroadcastMock.mockReturnValue(stopMockBroadcastMock)
   })
@@ -125,6 +160,91 @@ describe('useOnlineUsersSocket', () => {
       nickname: 'alpha',
       status: 'in_room',
       avatarText: 'A',
+    })
+  })
+
+  it('실시간 online_users 이벤트 이후 늦게 도착한 snapshot 응답은 최신 목록을 덮어쓰지 않는다', async () => {
+    let resolveSnapshot: ((users: unknown[]) => void) | null = null
+
+    getOnlineUsersSnapshotMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSnapshot = resolve
+      })
+    )
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    act(() => {
+      emitSocketEvent(socketOnMock, 'online_users', {
+        users: [
+          {
+            id: 'user-live',
+            nickname: '실시간유저',
+            status: 'lobby',
+          },
+        ],
+      })
+    })
+
+    expect(result.current.data).toHaveLength(1)
+    expect(result.current.data[0]).toMatchObject({
+      id: 'user-live',
+      nickname: '실시간유저',
+      status: 'lobby',
+    })
+
+    await act(async () => {
+      resolveSnapshot?.([
+        createOnlineUserPayloadFixture({
+          id: 'user-stale',
+          nickname: '오래된유저',
+          status: 'in_room',
+        }),
+      ])
+      await Promise.resolve()
+    })
+
+    expect(result.current.data).toHaveLength(1)
+    expect(result.current.data[0]).toMatchObject({
+      id: 'user-live',
+      nickname: '실시간유저',
+      status: 'lobby',
+    })
+  })
+
+  it('user_status_changed offline 이벤트 수신 시 해당 사용자를 목록에서 제거한다', async () => {
+    getOnlineUsersSnapshotMock.mockResolvedValue([
+      createOnlineUserPayloadFixture({
+        id: '1',
+        nickname: '남아있는유저',
+        status: 'lobby',
+      }),
+      createOnlineUserPayloadFixture({
+        id: '2',
+        nickname: '로그아웃유저',
+        status: 'in_room',
+      }),
+    ])
+
+    const { result } = renderHook(() => useOnlineUsersSocket())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    act(() => {
+      emitSocketEvent(socketOnMock, onlineUserStatusChangedEventName, {
+        id: 2,
+        nickname: '로그아웃유저',
+        status: 'offline',
+      })
+    })
+
+    expect(result.current.data).toHaveLength(1)
+    expect(result.current.data[0]).toMatchObject({
+      id: '1',
+      nickname: '남아있는유저',
+      status: 'lobby',
     })
   })
 
@@ -244,6 +364,10 @@ describe('useOnlineUsersSocket', () => {
     expect(stopMockBroadcastMock).toHaveBeenCalledTimes(1)
     expect(socketOffMock).toHaveBeenCalledWith(
       'online_users',
+      expect.any(Function)
+    )
+    expect(socketOffMock).toHaveBeenCalledWith(
+      onlineUserStatusChangedEventName,
       expect.any(Function)
     )
   })

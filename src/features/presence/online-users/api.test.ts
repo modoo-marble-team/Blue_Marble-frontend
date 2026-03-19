@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeOnlineUsersPayload } from './api'
+import {
+  normalizeOnlineUserStatusChangedPayload,
+  normalizeOnlineUsersPayload,
+} from './api'
 
 describe('normalizeOnlineUsersPayload', () => {
   it('숫자 id를 문자열로 정규화하고 nickname 공백을 제거한다', () => {
@@ -47,5 +50,31 @@ describe('normalizeOnlineUsersPayload', () => {
         status: 'playing',
       },
     ])
+  })
+})
+
+describe('normalizeOnlineUserStatusChangedPayload', () => {
+  it('숫자 id와 offline 상태를 정규화한다', () => {
+    expect(
+      normalizeOnlineUserStatusChangedPayload({
+        id: 7,
+        nickname: '  로그아웃유저 ',
+        status: 'offline',
+      })
+    ).toEqual({
+      id: '7',
+      nickname: '로그아웃유저',
+      status: 'offline',
+    })
+  })
+
+  it('지원하지 않는 상태나 잘못된 payload는 null을 반환한다', () => {
+    expect(
+      normalizeOnlineUserStatusChangedPayload({
+        id: 9,
+        nickname: '이상유저',
+        status: 'online',
+      })
+    ).toBeNull()
   })
 })

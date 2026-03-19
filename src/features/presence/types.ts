@@ -1,5 +1,6 @@
 // 접속자 상태 값 타입
 export type OnlineUserStatus = 'lobby' | 'in_room' | 'playing'
+export type OnlineUserRealtimeStatus = OnlineUserStatus | 'offline'
 
 // 서버에서 내려주는 접속자 payload 타입
 export interface OnlineUserPayload {
@@ -11,6 +12,13 @@ export interface OnlineUserPayload {
 // 접속자 목록 소켓 이벤트 payload 타입
 export interface OnlineUsersEventPayload {
   users: OnlineUserPayload[]
+}
+
+// 접속자 상태 변경 소켓 이벤트 payload 타입
+export interface OnlineUserStatusChangedEventPayload {
+  id: string
+  nickname: string
+  status: OnlineUserRealtimeStatus
 }
 
 // UI 렌더링용 아바타 필드를 포함한 접속자 모델
