@@ -11,78 +11,96 @@ import {
 import BuildingBadge from './BuildingBadge'
 import { formatWon } from '../../lib/utils'
 
-// ─── PlayerToken ─────────────────────────────────────────────────
 interface TokenProps {
   player: PlayerState
   stripOffset?: number
+  offset?: { x: number; y: number }
+  style?: React.CSSProperties
 }
 
-export const PlayerToken: React.FC<TokenProps> = ({
-  player,
-  stripOffset = 0,
-}) => {
-  const x = 0
-  const y = 0
-  const isIsland = player.state === 'island' || (player.skipTurns ?? 0) > 0
+export const PlayerToken = React.memo<TokenProps>(
+  ({ player, stripOffset = 0, offset = { x: 0, y: 0 }, style }) => {
+    const { x, y } = offset
+    const isIsland = player.state === 'island' || (player.skipTurns ?? 0) > 0
 
-  return (
-    <motion.div
-      layout
-      layoutId={`player-token-${player.id}`}
-      transition={{
-        type: 'spring',
-        stiffness: 300,
-        damping: 30,
-        mass: 0.8,
-      }}
-      style={{
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y + stripOffset}px))`,
-        width: 26,
-        height: 26,
-        borderRadius: '50%',
-        backgroundColor: player.color,
-        border: '2.5px solid white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 11,
-        fontWeight: 900,
-        color: '#fff',
-        zIndex: 20,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
-      }}
-    >
-      {isIsland ? (
-        <span style={{ fontSize: 10 }}>🏝️</span>
-      ) : typeof player.id === 'number' ? (
-        player.id + 1
-      ) : (
-        player.id
-      )}
-      {(player.skipTurns ?? 0) > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: -12,
-            right: -8,
-            background: '#EF5350',
-            color: 'white',
-            fontSize: 9,
-            padding: '1px 4px',
-            borderRadius: 4,
-            fontWeight: 800,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-          }}
-        >
-          {player.skipTurns}
-        </div>
-      )}
-    </motion.div>
-  )
-}
+    return (
+      <motion.div
+        layout="position"
+        layoutId={`player-token-${player.id}`}
+        initial={false}
+        animate={{
+          x: x,
+          y: y + stripOffset,
+          scale: 1,
+          opacity: 1,
+        }}
+        transition={{
+          type: 'spring',
+          stiffness: 300,
+          damping: 30,
+          mass: 0.8,
+        }}
+        style={{
+          ...style,
+          position: 'relative', // Grid 컨테이너 내에서의 상대 정렬
+          width: 26,
+          height: 26,
+          borderRadius: '50%',
+          backgroundColor: player.color,
+          border: '2.5px solid white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 11,
+          fontWeight: 900,
+          color: '#fff',
+          zIndex: 20,
+          boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+        }}
+      >
+        {isIsland ? (
+          <span style={{ fontSize: 10 }}>🏝️</span>
+        ) : typeof player.id === 'number' ? (
+          player.id + 1
+        ) : (
+          player.id
+        )}
+        {(player.skipTurns ?? 0) > 0 && (
+          <div
+            style={{
+              position: 'absolute',
+              top: -12,
+              right: -8,
+              background: '#EF5350',
+              color: 'white',
+              fontSize: 9,
+              padding: '1px 4px',
+              borderRadius: 4,
+              fontWeight: 800,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }}
+          >
+            {player.skipTurns}
+          </div>
+        )}
+      </motion.div>
+    )
+  },
+  (prev, next) => {
+    return (
+      prev.player.id === next.player.id &&
+      prev.player.pos === next.player.pos &&
+      prev.player.state === next.player.state &&
+      prev.player.skipTurns === next.player.skipTurns &&
+      prev.player.color === next.player.color &&
+      prev.offset?.x === next.offset?.x &&
+      prev.offset?.y === next.offset?.y &&
+      prev.stripOffset === next.stripOffset &&
+      prev.style?.gridRow === next.style?.gridRow &&
+      prev.style?.gridColumn === next.style?.gridColumn
+    )
+  }
+)
 
 // ─── 플레이어 소유 색상 맵 ──────────────────────────────────────────
 const PLAYER_OWNER_STYLES: Record<string, { strip: string; bg: string }> = {
