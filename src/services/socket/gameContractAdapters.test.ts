@@ -65,6 +65,27 @@ describe('gameContractAdapters', () => {
     ])
   })
 
+  it('normalizes build prompt money fields with consistent unit policy', () => {
+    const normalized = normalizePromptPayload({
+      promptId: 'prompt-build-money',
+      type: 'BUILD_OR_SKIP',
+      payload: {
+        buildCost: 260,
+        nextToll: '520',
+        build_cost: '130',
+        next_toll: 390,
+      },
+      choices: [{ value: 'build' }, { value: 'skip' }],
+    })
+
+    expect(normalized?.payload).toMatchObject({
+      buildCost: 260000000,
+      nextToll: 520000000,
+      build_cost: 130000000,
+      next_toll: 390000000,
+    })
+  })
+
   it('normalizes canonical snapshot payload to internal snapshot shape', () => {
     const normalized = normalizeSnapshotPayload(
       {
@@ -621,6 +642,46 @@ describe('gameContractAdapters', () => {
       promptId: 'prompt-legacy',
       promptRemainingSec: 4,
       syncedAt: '2026-03-19T10:01:00.000Z',
+    })
+  })
+
+  it('normalizes game:timer_sync payload from ms fields and nested prompt payload', () => {
+    const normalized = normalizeTimerSyncPayload({
+      gameId: 'game-12',
+      turnRemainingMs: 12_600,
+      serverTimeMs: 1742373000000,
+      prompt: {
+        promptId: 'prompt-ms',
+        remainingMs: 4_500,
+      },
+    })
+
+    expect(normalized).toEqual({
+      gameId: 'game-12',
+      turnRemainingSec: 13,
+      promptId: 'prompt-ms',
+      promptRemainingSec: 5,
+      syncedAt: '2025-03-19T08:30:00.000Z',
+    })
+  })
+
+  it('normalizes game:timer_sync payload from deadline timestamps when remaining seconds are missing', () => {
+    const normalized = normalizeTimerSyncPayload({
+      gameId: 'game-13',
+      serverTimeMs: 100_000,
+      turnDeadlineAtMs: 130_500,
+      prompt: {
+        id: 'prompt-deadline',
+        prompt_remaining_ms: 1_200,
+      },
+    })
+
+    expect(normalized).toEqual({
+      gameId: 'game-13',
+      turnRemainingSec: 31,
+      promptId: 'prompt-deadline',
+      promptRemainingSec: 2,
+      syncedAt: '1970-01-01T00:01:40.000Z',
     })
   })
 })
