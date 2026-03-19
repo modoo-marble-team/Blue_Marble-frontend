@@ -327,7 +327,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [animatedPositions, setAnimatedPositions] = useState<
       Record<string, number>
     >({})
+    const [isMoving, setIsMoving] = useState(false)
     const isAnimatingRef = useRef(false)
+    useEffect(() => {
+      isAnimatingRef.current = isMoving
+    }, [isMoving])
 
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
@@ -390,11 +394,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const movePlayerSequentially = useCallback(
       async (playerId: PlayerId, from: number, to: number) => {
-        isAnimatingRef.current = true
+        setIsMoving(true)
         const totalTiles = TILES.length
         let current = from
 
-        // 주사위 결과 확인을 위한 대기 (사용자 요청: 주사위 결과 확인 -> 이동)
+        // 주사위 결과 확인을 위한 대기
         await delay(800)
 
         // 한 칸씩 이동
@@ -408,30 +412,18 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           // 이동 효과음
           new Audio('/audio/move.mp3').play().catch(() => {})
 
-          await delay(350) // 한 칸 이동 간격 (전보다 조금 천천히)
+          await delay(250) // 한 칸 이동 간격
         }
 
         // 마지막 도착 칸에서 잠시 대기
         await delay(400)
-
-        // 애니메이션 종료 후 로컬 상태 정리 (스토어 위치와 동기화될 때까지 대기하여 점프 방지)
-        // 만약 스토어의 위치가 아직 목적지에 도달하지 않았다면 도달할 때까지 대기합니다.
-        let retryCount = 0
-        while (
-          playersRef.current.find((p) => String(p.id) === String(playerId))
-            ?.pos !== to &&
-          retryCount < 50 // 최대 5초 대기 (안전장치)
-        ) {
-          await delay(100)
-          retryCount++
-        }
 
         setAnimatedPositions((prev) => {
           const next = { ...prev }
           delete next[String(playerId)]
           return next
         })
-        isAnimatingRef.current = false
+        setIsMoving(false)
       },
       []
     )
@@ -576,7 +568,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
-    const isBuildPromptOpen = promptModalKind === 'build'
+    /* isBuildPromptOpen suppressed to prioritize manual click */
     const isTollPromptOpen = promptModalKind === 'toll'
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
@@ -1388,7 +1380,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      if (tile.type === 'TRAVEL') {
+      if (tile.type === 'TRAVEL' && tile.id === 16) {
         if (isLocalPlayerTurn) {
           setTravelModal({
             open: true,
@@ -1421,19 +1413,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
     handleArrivalRef.current = handleArrival
 
-    const byTile = useMemo(() => {
-      const map: Record<number, PlayerState[]> = {}
-      players.forEach((p) => {
-        if (p.state === 'bankrupt' || p.money <= 0) return
-        const pos =
-          animatedPositions[String(p.id)] !== undefined
-            ? animatedPositions[String(p.id)]
-            : p.pos
-        if (!map[pos]) map[pos] = []
-        map[pos].push(p)
-      })
-      return map
-    }, [players, animatedPositions])
+    /* byTile logic refactored out for flat token rendering */
+
+    const getTokenOffset = (playerIdx: number, totalInTile: number) => {
+      if (totalInTile <= 1) return { x: 0, y: 0 }
+
+      // 4인 기준 바둑판 배치 (토큰 크기 26px 대비 넉넉하게 16px 오프셋)
+      // 중심 간 거리 32px로 토큰 사이 6px 간격 확보 (완판 오버랩 방지)
+      const d = 16
+      const offsets = [
+        { x: -d, y: -d },
+        { x: d, y: -d },
+        { x: -d, y: d },
+        { x: d, y: d },
+      ]
+      return offsets[playerIdx % 4] || { x: 0, y: 0 }
+    }
 
     const CS = CORNER_SIZE
     const SS = STRAIGHT_SIZE
@@ -1442,7 +1437,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const buyTile = promptTile
     const buyModalOpen = isBuyPromptOpen
     const buildTile = promptTile
-    const buildModalOpen = isBuildPromptOpen
     const currentLevel = promptCurrentLevel
     const buildTargetLevel = promptNextLevel
     const tollTile = promptTile
@@ -1488,7 +1482,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
     const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
-    const hasAnimationBlocking = isAnimatingRef.current || rolling
+    const hasAnimationBlocking = isMoving || rolling
     const canShowModal = !hasAnimationBlocking
 
     const buyModalVisible =
@@ -1497,7 +1491,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canShowModal && buildModalOpen && !insufficientFundsModal.open
+      canShowModal && cityBuildModal.open && !insufficientFundsModal.open
     const acquisitionModalOpen =
       canShowModal &&
       acquisitionModalOpenRaw &&
@@ -1569,22 +1563,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       return String(owner.ownerId) === String(activePlayerId)
     }
-
-    const isOwnedTileUpgradeClickable = (tileId: number) => {
-      // 업그레이드는 본인 턴일 때만 가능
-      const isMyTurn = String(players[curPlayer]?.id) === String(localPlayerId)
-      if (!isMyTurn) return false
-
-      const owner = tileOwners[tileId]
-      if (!owner || String(owner.ownerId) !== String(localPlayerId)) {
-        return false
-      }
-
-      // 이미 최대 레벨(7)이면 업그레이드 불가
-      if (owner.level >= 7) return false
-
-      return true
-    }
     const handleBoardTileClick = (tileId: number) => {
       if (isGameOver) return
 
@@ -1598,16 +1576,27 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      const isMyTurn = String(players[curPlayer]?.id) === String(localPlayerId)
+      // ⚠️ 최신 정보 보장을 위해 프롭스 또는 추론된 로컬 ID 사용
+      const effectiveLocalPlayerId = localPlayerId ?? players[curPlayer]?.id
+      const isMyTurn =
+        String(players[curPlayer]?.id) === String(effectiveLocalPlayerId)
 
       // 본인 땅인 경우
-      if (isOwnedTileSellClickable(tileId)) {
-        if (isMyTurn && isOwnedTileUpgradeClickable(tileId)) {
-          // 본인 턴이고 업그레이드 가능하면 바로 업그레이드 모달
+      const owner = tileOwners[tileId]
+      const isOwner =
+        owner &&
+        effectiveLocalPlayerId != null &&
+        String(owner.ownerId) === String(effectiveLocalPlayerId)
+
+      if (isOwner) {
+        if (isMyTurn) {
+          // 본인 턴이고 본인 땅이면 무조건 업그레이드 모달부터 시작 (체이닝의 출발점)
           setCityBuildModal({ open: true, tileId })
+          return
         } else {
-          // 본인 턴이 아니거나 이미 최대 레벨이면 바로 매각 모달
+          // 본인 턴이 아니면 즉각 매각 모달
           handleTileSellClick(tileId)
+          return
         }
       }
     }
@@ -1630,12 +1619,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const handleCityBuildConfirm = (tileId: number) => {
       setCityBuildModal(INITIAL_CITY_BUILD_MODAL_STATE)
-      emitGameAction({
-        type: 'CITY_BUILD',
-        payload: {
-          tileId,
-        },
-      })
+
+      // 서버 프롬프트가 대기 중인 경우 프롬프트 응답으로 처리
+      if (
+        activePrompt?.type === 'BUILD' &&
+        String(tileId) === String(promptTileId)
+      ) {
+        onPromptChoice?.('confirm')
+      } else {
+        emitGameAction({
+          type: 'CITY_BUILD',
+          payload: {
+            tileId,
+          },
+        })
+      }
+
+      // 건설 후 즉시 매각 모달로 연결 (사용자 요청: 건설하기나 취소 누르면 매각 팝업)
+      handleTileSellClick(tileId)
     }
 
     const handleCityBuildCancel = () => {
@@ -1825,40 +1826,47 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               })()
             )}
 
-            {/* ─── 플레이어 토큰 레이어 (중앙 집중 렌더링) ──────────────── */}
-            {Object.entries(byTile).map(([tileIdStr, tokens]) => {
-              const tileId = parseInt(tileIdStr, 10)
-              const { row, col } = getTileGridPos(tileId)
-              const hasStrip = ![
-                'START',
-                'ISLAND',
-                'MOVE_TO_ISLAND',
-                'TRAVEL',
-                'CHANCE',
-                'EVENT',
-              ].includes(TILES[tileId].type)
+            {/* ─── 플레이어 토큰 레이어 (절대 좌표 대신 Grid 활용 정점 방식) ──────────────── */}
+            {players
+              .filter((p) => p.state !== 'bankrupt' && p.money > 0)
+              .map((p) => {
+                const pos = animatedPositions[String(p.id)] ?? p.pos
+                const { row, col } = getTileGridPos(pos)
+                const tokensAtThisPos = players.filter(
+                  (pl) =>
+                    pl.state !== 'bankrupt' &&
+                    pl.money > 0 &&
+                    (animatedPositions[String(pl.id)] ?? pl.pos) === pos
+                )
+                const pIdx = players.findIndex((pl) => pl.id === p.id)
+                const offset = getTokenOffset(pIdx, tokensAtThisPos.length)
+                const hasStrip = ![
+                  'START',
+                  'ISLAND',
+                  'MOVE_TO_ISLAND',
+                  'TRAVEL',
+                  'CHANCE',
+                  'EVENT',
+                ].includes(TILES[pos].type)
 
-              return (
-                <div
-                  key={`tokens-at-${tileId}`}
-                  style={{
-                    gridRow: row,
-                    gridColumn: col,
-                    position: 'relative',
-                    pointerEvents: 'none', // 토큰이 타일 클릭을 방해하지 않도록
-                    zIndex: 100,
-                  }}
-                >
-                  {tokens.map((p) => (
-                    <PlayerToken
-                      key={p.id}
-                      player={p}
-                      stripOffset={hasStrip ? 7 : 0}
-                    />
-                  ))}
-                </div>
-              )
-            })}
+                return (
+                  <PlayerToken
+                    key={p.id}
+                    player={p}
+                    stripOffset={hasStrip ? 7 : 0}
+                    offset={offset}
+                    // Grid 직접 컨트롤 (움찔거림 방지 핵심)
+                    style={{
+                      gridRow: row,
+                      gridColumn: col,
+                      justifySelf: 'center',
+                      alignSelf: 'center',
+                      pointerEvents: 'none',
+                      zIndex: 100,
+                    }}
+                  />
+                )
+              })}
 
             <div
               className={
@@ -2054,7 +2062,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={canShowModal && travelModal.open}
           onConfirm={handleTravelConfirm}
           onCancel={handleTravelCancel}
-          showCancel={isTravelPromptOpen && !!promptTravelCancelChoiceValue}
+          showCancel={false}
         />
         <BankruptModal
           open={canShowModal && bankruptModal.open}
