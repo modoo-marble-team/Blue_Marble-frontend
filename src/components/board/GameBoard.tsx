@@ -224,7 +224,7 @@ interface GameBoardProps {
   suppressDiceTimerModal?: boolean
   activePrompt?: GamePrompt | null
   promptSubmittingChoice?: string | null
-  onPromptChoice?: (choice: string) => void
+  onPromptChoice?: (choice: string, payload?: Record<string, unknown>) => void
   tiles?: Array<{
     index: number
     owner_id?: string | number | null
@@ -638,10 +638,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       activePrompt,
       'acquisitionCancel'
     )
-    const promptTravelConfirmChoiceValue = resolvePromptChoiceValue(
-      activePrompt,
-      'travelConfirm'
-    )
     const promptTravelCancelChoiceValue = resolvePromptChoiceValue(
       activePrompt,
       'travelCancel'
@@ -653,13 +649,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const submitPromptChoice = (
       choiceValue: string | null,
-      onSuccess?: () => void
+      onSuccess?: () => void,
+      payload?: Record<string, unknown>
     ) => {
       if (!choiceValue || !onPromptChoice || promptSubmittingChoice !== null) {
         return false
       }
 
-      onPromptChoice(choiceValue)
+      onPromptChoice(choiceValue, payload)
       onSuccess?.()
       return true
     }
@@ -1170,7 +1167,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     function handleTravelConfirm() {
       const { onDoneCallback } = travelModal
       setTravelModal({ open: false })
-      submitPromptChoice(promptTravelConfirmChoiceValue)
       setTravelSelection({
         active: true,
         onDoneCallback,
@@ -1180,7 +1176,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function handleTravelCancel() {
       setTravelModal({ open: false })
-      submitPromptChoice(promptTravelCancelChoiceValue)
+      submitPromptChoice(promptTravelCancelChoiceValue ?? 'SKIP')
     }
 
     function handleTravelDestinationSelect(tileId: number) {
@@ -1195,6 +1191,21 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       const { onDoneCallback } = travelSelection
+      const hasTravelPromptContext = isTravelPromptOpen && !!activePrompt?.id
+
+      if (hasTravelPromptContext) {
+        const submitted = submitPromptChoice('CONFIRM', undefined, {
+          targetTileId: tileId,
+        })
+
+        if (!submitted) {
+          return
+        }
+
+        setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
+        setStatus('서버 선택 요청을 기다리는 중...')
+        return
+      }
       const updatedPlayers = [...playersRef.current]
       updatedPlayers[playerIdx] = {
         ...currentPlayer,
@@ -1204,13 +1215,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
 
       if (!isMockMode) {
-        emitGameAction({
-          type: 'TRAVEL',
-          gameId,
-          payload: {
-            toIndex: tileId,
-          },
-        })
+        setStatus('서버 선택 요청을 처리할 수 없는 상태입니다.')
+        return
       }
 
       const destinationName =

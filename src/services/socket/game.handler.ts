@@ -379,6 +379,7 @@ export const emitGameSync = ({ gameId, knownRevision }: GameSyncPayload) => {
 export const emitPromptResponse = ({
   promptId,
   choice,
+  payload,
   gameId,
 }: PromptResponsePayload) => {
   const resolvedGameId = getResolvedGameId(gameId)
@@ -398,6 +399,7 @@ export const emitPromptResponse = ({
       gameId: resolvedGameId,
       promptId,
       choice: normalizedChoice,
+      payload,
     })
     return
   }
@@ -406,5 +408,6 @@ export const emitPromptResponse = ({
     gameId: resolvedGameId,
     promptId,
     choice: normalizedChoice,
+    payload,
   })
 }

@@ -26,6 +26,7 @@ const PROMPT_CHOICE_CANONICAL_MAP: Record<string, readonly string[]> = {
   BUY_OR_SKIP: ['BUY', 'SKIP'],
   CONFIRM_ONLY: ['CONFIRM'],
   PAY_TOLL: ['PAY_TOLL'],
+  TRAVEL_SELECT: ['CONFIRM', 'SKIP'],
 }
 
 type DiceRequestBody = {
@@ -74,6 +75,7 @@ type MockGameSyncPayload = {
 
 type MockPromptResponsePayload = GamePromptResponse & {
   gameId?: string | null
+  payload?: Record<string, unknown>
 }
 
 const clonePlayers = () => structuredClone(mockPlayers)
@@ -892,6 +894,7 @@ export const mockEmitPromptResponse = ({
   gameId,
   promptId,
   choice,
+  payload,
 }: MockPromptResponsePayload) => {
   const actionId = `${PROMPT_RESPONSE_ACTION_PREFIX}-${Date.now()}`
   const resolvedGameId = resolveRequiredGameId({
@@ -969,10 +972,11 @@ export const mockEmitPromptResponse = ({
       ? getTileByIndex(targetTileIndex)
       : undefined
   const promptAmount = resolvePromptAmount(activePrompt)
+  const responsePayload = payload && typeof payload === 'object' ? payload : {}
   const nextEvents: GamePatchEnvelope['events'] = [
     {
       type: 'PROMPT_RESPONSE',
-      payload: { choice: normalizedChoice, promptId },
+      payload: { choice: normalizedChoice, promptId, ...responsePayload },
     },
   ]
 
@@ -1023,6 +1027,48 @@ export const mockEmitPromptResponse = ({
         amount: promptAmount,
       },
     })
+    advanceMockTurn()
+  }
+
+  if (promptType === 'TRAVEL_SELECT') {
+    if (normalizedChoice === 'CONFIRM') {
+      const rawTargetTileId =
+        responsePayload.targetTileId ?? responsePayload.toTileId
+      const targetTileId =
+        typeof rawTargetTileId === 'number' && Number.isFinite(rawTargetTileId)
+          ? Math.trunc(rawTargetTileId)
+          : Number.NaN
+
+      if (
+        respondingPlayer &&
+        Number.isFinite(targetTileId) &&
+        targetTileId >= 0 &&
+        targetTileId < mockGameState.tiles.length &&
+        targetTileId !== respondingPlayer.position
+      ) {
+        const fromTileId = respondingPlayer.position
+        respondingPlayer.position = targetTileId
+
+        nextEvents.push(
+          {
+            type: 'PLAYER_MOVED',
+            playerId: respondingPlayer.id,
+            tileIndex: targetTileId,
+            payload: {
+              fromTileId,
+              toTileId: targetTileId,
+              trigger: 'travel',
+            },
+          },
+          {
+            type: 'LANDED',
+            playerId: respondingPlayer.id,
+            tileIndex: targetTileId,
+          }
+        )
+      }
+    }
+
     advanceMockTurn()
   }
 

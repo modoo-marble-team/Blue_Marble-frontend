@@ -261,7 +261,10 @@ const GamePage: React.FC = () => {
     roomChatSenderOptions.find(
       (senderOption) => senderOption.id !== currentUserIdForChat
     )?.id ?? roomChatSenderOptions[0]?.id
-  const handlePromptChoice = (choice: string) => {
+  const handlePromptChoice = (
+    choice: string,
+    payload?: Record<string, unknown>
+  ) => {
     if (!prompt || promptSubmittingChoice !== null) {
       return
     }
@@ -271,6 +274,7 @@ const GamePage: React.FC = () => {
       gameId: activeGameId,
       promptId: prompt.id,
       choice,
+      payload,
     })
   }
   const dismissLastError = () => {
