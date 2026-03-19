@@ -228,6 +228,45 @@ describe('gameContractAdapters', () => {
     })
   })
 
+  it('normalizes game over snapshot aliases and infers isGameOver from finished phase', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-finished',
+        revision: 15,
+        phase: 'FINISHED',
+        players: [],
+        tiles: [],
+        winner_id: 'player-winner',
+        is_game_over: true,
+        game_result: {
+          reason: 'bankrupt',
+          rankings: [
+            {
+              rank: 1,
+              player_id: 'player-winner',
+              nickname: 'winner',
+              final_assets: 8200000000,
+              is_winner: true,
+            },
+          ],
+        },
+      },
+      {
+        envelopeRevision: 15,
+      }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized).toMatchObject({
+      phase: 'finished',
+      isGameOver: true,
+      winnerId: 'player-winner',
+      gameResult: {
+        reason: 'bankrupt',
+      },
+    })
+  })
+
   it('normalizes object-shaped snapshot collections', () => {
     const normalized = normalizeSnapshotPayload(
       {
@@ -545,6 +584,33 @@ describe('gameContractAdapters', () => {
         tileIndex: null,
         amount: 3500000000,
         payload: undefined,
+      },
+    ])
+  })
+
+  it('normalizes patch aliases for winner/isGameOver/gameResult fields', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-over-patch',
+      revision: 91,
+      patch: [
+        { op: 'set', path: 'winner_id', value: 'player-1' },
+        { op: 'set', path: 'is_game_over', value: 1 },
+        {
+          op: 'set',
+          path: 'game_result',
+          value: { reason: 'round_limit', rankings: [] },
+        },
+      ],
+      events: [],
+    })
+
+    expect(normalized.patch).toEqual([
+      { op: 'set', path: 'winnerId', value: 'player-1' },
+      { op: 'set', path: 'isGameOver', value: true },
+      {
+        op: 'set',
+        path: 'gameResult',
+        value: { reason: 'round_limit', rankings: [] },
       },
     ])
   })

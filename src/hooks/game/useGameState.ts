@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { useAuthStore } from '../../features/auth/session/store'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import {
   emitGameSync,
@@ -12,12 +13,18 @@ const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 
 export const useGameState = (gameId: string | null) => {
   const syncedGameIdRef = useRef<string | null>(null)
+  const accessToken = useAuthStore(
+    (state) => state.session?.accessToken?.trim() ?? null
+  )
   const currentTurn = useGameStore((state) => {
     return state.currentPlayerId ?? state.currentTurn
   })
 
   useEffect(() => {
     if (!gameId) {
+      return
+    }
+    if (!USE_GAME_SOCKET_MOCK && !accessToken) {
       return
     }
 
@@ -59,6 +66,7 @@ export const useGameState = (gameId: string | null) => {
     }
 
     const handleSocketConnect = () => {
+      syncGameState()
       syncGameTimer()
     }
 
@@ -74,7 +82,7 @@ export const useGameState = (gameId: string | null) => {
       socket.off('connect', handleSocketConnect)
       teardownHandlers()
     }
-  }, [gameId])
+  }, [accessToken, gameId])
 
   useEffect(() => {
     if (!gameId || currentTurn == null) {

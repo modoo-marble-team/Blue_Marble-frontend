@@ -63,6 +63,7 @@ const PHASE_TO_INTERNAL_MAP: Record<string, GameSnapshot['phase']> = {
   WAIT_PROMPT: 'prompt',
   TURN_END: 'resolving',
   GAME_OVER: 'finished',
+  FINISHED: 'finished',
 }
 
 const TILE_TYPE_TO_INTERNAL_MAP: Record<string, Tile['type']> = {
@@ -581,7 +582,21 @@ export const normalizeSnapshotPayload = (
       snapshotPayload.currentTurn ??
       null
   )
+  const normalizedPhase = normalizePhase(snapshotPayload.phase)
   const roundFromTurn = toFiniteInt(snapshotPayload.turn, 1)
+  const normalizedGameResult = (
+    snapshotPayload.gameResult && isRecord(snapshotPayload.gameResult)
+      ? snapshotPayload.gameResult
+      : snapshotPayload.game_result && isRecord(snapshotPayload.game_result)
+        ? snapshotPayload.game_result
+        : null
+  ) as GameSnapshot['gameResult'] | null
+  const normalizedWinnerId =
+    toPlayerIdOrNull(snapshotPayload.winnerId ?? snapshotPayload.winner_id) ??
+    null
+  const normalizedIsGameOver =
+    Boolean(snapshotPayload.isGameOver ?? snapshotPayload.is_game_over) ||
+    normalizedPhase === 'finished'
 
   return {
     roomId: toStringOrNull(snapshotPayload.roomId),
@@ -590,7 +605,7 @@ export const normalizeSnapshotPayload = (
       toStringOrNull(options.envelopeGameId) ??
       null,
     revision: toFiniteInt(snapshotPayload.revision, options.envelopeRevision),
-    phase: normalizePhase(snapshotPayload.phase),
+    phase: normalizedPhase,
     players: playersRaw.map(normalizePlayerFromSnapshot),
     tiles: tilesRaw.map(normalizeTileFromSnapshot),
     currentPlayerId,
@@ -605,12 +620,9 @@ export const normalizeSnapshotPayload = (
         snapshotPayload.pending_prompt ??
         snapshotPayload.pendingPrompt
     ),
-    gameResult:
-      snapshotPayload.gameResult && isRecord(snapshotPayload.gameResult)
-        ? (snapshotPayload.gameResult as GameSnapshot['gameResult'])
-        : null,
-    isGameOver: Boolean(snapshotPayload.isGameOver),
-    winnerId: (snapshotPayload.winnerId ?? null) as GameSnapshot['winnerId'],
+    gameResult: normalizedGameResult,
+    isGameOver: normalizedIsGameOver,
+    winnerId: normalizedWinnerId,
   }
 }
 
@@ -654,6 +666,9 @@ const normalizePathSegment = (segment: string | number): string | number => {
   if (segment === 'ownedTiles') return 'owned_tiles'
   if (segment === 'pending_prompt') return 'prompt'
   if (segment === 'pendingPrompt') return 'prompt'
+  if (segment === 'winner_id') return 'winnerId'
+  if (segment === 'is_game_over') return 'isGameOver'
+  if (segment === 'game_result') return 'gameResult'
   if (segment === 'building_level') return 'building'
   if (segment === 'buildingLevel') return 'building'
   if (segment === 'tile_type') return 'type'
@@ -682,6 +697,18 @@ const normalizePatchSetValue = (
 
   if (pathSegments.length === 1 && firstSegment === 'phase') {
     return normalizePhase(value)
+  }
+
+  if (pathSegments.length === 1 && firstSegment === 'isGameOver') {
+    return Boolean(value)
+  }
+
+  if (pathSegments.length === 1 && firstSegment === 'winnerId') {
+    return toPlayerIdOrNull(value)
+  }
+
+  if (pathSegments.length === 1 && firstSegment === 'gameResult') {
+    return isRecord(value) ? (value as GameSnapshot['gameResult']) : null
   }
 
   if (pathSegments.length === 1 && firstSegment === 'players') {

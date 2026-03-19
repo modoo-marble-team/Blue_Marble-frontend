@@ -94,6 +94,45 @@ describe('gameBoardEventQueueUtils', () => {
     )
   })
 
+  it('resolves landed tile from nested event.tile payload', () => {
+    const event = {
+      type: 'LANDED',
+      playerId: 2,
+      tile: {
+        tileId: 1,
+        name: '서울',
+      },
+    } as ServerEvent & {
+      tile: { tileId: number; name: string }
+    }
+
+    expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
+      '플레이어2님이 서울 칸에 도착했습니다.'
+    )
+  })
+
+  it('uses chance.description for CHANCE_RESOLVED status message', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 1,
+      chance: {
+        type: 'GAIN_MONEY',
+        power: 300,
+        description: '보너스 300만원을 획득합니다.',
+      },
+    } as ServerEvent & {
+      chance: {
+        type: string
+        power: number
+        description: string
+      }
+    }
+
+    expect(createBoardStatusFromEvent(event, players, tiles)).toBe(
+      '보너스 300만원을 획득합니다.'
+    )
+  })
+
   it('returns toll status with formatted amount', () => {
     const event: ServerEvent = {
       type: 'PAID_TOLL',

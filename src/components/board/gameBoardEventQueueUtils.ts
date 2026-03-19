@@ -97,6 +97,40 @@ const getPayloadNumber = (
 const getEventRecord = (event: ServerEvent): Record<string, unknown> =>
   event as unknown as Record<string, unknown>
 
+const getRecordString = (
+  record: Record<string, unknown> | null | undefined,
+  keys: string[]
+) => {
+  if (!record) {
+    return null
+  }
+
+  for (const key of keys) {
+    const raw = record[key]
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      return raw
+    }
+  }
+
+  return null
+}
+
+const getEventTileRecord = (
+  event: ServerEvent
+): Record<string, unknown> | null => {
+  const eventRecord = getEventRecord(event)
+  if (typeof eventRecord.tile === 'object' && eventRecord.tile !== null) {
+    return eventRecord.tile as Record<string, unknown>
+  }
+
+  const payload = event.payload
+  if (payload && typeof payload.tile === 'object' && payload.tile !== null) {
+    return payload.tile as Record<string, unknown>
+  }
+
+  return null
+}
+
 const getEventNumber = (event: ServerEvent, keys: string[]) => {
   const eventRecord = getEventRecord(event)
 
@@ -148,12 +182,58 @@ export const resolveBoardEventTileIndex = (event: ServerEvent) => {
     return eventLevelIndex
   }
 
+  const eventTile = getEventTileRecord(event)
+  if (eventTile) {
+    const nestedTileIndex = getPayloadNumber(eventTile, [
+      'tileId',
+      'tile_id',
+      'index',
+      'tileIndex',
+    ])
+
+    if (nestedTileIndex != null) {
+      return nestedTileIndex
+    }
+  }
+
   const payload = event.payload
   if (!payload) {
     return null
   }
 
   return getPayloadNumber(payload, ['toIndex', 'tileIndex', 'toTileId'])
+}
+
+const resolveEventTileName = (event: ServerEvent, tiles: TileData[]) => {
+  const eventRecord = getEventRecord(event)
+  const eventTile = getEventTileRecord(event)
+  const explicitTileName =
+    getRecordString(eventRecord, ['tileName', 'tile_name']) ??
+    getRecordString(eventTile, ['name', 'tileName', 'tile_name'])
+
+  if (explicitTileName) {
+    return explicitTileName.replace('\n', ' ')
+  }
+
+  return resolveTileName(tiles, resolveBoardEventTileIndex(event))
+}
+
+const resolveChanceDescription = (event: ServerEvent) => {
+  const eventRecord = getEventRecord(event)
+  const chanceRecord =
+    (typeof eventRecord.chance === 'object' && eventRecord.chance !== null
+      ? (eventRecord.chance as Record<string, unknown>)
+      : null) ??
+    (event.payload?.chance &&
+    typeof event.payload.chance === 'object' &&
+    event.payload.chance !== null
+      ? (event.payload.chance as Record<string, unknown>)
+      : null)
+
+  return (
+    getRecordString(chanceRecord, ['description']) ??
+    getRecordString(event.payload ?? null, ['description'])
+  )
 }
 
 export const extractEventDice = (
@@ -217,13 +297,22 @@ export const createBoardStatusFromEvent = (
   }
 
   if (normalizedType === 'PLAYER_MOVED') {
-    const tileName = resolveTileName(tiles, resolveBoardEventTileIndex(event))
+    const tileName = resolveEventTileName(event, tiles)
     return `${playerName}님이 ${tileName} 칸으로 이동했습니다.`
   }
 
   if (normalizedType === 'LANDED') {
-    const tileName = resolveTileName(tiles, resolveBoardEventTileIndex(event))
+    const tileName = resolveEventTileName(event, tiles)
     return `${playerName}님이 ${tileName} 칸에 도착했습니다.`
+  }
+
+  if (normalizedType === 'CHANCE_RESOLVED') {
+    const chanceDescription = resolveChanceDescription(event)
+    if (chanceDescription) {
+      return chanceDescription
+    }
+
+    return `${playerName}님이 찬스 효과를 적용했습니다.`
   }
 
   if (normalizedType === 'PAID_TOLL') {
