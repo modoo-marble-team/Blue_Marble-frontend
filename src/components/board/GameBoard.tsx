@@ -1027,7 +1027,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
         playersRef.current = updatedPlayers
       }
-      advanceTurn(onDoneCallback)
+      setIslandModal({
+        open: true,
+        onDoneCallback,
+      })
     }
 
     function handleIslandConfirm() {
@@ -1245,6 +1248,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (tile.type === 'MOVE_TO_ISLAND') {
         setStatus('무인도로 이동!')
         if (isLocalPlayerTurn) {
+          if (goToIslandModal.open || islandModal.open) {
+            return
+          }
           setGoToIslandModal({ open: true, onDoneCallback: onDone })
           new Audio('/audio/island-trap.mp3').play().catch(() => {})
         } else {
@@ -1256,6 +1262,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (tile.type === 'ISLAND') {
         setStatus('무인도 칸에 도착!')
         if (isLocalPlayerTurn) {
+          if (goToIslandModal.open || islandModal.open) {
+            return
+          }
           new Audio('/audio/island-trap.mp3').play().catch(() => {})
           setIslandModal({ open: true, onDoneCallback: onDone })
         } else {
