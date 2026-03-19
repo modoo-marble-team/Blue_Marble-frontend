@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 import {
   TileData,
   TileDir,
@@ -13,31 +14,27 @@ import { formatWon } from '../../lib/utils'
 // ─── PlayerToken ─────────────────────────────────────────────────
 interface TokenProps {
   player: PlayerState
-  idx: number
-  total: number
   stripOffset?: number
 }
 
 export const PlayerToken: React.FC<TokenProps> = ({
   player,
-  idx,
-  total,
   stripOffset = 0,
 }) => {
-  const offsets =
-    total === 1
-      ? [{ x: 0, y: 0 }]
-      : [
-          { x: -13, y: -13 },
-          { x: 13, y: -13 },
-          { x: -13, y: 13 },
-          { x: 13, y: 13 },
-        ]
-  const { x, y } = offsets[idx % offsets.length]
+  const x = 0
+  const y = 0
   const isIsland = player.state === 'island' || (player.skipTurns ?? 0) > 0
 
   return (
-    <div
+    <motion.div
+      layout
+      layoutId={`player-token-${player.id}`}
+      transition={{
+        type: 'spring',
+        stiffness: 300,
+        damping: 30,
+        mass: 0.8,
+      }}
       style={{
         position: 'absolute',
         top: '50%',
@@ -83,7 +80,7 @@ export const PlayerToken: React.FC<TokenProps> = ({
           {player.skipTurns}
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -125,7 +122,6 @@ function TileIcon({ tile, size = 12 }: { tile: TileData; size?: number }) {
 interface BoardTileProps {
   tile: TileData
   dir: TileDir
-  tokens: PlayerState[]
   tileOwner?: TileOwner
   isUrgent?: boolean
   isActivePlayerTile?: boolean
@@ -134,7 +130,6 @@ interface BoardTileProps {
 const BoardTile: React.FC<BoardTileProps> = ({
   tile,
   dir,
-  tokens,
   tileOwner,
   isUrgent: isUrgentProp = false,
   isActivePlayerTile = false,
@@ -209,9 +204,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
         >
           {tile.name}
         </span>
-        {tokens.map((p, i) => (
-          <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
-        ))}
       </div>
     )
   }
@@ -314,26 +306,25 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     />
                   )}
                 </div>
-                <div
-                  style={{
-                    backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
-                    color: tileOwner ? '#1E293B' : '#64748B',
-                    fontSize: 10,
-                    fontWeight: 900,
-                    padding: '2px 5px',
-                    borderRadius: 10,
-                    marginBottom: -1,
-                  }}
-                >
-                  {formatWon(tile.price ?? 0)}
-                </div>
+                {!tileOwner && (
+                  <div
+                    style={{
+                      backgroundColor: '#EEF2F7',
+                      color: '#64748B',
+                      fontSize: 10,
+                      fontWeight: 900,
+                      padding: '2px 5px',
+                      borderRadius: 10,
+                      marginBottom: -1,
+                    }}
+                  >
+                    {formatWon(tile.price ?? 0)}
+                  </div>
+                )}
               </>
             )}
           </div>
         </div>
-        {tokens.map((p, i) => (
-          <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
-        ))}
       </div>
     )
   }
@@ -431,19 +422,21 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     />
                   )}
                 </div>
-                <div
-                  style={{
-                    backgroundColor: tileOwner ? '#F1F5F9' : '#EEF2F7',
-                    color: tileOwner ? '#1E293B' : '#64748B',
-                    fontSize: 10,
-                    fontWeight: 900,
-                    padding: '1px 5px',
-                    borderRadius: 10,
-                    marginTop: 0,
-                  }}
-                >
-                  {formatWon(tile.price ?? 0)}
-                </div>
+                {!tileOwner && (
+                  <div
+                    style={{
+                      backgroundColor: '#EEF2F7',
+                      color: '#64748B',
+                      fontSize: 10,
+                      fontWeight: 900,
+                      padding: '1px 5px',
+                      borderRadius: 10,
+                      marginTop: 0,
+                    }}
+                  >
+                    {formatWon(tile.price ?? 0)}
+                  </div>
+                )}
               </>
             )}
             {!isProperty && (
@@ -459,9 +452,6 @@ const BoardTile: React.FC<BoardTileProps> = ({
           </div>
         </div>
       </div>
-      {tokens.map((p, i) => (
-        <PlayerToken key={p.id} player={p} idx={i} total={tokens.length} />
-      ))}
     </div>
   )
 }
