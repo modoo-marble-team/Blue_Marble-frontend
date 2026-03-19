@@ -1,4 +1,4 @@
-﻿export type TileType =
+export type TileType =
   | 'START'
   | 'PROPERTY'
   | 'CHANCE'
@@ -6,7 +6,6 @@
   | 'ISLAND'
   | 'EVENT'
   | 'TRAVEL'
-  | 'AI'
 
 export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
 
@@ -143,10 +142,9 @@ export const TILES: TileData[] = [
   },
   {
     id: 20,
-    name: 'AI',
-    type: 'AI',
-    color: '#000000',
-    svgIcon: '/ai-head.png',
+    name: '이벤트',
+    type: 'EVENT',
+    svgIcon: '/chance-box.svg',
   },
   {
     id: 21,
@@ -260,7 +258,6 @@ export function getStripColor(tile: TileData): string | null {
   if (tile.type === 'PROPERTY') return tile.color ?? null
   if (tile.type === 'EVENT') return '#EF5350'
   if (tile.type === 'CHANCE') return '#FFD15B'
-  if (tile.type === 'AI') return '#000000'
   return null
 }
 

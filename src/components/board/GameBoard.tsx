@@ -16,7 +16,6 @@ import CityAcquisitionModal from '../game/modals/CityAcquisitionModals'
 import CitySellModal from '../game/modals/CitySellModal'
 import InsufficientFundsModal from '../game/modals/InsufficientFundsModal'
 import TollModal from '../game/modals/TollModal'
-import AIPenaltyModal from '../game/modals/AIPenaltyModal'
 import BankruptModal from '../game/modals/BankruptModal'
 import DiceTimerModal from '../game/modals/DiceTimerModal'
 import GameResultModal from '../game/modals/GameResultModal'
@@ -1001,21 +1000,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onDone?.()
     }
 
-    async function handleAITile(onDone?: () => void) {
-      setAiModal({ open: true, status: 'loading', onDoneCallback: onDone })
-
-      window.setTimeout(() => {
-        setAiModal((prev) =>
-          prev.open
-            ? {
-                ...prev,
-                status: 'error',
-              }
-            : prev
-        )
-      }, 1500)
-    }
-
     function rollDice(onDone?: () => void) {
       triggerDiceRollAnimation()
       onDone?.()
@@ -1297,20 +1281,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
         return
       }
-
-      if (
-        tile.type === 'AI' ||
-        (tile.type === 'EVENT' && tile.emoji === '🤖')
-      ) {
-        if (isLocalPlayerTurn) {
-          playLongSfx('/audio/AI.mp3')
-          handleAITile(onDone)
-        } else {
-          onDone?.()
-        }
-        return
-      }
-
       if (tile.type === 'CHANCE' || tile.type === 'EVENT') {
         if (isLocalPlayerTurn) {
           setCardModal({
@@ -1866,19 +1836,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleTravelConfirm}
           onCancel={handleTravelCancel}
           showCancel={isTravelPromptOpen && !!promptTravelCancelChoiceValue}
-        />
-        <AIPenaltyModal
-          open={aiModal.open}
-          status={aiModal.status}
-          resultDescription={aiModal.resultDescription}
-          onConfirm={() => {
-            if (aiModal.status === 'error') {
-              handleAITile(aiModal.onDoneCallback)
-            } else {
-              setAiModal({ open: false, status: 'loading' })
-              advanceTurn(aiModal.onDoneCallback)
-            }
-          }}
         />
         <BankruptModal
           open={bankruptModal.open}

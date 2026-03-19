@@ -119,7 +119,7 @@ export const mockTiles: Tile[] = [
     price: 60,
     color: '#66BB6A',
   },
-  { index: 20, name: 'AI', type: 'ai', building: 0 },
+  { index: 20, name: '\uC774\uBCA4\uD2B8', type: 'event', building: 0 },
   {
     index: 21,
     name: '\uCD98\uCC9C',
