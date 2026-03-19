@@ -103,13 +103,13 @@ describe('buildAuthSession', () => {
 })
 
 describe('mapMyPageProfile', () => {
-  it('마이페이지 프로필 id를 문자열로 정규화하고 profile_image를 읽는다', () => {
+  it('마이페이지 프로필 id를 문자열로 정규화하고 total_games를 내부 total로 매핑한다', () => {
     const profile = mapMyPageProfile({
       id: 3,
       nickname: '마블러',
       profile_image: 'https://example.com/avatar.png',
       stats: {
-        total: 10,
+        total_games: 10,
         wins: 6,
         losses: 4,
       },
@@ -436,7 +436,7 @@ describe('auth api integration helpers', () => {
         nickname: '마이페이지유저',
         profile_image_url: 'https://example.com/me.png',
         stats: {
-          total: 20,
+          total_games: 20,
           wins: 11,
           losses: 9,
         },

@@ -56,7 +56,7 @@ interface MyPageProfilePayload {
   profile_image_url?: string | null
   profile_image?: string | null
   stats: {
-    total: number
+    total_games: number
     wins: number
     losses: number
   }
@@ -128,7 +128,11 @@ export function mapMyPageProfile(payload: MyPageProfilePayload): MyPageProfile {
     id: normalizeId(payload.id),
     nickname: payload.nickname,
     profileImage: readProfileImageUrl(payload),
-    stats: payload.stats,
+    stats: {
+      total: payload.stats.total_games,
+      wins: payload.stats.wins,
+      losses: payload.stats.losses,
+    },
   }
 }
 
