@@ -15,7 +15,10 @@ import { useGameState } from '../hooks/game/useGameState'
 import { useTurn } from '../hooks/game/useTurn'
 import { playBgm, stopBgm } from '../lib/bgm'
 import { socket } from '../lib/socket'
-import { emitPromptResponse } from '../services/socket/game.handler'
+import {
+  emitGameAction,
+  emitPromptResponse,
+} from '../services/socket/game.handler'
 import { useGameStore } from '../stores/game.store'
 import type { GamePromptChoice } from '../types/domain'
 import {
@@ -88,6 +91,7 @@ const GamePage: React.FC = () => {
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
+  const [hasRolledThisTurn, setHasRolledThisTurn] = useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const boardRef = useRef<BoardGameHandle>(null)
   const pendingGameChatEchoesRef = useRef<PendingGameChatEcho[]>([])
@@ -170,6 +174,17 @@ const GamePage: React.FC = () => {
   }, [lastError])
 
   useEffect(() => {
+    if (lastAck?.type === 'ROLL_DICE' && !lastAck.ok) {
+      setHasRolledThisTurn(false)
+      return
+    }
+
+    if (lastAck?.type === 'END_TURN' && lastAck.ok) {
+      setHasRolledThisTurn(false)
+    }
+  }, [lastAck])
+
+  useEffect(() => {
     if (!activeRoomId) {
       return
     }
@@ -247,6 +262,21 @@ const GamePage: React.FC = () => {
     (currentPlayerState?.skipTurns ?? 0) > 0 ||
     currentPlayerState?.state === 'locked' ||
     currentPlayerState?.state === 'island'
+  const canControlTurn =
+    isMyTurn &&
+    !isActionPending &&
+    !isPromptVisible &&
+    !isCurrentPlayerSkipped &&
+    !isCurrentPlayerBankrupt
+  const rollButtonMode: 'roll' | 'end_turn' = hasRolledThisTurn
+    ? 'end_turn'
+    : 'roll'
+
+  useEffect(() => {
+    if (!isMyTurn) {
+      setHasRolledThisTurn(false)
+    }
+  }, [currentTurn, isMyTurn])
   const roomChatSenderOptions = useMemo(
     () =>
       storePlayers.map((player) => ({
@@ -281,9 +311,34 @@ const GamePage: React.FC = () => {
     setLastError(null)
   }
   const handleRollClick = () => {
+    if (hasRolledThisTurn) {
+      return
+    }
+    if (!activeGameId) {
+      return
+    }
+    if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
+      return
+    }
+
     boardRef.current?.rollDice()
     new Audio('/audio/dice-roll.mp3').play().catch(() => {})
     diceRoll(activeGameId)
+    setHasRolledThisTurn(true)
+  }
+
+  const handleEndTurnClick = () => {
+    if (!activeGameId || pendingAction !== null) {
+      return
+    }
+    if (!USE_GAME_SOCKET_MOCK && !socket.connected) {
+      return
+    }
+
+    emitGameAction({
+      type: 'END_TURN',
+      gameId: activeGameId,
+    })
   }
 
   const isWaitingForServerState =
@@ -431,14 +486,10 @@ const GamePage: React.FC = () => {
 
       <div className="absolute bottom-10 right-10 z-20">
         <RollButton
-          isMyTurn={
-            isMyTurn &&
-            !isActionPending &&
-            !isPromptVisible &&
-            !isCurrentPlayerSkipped &&
-            !isCurrentPlayerBankrupt
-          }
+          isMyTurn={canControlTurn}
+          mode={rollButtonMode}
           onRoll={handleRollClick}
+          onEndTurn={handleEndTurnClick}
         />
       </div>
 
