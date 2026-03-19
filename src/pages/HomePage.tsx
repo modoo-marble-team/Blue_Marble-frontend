@@ -50,6 +50,11 @@ function HomePage() {
 
   // 카카오 로그인 결과에 따라 닉네임 설정/로비로 분기 이동
   async function handleKakaoLogin() {
+    if (import.meta.env.DEV) {
+      toast.error('카카오 로그인은 배포 환경에서만 테스트 가능합니다.')
+      return
+    }
+
     setIsKakaoLoading(true)
     try {
       const kakaoSession = await startKakaoLogin()
