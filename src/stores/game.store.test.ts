@@ -277,4 +277,81 @@ describe('game store partial updates', () => {
     expect(nextState.prompt).toBeNull()
     expect(nextState.eventQueue).toEqual([])
   })
+
+  it('clears stale prompt and pendingAction when snapshot omits both keys', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      prompt: {
+        id: 'prompt-stale',
+        type: 'BUY_OR_SKIP',
+      },
+      pendingAction: {
+        actionId: 'action-stale',
+        type: 'ROLL_DICE',
+        requestedAt: Date.now(),
+      },
+    })
+
+    store.replaceFromSnapshot({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      revision: 9,
+      phase: 'rolling',
+      players: [createPlayer()],
+      tiles: [createTile()],
+      currentPlayerId: 'player-1',
+      currentTurn: 'player-1',
+      round: 3,
+      turnTimeoutSec: 30,
+      gameResult: null,
+      isGameOver: false,
+      winnerId: null,
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.prompt).toBeNull()
+    expect(nextState.pendingAction).toBeNull()
+  })
+
+  it('applies revision 0 patch envelopes and keeps current revision value', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      revision: 7,
+      round: 1,
+    })
+
+    store.applyPatchEnvelope({
+      revision: 0,
+      patch: [{ op: 'set', path: 'round', value: 2 }],
+      events: [],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.round).toBe(2)
+    expect(nextState.revision).toBe(7)
+  })
+
+  it('applies same-revision patch envelopes to support ack-first delivery', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      revision: 5,
+      round: 1,
+    })
+
+    store.applyPatchEnvelope({
+      revision: 5,
+      patch: [{ op: 'set', path: 'round', value: 6 }],
+      events: [],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.round).toBe(6)
+    expect(nextState.revision).toBe(5)
+  })
 })

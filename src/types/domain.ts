@@ -131,6 +131,7 @@ export interface GamePrompt {
 export interface GamePromptResponse {
   promptId: string
   choice: string
+  payload?: Record<string, unknown>
 }
 
 export interface GameAck {
