@@ -729,6 +729,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }
 
     useEffect(() => {
+      if (!activePrompt) {
+        return
+      }
+
+      if (promptSubmittingChoice !== null) {
+        setStatus('선택을 전송했습니다. 서버 응답을 기다리는 중...')
+        return
+      }
+
+      const promptTitle =
+        typeof activePrompt.title === 'string' &&
+        activePrompt.title.trim() !== ''
+          ? activePrompt.title.trim()
+          : '선택'
+      setStatus(`${promptTitle} 진행 중`)
+    }, [activePrompt, promptSubmittingChoice])
+
+    useEffect(() => {
       tileOwnersRef.current = derivedTileOwners
     }, [derivedTileOwners])
 
@@ -1286,7 +1304,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
 
         setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
-        setStatus('서버 선택 요청을 기다리는 중...')
+        setStatus('선택을 전송했습니다. 서버 응답을 기다리는 중...')
         return
       }
       const updatedPlayers = [...playersRef.current]
@@ -1375,7 +1393,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'PROPERTY') {
-        setStatus('서버 선택 요청을 기다리는 중...')
+        setStatus('다음 선택지를 준비하는 중...')
         onDone?.()
         return
       }
