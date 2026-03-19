@@ -208,8 +208,8 @@ export const TILES: TileData[] = [
 ]
 
 export const TOP_ROW = [16, 17, 18, 19, 20, 21, 22, 23, 24]
-export const BOTTOM_ROW = [8, 7, 6, 5, 4, 3, 2, 1, 0]
-export const LEFT_COL = [15, 14, 13, 12, 11, 10, 9]
+export const BOTTOM_ROW = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+export const LEFT_COL = [9, 10, 11, 12, 13, 14, 15]
 export const RIGHT_COL = [25, 26, 27, 28, 29, 30, 31]
 
 export const CORNER_SIZE = 90
