@@ -73,6 +73,10 @@ type MockGameSyncPayload = {
   knownRevision?: number
 }
 
+type MockGameSyncTimerPayload = {
+  gameId?: string | null
+}
+
 type MockPromptResponsePayload = GamePromptResponse & {
   gameId?: string | null
   payload?: Record<string, unknown>
@@ -916,6 +920,35 @@ export const mockEmitGameSync = ({
       ],
     })
   }, 0)
+}
+
+export const mockEmitGameSyncTimer = ({ gameId }: MockGameSyncTimerPayload) => {
+  const resolvedGameId = resolveRequiredGameId({ gameId })
+  if (!resolvedGameId) {
+    return
+  }
+
+  const promptRemainingSec =
+    mockGameState.prompt &&
+    typeof mockGameState.prompt.timeoutSec === 'number' &&
+    mockGameState.prompt.timeoutSec > 0 &&
+    typeof mockGameState.promptIssuedAtMs === 'number'
+      ? Math.max(
+          0,
+          Math.ceil(
+            mockGameState.prompt.timeoutSec -
+              (Date.now() - mockGameState.promptIssuedAtMs) / 1000
+          )
+        )
+      : null
+
+  emitSocketEvent('game:timer_sync', {
+    gameId: resolvedGameId,
+    turnRemainingSec: MOCK_TURN_TIMEOUT_SEC,
+    promptId: mockGameState.prompt?.id ?? null,
+    promptRemainingSec,
+    syncedAt: new Date().toISOString(),
+  })
 }
 
 export const mockEmitGameAction = ({

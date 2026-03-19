@@ -354,4 +354,59 @@ describe('game store partial updates', () => {
     expect(nextState.round).toBe(6)
     expect(nextState.revision).toBe(5)
   })
+
+  it('applies timer sync to turn timer and prompt timeout when prompt id matches', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      gameId: 'game-before-sync',
+      turnTimeoutSec: 30,
+      turnTimerKey: 1,
+      prompt: {
+        id: 'prompt-sync-target',
+        type: 'CONFIRM_ONLY',
+        timeoutSec: 20,
+      },
+    })
+
+    store.applyTimerSync({
+      gameId: 'game-after-sync',
+      turnRemainingSec: 13,
+      promptId: 'prompt-sync-target',
+      promptRemainingSec: 5,
+      syncedAt: '2026-03-19T12:00:00.000Z',
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.gameId).toBe('game-after-sync')
+    expect(nextState.session.gameId).toBe('game-after-sync')
+    expect(nextState.turnTimeoutSec).toBe(13)
+    expect(nextState.turnTimerKey).toBeGreaterThan(1)
+    expect(nextState.prompt?.timeoutSec).toBe(5)
+    expect(nextState.session.syncedAt).toBe('2026-03-19T12:00:00.000Z')
+  })
+
+  it('does not overwrite prompt timeout when timer sync prompt id is different', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      prompt: {
+        id: 'prompt-current',
+        type: 'BUY_OR_SKIP',
+        timeoutSec: 14,
+      },
+    })
+
+    store.applyTimerSync({
+      turnRemainingSec: 9,
+      promptId: 'prompt-other',
+      promptRemainingSec: 3,
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.turnTimeoutSec).toBe(9)
+    expect(nextState.prompt?.timeoutSec).toBe(14)
+  })
 })

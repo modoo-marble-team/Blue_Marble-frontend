@@ -3,6 +3,7 @@ import { socket } from '../../lib/socket'
 import {
   mockEmitGameAction,
   mockEmitGameSync,
+  mockEmitGameSyncTimer,
   mockEmitPromptResponse,
 } from '../../mocks/handlers/game.handler'
 import { useGameStore } from '../../stores/game.store'
@@ -19,6 +20,7 @@ import {
   normalizePromptChoiceValue,
   normalizePromptPayload,
   normalizeSnapshotPayload,
+  normalizeTimerSyncPayload,
 } from './gameContractAdapters'
 
 type Teardown = () => void
@@ -52,6 +54,10 @@ type PromptResponsePayload = GamePromptResponse & {
   gameId?: GameId | null
 }
 
+type GameSyncTimerPayload = {
+  gameId?: GameId | null
+}
+
 let teardownGameHandlersRef: Teardown | null = null
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 let lastDiceRolledEnqueuedAt = 0
@@ -66,6 +72,11 @@ const PROMPT_ID_REQUIRED_ERROR: GameError = {
 const GAME_ID_REQUIRED_ERROR: GameError = {
   code: 'INVALID_GAME_ID',
   message: 'Game events must include a valid gameId.',
+}
+
+const TIMER_SYNC_PAYLOAD_INVALID_ERROR: GameError = {
+  code: 'INVALID_TIMER_SYNC',
+  message: 'Received game:timer_sync payload is invalid.',
 }
 
 const toFiniteNumber = (value: unknown): number | null => {
@@ -284,16 +295,28 @@ export const setupGameHandlers = (
     useGameStore.getState().setLastError(error)
   }
 
+  const handleGameTimerSync = (payload: unknown) => {
+    const normalizedTimerSync = normalizeTimerSyncPayload(payload)
+    if (!normalizedTimerSync) {
+      useGameStore.getState().setLastError(TIMER_SYNC_PAYLOAD_INVALID_ERROR)
+      return
+    }
+
+    useGameStore.getState().applyTimerSync(normalizedTimerSync)
+  }
+
   socket.on('game:ack', handleGameAck)
   socket.on('game:patch', handleGamePatch)
   socket.on('game:prompt', handleGamePrompt)
   socket.on('game:error', handleGameError)
+  socket.on('game:timer_sync', handleGameTimerSync)
 
   const teardown = () => {
     socket.off('game:ack', handleGameAck)
     socket.off('game:patch', handleGamePatch)
     socket.off('game:prompt', handleGamePrompt)
     socket.off('game:error', handleGameError)
+    socket.off('game:timer_sync', handleGameTimerSync)
   }
 
   teardownGameHandlersRef = teardown
@@ -373,6 +396,25 @@ export const emitGameSync = ({ gameId, knownRevision }: GameSyncPayload) => {
   socket.emit('game:sync', {
     gameId: resolvedGameId,
     knownRevision,
+  })
+}
+
+export const emitGameSyncTimer = ({ gameId }: GameSyncTimerPayload) => {
+  const resolvedGameId = getResolvedGameId(gameId)
+  if (!resolvedGameId) {
+    useGameStore.getState().setLastError(GAME_ID_REQUIRED_ERROR)
+    return
+  }
+
+  if (USE_GAME_SOCKET_MOCK) {
+    mockEmitGameSyncTimer({
+      gameId: resolvedGameId,
+    })
+    return
+  }
+
+  socket.emit('game:sync_timer', {
+    gameId: resolvedGameId,
   })
 }
 

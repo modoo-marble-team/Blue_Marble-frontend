@@ -3,6 +3,7 @@ import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import {
   emitGameSync,
+  emitGameSyncTimer,
   setupGameHandlers,
 } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
@@ -40,9 +41,34 @@ export const useGameState = (gameId: string | null) => {
       syncedGameIdRef.current = gameId
     }
 
+    const syncGameTimer = () => {
+      emitGameSyncTimer({ gameId })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncGameTimer()
+      }
+    }
+
+    const handleWindowFocus = () => {
+      syncGameTimer()
+    }
+
+    const handleSocketConnect = () => {
+      syncGameTimer()
+    }
+
     syncGameState()
+    syncGameTimer()
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleWindowFocus)
+    socket.on('connect', handleSocketConnect)
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleWindowFocus)
+      socket.off('connect', handleSocketConnect)
       teardownHandlers()
     }
   }, [gameId])

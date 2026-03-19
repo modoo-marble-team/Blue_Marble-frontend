@@ -4,6 +4,7 @@ import type {
   GamePrompt,
   GamePromptChoice,
   GameSnapshot,
+  GameTimerSync,
   Player,
   PlayerId,
   ServerEvent,
@@ -778,3 +779,47 @@ export const normalizePatchEnvelopePayload = (
         .filter((event): event is ServerEvent => event !== null)
     : [],
 })
+
+export const normalizeTimerSyncPayload = (
+  payload: unknown
+): GameTimerSync | null => {
+  if (!isRecord(payload)) {
+    return null
+  }
+
+  const gameId =
+    toStringOrNull(payload.gameId) ?? toStringOrNull(payload.game_id)
+  const turnRemainingSec =
+    toFiniteNumber(
+      payload.turnRemainingSec ??
+        payload.turn_remaining_sec ??
+        payload.turnLeftSec ??
+        payload.turn_left_sec ??
+        payload.remainingTurnSec ??
+        payload.remaining_turn_sec
+    ) ?? null
+  const promptId =
+    toStringOrNull(payload.promptId) ?? toStringOrNull(payload.prompt_id)
+  const promptRemainingSec =
+    toFiniteNumber(
+      payload.promptRemainingSec ??
+        payload.prompt_remaining_sec ??
+        payload.promptLeftSec ??
+        payload.prompt_left_sec ??
+        payload.remainingPromptSec ??
+        payload.remaining_prompt_sec
+    ) ?? null
+  const syncedAt =
+    toStringOrNull(payload.syncedAt) ??
+    toStringOrNull(payload.synced_at) ??
+    toStringOrNull(payload.serverTime) ??
+    toStringOrNull(payload.server_time)
+
+  return {
+    gameId,
+    turnRemainingSec,
+    promptId,
+    promptRemainingSec,
+    syncedAt,
+  }
+}
