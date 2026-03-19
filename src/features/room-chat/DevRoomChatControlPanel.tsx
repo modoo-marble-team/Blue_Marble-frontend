@@ -86,7 +86,7 @@ export function DevRoomChatControlPanel({
         type="button"
         onClick={() => setIsPanelOpen(true)}
         className={cn(
-          'fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl backdrop-blur',
+          'fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl',
           className
         )}
       >
@@ -120,7 +120,7 @@ export function DevRoomChatControlPanel({
   return (
     <aside
       className={cn(
-        'fixed bottom-4 left-4 z-50 w-[260px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl backdrop-blur',
+        'fixed bottom-4 left-4 z-50 w-[260px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl',
         className
       )}
     >

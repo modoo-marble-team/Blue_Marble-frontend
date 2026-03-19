@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 
 interface DiceTimerModalProps {
   open: boolean
@@ -57,7 +57,7 @@ const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)]">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-13 shadow-2xl">
         <div className="mb-7 flex justify-center">
           <DiceIcon />

@@ -30,7 +30,7 @@ const ExitGameModal = ({ open, onCancel, onConfirm }: ExitGameModalProps) => {
 
   return (
     <Fragment>
-      <div className="fixed inset-0 z-80 flex items-center justify-center bg-[rgba(15,23,42,0.36)] backdrop-blur-sm">
+      <div className="fixed inset-0 z-80 flex items-center justify-center bg-[rgba(15,23,42,0.36)]">
         <div className="w-full max-w-125 rounded-[40px] bg-white px-11 pb-11 pt-9 shadow-[0_24px_64px_rgba(15,23,42,0.32)]">
           <div className="mx-auto mb-6 flex h-20 w-20 -rotate-3 items-center justify-center">
             <img

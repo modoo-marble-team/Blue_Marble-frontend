@@ -1,4 +1,4 @@
-﻿import {
+import {
   LEVEL_LABELS,
   LEVEL_MODAL_ICONS,
   BuildingLevel,
@@ -53,7 +53,7 @@ const BuildModal: React.FC<BuildModalProps> = ({
   const iconSrc = LEVEL_MODAL_ICONS[nextLevel] || '/BuyModal-house.svg'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)]">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-11 shadow-2xl">
         <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF]">
           <img src={iconSrc} alt="건설" className="w-14 h-14 object-contain" />

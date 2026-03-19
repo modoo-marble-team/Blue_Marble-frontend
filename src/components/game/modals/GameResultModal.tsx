@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 
 interface GameResultModalProps {
   open: boolean
@@ -59,7 +59,7 @@ const GameResultModal: React.FC<GameResultModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.52)] backdrop-blur-[2px]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.52)]">
       <div
         className="w-full rounded-[36px] px-7 pb-7 pt-6"
         style={{ maxWidth: '920px' }}

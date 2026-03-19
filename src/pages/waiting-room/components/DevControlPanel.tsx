@@ -137,7 +137,7 @@ export function DevControlPanel({
       <button
         type="button"
         onClick={() => setIsPanelOpen(true)}
-        className="fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl backdrop-blur"
+        className="fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl"
       >
         DEV CONTROL 열기
       </button>
@@ -223,7 +223,7 @@ export function DevControlPanel({
     !canControlRoomChat || !selectedRoomChatSender
 
   return (
-    <aside className="fixed bottom-4 left-4 z-50 w-[280px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl backdrop-blur">
+    <aside className="fixed bottom-4 left-4 z-50 w-[280px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
           DEV CONTROL

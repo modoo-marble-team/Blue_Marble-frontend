@@ -6,7 +6,6 @@ import {
   getStripColor,
   TileOwner,
   PLAYER_COLORS,
-  LEVEL_LABELS,
 } from './board.constants'
 import BuildingBadge from './BuildingBadge'
 import { formatWon } from '../../lib/utils'
@@ -326,9 +325,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     marginBottom: -1,
                   }}
                 >
-                  {tileOwner
-                    ? LEVEL_LABELS[buildingLevel]
-                    : formatWon(tile.price ?? 0)}
+                  {formatWon(tile.price ?? 0)}
                 </div>
               </>
             )}
@@ -445,9 +442,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
                     marginTop: 0,
                   }}
                 >
-                  {tileOwner
-                    ? LEVEL_LABELS[buildingLevel]
-                    : formatWon(tile.price ?? 0)}
+                  {formatWon(tile.price ?? 0)}
                 </div>
               </>
             )}

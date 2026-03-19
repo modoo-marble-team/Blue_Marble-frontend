@@ -14,14 +14,12 @@ interface TravelModalProps {
 const DEFAULT_TITLE = '국내여행'
 const DEFAULT_DESCRIPTION = '원하는 도시를 클릭하여 이동할 수 있습니다'
 const DEFAULT_CONFIRM_LABEL = '확인'
-const DEFAULT_CANCEL_LABEL = '건너뛰기'
 
 const TravelModal: React.FC<TravelModalProps> = ({
   open,
   title = DEFAULT_TITLE,
   description = DEFAULT_DESCRIPTION,
   confirmLabel = DEFAULT_CONFIRM_LABEL,
-  cancelLabel = DEFAULT_CANCEL_LABEL,
   showCancel = false,
   onConfirm,
   onCancel,
@@ -31,7 +29,7 @@ const TravelModal: React.FC<TravelModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)]">
       <div className="w-full max-w-105 rounded-[44px] bg-white px-10 pb-10 pt-11 shadow-2xl">
         <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF]">
           <img
@@ -62,9 +60,7 @@ const TravelModal: React.FC<TravelModalProps> = ({
             type="button"
             onClick={onCancel}
             className="mx-auto mt-3 flex h-18.5 w-full max-w-102 items-center justify-center rounded-[22px] border border-[#D0D7E2] bg-white text-[24px] font-black tracking-tight text-[#5A6D8A] transition-colors hover:bg-[#F8FAFC]"
-          >
-            {cancelLabel}
-          </button>
+          ></button>
         )}
       </div>
     </div>
