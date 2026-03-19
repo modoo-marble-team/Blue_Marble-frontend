@@ -568,7 +568,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
-    /* isBuildPromptOpen suppressed to prioritize manual click */
+    const isBuildPromptOpen = promptModalKind === 'build'
     const isTollPromptOpen = promptModalKind === 'toll'
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
@@ -1454,6 +1454,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const buyTile = promptTile
     const buyModalOpen = isBuyPromptOpen
+    const buildModalOpen = isBuildPromptOpen
     const buildTile = promptTile
     const currentLevel = promptCurrentLevel
     const buildTargetLevel = promptNextLevel
@@ -1509,7 +1510,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canShowModal && cityBuildModal.open && !insufficientFundsModal.open
+      canShowModal && buildModalOpen && !insufficientFundsModal.open
     const acquisitionModalOpen =
       canShowModal &&
       acquisitionModalOpenRaw &&
