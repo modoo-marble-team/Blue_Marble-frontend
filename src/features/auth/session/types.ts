@@ -1,5 +1,8 @@
 // 로그인 공급자 종류 정의
 export type AuthProvider = 'kakao' | 'guest'
+export type AuthContextRoomStatus = 'waiting' | 'playing'
+export type AuthPresenceStatus = 'lobby' | 'in_room' | 'playing'
+export type AuthResumeTarget = 'lobby' | 'room' | 'game'
 
 // 클라이언트에서 유지하는 인증 세션 형태
 export interface AuthSession {
@@ -10,6 +13,16 @@ export interface AuthSession {
   isGuest: boolean
   needsNicknameSetup: boolean
   provider: AuthProvider
+}
+
+// 세션 복구 뒤 앱 재진입 분기에 사용하는 사용자 참가 컨텍스트
+export interface AuthResumeContext {
+  roomId: string | null
+  roomTitle: string | null
+  roomStatus: AuthContextRoomStatus | null
+  gameId: string | null
+  presenceStatus: AuthPresenceStatus
+  resumeTarget: AuthResumeTarget
 }
 
 // 마이페이지 전적 집계 타입

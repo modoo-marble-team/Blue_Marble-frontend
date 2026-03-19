@@ -1,4 +1,4 @@
-import type { AuthSession } from '../session/types'
+import type { AuthResumeContext, AuthSession } from '../session/types'
 import { resetMockOnlineUsers } from '../../presence/mock/mockData'
 import { resetMockWaitingRooms } from '../../../pages/waiting-room/socket/mockGateway'
 import { MOCK_AUTH_DELAY_MS } from './constants'
@@ -70,4 +70,18 @@ export async function mockGuestLogin() {
   }
 
   return session
+}
+
+// mock 모드의 재진입 복귀는 기본 로비 상태로 단순화
+export async function mockGetMyContext(): Promise<AuthResumeContext> {
+  await delay(MOCK_AUTH_DELAY_MS)
+
+  return {
+    roomId: null,
+    roomTitle: null,
+    roomStatus: null,
+    gameId: null,
+    presenceStatus: 'lobby',
+    resumeTarget: 'lobby',
+  }
 }

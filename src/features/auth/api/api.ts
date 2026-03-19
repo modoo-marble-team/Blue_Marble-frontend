@@ -8,13 +8,18 @@ import {
   type RefreshAccessTokenResponsePayload,
 } from '../../../lib/axios'
 import {
+  mockGetMyContext,
   mockGuestLogin,
   mockGetMyPageProfile,
   mockKakaoLogin,
   mockSetNickname,
 } from './mockApi'
 import type {
+  AuthContextRoomStatus,
+  AuthPresenceStatus,
   AuthProvider,
+  AuthResumeContext,
+  AuthResumeTarget,
   AuthSession,
   MyPageProfile,
   MyPageProfileResult,
@@ -44,6 +49,15 @@ interface AuthSessionResponse {
 }
 
 type AuthSessionPayload = AuthUserPayload
+
+interface AuthResumeContextPayload {
+  room_id: string | null
+  room_title: string | null
+  room_status: AuthContextRoomStatus | null
+  game_id: string | null
+  presence_status: AuthPresenceStatus
+  resume_target: AuthResumeTarget
+}
 
 interface UpdateNicknameResponsePayload {
   id: number | string
@@ -136,6 +150,19 @@ export function mapMyPageProfile(payload: MyPageProfilePayload): MyPageProfile {
   }
 }
 
+export function mapAuthResumeContext(
+  payload: AuthResumeContextPayload
+): AuthResumeContext {
+  return {
+    roomId: payload.room_id,
+    roomTitle: payload.room_title,
+    roomStatus: payload.room_status,
+    gameId: payload.game_id,
+    presenceStatus: payload.presence_status,
+    resumeTarget: payload.resume_target,
+  }
+}
+
 function buildApiPath(path: string) {
   const baseUrl = String(apiClient.defaults.baseURL ?? '/api').replace(
     /\/+$/,
@@ -208,6 +235,23 @@ export async function completeKakaoLogin({
     provider: 'kakao',
     needsNicknameSetup: isNewUser || restored.user.nickname.trim().length === 0,
   })
+}
+
+export async function getMyContext(accessToken: string) {
+  if (IS_AUTH_MOCK_ENABLED) {
+    return mockGetMyContext()
+  }
+
+  const { data } = await apiClient.get<AuthResumeContextPayload>(
+    '/users/me/context',
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  )
+
+  return mapAuthResumeContext(data)
 }
 
 export async function refreshAccessToken() {
