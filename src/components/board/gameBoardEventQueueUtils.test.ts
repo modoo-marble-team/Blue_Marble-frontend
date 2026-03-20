@@ -6,6 +6,7 @@ import {
   extractEventDice,
   getBoardEventAnimationHoldMs,
   getBoardEventConsumeDelayMs,
+  getPendingMovePlayerIdsFromEvents,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
@@ -49,6 +50,37 @@ describe('gameBoardEventQueueUtils', () => {
     }
 
     expect(extractEventDice(event)).toEqual([3, 4])
+  })
+
+  it('collects only pending move player ids from move event aliases', () => {
+    const events: ServerEvent[] = [
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+      },
+      {
+        type: 'PLAYER_MOVE',
+        playerId: 'guest-2',
+      },
+      {
+        type: 'MOVED',
+        playerId: 3,
+      },
+      {
+        type: 'TURN_ENDED',
+        playerId: 4,
+      },
+      {
+        type: 'PLAYER_MOVED',
+        playerId: null,
+      },
+    ]
+
+    expect(getPendingMovePlayerIdsFromEvents(events)).toEqual([
+      '1',
+      'guest-2',
+      '3',
+    ])
   })
 
   it('extracts dice values from alias payload keys', () => {
