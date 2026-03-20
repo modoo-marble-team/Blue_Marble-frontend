@@ -46,6 +46,7 @@ import {
 } from './board.constants'
 
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
+import { syncMockStorePlayers } from './gameBoardStoreBridge'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
   getBoardEventAnimationHoldMs,
@@ -106,6 +107,7 @@ import type {
 import { playLongSfx, stopLongSfx } from '../../lib/bgm'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { emitGameAction } from '../../services/socket/game.handler'
+import { useGameStore } from '../../stores/game.store'
 
 const DEFAULT_OPPONENT_NAME = '상대방'
 const GAME_START_STATUS = '게임 시작!'
@@ -249,6 +251,9 @@ interface GameBoardProps {
   winnerId?: PlayerId | null
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
 function toBoardBuildingLevel(
   tile: { building?: number; level?: number },
   hasOwner: boolean
@@ -333,10 +338,27 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       Record<string, number>
     >({})
     const [isMoving, setIsMoving] = useState(false)
+    const lastMovePositionRef = useRef<Record<string, number>>({})
     const isAnimatingRef = useRef(false)
     useEffect(() => {
       isAnimatingRef.current = isMoving
     }, [isMoving])
+    const pendingMovePlayerIds = useGameStore((state) =>
+      state.eventQueue
+        .filter(
+          (event) =>
+            typeof event.type === 'string' &&
+            ['PLAYER_MOVED', 'PLAYER_MOVE', 'MOVED'].includes(
+              event.type.trim().toUpperCase()
+            ) &&
+            event.playerId != null
+        )
+        .map((event) => String(event.playerId))
+    )
+    const pendingMovePlayerIdSet = useMemo(
+      () => new Set(pendingMovePlayerIds),
+      [pendingMovePlayerIds]
+    )
 
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
@@ -412,7 +434,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         const totalTiles = TILES.length
         let current = from
         const initialDelayMs = options?.initialDelayMs ?? 800
-        const stepDelayMs = options?.stepDelayMs ?? 250
+        const stepDelayMs = options?.stepDelayMs ?? 380
         const endDelayMs = options?.endDelayMs ?? 400
 
         // 이동 시작 즉시 현재 칸에 고정 (스토어 선반영으로 인한 점프 방지)
@@ -444,27 +466,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         if (endDelayMs > 0) {
           await delay(endDelayMs)
         }
-
-        setAnimatedPositions((prev) => {
-          const next = { ...prev }
-          delete next[String(playerId)]
-          return next
-        })
-        setIsMoving(false)
-      },
-      []
-    )
-
-    const movePlayerDirectly = useCallback(
-      async (playerId: PlayerId, to: number) => {
-        setIsMoving(true)
-        setAnimatedPositions((prev) => ({
-          ...prev,
-          [String(playerId)]: to,
-        }))
-
-        // 짧은 점프 연출만 유지 (한 바퀴 도는 연출 방지)
-        await delay(320)
 
         setAnimatedPositions((prev) => {
           const next = { ...prev }
@@ -523,50 +524,78 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return
           }
 
-          const payloadRecord =
-            event.payload && typeof event.payload === 'object'
-              ? (event.payload as Record<string, unknown>)
-              : null
+          const payloadRecord = isRecord(event.payload) ? event.payload : null
+          const eventRecord = isRecord(event) ? event : null
           const rawFromIndex =
             payloadRecord?.fromIndex ??
             payloadRecord?.from_index ??
             payloadRecord?.fromTileId ??
             payloadRecord?.from_tile_id ??
             payloadRecord?.fromTile ??
-            payloadRecord?.from_tile
+            payloadRecord?.from_tile ??
+            eventRecord?.fromIndex ??
+            eventRecord?.from_index ??
+            eventRecord?.fromTileId ??
+            eventRecord?.from_tile_id
           const parsedFromIndex =
             typeof rawFromIndex === 'number' && Number.isFinite(rawFromIndex)
               ? rawFromIndex
               : typeof rawFromIndex === 'string' && rawFromIndex.trim() !== ''
                 ? Number.parseInt(rawFromIndex, 10)
                 : null
-          const fromIndex =
+          const playerKey = String(event.playerId ?? '')
+          const lastKnownFrom =
+            playerKey && playerKey !== 'null'
+              ? lastMovePositionRef.current[playerKey]
+              : undefined
+          let fromIndex =
             (Number.isFinite(parsedFromIndex ?? Number.NaN)
               ? Number(parsedFromIndex)
               : null) ??
+            lastKnownFrom ??
             playersRef.current.find(
               (p) => String(p.id) === String(event.playerId)
             )?.pos ??
             0
 
-          // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
-          const trigger =
-            typeof payloadRecord?.trigger === 'string'
-              ? payloadRecord.trigger.trim().toLowerCase()
-              : ''
-          const isTravelMove = trigger.includes('travel')
-          const initialDelayMs = isTravelMove ? 320 : undefined
+          if (fromIndex === tileIndex) {
+            const rawSteps =
+              payloadRecord?.total ??
+              payloadRecord?.steps ??
+              payloadRecord?.move ??
+              payloadRecord?.distance ??
+              payloadRecord?.diceTotal ??
+              payloadRecord?.dice_total ??
+              eventRecord?.total ??
+              eventRecord?.steps
+            const parsedSteps =
+              typeof rawSteps === 'number' && Number.isFinite(rawSteps)
+                ? rawSteps
+                : typeof rawSteps === 'string' && rawSteps.trim() !== ''
+                  ? Number.parseInt(rawSteps, 10)
+                  : null
+            if (parsedSteps != null && Number.isFinite(parsedSteps)) {
+              const totalTiles = TILES.length
+              fromIndex =
+                (tileIndex - (parsedSteps % totalTiles) + totalTiles) %
+                totalTiles
+            }
+          }
 
-          movePlayerSequentially(event.playerId!, fromIndex, tileIndex, {
-            initialDelayMs,
-          }).then(() => {
-            // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
-            handleArrivalRef.current(
-              tileIndex,
-              emitMockEndTurn,
-              event.playerId ?? null
-            )
-          })
+          // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
+          movePlayerSequentially(event.playerId!, fromIndex, tileIndex).then(
+            () => {
+              if (playerKey && playerKey !== 'null') {
+                lastMovePositionRef.current[playerKey] = tileIndex
+              }
+              // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
+              handleArrivalRef.current(
+                tileIndex,
+                emitMockEndTurn,
+                event.playerId ?? null
+              )
+            }
+          )
           return
         }
 
@@ -656,6 +685,28 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         window.clearTimeout(timer)
       }
     }, [eventFxKind])
+    useEffect(() => {
+      if (players.length === 0) {
+        return
+      }
+
+      const nextPositions = { ...lastMovePositionRef.current }
+      for (const player of players) {
+        const key = String(player.id)
+        const isAnimatingPlayer = animatedPositions[key] != null
+        const hasPendingMove = pendingMovePlayerIdSet.has(key)
+
+        if (nextPositions[key] == null) {
+          nextPositions[key] = player.pos
+          continue
+        }
+
+        if (!isAnimatingPlayer && !hasPendingMove) {
+          nextPositions[key] = player.pos
+        }
+      }
+      lastMovePositionRef.current = nextPositions
+    }, [animatedPositions, pendingMovePlayerIdSet, players])
     const derivedTileOwners = useMemo(
       () => buildTileOwnersFromProps(tiles, players),
       [tiles, players]
@@ -1243,8 +1294,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const islandTile = TILES.find((t) => t.type === 'ISLAND')
       if (islandTile) {
-        // 무인도 이동은 보드를 한 바퀴 도는 연출 대신 짧은 점프 애니메이션만 사용
-        await movePlayerDirectly(player.id, islandTile.id)
+        // 무인도 이동도 한 칸씩 전진 애니메이션 적용
+        await movePlayerSequentially(
+          player.id,
+          player.pos === islandTile.id ? 24 : player.pos,
+          islandTile.id
+        )
 
         const updatedPlayers = [...playersRef.current]
         updatedPlayers[playerIdx] = {
@@ -1253,6 +1308,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           skipTurns: 3,
         }
         playersRef.current = updatedPlayers
+        if (isMockMode) {
+          syncMockStorePlayers(updatedPlayers)
+        }
       }
 
       setIslandModal({
@@ -1388,10 +1446,49 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       submitPromptChoice(promptAcquisitionConfirmChoiceValue)
     }
 
-    function handleCardConfirm() {
+    async function handleCardConfirm() {
       stopLongSfx()
       const { onDoneCallback } = cardModal
       setCardModal((prev) => ({ ...prev, open: false }))
+
+      const hasIslandKeyword =
+        cardModal.title?.includes('무인도') ||
+        cardModal.descriptionLine1?.includes('무인도') ||
+        cardModal.descriptionLine2?.includes('무인도')
+      const isFallbackIslandEventCard =
+        cardModal.variant === 'EVENT' &&
+        !cardModal.descriptionLine1 &&
+        !cardModal.descriptionLine2
+
+      if (isMockMode && (hasIslandKeyword || isFallbackIslandEventCard)) {
+        const playerIdx = curPlayerRef.current
+        const player = playersRef.current[playerIdx]
+        const islandTile = TILES.find((t) => t.type === 'ISLAND')
+
+        if (player && islandTile) {
+          await movePlayerSequentially(player.id, player.pos, islandTile.id, {
+            initialDelayMs: 0,
+          })
+
+          const updatedPlayers = [...playersRef.current]
+          updatedPlayers[playerIdx] = {
+            ...updatedPlayers[playerIdx],
+            pos: islandTile.id,
+            skipTurns: 3,
+          }
+          playersRef.current = updatedPlayers
+          if (isMockMode) {
+            syncMockStorePlayers(updatedPlayers)
+          }
+
+          setIslandModal({
+            open: true,
+            onDoneCallback,
+          })
+          return
+        }
+      }
+
       onDoneCallback?.()
     }
 
@@ -1450,6 +1547,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         pos: tileId,
       }
       playersRef.current = updatedPlayers
+      if (isMockMode) {
+        syncMockStorePlayers(updatedPlayers)
+      }
       setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
 
       if (!isMockMode) {
@@ -1987,14 +2087,25 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {players
               .filter((p) => p.state !== 'bankrupt' && p.money > 0)
               .map((p) => {
-                const pos = animatedPositions[String(p.id)] ?? p.pos
+                const playerKey = String(p.id)
+                const animatedPos = animatedPositions[playerKey]
+                const pendingPos = pendingMovePlayerIdSet.has(playerKey)
+                  ? lastMovePositionRef.current[playerKey]
+                  : undefined
+                const pos = animatedPos ?? pendingPos ?? p.pos
                 const { row, col } = getTileGridPos(pos)
-                const tokensAtThisPos = players.filter(
-                  (pl) =>
-                    pl.state !== 'bankrupt' &&
-                    pl.money > 0 &&
-                    (animatedPositions[String(pl.id)] ?? pl.pos) === pos
-                )
+                const tokensAtThisPos = players.filter((pl) => {
+                  if (pl.state === 'bankrupt' || pl.money <= 0) {
+                    return false
+                  }
+                  const key = String(pl.id)
+                  const plAnimatedPos = animatedPositions[key]
+                  const plPendingPos = pendingMovePlayerIdSet.has(key)
+                    ? lastMovePositionRef.current[key]
+                    : undefined
+                  const renderPos = plAnimatedPos ?? plPendingPos ?? pl.pos
+                  return renderPos === pos
+                })
                 const pIdx = players.findIndex((pl) => pl.id === p.id)
                 const offset = getTokenOffset(pIdx, tokensAtThisPos.length)
                 const hasStrip = ![
