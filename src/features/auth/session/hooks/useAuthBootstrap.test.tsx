@@ -42,8 +42,47 @@ describe('useAuthBootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.removeItem('marble-pop-auth-session')
-    useAuthStore.setState({ session: null })
+    useAuthStore.setState({ hasHydrated: true, session: null })
     shouldClearAuthSessionMock.mockReturnValue(true)
+  })
+
+  it('persist hydration 전에는 bootstrap을 시작하지 않다가 hydration 이후 복구를 시작한다', async () => {
+    refreshAccessTokenMock.mockResolvedValue({
+      access_token: 'refreshed-token',
+      token_type: 'Bearer',
+      expires_in: 3600,
+    })
+    restoreAuthSessionMock.mockResolvedValue(
+      createAuthSessionFixture({
+        accessToken: 'refreshed-token',
+        userId: 'guest-user',
+        nickname: '게스트',
+        isGuest: true,
+        provider: 'guest',
+      })
+    )
+
+    useAuthStore.setState({ hasHydrated: false, session: null })
+
+    const { result } = renderHook(() => useAuthBootstrap())
+
+    expect(result.current).toBe(true)
+    expect(refreshAccessTokenMock).not.toHaveBeenCalled()
+    expect(restoreAuthSessionMock).not.toHaveBeenCalled()
+
+    act(() => {
+      useAuthStore.setState({ hasHydrated: true })
+    })
+
+    await waitFor(() => {
+      expect(result.current).toBe(false)
+    })
+
+    expect(refreshAccessTokenMock).toHaveBeenCalledTimes(1)
+    expect(restoreAuthSessionMock).toHaveBeenCalledWith({
+      accessToken: 'refreshed-token',
+      fallbackSession: null,
+    })
   })
 
   it('세션이 없으면 refresh fallback으로 세션 복구를 시도한다', async () => {
@@ -78,6 +117,43 @@ describe('useAuthBootstrap', () => {
       userId: 'guest-user',
       nickname: '게스트',
       isGuest: true,
+    })
+  })
+
+  it('persisted access token 복구 후 bootstrap을 종료한다', async () => {
+    useAuthStore.setState({
+      hasHydrated: true,
+      session: createAuthSessionFixture({
+        accessToken: 'persisted-token',
+        userId: 'guest-user',
+        nickname: '게스트',
+        isGuest: true,
+        provider: 'guest',
+      }),
+    })
+    restoreAuthSessionMock.mockResolvedValue(
+      createAuthSessionFixture({
+        accessToken: 'persisted-token',
+        userId: 'guest-user',
+        nickname: '게스트',
+        isGuest: true,
+        provider: 'guest',
+      })
+    )
+
+    const { result } = renderHook(() => useAuthBootstrap())
+
+    await waitFor(() => {
+      expect(result.current).toBe(false)
+    })
+
+    expect(refreshAccessTokenMock).not.toHaveBeenCalled()
+    expect(restoreAuthSessionMock).toHaveBeenCalledWith({
+      accessToken: 'persisted-token',
+      fallbackSession: expect.objectContaining({
+        accessToken: 'persisted-token',
+        provider: 'guest',
+      }),
     })
   })
 
