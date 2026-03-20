@@ -399,13 +399,33 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       new Promise((resolve) => window.setTimeout(resolve, ms))
 
     const movePlayerSequentially = useCallback(
-      async (playerId: PlayerId, from: number, to: number) => {
+      async (
+        playerId: PlayerId,
+        from: number,
+        to: number,
+        options?: {
+          initialDelayMs?: number
+          stepDelayMs?: number
+          endDelayMs?: number
+        }
+      ) => {
         setIsMoving(true)
         const totalTiles = TILES.length
         let current = from
+        const initialDelayMs = options?.initialDelayMs ?? 800
+        const stepDelayMs = options?.stepDelayMs ?? 250
+        const endDelayMs = options?.endDelayMs ?? 400
 
-        // 주사위 결과 확인을 위한 대기
-        await delay(800)
+        // 이동 시작 즉시 현재 칸에 고정 (스토어 선반영으로 인한 점프 방지)
+        setAnimatedPositions((prev) => ({
+          ...prev,
+          [String(playerId)]: current,
+        }))
+
+        // 연출 대기
+        if (initialDelayMs > 0) {
+          await delay(initialDelayMs)
+        }
 
         // 한 칸씩 이동
         while (current !== to) {
@@ -418,11 +438,34 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           // 이동 효과음
           new Audio('/audio/move.mp3').play().catch(() => {})
 
-          await delay(250) // 한 칸 이동 간격
+          await delay(stepDelayMs) // 한 칸 이동 간격
         }
 
         // 마지막 도착 칸에서 잠시 대기
-        await delay(400)
+        if (endDelayMs > 0) {
+          await delay(endDelayMs)
+        }
+
+        setAnimatedPositions((prev) => {
+          const next = { ...prev }
+          delete next[String(playerId)]
+          return next
+        })
+        setIsMoving(false)
+      },
+      []
+    )
+
+    const movePlayerDirectly = useCallback(
+      async (playerId: PlayerId, to: number) => {
+        setIsMoving(true)
+        setAnimatedPositions((prev) => ({
+          ...prev,
+          [String(playerId)]: to,
+        }))
+
+        // 짧은 점프 연출만 유지 (한 바퀴 도는 연출 방지)
+        await delay(320)
 
         setAnimatedPositions((prev) => {
           const next = { ...prev }
@@ -481,24 +524,50 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return
           }
 
+          const payloadRecord =
+            event.payload && typeof event.payload === 'object'
+              ? (event.payload as Record<string, unknown>)
+              : null
+          const rawFromIndex =
+            payloadRecord?.fromIndex ??
+            payloadRecord?.from_index ??
+            payloadRecord?.fromTileId ??
+            payloadRecord?.from_tile_id ??
+            payloadRecord?.fromTile ??
+            payloadRecord?.from_tile
+          const parsedFromIndex =
+            typeof rawFromIndex === 'number' && Number.isFinite(rawFromIndex)
+              ? rawFromIndex
+              : typeof rawFromIndex === 'string' && rawFromIndex.trim() !== ''
+                ? Number.parseInt(rawFromIndex, 10)
+                : null
           const fromIndex =
-            (event.payload as { fromIndex?: number })?.fromIndex ??
+            (Number.isFinite(parsedFromIndex ?? Number.NaN)
+              ? Number(parsedFromIndex)
+              : null) ??
             playersRef.current.find(
               (p) => String(p.id) === String(event.playerId)
             )?.pos ??
             0
 
           // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
-          movePlayerSequentially(event.playerId!, fromIndex, tileIndex).then(
-            () => {
-              // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
-              handleArrivalRef.current(
-                tileIndex,
-                emitMockEndTurn,
-                event.playerId ?? null
-              )
-            }
-          )
+          const trigger =
+            typeof payloadRecord?.trigger === 'string'
+              ? payloadRecord.trigger.trim().toLowerCase()
+              : ''
+          const isTravelMove = trigger.includes('travel')
+          const initialDelayMs = isTravelMove ? 320 : undefined
+
+          movePlayerSequentially(event.playerId!, fromIndex, tileIndex, {
+            initialDelayMs,
+          }).then(() => {
+            // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
+            handleArrivalRef.current(
+              tileIndex,
+              emitMockEndTurn,
+              event.playerId ?? null
+            )
+          })
           return
         }
 
@@ -968,12 +1037,38 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [travelSelection, setTravelSelection] = useState(
       INITIAL_TRAVEL_SELECTION_STATE
     )
+    const [dismissedTravelPromptId, setDismissedTravelPromptId] = useState<
+      string | null
+    >(null)
 
     useEffect(() => {
-      if (isTravelPromptOpen && !travelModal.open && !travelSelection.active) {
+      if (!isTravelPromptOpen) {
+        return
+      }
+
+      if (
+        activePrompt?.id != null &&
+        dismissedTravelPromptId === activePrompt.id
+      ) {
+        return
+      }
+
+      if (!travelModal.open && !travelSelection.active) {
         setTravelModal({ open: true })
       }
-    }, [isTravelPromptOpen, travelModal.open, travelSelection.active])
+    }, [
+      activePrompt?.id,
+      dismissedTravelPromptId,
+      isTravelPromptOpen,
+      travelModal.open,
+      travelSelection.active,
+    ])
+
+    useEffect(() => {
+      if (!activePrompt || !isTravelPromptOpen) {
+        setDismissedTravelPromptId(null)
+      }
+    }, [activePrompt, isTravelPromptOpen])
 
     const [tollModal, setTollModal] = useState<TollModalState>({
       open: false,
@@ -1149,13 +1244,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const islandTile = TILES.find((t) => t.type === 'ISLAND')
       if (islandTile) {
-        // 무인도 이동 칸(24)에서 무인도(8)까지 전진 애니메이션
-        // (24 -> 25 -> ... -> 31 -> 0 -> ... -> 8)
-        await movePlayerSequentially(
-          player.id,
-          player.pos === islandTile.id ? 24 : player.pos,
-          islandTile.id
-        )
+        // 무인도 이동은 보드를 한 바퀴 도는 연출 대신 짧은 점프 애니메이션만 사용
+        await movePlayerDirectly(player.id, islandTile.id)
 
         const updatedPlayers = [...playersRef.current]
         updatedPlayers[playerIdx] = {
@@ -1318,6 +1408,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function handleTravelCancel() {
       setTravelModal({ open: false })
+      if (isTravelPromptOpen && activePrompt?.id) {
+        setDismissedTravelPromptId(activePrompt.id)
+      }
       submitPromptChoice(promptTravelCancelChoiceValue ?? 'SKIP')
     }
 
@@ -1342,6 +1435,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         if (!submitted) {
           return
+        }
+
+        if (activePrompt?.id) {
+          setDismissedTravelPromptId(activePrompt.id)
         }
 
         setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
