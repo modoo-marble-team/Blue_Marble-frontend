@@ -3,6 +3,8 @@ import type {
   GamePatchOperation,
   GamePrompt,
   GamePromptChoice,
+  GameRanking,
+  GameResult,
   GameSnapshot,
   GameTimerSync,
   Player,
@@ -558,6 +560,180 @@ const normalizeTileFromSnapshot = (
   }
 }
 
+const normalizeGameResultReason = (value: unknown): GameResult['reason'] => {
+  if (typeof value !== 'string') {
+    return 'max_rounds'
+  }
+
+  const normalizedReason = value.trim().toLowerCase()
+  if (normalizedReason === 'last_player_standing') {
+    return 'last_player_standing'
+  }
+  if (normalizedReason === 'max_rounds') {
+    return 'max_rounds'
+  }
+  if (normalizedReason === 'disconnect_timeout') {
+    return 'disconnect_timeout'
+  }
+  if (normalizedReason === 'round_limit') {
+    return 'round_limit'
+  }
+  if (normalizedReason === 'bankrupt') {
+    return 'bankrupt'
+  }
+
+  return 'max_rounds'
+}
+
+const normalizeGameRanking = (
+  rankingPayload: unknown,
+  fallbackRank: number
+): GameRanking | null => {
+  if (!isRecord(rankingPayload)) {
+    return null
+  }
+
+  const playerId = toPlayerIdOrNull(
+    rankingPayload.player_id ??
+      rankingPayload.playerId ??
+      rankingPayload.id ??
+      rankingPayload.userId
+  )
+  if (playerId == null) {
+    return null
+  }
+
+  const nickname =
+    toStringOrNull(rankingPayload.nickname) ??
+    toStringOrNull(rankingPayload.name) ??
+    `Player ${String(playerId)}`
+
+  const finalAssetsRaw =
+    rankingPayload.final_assets ??
+    rankingPayload.finalAssets ??
+    rankingPayload.assets
+
+  return {
+    rank: Math.max(
+      1,
+      toFiniteInt(rankingPayload.rank ?? rankingPayload.order, fallbackRank)
+    ),
+    player_id: playerId,
+    nickname,
+    final_assets: normalizeMoneyToWon(finalAssetsRaw, 0),
+    is_winner: Boolean(
+      rankingPayload.is_winner ??
+      rankingPayload.isWinner ??
+      rankingPayload.winner
+    ),
+  }
+}
+
+const normalizeGameResultWinner = (
+  winnerPayload: unknown
+): NonNullable<GameResult['winner']> => {
+  if (!isRecord(winnerPayload)) {
+    return null
+  }
+
+  const playerId = toPlayerIdOrNull(
+    winnerPayload.playerId ??
+      winnerPayload.player_id ??
+      winnerPayload.id ??
+      winnerPayload.userId
+  )
+  if (playerId == null) {
+    return null
+  }
+
+  const nickname =
+    toStringOrNull(winnerPayload.nickname) ??
+    toStringOrNull(winnerPayload.name) ??
+    `Player ${String(playerId)}`
+
+  return {
+    playerId,
+    nickname,
+    balance: normalizeMoneyToWon(
+      winnerPayload.balance ?? winnerPayload.money,
+      0
+    ),
+    assets: normalizeMoneyToWon(
+      winnerPayload.assets ??
+        winnerPayload.final_assets ??
+        winnerPayload.finalAssets,
+      0
+    ),
+  }
+}
+
+const normalizeGameResultPayload = (
+  gameResultPayload: unknown
+): GameSnapshot['gameResult'] | null => {
+  if (!isRecord(gameResultPayload)) {
+    return null
+  }
+
+  const rankingsRaw = Array.isArray(gameResultPayload.rankings)
+    ? gameResultPayload.rankings
+    : Array.isArray(gameResultPayload.results)
+      ? gameResultPayload.results
+      : []
+
+  const rankings = rankingsRaw
+    .map((ranking, index) => normalizeGameRanking(ranking, index + 1))
+    .filter((ranking): ranking is GameRanking => ranking !== null)
+
+  const winnerFromPayload = normalizeGameResultWinner(gameResultPayload.winner)
+  const winnerFromRankings =
+    rankings.find((ranking) => ranking.is_winner) ??
+    (rankings.length > 0 ? rankings[0] : null)
+  const normalizedWinner =
+    winnerFromPayload ??
+    (winnerFromRankings
+      ? {
+          playerId: winnerFromRankings.player_id,
+          nickname: winnerFromRankings.nickname,
+          balance: 0,
+          assets: winnerFromRankings.final_assets,
+        }
+      : null)
+
+  return {
+    reason: normalizeGameResultReason(
+      gameResultPayload.reason ?? gameResultPayload.endReason
+    ),
+    rankings: rankings.length > 0 ? rankings : undefined,
+    winner: normalizedWinner,
+  }
+}
+
+const resolveWinnerIdFromGameResult = (
+  gameResult: GameSnapshot['gameResult'] | null
+): PlayerId | null => {
+  if (!gameResult) {
+    return null
+  }
+
+  if (gameResult.winner?.playerId != null) {
+    return toPlayerIdOrNull(gameResult.winner.playerId)
+  }
+
+  const winnerRanking = gameResult.rankings?.find(
+    (ranking) => ranking.is_winner
+  )
+  if (winnerRanking?.player_id != null) {
+    return toPlayerIdOrNull(winnerRanking.player_id)
+  }
+
+  const firstRanking = gameResult.rankings?.[0]
+  if (firstRanking?.player_id != null) {
+    return toPlayerIdOrNull(firstRanking.player_id)
+  }
+
+  return null
+}
+
 export const normalizeSnapshotPayload = (
   snapshotPayload: unknown,
   options: SnapshotNormalizeOptions
@@ -584,15 +760,12 @@ export const normalizeSnapshotPayload = (
   )
   const normalizedPhase = normalizePhase(snapshotPayload.phase)
   const roundFromTurn = toFiniteInt(snapshotPayload.turn, 1)
-  const normalizedGameResult = (
-    snapshotPayload.gameResult && isRecord(snapshotPayload.gameResult)
-      ? snapshotPayload.gameResult
-      : snapshotPayload.game_result && isRecord(snapshotPayload.game_result)
-        ? snapshotPayload.game_result
-        : null
-  ) as GameSnapshot['gameResult'] | null
+  const normalizedGameResult = normalizeGameResultPayload(
+    snapshotPayload.gameResult ?? snapshotPayload.game_result
+  )
   const normalizedWinnerId =
     toPlayerIdOrNull(snapshotPayload.winnerId ?? snapshotPayload.winner_id) ??
+    resolveWinnerIdFromGameResult(normalizedGameResult) ??
     null
   const normalizedIsGameOver =
     Boolean(snapshotPayload.isGameOver ?? snapshotPayload.is_game_over) ||
@@ -708,7 +881,7 @@ const normalizePatchSetValue = (
   }
 
   if (pathSegments.length === 1 && firstSegment === 'gameResult') {
-    return isRecord(value) ? (value as GameSnapshot['gameResult']) : null
+    return normalizeGameResultPayload(value)
   }
 
   if (pathSegments.length === 1 && firstSegment === 'players') {

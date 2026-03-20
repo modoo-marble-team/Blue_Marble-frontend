@@ -106,8 +106,19 @@ export type GameRanking = {
 }
 
 export type GameResult = {
-  reason: 'bankrupt' | 'round_limit'
-  rankings: GameRanking[]
+  reason:
+    | 'bankrupt'
+    | 'round_limit'
+    | 'last_player_standing'
+    | 'max_rounds'
+    | 'disconnect_timeout'
+  rankings?: GameRanking[]
+  winner?: {
+    playerId: PlayerId
+    nickname: string
+    balance: Money
+    assets: Money
+  } | null
 }
 
 export interface GamePromptChoice {
