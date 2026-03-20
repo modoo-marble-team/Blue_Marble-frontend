@@ -35,7 +35,7 @@ import {
   reconcileGameChatMessages,
   type PendingGameChatEcho,
 } from './game/gameChat'
-import { getGameLeaveErrorMessage, leaveGame } from './game/api'
+import { getGameLeaveErrorMessage, leaveRoomFromGame } from './game/api'
 import { sendWaitingRoomChat } from './waiting-room/socket/socket'
 import type { ChatEventPayload } from './waiting-room/api/types'
 
@@ -307,7 +307,7 @@ const GamePage: React.FC = () => {
       return
     }
 
-    if (!activeGameId) {
+    if (!activeRoomId) {
       resetGame()
       setIsExitModalOpen(false)
       navigate('/lobby', { replace: true })
@@ -317,10 +317,9 @@ const GamePage: React.FC = () => {
     setIsLeavePending(true)
 
     try {
-      await leaveGame({
-        gameId: activeGameId,
+      await leaveRoomFromGame({
+        roomId: activeRoomId,
         userId: currentUserId ?? undefined,
-        nickname: currentNickname,
       })
 
       resetGame()
