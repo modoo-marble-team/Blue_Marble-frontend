@@ -42,14 +42,22 @@ export function WaitingSeatCard({ seat }: WaitingSeatCardProps) {
           ) : null}
         </div>
 
-        <p className="truncate text-center text-[2.25rem] font-extrabold tracking-tight text-ui-text-strong">
-          {seat.nickname}
+        <div className="flex w-full items-center justify-center gap-2">
+          <p
+            title={seat.nickname}
+            className={cn(
+              'block min-w-0 truncate text-center text-[2.25rem] font-extrabold tracking-tight text-ui-text-strong',
+              seat.isMe ? 'max-w-[calc(100%-3.5rem)]' : 'max-w-full'
+            )}
+          >
+            {seat.nickname}
+          </p>
           {seat.isMe ? (
-            <span className="ml-2 rounded-lg bg-ui-surface-soft px-2 py-0.5 text-xl font-semibold text-ui-text-subtle">
+            <span className="shrink-0 rounded-lg bg-ui-surface-soft px-2 py-0.5 text-xl font-semibold text-ui-text-subtle">
               나
             </span>
           ) : null}
-        </p>
+        </div>
       </div>
 
       <div className="mt-auto flex justify-end">
