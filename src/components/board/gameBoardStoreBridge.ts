@@ -3,7 +3,7 @@ import type { BuildingLevel as StoreBuildingLevel } from '../../types/domain'
 import type { PlayerState, TileOwner } from './board.constants'
 
 const toStoreBuildingLevel = (level: number): StoreBuildingLevel =>
-  Math.min(Math.max(level, 0), 7) as StoreBuildingLevel
+  Math.min(Math.max(level, 0), 3) as StoreBuildingLevel
 
 export function syncMockStorePlayers(nextPlayers: PlayerState[]) {
   const { players: storePlayers, setGameState } = useGameStore.getState()

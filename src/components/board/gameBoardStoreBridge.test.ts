@@ -97,7 +97,7 @@ describe('gameBoardStoreBridge', () => {
   it('tile owner 정보를 store tiles로 반영한다', () => {
     const nextTileOwners: Record<number, TileOwner> = {
       1: { ownerId: 0, ownerColor: '#f00', level: 2 },
-      2: { ownerId: 1, ownerColor: '#00f', level: 5 },
+      2: { ownerId: 1, ownerColor: '#00f', level: 3 },
     }
 
     syncMockStoreTileOwners(nextTileOwners)
@@ -112,7 +112,7 @@ describe('gameBoardStoreBridge', () => {
       expect.objectContaining({
         index: 2,
         owner_id: 'p2',
-        building: 5,
+        building: 3,
       }),
     ])
   })

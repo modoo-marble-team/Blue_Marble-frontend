@@ -43,7 +43,6 @@ import {
   BuildingLevel,
   DICE_TIMEOUT,
   type TileData,
-  LEVEL_LABELS,
 } from './board.constants'
 
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
@@ -256,10 +255,10 @@ function toBoardBuildingLevel(
 ) {
   if (!hasOwner) return 0 as BuildingLevel
   if (typeof tile.level === 'number') {
-    return Math.min(Math.max(tile.level, 0), 7) as BuildingLevel
+    return Math.min(Math.max(tile.level, 0), 3) as BuildingLevel
   }
   const buildingLevel = typeof tile.building === 'number' ? tile.building : 0
-  return Math.min(Math.max(buildingLevel, 0), 7) as BuildingLevel
+  return Math.min(Math.max(buildingLevel, 0), 3) as BuildingLevel
 }
 
 function buildTileOwnersFromProps(
@@ -770,14 +769,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       'current_level',
     ])
     const promptCurrentLevel = Math.min(
-      7,
+      3,
       Math.max(
         0,
         promptCurrentLevelFromPayload ??
           (promptTileId != null ? (tileOwners[promptTileId]?.level ?? 0) : 0)
       )
     ) as BuildingLevel
-    const promptNextLevel = Math.min(promptCurrentLevel + 1, 7) as BuildingLevel
+    const promptNextLevel = Math.min(promptCurrentLevel + 1, 3) as BuildingLevel
 
     const promptBuyChoiceValue = resolvePromptChoiceValue(
       activePrompt,
@@ -1784,17 +1783,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       // 서버 프롬프트가 대기 중인 경우 프롬프트 응답으로 처리
       if (
-        activePrompt?.type === 'BUILD' &&
+        activePrompt?.type === 'BUILD_OR_SKIP' &&
         String(tileId) === String(promptTileId)
       ) {
-        onPromptChoice?.('confirm')
+        submitPromptChoice(promptBuildConfirmChoiceValue)
       } else {
-        emitGameAction({
-          type: 'CITY_BUILD',
-          payload: {
-            tileId,
-          },
-        })
+        // 서버 계약 변경: 착지 prompt 기반(BUILD_OR_SKIP)만 허용
+        return
       }
 
       // 건설 후 즉시 매각 모달로 연결 (사용자 요청: 건설하기나 취소 누르면 매각 팝업)
@@ -2155,9 +2150,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
 
             // 🏗️ 건설 목표 레벨에 따른 소리 재생
-            if (buildTargetLevel <= 3) {
+            if (buildTargetLevel <= 1) {
               new Audio('/audio/house-buy.mp3').play().catch(() => {})
-            } else if (buildTargetLevel <= 6) {
+            } else if (buildTargetLevel === 2) {
               new Audio('/audio/hotel-build.mp3').play().catch(() => {})
             } else {
               new Audio('/audio/landmark-build.mp3').play().catch(() => {})
@@ -2271,7 +2266,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={canShowModal && islandModal.open}
           onConfirm={handleIslandConfirm}
         />
-        {/* 수동 건설 모달 (상시 클릭용) */}
         {cityBuildModal.open && cityBuildModal.tileId != null && (
           <BuildModal
             open={true}
@@ -2279,13 +2273,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               TILES[cityBuildModal.tileId]?.name.replace('\n', ' ') || ''
             }
             nextLevel={
-              ((tileOwners[cityBuildModal.tileId]?.level || 0) +
-                1) as BuildingLevel
-            }
-            nextLevelLabel={
-              LEVEL_LABELS[
-                (tileOwners[cityBuildModal.tileId]?.level || 0) + 1
-              ] || ''
+              Math.min(
+                (tileOwners[cityBuildModal.tileId]?.level || 0) + 1,
+                3
+              ) as BuildingLevel
             }
             buildCostText={formatWon(
               getBuildCost(
@@ -2296,14 +2287,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             nextTollText={formatWon(
               getTollCost(
                 TILES[cityBuildModal.tileId]?.price || 0,
-                ((tileOwners[cityBuildModal.tileId]?.level || 0) +
-                  1) as BuildingLevel
+                Math.min(
+                  (tileOwners[cityBuildModal.tileId]?.level || 0) + 1,
+                  3
+                ) as BuildingLevel
               )
             )}
             onConfirm={() => handleCityBuildConfirm(cityBuildModal.tileId!)}
             onCancel={handleCityBuildCancel}
           />
         )}
+        {/* 수동 건설 모달 (상시 클릭용) */}
       </div>
     )
   }

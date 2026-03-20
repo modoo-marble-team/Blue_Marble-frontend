@@ -11,37 +11,25 @@ export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
 
 /**
  * BuildingLevel 규격:
- * 0: '토지',
- * 1: '집 x1',
- * 2: '집 x2',
- * 3: '집 x3',
- * 4: '호텔 x1',
- * 5: '호텔 x2',
- * 6: '호텔 x3',
- * 7: '랜드마크'
+ * 0: 토지만 보유
+ * 1: 주택
+ * 2: 호텔
+ * 3: 랜드마크
  */
-export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+export type BuildingLevel = 0 | 1 | 2 | 3
 
 export const LEVEL_LABELS: Record<number, string> = {
   0: '토지',
-  1: '주택 x1',
-  2: '주택 x2',
-  3: '주택 x3',
-  4: '호텔 x1',
-  5: '호텔 x2',
-  6: '호텔 x3',
-  7: '랜드마크',
+  1: '주택',
+  2: '호텔',
+  3: '랜드마크',
 }
 
 export const LEVEL_MODAL_ICONS: Record<number, string> = {
   0: '/BuyModal-land.svg',
   1: '/BuyModal-house.svg',
-  2: '/BuyModal-house.svg',
-  3: '/BuyModal-house.svg',
-  4: '/BuyModal-hotel.svg',
-  5: '/BuyModal-hotel.svg',
-  6: '/BuyModal-hotel.svg',
-  7: '/BuyModal-landmark.svg',
+  2: '/BuyModal-hotel.svg',
+  3: '/BuyModal-landmark.svg',
 }
 
 export interface TileOwner {
@@ -265,13 +253,9 @@ export function getBuildCost(
   basePrice: number,
   currentLevel: BuildingLevel
 ): number {
-  if (currentLevel === 0) return basePrice * 0.5 // 집 1채
-  if (currentLevel === 1) return basePrice * 0.5 // 집 2채
-  if (currentLevel === 2) return basePrice * 0.5 // 집 3채
-  if (currentLevel === 3) return basePrice * 1.0 // 호텔 1
-  if (currentLevel === 4) return basePrice * 1.0 // 호텔 2
-  if (currentLevel === 5) return basePrice * 1.0 // 호텔 3
-  if (currentLevel === 6) return basePrice * 2.0 // 랜드마크
+  if (currentLevel === 0) return basePrice * 0.5 // 토지 -> 주택
+  if (currentLevel === 1) return basePrice * 1.0 // 주택 -> 호텔
+  if (currentLevel === 2) return basePrice * 2.0 // 호텔 -> 랜드마크
   return 0
 }
 
@@ -279,14 +263,10 @@ export function getTollCost(
   basePrice: number,
   currentLevel: BuildingLevel
 ): number {
-  // 기본 통행료 = basePrice
+  // 기본 통행료 = basePrice (토지)
   if (currentLevel === 0) return basePrice
-  if (currentLevel === 1) return basePrice * 2
-  if (currentLevel === 2) return basePrice * 3
-  if (currentLevel === 3) return basePrice * 5
-  if (currentLevel === 4) return basePrice * 7
-  if (currentLevel === 5) return basePrice * 9
-  if (currentLevel === 6) return basePrice * 12
-  if (currentLevel === 7) return basePrice * 15
+  if (currentLevel === 1) return basePrice * 2 // 주택
+  if (currentLevel === 2) return basePrice * 7 // 호텔
+  if (currentLevel === 3) return basePrice * 15 // 랜드마크
   return basePrice
 }

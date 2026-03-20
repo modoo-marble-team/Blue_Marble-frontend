@@ -487,7 +487,7 @@ describe('gameContractAdapters', () => {
       {
         op: 'set',
         path: 'tiles.1.building',
-        value: 7,
+        value: 3,
       },
       {
         op: 'set',

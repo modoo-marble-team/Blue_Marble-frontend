@@ -35,12 +35,8 @@ const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
 
 const BUILDING_SUFFIX: Partial<Record<number, string>> = {
   1: '-house.svg',
-  2: '-second-house-upgrade.svg',
-  3: '-third-house-upgrade.svg',
-  4: '-hotel.svg',
-  5: '-second-hotel-upgrade.svg',
-  6: '-third-hotel-upgrade.svg',
-  7: '-landmark.svg',
+  2: '-hotel.svg',
+  3: '-landmark.svg',
 }
 
 const BuildingBadge: React.FC<BuildingBadgeProps> = ({
@@ -49,7 +45,7 @@ const BuildingBadge: React.FC<BuildingBadgeProps> = ({
   isUrgent = false,
   showLandAtLevelZero = true,
 }) => {
-  if (level < 0 || level > 7) return null
+  if (level < 0 || level > 3) return null
   if (level === 0 && !showLandAtLevelZero) return null
 
   const rawPathColor = ownerColor || PLAYER_COLORS[0]
