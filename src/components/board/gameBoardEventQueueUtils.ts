@@ -54,6 +54,15 @@ export const resolveBoardEventAnimationKind = (
   return 'none'
 }
 
+export const getPendingMovePlayerIdsFromEvents = (events: ServerEvent[]) =>
+  events
+    .filter(
+      (event) =>
+        toCanonicalEventType(event.type) === 'PLAYER_MOVED' &&
+        event.playerId != null
+    )
+    .map((event) => String(event.playerId))
+
 export const getBoardEventConsumeDelayMs = (event: ServerEvent): number => {
   const kind = resolveBoardEventAnimationKind(event)
   if (kind === 'dice') return 420

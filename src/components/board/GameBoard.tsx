@@ -49,6 +49,7 @@ import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { syncMockStorePlayers } from './gameBoardStoreBridge'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
+  getPendingMovePlayerIdsFromEvents,
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
@@ -343,17 +344,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     useEffect(() => {
       isAnimatingRef.current = isMoving
     }, [isMoving])
-    const pendingMovePlayerIds = useGameStore((state) =>
-      state.eventQueue
-        .filter(
-          (event) =>
-            typeof event.type === 'string' &&
-            ['PLAYER_MOVED', 'PLAYER_MOVE', 'MOVED'].includes(
-              event.type.trim().toUpperCase()
-            ) &&
-            event.playerId != null
-        )
-        .map((event) => String(event.playerId))
+    const eventQueue = useGameStore((state) => state.eventQueue)
+    const pendingMovePlayerIds = useMemo(
+      () => getPendingMovePlayerIdsFromEvents(eventQueue),
+      [eventQueue]
     )
     const pendingMovePlayerIdSet = useMemo(
       () => new Set(pendingMovePlayerIds),
