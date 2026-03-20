@@ -131,7 +131,7 @@ describe('useGameState', () => {
     expect(emitGameSyncTimer).not.toHaveBeenCalled()
   })
 
-  it('소켓 connect 이벤트에서 game sync와 timer sync를 모두 재요청한다', async () => {
+  it('소켓 reconnect 시 기존 local state가 있어도 current revision 기준으로 game sync를 재요청한다', async () => {
     const {
       useGameState,
       socketHandlers,
@@ -143,13 +143,13 @@ describe('useGameState', () => {
       mockEnabled: false,
       socketConnected: false,
       revision: 3,
-      playersLength: 0,
+      playersLength: 2,
     })
 
     renderHook(() => useGameState('game-2'))
 
     expect(connectSocketWithAuthIfNeeded).toHaveBeenCalledTimes(1)
-    expect(emitGameSync).toHaveBeenCalledWith({
+    expect(emitGameSync).toHaveBeenNthCalledWith(1, {
       gameId: 'game-2',
       knownRevision: 0,
     })
@@ -163,6 +163,10 @@ describe('useGameState', () => {
     })
 
     expect(emitGameSync).toHaveBeenCalledTimes(2)
+    expect(emitGameSync).toHaveBeenNthCalledWith(2, {
+      gameId: 'game-2',
+      knownRevision: 3,
+    })
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(2)
   })
 
