@@ -17,6 +17,7 @@ type BootstrapRequestMarker = string | 'refresh-fallback' | null
 export function useAuthBootstrap({
   skip = false,
 }: UseAuthBootstrapParams = {}) {
+  const hasHydrated = useAuthStore((state) => state.hasHydrated)
   const session = useAuthStore((state) => state.session)
   const setSession = useAuthStore((state) => state.setSession)
   const clearSession = useAuthStore((state) => state.clearSession)
@@ -65,6 +66,11 @@ export function useAuthBootstrap({
       return
     }
 
+    if (!hasHydrated && !session) {
+      setIsBootstrapping(true)
+      return
+    }
+
     if (hasBootstrappedRef.current) {
       return
     }
@@ -72,8 +78,8 @@ export function useAuthBootstrap({
     hasBootstrappedRef.current = true
 
     const persistedAccessToken = session?.accessToken.trim() ?? ''
+    activeAccessTokenRef.current = persistedAccessToken
 
-    let isDisposed = false
     setIsBootstrapping(true)
     ;(async () => {
       if (!persistedAccessToken) {
@@ -101,7 +107,6 @@ export function useAuthBootstrap({
       .then((restoredSession) => {
         if (
           !restoredSession ||
-          isDisposed ||
           activeAccessTokenRef.current !== persistedAccessToken
         ) {
           return
@@ -110,10 +115,7 @@ export function useAuthBootstrap({
         setSession(restoredSession)
       })
       .catch((error) => {
-        if (
-          isDisposed ||
-          activeAccessTokenRef.current !== persistedAccessToken
-        ) {
+        if (activeAccessTokenRef.current !== persistedAccessToken) {
           return
         }
 
@@ -123,21 +125,10 @@ export function useAuthBootstrap({
         }
       })
       .finally(() => {
-        if (
-          isDisposed ||
-          activeAccessTokenRef.current !== persistedAccessToken
-        ) {
-          return
-        }
-
         bootstrapAccessTokenRef.current = null
         setIsBootstrapping(false)
       })
-
-    return () => {
-      isDisposed = true
-    }
-  }, [clearSession, session, setSession, skip])
+  }, [clearSession, hasHydrated, session, setSession, skip])
 
   return isBootstrapping
 }

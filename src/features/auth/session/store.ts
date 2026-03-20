@@ -4,6 +4,7 @@ import type { AuthSession } from './types'
 
 // 인증 세션 스토어 상태/액션 타입 정의
 interface AuthStoreState {
+  hasHydrated: boolean
   session: AuthSession | null
   setSession: (session: AuthSession) => void
   clearSession: () => void
@@ -14,6 +15,7 @@ interface AuthStoreState {
 export const useAuthStore = create<AuthStoreState>()(
   persist(
     (set) => ({
+      hasHydrated: false,
       session: null,
       setSession: (session) => set({ session }),
       clearSession: () => set({ session: null }),
@@ -40,3 +42,15 @@ export const useAuthStore = create<AuthStoreState>()(
     }
   )
 )
+
+useAuthStore.setState({
+  hasHydrated: useAuthStore.persist.hasHydrated(),
+})
+
+useAuthStore.persist.onHydrate(() => {
+  useAuthStore.setState({ hasHydrated: false })
+})
+
+useAuthStore.persist.onFinishHydration(() => {
+  useAuthStore.setState({ hasHydrated: true })
+})
