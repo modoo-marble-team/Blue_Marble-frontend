@@ -37,12 +37,12 @@ export const useGameState = (gameId: string | null) => {
       connectSocketWithAuthIfNeeded()
     }
 
-    const syncGameState = () => {
+    const syncGameState = ({ force = false }: { force?: boolean } = {}) => {
       const gameChanged = syncedGameIdRef.current !== gameId
       const { players, revision } = useGameStore.getState()
 
-      // 같은 게임에서 이미 상태를 들고 있으면 초기 동기화를 반복하지 않는다.
-      if (!gameChanged && players.length > 0) return
+      // 초기 진입에서는 같은 게임 상태를 이미 들고 있으면 중복 sync를 생략한다.
+      if (!force && !gameChanged && players.length > 0) return
 
       emitGameSync({
         gameId,
@@ -66,7 +66,8 @@ export const useGameState = (gameId: string | null) => {
     }
 
     const handleSocketConnect = () => {
-      syncGameState()
+      // reconnect에서는 local state 유무와 관계없이 누락 patch 복구를 다시 요청한다.
+      syncGameState({ force: true })
       syncGameTimer()
     }
 
