@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { restoreAuthSession, shouldClearAuthSession } from '../../api/api'
+import {
+  refreshAccessToken,
+  restoreAuthSession,
+  shouldClearAuthSession,
+} from '../../api/api'
 import { useAuthStore } from '../store'
 import { disconnectSocketAndClearAuth } from '../../../../lib/socket'
 
 interface UseAuthBootstrapParams {
   skip?: boolean
 }
+
+type BootstrapRequestMarker = string | 'refresh-fallback' | null
 
 // 앱 초기 진입 시 persisted accessToken으로 세션을 1회 복구
 export function useAuthBootstrap({
@@ -18,7 +24,7 @@ export function useAuthBootstrap({
   const [isBootstrapping, setIsBootstrapping] = useState(!skip)
   const hasBootstrappedRef = useRef(false)
   const activeAccessTokenRef = useRef(session?.accessToken.trim() ?? '')
-  const bootstrapAccessTokenRef = useRef<string | null>(null)
+  const bootstrapAccessTokenRef = useRef<BootstrapRequestMarker>(null)
 
   useEffect(() => {
     const currentAccessToken = session?.accessToken.trim() ?? ''
@@ -29,7 +35,21 @@ export function useAuthBootstrap({
     }
 
     const bootstrapAccessToken = bootstrapAccessTokenRef.current
-    if (!bootstrapAccessToken || bootstrapAccessToken === currentAccessToken) {
+    if (bootstrapAccessToken === null) {
+      return
+    }
+
+    if (bootstrapAccessToken === 'refresh-fallback') {
+      if (!currentAccessToken) {
+        return
+      }
+
+      bootstrapAccessTokenRef.current = null
+      setIsBootstrapping(false)
+      return
+    }
+
+    if (bootstrapAccessToken === currentAccessToken) {
       return
     }
 
@@ -51,30 +71,49 @@ export function useAuthBootstrap({
 
     hasBootstrappedRef.current = true
 
-    const accessToken = session?.accessToken.trim()
-    if (!accessToken) {
-      bootstrapAccessTokenRef.current = null
-      setIsBootstrapping(false)
-      return
-    }
+    const persistedAccessToken = session?.accessToken.trim() ?? ''
 
     let isDisposed = false
-    bootstrapAccessTokenRef.current = accessToken
     setIsBootstrapping(true)
+    ;(async () => {
+      if (!persistedAccessToken) {
+        bootstrapAccessTokenRef.current = 'refresh-fallback'
+        const refreshResult = await refreshAccessToken()
+        const refreshedAccessToken = refreshResult.access_token.trim()
 
-    restoreAuthSession({
-      accessToken,
-      fallbackSession: session,
-    })
+        if (!refreshedAccessToken) {
+          return null
+        }
+
+        return restoreAuthSession({
+          accessToken: refreshedAccessToken,
+          fallbackSession: null,
+        })
+      }
+
+      bootstrapAccessTokenRef.current = persistedAccessToken
+
+      return restoreAuthSession({
+        accessToken: persistedAccessToken,
+        fallbackSession: session,
+      })
+    })()
       .then((restoredSession) => {
-        if (isDisposed || activeAccessTokenRef.current !== accessToken) {
+        if (
+          !restoredSession ||
+          isDisposed ||
+          activeAccessTokenRef.current !== persistedAccessToken
+        ) {
           return
         }
 
         setSession(restoredSession)
       })
       .catch((error) => {
-        if (isDisposed || activeAccessTokenRef.current !== accessToken) {
+        if (
+          isDisposed ||
+          activeAccessTokenRef.current !== persistedAccessToken
+        ) {
           return
         }
 
@@ -84,7 +123,10 @@ export function useAuthBootstrap({
         }
       })
       .finally(() => {
-        if (isDisposed || activeAccessTokenRef.current !== accessToken) {
+        if (
+          isDisposed ||
+          activeAccessTokenRef.current !== persistedAccessToken
+        ) {
           return
         }
 
