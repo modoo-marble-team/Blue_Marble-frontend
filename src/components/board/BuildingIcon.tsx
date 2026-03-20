@@ -33,12 +33,8 @@ const COLOR_TO_THEME: Record<string, { folder: string; prefix: string }> = {
 
 const BUILDING_SUFFIX: Record<number, string> = {
   1: '-house.svg',
-  2: '-second-house-upgrade.svg',
-  3: '-third-house-upgrade.svg',
-  4: '-hotel.svg',
-  5: '-second-hotel-upgrade.svg',
-  6: '-third-hotel-upgrade.svg',
-  7: '-landmark.svg',
+  2: '-hotel.svg',
+  3: '-landmark.svg',
 }
 
 const BuildingIcon: React.FC<BuildingIconProps> = ({
@@ -46,7 +42,7 @@ const BuildingIcon: React.FC<BuildingIconProps> = ({
   ownerColor,
   isUrgent = false,
 }) => {
-  if (!level || level < 1 || level > 7) return null
+  if (!level || level < 1 || level > 3) return null
 
   const rawPathColor = ownerColor || PLAYER_COLORS[0]
   const normalizedColor = rawPathColor.trim().toUpperCase()

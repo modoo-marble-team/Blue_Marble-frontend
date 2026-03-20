@@ -3,7 +3,7 @@ export type GameId = string
 export type PlayerId = number | string
 export type Money = number
 
-export type BuildingLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+export type BuildingLevel = 0 | 1 | 2 | 3
 
 export type TileType =
   | 'start'

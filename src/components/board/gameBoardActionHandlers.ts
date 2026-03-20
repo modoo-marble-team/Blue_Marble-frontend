@@ -248,9 +248,9 @@ export function createGameBoardActionHandlers(
 
       // 🏗️ 건설 목표 레벨에 따른 소리 재생
       const targetLevel = owner ? owner.level + 1 : 1
-      if (targetLevel <= 3) {
+      if (targetLevel <= 1) {
         new Audio('/audio/house-buy.mp3').play().catch(() => {})
-      } else if (targetLevel === 4) {
+      } else if (targetLevel === 2) {
         new Audio('/audio/hotel-build.mp3').play().catch(() => {})
       } else {
         new Audio('/audio/landmark-build.mp3').play().catch(() => {})

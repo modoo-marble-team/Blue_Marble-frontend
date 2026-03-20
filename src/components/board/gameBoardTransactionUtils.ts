@@ -45,7 +45,7 @@ export function upgradeBoardTileOwner(
     ...tileOwners,
     [tileId]: {
       ...existing,
-      level: Math.min(existing.level + 1, 7) as BuildingLevel,
+      level: Math.min(existing.level + 1, 3) as BuildingLevel,
     },
   }
 }

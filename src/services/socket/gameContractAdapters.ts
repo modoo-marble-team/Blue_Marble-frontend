@@ -501,7 +501,7 @@ const normalizePlayerFromSnapshot = (
 
 const clampBuildingLevel = (value: unknown): Tile['building'] => {
   const level = toFiniteInt(value, 0)
-  const clamped = Math.min(Math.max(level, 0), 7)
+  const clamped = Math.min(Math.max(level, 0), 3)
   return clamped as Tile['building']
 }
 
