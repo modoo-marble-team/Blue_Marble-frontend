@@ -23,7 +23,7 @@ const {
   socketOffMock,
   navigateMock,
   toastErrorMock,
-  leaveGameMock,
+  leaveRoomFromGameMock,
   getGameLeaveErrorMessageMock,
 } = vi.hoisted(() => {
   const handlers = new Map<string, Set<(payload: unknown) => void>>()
@@ -47,7 +47,7 @@ const {
     },
     navigateMock: vi.fn(),
     toastErrorMock: vi.fn(),
-    leaveGameMock: vi.fn(),
+    leaveRoomFromGameMock: vi.fn(),
     getGameLeaveErrorMessageMock: vi.fn(),
   }
 })
@@ -99,7 +99,7 @@ vi.mock('../lib/bgm', () => ({
 }))
 
 vi.mock('../pages/game/api', () => ({
-  leaveGame: leaveGameMock,
+  leaveRoomFromGame: leaveRoomFromGameMock,
   getGameLeaveErrorMessage: getGameLeaveErrorMessageMock,
 }))
 
@@ -261,10 +261,9 @@ describe('GamePage chat flow', () => {
   it('게임 나가기 성공 시 leave API 호출 후 로비로 이동하고 game store를 초기화한다', async () => {
     const user = userEvent.setup()
 
-    leaveGameMock.mockResolvedValue({
+    leaveRoomFromGameMock.mockResolvedValue({
       success: true,
-      roomId: 'room-1',
-      resumeTarget: 'lobby',
+      newHostId: null,
     })
 
     renderGamePage()
@@ -273,10 +272,9 @@ describe('GamePage chat flow', () => {
     await user.click(screen.getByRole('button', { name: '종료' }))
 
     await waitFor(() => {
-      expect(leaveGameMock).toHaveBeenCalledWith({
-        gameId: 'game-1',
+      expect(leaveRoomFromGameMock).toHaveBeenCalledWith({
+        roomId: 'room-1',
         userId: 'user-1',
-        nickname: '유저1',
       })
     })
 
@@ -293,7 +291,7 @@ describe('GamePage chat flow', () => {
   it('게임 나가기 실패 시 토스트를 띄우고 현재 화면을 유지한다', async () => {
     const user = userEvent.setup()
 
-    leaveGameMock.mockRejectedValue(new Error('leave failed'))
+    leaveRoomFromGameMock.mockRejectedValue(new Error('leave failed'))
     getGameLeaveErrorMessageMock.mockReturnValue('게임 나가기에 실패했습니다.')
 
     renderGamePage()

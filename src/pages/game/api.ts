@@ -1,55 +1,52 @@
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { getParsedApiErrorMessage, parseApiError } from '../../lib/apiError'
 import { apiClient } from '../../lib/axios'
-import { setMockOnlineUserStatus } from '../../features/presence/mock/mockData'
+import { mockLeaveWaitingRoom } from '../waiting-room/socket/mockGateway'
 
-type LeaveGameResumeTarget = 'lobby' | 'room' | 'game'
-
-interface LeaveGameResponsePayload {
+interface LeaveRoomResponsePayload {
   success: boolean
-  room_id?: string | null
-  resume_target?: LeaveGameResumeTarget | null
+  new_host_id?: string | null
 }
 
-interface LeaveGameParams {
-  gameId: string
+interface LeaveRoomFromGameParams {
+  roomId: string
   userId?: string
-  nickname?: string
 }
 
-export interface LeaveGameResult {
+export interface LeaveRoomFromGameResult {
   success: boolean
-  roomId: string | null
-  resumeTarget: LeaveGameResumeTarget
+  newHostId: string | null
 }
 
 const USE_GAME_API_MOCK = IS_SOCKET_MOCK_ENABLED
 
-export async function leaveGame({
-  gameId,
+export async function leaveRoomFromGame({
+  roomId,
   userId,
-  nickname,
-}: LeaveGameParams): Promise<LeaveGameResult> {
+}: LeaveRoomFromGameParams): Promise<LeaveRoomFromGameResult> {
   if (USE_GAME_API_MOCK) {
-    if (userId) {
-      setMockOnlineUserStatus(String(userId), 'lobby', nickname)
+    if (!userId) {
+      throw new Error('게임 room leave mock 경로에는 userId가 필요합니다.')
     }
 
+    const result = await mockLeaveWaitingRoom({
+      roomId,
+      userId,
+    })
+
     return {
-      success: true,
-      roomId: null,
-      resumeTarget: 'lobby',
+      success: result.success,
+      newHostId: result.newHostId ?? null,
     }
   }
 
-  const { data } = await apiClient.post<LeaveGameResponsePayload>(
-    `/games/${gameId}/leave`
+  const { data } = await apiClient.post<LeaveRoomResponsePayload>(
+    `/rooms/${roomId}/leave`
   )
 
   return {
     success: data.success,
-    roomId: data.room_id ?? null,
-    resumeTarget: data.resume_target ?? 'lobby',
+    newHostId: data.new_host_id ?? null,
   }
 }
 

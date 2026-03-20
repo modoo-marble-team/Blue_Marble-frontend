@@ -3,8 +3,8 @@
 ## Implementation
 
 - [x] 관련 manual과 기존 문서를 읽었다
-- [x] leave API 계약과 현재 GamePage 흐름을 정리했다
-- [x] game leave API helper를 추가했다
+- [x] room leave API 계약과 현재 GamePage 흐름을 정리했다
+- [x] game 페이지용 room leave API helper를 추가했다
 - [x] GamePage exit confirm을 async leave 흐름으로 변경했다
 - [x] ExitGameModal pending 상태를 추가했다
 - [x] 관련 테스트를 추가/갱신했다

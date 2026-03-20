@@ -3,7 +3,7 @@ import axios from 'axios'
 
 async function loadGameApiModule(options?: { mockEnabled?: boolean }) {
   const postMock = vi.fn()
-  const setMockOnlineUserStatusMock = vi.fn()
+  const mockLeaveWaitingRoomMock = vi.fn()
 
   vi.resetModules()
 
@@ -15,8 +15,8 @@ async function loadGameApiModule(options?: { mockEnabled?: boolean }) {
       post: postMock,
     },
   }))
-  vi.doMock('../../features/presence/mock/mockData', () => ({
-    setMockOnlineUserStatus: setMockOnlineUserStatusMock,
+  vi.doMock('../waiting-room/socket/mockGateway', () => ({
+    mockLeaveWaitingRoom: mockLeaveWaitingRoomMock,
   }))
 
   const module = await import('./api')
@@ -24,7 +24,7 @@ async function loadGameApiModule(options?: { mockEnabled?: boolean }) {
   return {
     module,
     postMock,
-    setMockOnlineUserStatusMock,
+    mockLeaveWaitingRoomMock,
   }
 }
 
@@ -34,47 +34,47 @@ describe('game api', () => {
     vi.resetModules()
   })
 
-  it('leaveGame은 실서버 모드에서 games leave endpoint를 호출한다', async () => {
+  it('leaveRoomFromGame은 실서버 모드에서 rooms leave endpoint를 호출한다', async () => {
     const { module, postMock } = await loadGameApiModule()
 
     postMock.mockResolvedValue({
       data: {
         success: true,
-        room_id: 'room-1',
-        resume_target: 'lobby',
+        new_host_id: 'host-2',
       },
     })
 
-    const result = await module.leaveGame({ gameId: 'game-1' })
+    const result = await module.leaveRoomFromGame({ roomId: 'room-1' })
 
-    expect(postMock).toHaveBeenCalledWith('/games/game-1/leave')
+    expect(postMock).toHaveBeenCalledWith('/rooms/room-1/leave')
     expect(result).toEqual({
       success: true,
-      roomId: 'room-1',
-      resumeTarget: 'lobby',
+      newHostId: 'host-2',
     })
   })
 
-  it('leaveGame은 mock 모드에서 접속 상태를 lobby로 바꾸고 성공 결과를 반환한다', async () => {
-    const { module, postMock, setMockOnlineUserStatusMock } =
+  it('leaveRoomFromGame은 mock 모드에서 waiting-room leave gateway를 재사용한다', async () => {
+    const { module, postMock, mockLeaveWaitingRoomMock } =
       await loadGameApiModule({ mockEnabled: true })
 
-    const result = await module.leaveGame({
-      gameId: 'game-1',
+    mockLeaveWaitingRoomMock.mockResolvedValue({
+      success: true,
+      newHostId: 'host-2',
+    })
+
+    const result = await module.leaveRoomFromGame({
+      roomId: 'room-1',
       userId: 'user-1',
-      nickname: '유저1',
     })
 
     expect(postMock).not.toHaveBeenCalled()
-    expect(setMockOnlineUserStatusMock).toHaveBeenCalledWith(
-      'user-1',
-      'lobby',
-      '유저1'
-    )
+    expect(mockLeaveWaitingRoomMock).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      userId: 'user-1',
+    })
     expect(result).toEqual({
       success: true,
-      roomId: null,
-      resumeTarget: 'lobby',
+      newHostId: 'host-2',
     })
   })
 
