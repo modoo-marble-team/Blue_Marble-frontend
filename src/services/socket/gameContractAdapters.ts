@@ -631,7 +631,7 @@ const normalizeGameRanking = (
 
 const normalizeGameResultWinner = (
   winnerPayload: unknown
-): NonNullable<GameResult['winner']> => {
+): GameResult['winner'] => {
   if (!isRecord(winnerPayload)) {
     return null
   }
