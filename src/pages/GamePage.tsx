@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { useLocation, useParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
 import RollButton from '../components/game/controls/RollButton'
 import ExitGameModal from '../components/game/modals/ExitGameModal'
@@ -34,6 +35,7 @@ import {
   reconcileGameChatMessages,
   type PendingGameChatEcho,
 } from './game/gameChat'
+import { getGameLeaveErrorMessage, leaveGame } from './game/api'
 import { sendWaitingRoomChat } from './waiting-room/socket/socket'
 import type { ChatEventPayload } from './waiting-room/api/types'
 
@@ -64,6 +66,7 @@ const GamePage: React.FC = () => {
   const { gameId: routeGameId } = useParams<{ gameId: string }>()
   const location = useLocation()
   const locationState = location.state as GamePageLocationState | null
+  const navigate = useNavigate()
   const authSession = useAuthStore((state) => state.session)
   const currentPlayerId = useGameStore((s) => s.currentPlayerId)
   const currentTurn = useGameStore((s) => s.currentTurn)
@@ -82,6 +85,7 @@ const GamePage: React.FC = () => {
   const storeGameId = useGameStore((s) => s.gameId)
   const clearPrompt = useGameStore((s) => s.clearPrompt)
   const setLastError = useGameStore((s) => s.setLastError)
+  const resetGame = useGameStore((s) => s.resetGame)
   const activeGameId =
     locationState?.gameId ??
     routeGameId ??
@@ -93,6 +97,7 @@ const GamePage: React.FC = () => {
     string | null
   >(null)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
+  const [isLeavePending, setIsLeavePending] = useState(false)
   const boardRef = useRef<BoardGameHandle>(null)
   const pendingGameChatEchoesRef = useRef<PendingGameChatEcho[]>([])
 
@@ -297,6 +302,39 @@ const GamePage: React.FC = () => {
   const dismissLastError = () => {
     setLastError(null)
   }
+  const handleExitConfirm = async () => {
+    if (isLeavePending) {
+      return
+    }
+
+    if (!activeGameId) {
+      resetGame()
+      setIsExitModalOpen(false)
+      navigate('/lobby', { replace: true })
+      return
+    }
+
+    setIsLeavePending(true)
+
+    try {
+      await leaveGame({
+        gameId: activeGameId,
+        userId: currentUserId ?? undefined,
+        nickname: currentNickname,
+      })
+
+      resetGame()
+      setIsExitModalOpen(false)
+      navigate('/lobby', { replace: true })
+    } catch (error) {
+      toast.error(
+        getGameLeaveErrorMessage(error, '게임 나가기에 실패했습니다.')
+      )
+    } finally {
+      setIsLeavePending(false)
+    }
+  }
+
   const handleRollClick = () => {
     if (
       !isMyTurn ||
@@ -545,11 +583,9 @@ const GamePage: React.FC = () => {
 
       <ExitGameModal
         open={isExitModalOpen}
+        isSubmitting={isLeavePending}
         onCancel={() => setIsExitModalOpen(false)}
-        onConfirm={() => {
-          setIsExitModalOpen(false)
-          window.location.href = '/lobby'
-        }}
+        onConfirm={handleExitConfirm}
       />
 
       <DevRoomChatControlPanel

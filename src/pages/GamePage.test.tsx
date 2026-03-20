@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { act, screen } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GamePage from './GamePage'
@@ -16,29 +16,57 @@ vi.mock('../config/env', () => ({
   SHOULD_ENABLE_MSW: true,
 }))
 
-const { sendWaitingRoomChatMock, emitChatEvent, socketOnMock, socketOffMock } =
-  vi.hoisted(() => {
-    const handlers = new Map<string, Set<(payload: unknown) => void>>()
+const {
+  sendWaitingRoomChatMock,
+  emitChatEvent,
+  socketOnMock,
+  socketOffMock,
+  navigateMock,
+  toastErrorMock,
+  leaveGameMock,
+  getGameLeaveErrorMessageMock,
+} = vi.hoisted(() => {
+  const handlers = new Map<string, Set<(payload: unknown) => void>>()
 
-    return {
-      sendWaitingRoomChatMock: vi.fn(),
-      socketOnMock: vi.fn(
-        (event: string, handler: (payload: unknown) => void) => {
-          const nextHandlers = handlers.get(event) ?? new Set()
-          nextHandlers.add(handler)
-          handlers.set(event, nextHandlers)
-        }
-      ),
-      socketOffMock: vi.fn(
-        (event: string, handler: (payload: unknown) => void) => {
-          handlers.get(event)?.delete(handler)
-        }
-      ),
-      emitChatEvent: (payload: unknown) => {
-        handlers.get('chat')?.forEach((handler) => handler(payload))
-      },
-    }
-  })
+  return {
+    sendWaitingRoomChatMock: vi.fn(),
+    socketOnMock: vi.fn(
+      (event: string, handler: (payload: unknown) => void) => {
+        const nextHandlers = handlers.get(event) ?? new Set()
+        nextHandlers.add(handler)
+        handlers.set(event, nextHandlers)
+      }
+    ),
+    socketOffMock: vi.fn(
+      (event: string, handler: (payload: unknown) => void) => {
+        handlers.get(event)?.delete(handler)
+      }
+    ),
+    emitChatEvent: (payload: unknown) => {
+      handlers.get('chat')?.forEach((handler) => handler(payload))
+    },
+    navigateMock: vi.fn(),
+    toastErrorMock: vi.fn(),
+    leaveGameMock: vi.fn(),
+    getGameLeaveErrorMessageMock: vi.fn(),
+  }
+})
+
+vi.mock('react-hot-toast', () => ({
+  default: {
+    error: toastErrorMock,
+  },
+}))
+
+vi.mock('react-router-dom', async () => {
+  const actual =
+    await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  }
+})
 
 vi.mock('../lib/socket', () => ({
   socket: {
@@ -70,8 +98,14 @@ vi.mock('../lib/bgm', () => ({
   stopBgm: vi.fn(),
 }))
 
+vi.mock('../pages/game/api', () => ({
+  leaveGame: leaveGameMock,
+  getGameLeaveErrorMessage: getGameLeaveErrorMessageMock,
+}))
+
 vi.mock('../services/socket/game.handler', () => ({
   emitPromptResponse: vi.fn(),
+  emitGameAction: vi.fn(),
 }))
 
 vi.mock('../components/board/GameBoard', () => ({
@@ -89,7 +123,27 @@ vi.mock('../components/game/controls/RollButton', () => ({
 }))
 
 vi.mock('../components/game/modals/ExitGameModal', () => ({
-  default: () => null,
+  default: ({
+    open,
+    isSubmitting,
+    onCancel,
+    onConfirm,
+  }: {
+    open: boolean
+    isSubmitting?: boolean
+    onCancel?: () => void
+    onConfirm?: () => void
+  }) =>
+    open ? (
+      <div role="dialog" aria-label="게임 종료">
+        <button type="button" onClick={onCancel} disabled={isSubmitting}>
+          취소
+        </button>
+        <button type="button" onClick={onConfirm} disabled={isSubmitting}>
+          {isSubmitting ? '종료 중...' : '종료'}
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../components/game/modals/promptModalMapping', () => ({
@@ -202,5 +256,59 @@ describe('GamePage chat flow', () => {
     })
 
     expect(screen.getAllByText('ㅎㅇㅎㅇ')).toHaveLength(1)
+  })
+
+  it('게임 나가기 성공 시 leave API 호출 후 로비로 이동하고 game store를 초기화한다', async () => {
+    const user = userEvent.setup()
+
+    leaveGameMock.mockResolvedValue({
+      success: true,
+      roomId: 'room-1',
+      resumeTarget: 'lobby',
+    })
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '나가기' }))
+    await user.click(screen.getByRole('button', { name: '종료' }))
+
+    await waitFor(() => {
+      expect(leaveGameMock).toHaveBeenCalledWith({
+        gameId: 'game-1',
+        userId: 'user-1',
+        nickname: '유저1',
+      })
+    })
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/lobby', { replace: true })
+    })
+
+    expect(useGameStore.getState().players).toHaveLength(0)
+    expect(
+      screen.queryByRole('dialog', { name: '게임 종료' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('게임 나가기 실패 시 토스트를 띄우고 현재 화면을 유지한다', async () => {
+    const user = userEvent.setup()
+
+    leaveGameMock.mockRejectedValue(new Error('leave failed'))
+    getGameLeaveErrorMessageMock.mockReturnValue('게임 나가기에 실패했습니다.')
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '나가기' }))
+    await user.click(screen.getByRole('button', { name: '종료' }))
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith('게임 나가기에 실패했습니다.')
+    })
+
+    expect(navigateMock).not.toHaveBeenCalled()
+    expect(useGameStore.getState().players).toHaveLength(2)
+    expect(
+      screen.getByRole('dialog', { name: '게임 종료' })
+    ).toBeInTheDocument()
   })
 })
