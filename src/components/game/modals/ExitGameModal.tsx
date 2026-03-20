@@ -2,18 +2,24 @@ import { useEffect, Fragment } from 'react'
 
 interface ExitGameModalProps {
   open: boolean
+  isSubmitting?: boolean
   onCancel?: () => void
   onConfirm?: () => void
 }
 
-const ExitGameModal = ({ open, onCancel, onConfirm }: ExitGameModalProps) => {
+const ExitGameModal = ({
+  open,
+  isSubmitting = false,
+  onCancel,
+  onConfirm,
+}: ExitGameModalProps) => {
   useEffect(() => {
     if (!open) {
       return
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && !isSubmitting) {
         onCancel?.()
       }
     }
@@ -22,7 +28,7 @@ const ExitGameModal = ({ open, onCancel, onConfirm }: ExitGameModalProps) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [open, onCancel])
+  }, [isSubmitting, open, onCancel])
 
   if (!open) {
     return null
@@ -57,17 +63,19 @@ const ExitGameModal = ({ open, onCancel, onConfirm }: ExitGameModalProps) => {
           <div className="mt-10 flex items-center justify-center gap-4">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onCancel}
-              className="h-14 min-w-40 rounded-[20px] bg-[#E9EEF5] px-8 text-[24px] font-black tracking-tight text-[#64748B] transition-colors hover:bg-[#DCE3ED]"
+              className="h-14 min-w-40 rounded-[20px] bg-[#E9EEF5] px-8 text-[24px] font-black tracking-tight text-[#64748B] transition-colors hover:bg-[#DCE3ED] disabled:cursor-not-allowed disabled:opacity-60"
             >
               취소
             </button>
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onConfirm}
-              className="h-14 min-w-40 rounded-[20px] bg-[#E10606] px-8 text-[24px] font-black tracking-tight text-white shadow-[0_10px_24px_rgba(225,6,6,0.35)] transition-colors hover:bg-[#C80505]"
+              className="h-14 min-w-40 rounded-[20px] bg-[#E10606] px-8 text-[24px] font-black tracking-tight text-white shadow-[0_10px_24px_rgba(225,6,6,0.35)] transition-colors hover:bg-[#C80505] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              종료
+              {isSubmitting ? '종료 중...' : '종료'}
             </button>
           </div>
         </div>
