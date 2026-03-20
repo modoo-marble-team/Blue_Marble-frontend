@@ -35,10 +35,9 @@ export const PlayerToken = React.memo<TokenProps>(
           opacity: 1,
         }}
         transition={{
-          type: 'spring',
-          stiffness: 300,
-          damping: 30,
-          mass: 0.8,
+          type: 'tween',
+          duration: 0.2,
+          ease: 'linear',
         }}
         style={{
           ...style,
