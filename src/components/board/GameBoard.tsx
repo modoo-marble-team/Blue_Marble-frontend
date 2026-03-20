@@ -1705,18 +1705,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const activePlayerId = players[curPlayer]?.id ?? null
     const isAssetActionPhase =
       gamePhase === 'rolling' || gamePhase === 'resolving'
+    const isLocalPlayersTurn =
+      localPlayerId != null &&
+      activePlayerId != null &&
+      String(activePlayerId) === String(localPlayerId)
+    const canManageOwnAssets =
+      isLocalPlayersTurn && allowAssetActions && isAssetActionPhase
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
     const isOwnedTileSellClickable = (tileId: number) => {
-      if (
-        travelSelection.active ||
-        hasBlockingModal ||
-        !allowAssetActions ||
-        !isAssetActionPhase
-      ) {
+      if (travelSelection.active || hasBlockingModal || !canManageOwnAssets) {
         return false
       }
-      if (activePlayerId == null) {
+      if (localPlayerId == null) {
         return false
       }
 
@@ -1725,12 +1726,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return false
       }
 
-      // ⚠️ 실서버 모드에서는 내 땅만 매각 가능해야 함 (다른 사람 턴이어도 내 땅만)
-      if (localPlayerId != null) {
-        return String(owner.ownerId) === String(localPlayerId)
-      }
-
-      return String(owner.ownerId) === String(activePlayerId)
+      return String(owner.ownerId) === String(localPlayerId)
     }
     const handleBoardTileClick = (tileId: number) => {
       if (isGameOver) return
@@ -1745,11 +1741,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      // ⚠️ 최신 정보 보장을 위해 프롭스 또는 추론된 로컬 ID 사용
-      const effectiveLocalPlayerId = localPlayerId ?? players[curPlayer]?.id
-      const isMyTurn =
-        String(players[curPlayer]?.id) === String(effectiveLocalPlayerId)
-      if (!allowAssetActions || !isAssetActionPhase || !isMyTurn) {
+      if (!canManageOwnAssets) {
         return
       }
 
@@ -1757,23 +1749,21 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const owner = tileOwners[tileId]
       const isOwner =
         owner &&
-        effectiveLocalPlayerId != null &&
-        String(owner.ownerId) === String(effectiveLocalPlayerId)
+        localPlayerId != null &&
+        String(owner.ownerId) === String(localPlayerId)
 
       if (isOwner) {
-        if (isMyTurn) {
-          // 본인 턴이고 본인 땅이면 무조건 업그레이드 모달부터 시작 (체이닝의 출발점)
-          setCityBuildModal({ open: true, tileId })
-          return
-        } else {
-          // 본인 턴이 아니면 즉각 매각 모달
-          handleTileSellClick(tileId)
-          return
-        }
+        // 본인 턴이고 본인 땅이면 매각 모달만 바로 오픈
+        handleTileSellClick(tileId)
+        return
       }
     }
 
     const handleTileSellClick = (tileId: number) => {
+      if (!canManageOwnAssets) {
+        return
+      }
+
       const owner = tileOwners[tileId]
       const ownerPlayer = players.find(
         (p) => String(p.id) === String(owner?.ownerId)
