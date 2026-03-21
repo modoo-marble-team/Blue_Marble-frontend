@@ -309,4 +309,62 @@ describe('GamePage chat flow', () => {
       screen.getByRole('dialog', { name: '게임 종료' })
     ).toBeInTheDocument()
   })
+
+  it('플레이어 목록이 비어 있어도 종료 상태면 로딩 화면 대신 게임 화면을 유지한다', () => {
+    useGameStore.getState().setGameState({
+      players: [],
+      phase: 'finished',
+      isGameOver: true,
+      gameResult: {
+        reason: 'max_rounds',
+        winner: {
+          playerId: 'user-1',
+          nickname: '유저1',
+          balance: 1000,
+          assets: 1200,
+        },
+      },
+    })
+
+    renderGamePage()
+
+    expect(screen.queryByText('게임 로딩 중...')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-board-game')).toBeInTheDocument()
+  })
+
+  it('플레이어 목록이 비어 있고 gameResult만 있어도 로딩 화면으로 가지 않는다', () => {
+    useGameStore.getState().setGameState({
+      players: [],
+      phase: 'resolving',
+      isGameOver: false,
+      gameResult: {
+        reason: 'disconnect_timeout',
+        winner: {
+          playerId: 'user-2',
+          nickname: '유저2',
+          balance: 2000,
+          assets: 2400,
+        },
+      },
+    })
+
+    renderGamePage()
+
+    expect(screen.queryByText('게임 로딩 중...')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-board-game')).toBeInTheDocument()
+  })
+
+  it('플레이어 목록이 비어 있고 종료 상태가 아니면 기존처럼 로딩 화면을 표시한다', () => {
+    useGameStore.getState().setGameState({
+      players: [],
+      phase: 'rolling',
+      isGameOver: false,
+      gameResult: null,
+    })
+
+    renderGamePage()
+
+    expect(screen.getByText('게임 로딩 중...')).toBeInTheDocument()
+    expect(screen.queryByTestId('mock-board-game')).not.toBeInTheDocument()
+  })
 })
