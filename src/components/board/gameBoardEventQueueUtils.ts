@@ -63,6 +63,31 @@ export const getPendingMovePlayerIdsFromEvents = (events: ServerEvent[]) =>
     )
     .map((event) => String(event.playerId))
 
+export const shouldDelayPromptModalByMovement = ({
+  promptPlayerId,
+  pendingMovePlayerIdSet,
+  animatedPositions,
+  isMoving,
+}: {
+  promptPlayerId: string | null
+  pendingMovePlayerIdSet: ReadonlySet<string>
+  animatedPositions: Record<string, number>
+  isMoving: boolean
+}) => {
+  if (isMoving) {
+    return true
+  }
+
+  if (promptPlayerId == null) {
+    return pendingMovePlayerIdSet.size > 0
+  }
+
+  return (
+    pendingMovePlayerIdSet.has(promptPlayerId) ||
+    animatedPositions[promptPlayerId] != null
+  )
+}
+
 export const getBoardEventConsumeDelayMs = (event: ServerEvent): number => {
   const kind = resolveBoardEventAnimationKind(event)
   if (kind === 'dice') return 420

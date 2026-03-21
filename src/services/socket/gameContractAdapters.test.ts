@@ -79,10 +79,10 @@ describe('gameContractAdapters', () => {
     })
 
     expect(normalized?.payload).toMatchObject({
-      buildCost: 260000000,
-      nextToll: 520000000,
-      build_cost: 130000000,
-      next_toll: 390000000,
+      buildCost: 2600000,
+      nextToll: 5200000,
+      build_cost: 1300000,
+      next_toll: 3900000,
     })
   })
 
@@ -142,7 +142,7 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players[0]).toMatchObject({
       id: 'player-1',
       position: 7,
-      balance: 300000000,
+      balance: 3000000,
       owned_tiles: [2, 4],
       state: 'locked',
       is_in_jail: true,
@@ -155,7 +155,7 @@ describe('gameContractAdapters', () => {
       building: 3,
       type: 'property',
       transportType: 'PROPERTY',
-      price: 50000000,
+      price: 500000,
     })
     expect(normalized?.prompt).toMatchObject({
       id: 'prompt-1',
@@ -212,7 +212,7 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players[0]).toMatchObject({
       id: 105,
       position: 8,
-      balance: 210000000,
+      balance: 2100000,
       owned_tiles: [3, 5],
     })
     expect(normalized?.tiles[0]).toMatchObject({
@@ -303,8 +303,8 @@ describe('gameContractAdapters', () => {
         winner: {
           playerId: 2,
           nickname: 'guest',
-          balance: 530000000000,
-          assets: 610000000000,
+          balance: 5300000000,
+          assets: 6100000000,
         },
       },
     })
@@ -337,13 +337,13 @@ describe('gameContractAdapters', () => {
     expect(normalized?.players).toHaveLength(1)
     expect(normalized?.players[0]).toMatchObject({
       id: 'user-a',
-      balance: 300000000,
+      balance: 3000000,
     })
     expect(normalized?.tiles).toHaveLength(1)
     expect(normalized?.tiles[0]).toMatchObject({
       index: 1,
       type: 'property',
-      price: 50000000,
+      price: 500000,
     })
   })
 
@@ -550,7 +550,7 @@ describe('gameContractAdapters', () => {
       {
         op: 'set',
         path: 'players.0.balance',
-        value: 450000000,
+        value: 4500000,
       },
       {
         op: 'set',
@@ -605,7 +605,7 @@ describe('gameContractAdapters', () => {
       {
         op: 'inc',
         path: 'players.1.balance',
-        value: 5000000000,
+        value: 50000000,
       },
     ])
     expect(normalized.events).toEqual([
@@ -625,7 +625,7 @@ describe('gameContractAdapters', () => {
         id: undefined,
         playerId: '2',
         tileIndex: null,
-        amount: 3500000000,
+        amount: 35000000,
         payload: undefined,
       },
     ])
@@ -698,7 +698,7 @@ describe('gameContractAdapters', () => {
           id: 'player-a',
           nickname: 'Player A',
           position: 4,
-          balance: 5200000000,
+          balance: 52000000,
           owned_tiles: [2],
           state: 'normal',
         }),
@@ -712,7 +712,7 @@ describe('gameContractAdapters', () => {
           owner_id: 'player-a',
           type: 'property',
           building: 3,
-          price: 140000000,
+          price: 1400000,
         }),
       },
     ])

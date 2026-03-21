@@ -9,6 +9,7 @@ import {
   getPendingMovePlayerIdsFromEvents,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventAnimationKind,
+  shouldDelayPromptModalByMovement,
 } from './gameBoardEventQueueUtils'
 
 const players: PlayerState[] = [
@@ -301,5 +302,38 @@ describe('gameBoardEventQueueUtils', () => {
     expect(getBoardEventAnimationHoldMs(kind)).toBeLessThan(
       getBoardEventConsumeDelayMs(event)
     )
+  })
+
+  it('delays prompt modal while a move animation is active', () => {
+    expect(
+      shouldDelayPromptModalByMovement({
+        promptPlayerId: '1',
+        pendingMovePlayerIdSet: new Set(),
+        animatedPositions: {},
+        isMoving: true,
+      })
+    ).toBe(true)
+  })
+
+  it('delays prompt modal when prompt owner move is pending', () => {
+    expect(
+      shouldDelayPromptModalByMovement({
+        promptPlayerId: '1',
+        pendingMovePlayerIdSet: new Set(['1']),
+        animatedPositions: {},
+        isMoving: false,
+      })
+    ).toBe(true)
+  })
+
+  it('allows prompt modal when no move is pending for prompt owner', () => {
+    expect(
+      shouldDelayPromptModalByMovement({
+        promptPlayerId: '1',
+        pendingMovePlayerIdSet: new Set(['2']),
+        animatedPositions: {},
+        isMoving: false,
+      })
+    ).toBe(false)
   })
 })

@@ -25,21 +25,35 @@ const playersRef: { current: PlayerState[] } = {
   ],
 }
 
-const setupHook = (enabled = true) => {
+const setupHook = ({
+  enabled = true,
+  paused = false,
+}: {
+  enabled?: boolean
+  paused?: boolean
+} = {}) => {
   const setStatus = vi.fn()
   const setDice1 = vi.fn()
   const setDice2 = vi.fn()
   const onEventAnimation = vi.fn()
 
-  renderHook(() =>
-    useBoardEventQueue({
-      enabled,
-      playersRef,
-      setStatus,
-      setDice1,
-      setDice2,
-      onEventAnimation,
-    })
+  const { rerender } = renderHook(
+    ({ isEnabled, isPaused }) =>
+      useBoardEventQueue({
+        enabled: isEnabled,
+        paused: isPaused,
+        playersRef,
+        setStatus,
+        setDice1,
+        setDice2,
+        onEventAnimation,
+      }),
+    {
+      initialProps: {
+        isEnabled: enabled,
+        isPaused: paused,
+      },
+    }
   )
 
   return {
@@ -47,6 +61,17 @@ const setupHook = (enabled = true) => {
     setDice1,
     setDice2,
     onEventAnimation,
+    rerender: ({
+      enabled: nextEnabled = enabled,
+      paused: nextPaused = paused,
+    }: {
+      enabled?: boolean
+      paused?: boolean
+    } = {}) =>
+      rerender({
+        isEnabled: nextEnabled,
+        isPaused: nextPaused,
+      }),
   }
 }
 
@@ -136,12 +161,38 @@ describe('useBoardEventQueue', () => {
       },
     ])
 
-    const { setStatus, setDice1, setDice2, onEventAnimation } = setupHook(false)
+    const { setStatus, setDice1, setDice2, onEventAnimation } = setupHook({
+      enabled: false,
+    })
 
     expect(setStatus).not.toHaveBeenCalled()
     expect(setDice1).not.toHaveBeenCalled()
     expect(setDice2).not.toHaveBeenCalled()
     expect(onEventAnimation).not.toHaveBeenCalled()
     expect(useGameStore.getState().eventQueue).toHaveLength(1)
+  })
+
+  it('pauses consumption until paused flag is lifted', () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+      },
+    ])
+
+    const { setStatus, onEventAnimation, rerender } = setupHook({
+      paused: true,
+    })
+
+    expect(setStatus).not.toHaveBeenCalled()
+    expect(onEventAnimation).not.toHaveBeenCalled()
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    rerender({ paused: false })
+
+    expect(setStatus).toHaveBeenCalledTimes(1)
+    expect(onEventAnimation).toHaveBeenCalledWith('move')
+    expect(useGameStore.getState().eventQueue).toHaveLength(0)
   })
 })
