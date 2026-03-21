@@ -5,6 +5,7 @@ type SetupOptions = {
   accessToken: string | null
   mockEnabled?: boolean
   socketConnected?: boolean
+  localGameId?: string | null
   currentTurn?: string | number | null
   revision?: number
   playersLength?: number
@@ -20,6 +21,7 @@ async function setupUseGameState(options: SetupOptions) {
 
   const runtime = {
     accessToken: options.accessToken,
+    localGameId: options.localGameId ?? null,
     currentTurn: options.currentTurn ?? null,
     revision: options.revision ?? 0,
     playersLength: options.playersLength ?? 0,
@@ -87,6 +89,7 @@ async function setupUseGameState(options: SetupOptions) {
     ;(
       useGameStore as typeof useGameStore & {
         getState: () => {
+          gameId: string | null
           players: unknown[]
           revision: number
           phase: string
@@ -94,6 +97,7 @@ async function setupUseGameState(options: SetupOptions) {
         }
       }
     ).getState = () => ({
+      gameId: runtime.localGameId,
       players: createPlayers(runtime.playersLength),
       revision: runtime.revision,
       phase: runtime.phase,
@@ -157,6 +161,7 @@ describe('useGameState', () => {
       accessToken: 'token-1',
       mockEnabled: false,
       socketConnected: false,
+      localGameId: 'game-2',
       revision: 3,
       playersLength: 2,
     })
@@ -166,7 +171,7 @@ describe('useGameState', () => {
     expect(connectSocketWithAuthIfNeeded).toHaveBeenCalledTimes(1)
     expect(emitGameSync).toHaveBeenNthCalledWith(1, {
       gameId: 'game-2',
-      knownRevision: 0,
+      knownRevision: 3,
     })
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
 
@@ -209,7 +214,7 @@ describe('useGameState', () => {
     expect(connectSocketWithAuthIfNeeded).toHaveBeenCalledTimes(1)
     expect(emitGameSync).toHaveBeenCalledWith({
       gameId: 'game-3',
-      knownRevision: 0,
+      knownRevision: -1,
     })
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
   })
@@ -266,5 +271,23 @@ describe('useGameState', () => {
 
     expect(emitGameSync).toHaveBeenCalledTimes(1)
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
+  })
+
+  it('local state가 다른 게임이면 full snapshot sync를 요청한다', async () => {
+    const { useGameState, emitGameSync } = await setupUseGameState({
+      accessToken: 'token-local-mismatch',
+      mockEnabled: false,
+      socketConnected: false,
+      localGameId: 'game-old',
+      revision: 9,
+      playersLength: 4,
+    })
+
+    renderHook(() => useGameState('game-new'))
+
+    expect(emitGameSync).toHaveBeenCalledWith({
+      gameId: 'game-new',
+      knownRevision: -1,
+    })
   })
 })
