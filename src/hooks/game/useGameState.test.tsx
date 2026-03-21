@@ -8,6 +8,8 @@ type SetupOptions = {
   currentTurn?: string | number | null
   revision?: number
   playersLength?: number
+  phase?: 'waiting' | 'rolling' | 'moving' | 'resolving' | 'prompt' | 'finished'
+  isGameOver?: boolean
 }
 
 const createPlayers = (length: number) =>
@@ -21,6 +23,8 @@ async function setupUseGameState(options: SetupOptions) {
     currentTurn: options.currentTurn ?? null,
     revision: options.revision ?? 0,
     playersLength: options.playersLength ?? 0,
+    phase: options.phase ?? 'rolling',
+    isGameOver: options.isGameOver ?? false,
   }
 
   const socketHandlers = new Map<string, (...args: unknown[]) => void>()
@@ -69,20 +73,31 @@ async function setupUseGameState(options: SetupOptions) {
       selector: (state: {
         currentPlayerId: string | number | null
         currentTurn: string | number | null
+        phase: string
+        isGameOver: boolean
       }) => unknown
     ) =>
       selector({
         currentPlayerId: runtime.currentTurn,
         currentTurn: runtime.currentTurn,
+        phase: runtime.phase,
+        isGameOver: runtime.isGameOver,
       })
 
     ;(
       useGameStore as typeof useGameStore & {
-        getState: () => { players: unknown[]; revision: number }
+        getState: () => {
+          players: unknown[]
+          revision: number
+          phase: string
+          isGameOver: boolean
+        }
       }
     ).getState = () => ({
       players: createPlayers(runtime.playersLength),
       revision: runtime.revision,
+      phase: runtime.phase,
+      isGameOver: runtime.isGameOver,
     })
 
     return { useGameStore }
@@ -196,6 +211,60 @@ describe('useGameState', () => {
       gameId: 'game-3',
       knownRevision: 0,
     })
+    expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
+  })
+
+  it('게임 종료 상태면 sync와 timer sync를 시작하지 않는다', async () => {
+    const {
+      useGameState,
+      setupGameHandlers,
+      connectSocketWithAuthIfNeeded,
+      emitGameSync,
+      emitGameSyncTimer,
+    } = await setupUseGameState({
+      accessToken: 'token-over',
+      mockEnabled: false,
+      phase: 'finished',
+      isGameOver: true,
+    })
+
+    renderHook(() => useGameState('game-over'))
+
+    expect(setupGameHandlers).not.toHaveBeenCalled()
+    expect(connectSocketWithAuthIfNeeded).not.toHaveBeenCalled()
+    expect(emitGameSync).not.toHaveBeenCalled()
+    expect(emitGameSyncTimer).not.toHaveBeenCalled()
+  })
+
+  it('게임 진행 중 종료되면 이후 reconnect/focus에서도 sync를 보내지 않는다', async () => {
+    const {
+      useGameState,
+      runtime,
+      socketHandlers,
+      emitGameSync,
+      emitGameSyncTimer,
+    } = await setupUseGameState({
+      accessToken: 'token-finish-during-game',
+      mockEnabled: false,
+      socketConnected: false,
+    })
+
+    const { rerender } = renderHook(() => useGameState('game-finished-later'))
+
+    expect(emitGameSync).toHaveBeenCalledTimes(1)
+    expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
+
+    runtime.phase = 'finished'
+    runtime.isGameOver = true
+    rerender()
+
+    const connectHandler = socketHandlers.get('connect')
+    act(() => {
+      connectHandler?.()
+      window.dispatchEvent(new Event('focus'))
+    })
+
+    expect(emitGameSync).toHaveBeenCalledTimes(1)
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
   })
 })

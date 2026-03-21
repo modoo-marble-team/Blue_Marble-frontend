@@ -16,12 +16,18 @@ export const useGameState = (gameId: string | null) => {
   const accessToken = useAuthStore(
     (state) => state.session?.accessToken?.trim() ?? null
   )
+  const phase = useGameStore((state) => state.phase)
+  const isGameOver = useGameStore((state) => state.isGameOver)
   const currentTurn = useGameStore((state) => {
     return state.currentPlayerId ?? state.currentTurn
   })
+  const isGameFinished = isGameOver || phase === 'finished'
 
   useEffect(() => {
     if (!gameId) {
+      return
+    }
+    if (isGameFinished) {
       return
     }
     if (!USE_GAME_SOCKET_MOCK && !accessToken) {
@@ -39,7 +45,15 @@ export const useGameState = (gameId: string | null) => {
 
     const syncGameState = ({ force = false }: { force?: boolean } = {}) => {
       const gameChanged = syncedGameIdRef.current !== gameId
-      const { players, revision } = useGameStore.getState()
+      const {
+        players,
+        revision,
+        phase: currentPhase,
+        isGameOver: gameEnded,
+      } = useGameStore.getState()
+      if (gameEnded || currentPhase === 'finished') {
+        return
+      }
 
       // 초기 진입에서는 같은 게임 상태를 이미 들고 있으면 중복 sync를 생략한다.
       if (!force && !gameChanged && players.length > 0) return
@@ -52,6 +66,11 @@ export const useGameState = (gameId: string | null) => {
     }
 
     const syncGameTimer = () => {
+      const { phase: currentPhase, isGameOver: gameEnded } =
+        useGameStore.getState()
+      if (gameEnded || currentPhase === 'finished') {
+        return
+      }
       emitGameSyncTimer({ gameId })
     }
 
@@ -83,16 +102,19 @@ export const useGameState = (gameId: string | null) => {
       socket.off('connect', handleSocketConnect)
       teardownHandlers()
     }
-  }, [accessToken, gameId])
+  }, [accessToken, gameId, isGameFinished])
 
   useEffect(() => {
     if (!gameId || currentTurn == null) {
       return
     }
+    if (isGameFinished) {
+      return
+    }
 
     // 턴 변경 시 서버 기준 남은 시간을 다시 받아서 0초 고정 상태를 방지한다.
     emitGameSyncTimer({ gameId })
-  }, [gameId, currentTurn])
+  }, [gameId, currentTurn, isGameFinished])
 
   return {}
 }

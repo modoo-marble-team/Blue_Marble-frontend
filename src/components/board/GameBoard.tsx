@@ -1216,6 +1216,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       return [...rankings].sort((left, right) => left.rank - right.rank)
     }, [gameResult])
+    const winnerResultRow = useMemo(() => {
+      const winner = gameResult?.winner
+      if (!winner) {
+        return null
+      }
+
+      return {
+        id: String(winner.playerId),
+        nickname: winner.nickname,
+        totalAssetText: formatWon(winner.assets),
+        ownedCityCountText: '-',
+      }
+    }, [gameResult])
     const resultModalRows = useMemo(() => {
       if (serverResultRows.length > 0) {
         return serverResultRows.map((result) => ({
@@ -1225,6 +1238,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           ownedCityCountText: '-',
         }))
       }
+      if (winnerResultRow) {
+        return [winnerResultRow]
+      }
 
       return fallbackPlayerResults.map((result) => ({
         id: result.id,
@@ -1232,8 +1248,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         totalAssetText: formatWon(result.totalAsset),
         ownedCityCountText: `${result.ownedCityCount}개`,
       }))
-    }, [fallbackPlayerResults, serverResultRows])
+    }, [fallbackPlayerResults, serverResultRows, winnerResultRow])
     const resultModalWinnerName = useMemo(() => {
+      if (gameResult?.winner?.nickname) {
+        return gameResult.winner.nickname
+      }
       if (serverResultRows.length > 0) {
         const winnerByFlag = serverResultRows.find((result) => result.is_winner)
         const winnerById =
@@ -1254,7 +1273,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         fallbackPlayerResults.find((result) => !result.isBankrupt)?.nickname ??
         '승리자'
       )
-    }, [fallbackPlayerResults, serverResultRows, winnerId])
+    }, [fallbackPlayerResults, gameResult, serverResultRows, winnerId])
 
     function handleBankruptConfirm() {
       const { onDoneCallback } = bankruptModal

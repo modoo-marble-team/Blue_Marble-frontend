@@ -263,6 +263,49 @@ describe('gameContractAdapters', () => {
       winnerId: 'player-winner',
       gameResult: {
         reason: 'bankrupt',
+        winner: {
+          playerId: 'player-winner',
+          nickname: 'winner',
+          assets: 8200000000,
+        },
+      },
+    })
+  })
+
+  it('normalizes GAME_OVER winner payload with balance/assets fields', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-over-new-contract',
+        revision: 22,
+        phase: 'GAME_OVER',
+        players: [],
+        tiles: [],
+        game_result: {
+          reason: 'max_rounds',
+          winner: {
+            playerId: 2,
+            nickname: 'guest',
+            balance: 530000,
+            assets: 610000,
+          },
+        },
+      },
+      { envelopeRevision: 22 }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized).toMatchObject({
+      phase: 'finished',
+      isGameOver: true,
+      winnerId: 2,
+      gameResult: {
+        reason: 'max_rounds',
+        winner: {
+          playerId: 2,
+          nickname: 'guest',
+          balance: 530000000000,
+          assets: 610000000000,
+        },
       },
     })
   })
@@ -610,7 +653,7 @@ describe('gameContractAdapters', () => {
       {
         op: 'set',
         path: 'gameResult',
-        value: { reason: 'round_limit', rankings: [] },
+        value: { reason: 'round_limit', rankings: undefined, winner: null },
       },
     ])
   })
