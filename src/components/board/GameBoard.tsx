@@ -53,6 +53,7 @@ import {
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
+  shouldDelayPromptModalByMovement,
   type BoardEventAnimationKind,
 } from './gameBoardEventQueueUtils'
 
@@ -1764,7 +1765,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tollModalOpen = isTollPromptOpen
     const tollOwnerName = promptOwnerName
     const tollAmountText = formatWon(promptAmount ?? 0)
-    const sellModalOpen = isSellPromptOpen || citySellModal.open
     const sellTileId = isSellPromptOpen ? promptTileId : citySellModal.tileId
     const sellTile = sellTileId != null ? TILES[sellTileId] : null
     const sellOwnerName = isSellPromptOpen
@@ -1805,19 +1805,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
     const hasAnimationBlocking = isMoving || rolling
     const canShowModal = !hasAnimationBlocking
+    const activePromptPlayerId =
+      activePrompt?.playerId != null ? String(activePrompt.playerId) : null
+    const shouldDelayPromptModal = shouldDelayPromptModalByMovement({
+      promptPlayerId: activePromptPlayerId,
+      pendingMovePlayerIdSet,
+      animatedPositions,
+      isMoving,
+    })
 
     const buyModalVisible =
       canShowModal &&
       buyModalOpen &&
+      !shouldDelayPromptModal &&
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canShowModal && buildModalOpen && !insufficientFundsModal.open
+      canShowModal &&
+      buildModalOpen &&
+      !shouldDelayPromptModal &&
+      !insufficientFundsModal.open
+    const tollModalVisible =
+      canShowModal && tollModalOpen && !shouldDelayPromptModal
     const acquisitionModalOpen =
       canShowModal &&
       acquisitionModalOpenRaw &&
+      !shouldDelayPromptModal &&
       !tollModalOpen &&
       !insufficientFundsModal.open
+    const sellModalVisible =
+      canShowModal &&
+      (citySellModal.open || (isSellPromptOpen && !shouldDelayPromptModal))
+    const diceTimerModalVisible =
+      canShowModal && diceTimerModalOpen && !shouldDelayPromptModal
 
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const buildCost =
@@ -1850,14 +1870,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       buildModalVisible ||
       cardModal.open ||
       travelModal.open ||
-      tollModalOpen ||
+      tollModalVisible ||
       acquisitionModalOpen ||
-      sellModalOpen ||
+      sellModalVisible ||
       insufficientFundsModal.open ||
       aiModal.open ||
       goToIslandModal.open ||
       islandModal.open ||
-      diceTimerModalOpen ||
+      diceTimerModalVisible ||
       bankruptModal.open ||
       gameResultModal.open
     const hasBlockingModal = canShowModal && hasBlockingModalOpen
@@ -2368,7 +2388,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           nextTollText={formatWon(nextTollCost)}
         />
         <TollModal
-          open={canShowModal && tollModalOpen}
+          open={tollModalVisible}
           onConfirm={() => {
             void handleTollModalConfirm()
           }}
@@ -2392,7 +2412,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onAcquire={handleCityAcquisitionConfirm}
         />
         <CitySellModal
-          open={canShowModal && sellModalOpen}
+          open={sellModalVisible}
           ownerName={sellOwnerName}
           currentLevel={sellCurrentLevel}
           sellPriceText={formatWon(sellPrice)}
@@ -2422,7 +2442,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleBankruptConfirm}
         />
         <DiceTimerModal
-          open={canShowModal && diceTimerModalOpen}
+          open={diceTimerModalVisible}
           title={diceTimerTitle}
           description={diceTimerMessage}
           timeLeftSec={
