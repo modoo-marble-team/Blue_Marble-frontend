@@ -5,8 +5,8 @@ interface GameResultModalProps {
   winnerName?: string
   title?: string
   subtitle?: string
-  backToLobbyLabel?: string
-  onBackToLobby?: () => void
+  returnToWaitingRoomLabel?: string
+  onReturnToWaitingRoom?: () => void
   results?: {
     id: string
     nickname: string
@@ -16,7 +16,7 @@ interface GameResultModalProps {
 }
 
 const DEFAULT_TITLE = 'GAME OVER'
-const DEFAULT_BACK_LABEL = '로비로 돌아가기'
+const DEFAULT_RETURN_TO_WAITING_ROOM_LABEL = '대기방으로 돌아가기'
 
 const DEFAULT_RESULTS: NonNullable<GameResultModalProps['results']> = [
   {
@@ -50,8 +50,8 @@ const GameResultModal: React.FC<GameResultModalProps> = ({
   winnerName = '플레이어 1',
   title = DEFAULT_TITLE,
   subtitle,
-  backToLobbyLabel = DEFAULT_BACK_LABEL,
-  onBackToLobby,
+  returnToWaitingRoomLabel = DEFAULT_RETURN_TO_WAITING_ROOM_LABEL,
+  onReturnToWaitingRoom,
   results = DEFAULT_RESULTS,
 }) => {
   if (!open) {
@@ -129,11 +129,11 @@ const GameResultModal: React.FC<GameResultModalProps> = ({
 
         <button
           type="button"
-          onClick={onBackToLobby}
+          onClick={onReturnToWaitingRoom}
           className="mx-auto mt-6 flex h-15 w-full items-center justify-center rounded-[18px] bg-[#245FE5] text-[30px] font-black tracking-tight text-white shadow-lg transition-colors hover:bg-[#1F56D1]"
           style={{ maxWidth: '760px' }}
         >
-          🏠 {backToLobbyLabel}
+          🏠 {returnToWaitingRoomLabel}
         </button>
       </div>
     </div>

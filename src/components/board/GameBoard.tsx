@@ -250,6 +250,7 @@ interface GameBoardProps {
   gameResult?: GameResult | null
   isGameOver?: boolean
   winnerId?: PlayerId | null
+  onGameResultConfirm?: () => void
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -318,6 +319,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       gameResult = null,
       isGameOver = false,
       winnerId = null,
+      onGameResultConfirm,
     },
     ref
   ) => {
@@ -2376,9 +2378,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           open={canShowModal && gameResultModal.open}
           winnerName={resultModalWinnerName}
           results={resultModalRows}
-          onBackToLobby={() => {
+          returnToWaitingRoomLabel="대기방으로 돌아가기"
+          onReturnToWaitingRoom={() => {
             setGameResultModal({ open: false })
-            window.location.href = '/' // Redirect to home/lobby
+            onGameResultConfirm?.()
           }}
         />
         <GoToIslandModal

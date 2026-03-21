@@ -49,6 +49,11 @@ const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
+const FATAL_GAME_ROUTE_ERROR_CODES = new Set([
+  'GAME_NOT_FOUND',
+  'NOT_GAME_MEMBER',
+  'INVALID_GAME_ID',
+])
 const FALLBACK_PROMPT_CHOICES: GamePromptChoice[] = [
   {
     id: 'confirm',
@@ -98,6 +103,8 @@ const GamePage: React.FC = () => {
   >(null)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
+  const [isRecoveringFromFatalGameRoute, setIsRecoveringFromFatalGameRoute] =
+    useState(false)
   const boardRef = useRef<BoardGameHandle>(null)
   const pendingGameChatEchoesRef = useRef<PendingGameChatEcho[]>([])
 
@@ -334,6 +341,22 @@ const GamePage: React.FC = () => {
     }
   }
 
+  const handleGameResultConfirm = () => {
+    resetGame()
+
+    if (activeRoomId) {
+      navigate(`/rooms/${activeRoomId}`, {
+        replace: true,
+        state: {
+          roomId: activeRoomId,
+        },
+      })
+      return
+    }
+
+    navigate('/lobby', { replace: true })
+  }
+
   const handleRollClick = () => {
     if (
       !isMyTurn ||
@@ -383,8 +406,58 @@ const GamePage: React.FC = () => {
     })
   }
 
+  const isFatalGameRouteError =
+    lastError != null && FATAL_GAME_ROUTE_ERROR_CODES.has(lastError.code)
+  const hasFinishedGameState =
+    isGameOver || phase === 'finished' || gameResult != null
+
+  useEffect(() => {
+    if (!isFatalGameRouteError || hasFinishedGameState) {
+      return
+    }
+
+    setIsRecoveringFromFatalGameRoute(true)
+
+    resetGame()
+
+    if (activeRoomId) {
+      navigate(`/rooms/${activeRoomId}`, {
+        replace: true,
+        state: {
+          roomId: activeRoomId,
+        },
+      })
+      return
+    }
+
+    navigate('/lobby', { replace: true })
+  }, [
+    activeRoomId,
+    hasFinishedGameState,
+    isFatalGameRouteError,
+    navigate,
+    resetGame,
+  ])
+
   const isWaitingForServerState =
-    !USE_GAME_SOCKET_MOCK && storePlayers.length === 0
+    !USE_GAME_SOCKET_MOCK &&
+    !hasFinishedGameState &&
+    !isFatalGameRouteError &&
+    !isRecoveringFromFatalGameRoute &&
+    storePlayers.length === 0
+
+  if (
+    (isFatalGameRouteError || isRecoveringFromFatalGameRoute) &&
+    !hasFinishedGameState
+  ) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-ui-app-bg font-['Inter']">
+        <div className="text-lg font-bold text-[#45556C]">
+          참가 정보를 다시 확인하고 있습니다...
+        </div>
+      </div>
+    )
+  }
 
   if (isWaitingForServerState) {
     return (
@@ -483,6 +556,7 @@ const GamePage: React.FC = () => {
               gameResult={gameResult}
               isGameOver={isGameOver}
               winnerId={winnerId}
+              onGameResultConfirm={handleGameResultConfirm}
             />
           </div>
         </div>
