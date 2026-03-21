@@ -383,10 +383,8 @@ const GamePage: React.FC = () => {
     })
   }
 
-  const isTerminalGameState =
-    isGameOver || phase === 'finished' || gameResult !== null
   const isWaitingForServerState =
-    !USE_GAME_SOCKET_MOCK && storePlayers.length === 0 && !isTerminalGameState
+    !USE_GAME_SOCKET_MOCK && storePlayers.length === 0
 
   if (isWaitingForServerState) {
     return (
