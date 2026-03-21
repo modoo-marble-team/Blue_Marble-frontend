@@ -109,10 +109,22 @@ vi.mock('../services/socket/game.handler', () => ({
 }))
 
 vi.mock('../components/board/GameBoard', () => ({
-  default: forwardRef<HTMLDivElement>(function MockBoardGame(_, ref) {
+  default: forwardRef<
+    HTMLDivElement,
+    {
+      gameResult?: object | null
+      isGameOver?: boolean
+      onGameResultConfirm?: () => void
+    }
+  >(function MockBoardGame(props, ref) {
     return (
       <div ref={ref} data-testid="mock-board-game">
         게임 보드
+        {Boolean(props.isGameOver || props.gameResult) && (
+          <button type="button" onClick={props.onGameResultConfirm}>
+            대기방으로 돌아가기
+          </button>
+        )}
       </div>
     )
   }),
@@ -171,13 +183,18 @@ const createPlayer = (overrides: Partial<Player> = {}): Player => ({
   ...overrides,
 })
 
-function renderGamePage() {
+function renderGamePage(options?: {
+  initialEntries?: Array<{
+    pathname: string
+    state?: Record<string, unknown>
+  }>
+}) {
   return renderWithProviders(
     <Routes>
       <Route path="/game/:gameId" element={<GamePage />} />
     </Routes>,
     {
-      initialEntries: [
+      initialEntries: options?.initialEntries ?? [
         {
           pathname: '/game/game-1',
           state: {
@@ -308,5 +325,256 @@ describe('GamePage chat flow', () => {
     expect(
       screen.getByRole('dialog', { name: '게임 종료' })
     ).toBeInTheDocument()
+  })
+
+  it('players가 비어 있어도 finished gameResult가 있으면 로딩 화면 대신 게임 화면을 렌더한다', () => {
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'finished',
+      isGameOver: true,
+      players: [],
+      tiles: [],
+      gameResult: {
+        reason: 'max_rounds',
+        winner: {
+          playerId: 'user-1',
+          nickname: '유저1',
+          balance: 300000,
+          assets: 455000,
+        },
+      },
+    })
+
+    renderGamePage()
+
+    expect(screen.queryByText('게임 로딩 중...')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-board-game')).toBeInTheDocument()
+  })
+
+  it('players가 비어 있어도 isGameOver면 로딩 화면 대신 게임 화면을 렌더한다', () => {
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'rolling',
+      isGameOver: true,
+      players: [],
+      tiles: [],
+      gameResult: null,
+    })
+
+    renderGamePage()
+
+    expect(screen.queryByText('게임 로딩 중...')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-board-game')).toBeInTheDocument()
+  })
+
+  it('종료 상태가 아니고 players가 비어 있으면 기존처럼 로딩 화면을 렌더한다', () => {
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'rolling',
+      isGameOver: false,
+      players: [],
+      tiles: [],
+      gameResult: null,
+    })
+
+    renderGamePage()
+
+    expect(screen.getByText('게임 로딩 중...')).toBeInTheDocument()
+    expect(screen.queryByTestId('mock-board-game')).not.toBeInTheDocument()
+  })
+
+  it('fatal game error와 roomId가 있으면 해당 대기방으로 fallback 이동한다', async () => {
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'rolling',
+      isGameOver: false,
+      players: [],
+      tiles: [],
+      gameResult: null,
+      lastError: {
+        code: 'GAME_NOT_FOUND',
+        message: '게임을 찾을 수 없습니다.',
+      },
+    })
+
+    renderGamePage()
+
+    expect(screen.queryByText('게임 로딩 중...')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('참가 정보를 다시 확인하고 있습니다...')
+    ).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/rooms/room-1', {
+        replace: true,
+        state: {
+          roomId: 'room-1',
+        },
+      })
+    })
+
+    expect(useGameStore.getState().players).toHaveLength(0)
+  })
+
+  it('fatal game error와 roomId가 없으면 로비로 fallback 이동한다', async () => {
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: null,
+      gameId: 'game-1',
+      phase: 'rolling',
+      isGameOver: false,
+      players: [],
+      tiles: [],
+      gameResult: null,
+      lastError: {
+        code: 'INVALID_GAME_ID',
+        message: 'gameId가 필요합니다.',
+      },
+    })
+
+    renderGamePage({
+      initialEntries: [
+        {
+          pathname: '/game/game-1',
+          state: {
+            gameId: 'game-1',
+          },
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith('/lobby', { replace: true })
+    })
+
+    expect(useGameStore.getState().players).toHaveLength(0)
+  })
+
+  it('게임 종료 결과 확인 시 같은 대기방으로 이동하고 game store를 초기화한다', async () => {
+    const user = userEvent.setup()
+
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'finished',
+      isGameOver: true,
+      gameResult: {
+        reason: 'max_rounds',
+        winner: {
+          playerId: 'user-1',
+          nickname: '유저1',
+          balance: 300000,
+          assets: 455000,
+        },
+      },
+    })
+
+    renderGamePage()
+
+    await user.click(
+      screen.getByRole('button', { name: '대기방으로 돌아가기' })
+    )
+
+    expect(navigateMock).toHaveBeenCalledWith('/rooms/room-1', {
+      replace: true,
+      state: {
+        roomId: 'room-1',
+      },
+    })
+    expect(useGameStore.getState().players).toHaveLength(0)
+  })
+
+  it('게임 종료 결과 확인 시 roomId가 없으면 로비로 이동한다', async () => {
+    const user = userEvent.setup()
+
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: null,
+      gameId: 'game-1',
+      phase: 'finished',
+      isGameOver: true,
+      players: [],
+      tiles: [],
+      gameResult: {
+        reason: 'disconnect_timeout',
+        winner: {
+          playerId: 'user-2',
+          nickname: '유저2',
+          balance: 530000,
+          assets: 530000,
+        },
+      },
+    })
+
+    renderGamePage({
+      initialEntries: [
+        {
+          pathname: '/game/game-1',
+          state: {
+            gameId: 'game-1',
+          },
+        },
+      ],
+    })
+
+    await user.click(
+      screen.getByRole('button', { name: '대기방으로 돌아가기' })
+    )
+
+    expect(navigateMock).toHaveBeenCalledWith('/lobby', { replace: true })
+    expect(useGameStore.getState().players).toHaveLength(0)
+  })
+
+  it('종료 상태에서는 fatal game error가 있어도 버튼 클릭 전 자동 fallback 이동하지 않는다', async () => {
+    const user = userEvent.setup()
+
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'finished',
+      isGameOver: true,
+      players: [],
+      tiles: [],
+      gameResult: {
+        reason: 'max_rounds',
+        winner: {
+          playerId: 'user-1',
+          nickname: '유저1',
+          balance: 300000,
+          assets: 455000,
+        },
+      },
+      lastError: {
+        code: 'GAME_NOT_FOUND',
+        message: '게임을 찾을 수 없습니다.',
+      },
+    })
+
+    renderGamePage()
+
+    expect(
+      screen.queryByText('참가 정보를 다시 확인하고 있습니다...')
+    ).not.toBeInTheDocument()
+    expect(navigateMock).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: '대기방으로 돌아가기' })
+    )
+
+    expect(navigateMock).toHaveBeenCalledWith('/rooms/room-1', {
+      replace: true,
+      state: {
+        roomId: 'room-1',
+      },
+    })
   })
 })
