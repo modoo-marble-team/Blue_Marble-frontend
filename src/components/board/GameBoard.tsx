@@ -1349,6 +1349,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { onDoneCallback } = goToIslandModal
       setGoToIslandModal({ open: false })
 
+      if (!isMockMode) {
+        // Real server mode: authoritative movement/state update comes from
+        // subsequent PLAYER_MOVED / PLAYER_STATE_CHANGED events.
+        onDoneCallback?.()
+        return
+      }
+
       const playerIdx = curPlayerRef.current
       const player = playersRef.current[playerIdx]
       if (!player) return
@@ -1697,6 +1704,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'TRAVEL' && tile.id === 16) {
+        if (!isMockMode) {
+          onDone?.()
+          return
+        }
+
         if (isLocalPlayerTurn) {
           setTravelModal({
             open: true,
