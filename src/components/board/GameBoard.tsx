@@ -251,6 +251,7 @@ interface GameBoardProps {
   isGameOver?: boolean
   winnerId?: PlayerId | null
   onGameResultConfirm?: () => void
+  onBlockingModalChange?: (blocked: boolean) => void
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -320,6 +321,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       isGameOver = false,
       winnerId = null,
       onGameResultConfirm,
+      onBlockingModalChange,
     },
     ref
   ) => {
@@ -472,6 +474,35 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       },
       []
     )
+    const movePlayerInstantly = useCallback(
+      async (
+        playerId: PlayerId,
+        to: number,
+        options?: {
+          holdMs?: number
+        }
+      ) => {
+        setIsMoving(true)
+        const holdMs = options?.holdMs ?? 120
+
+        setAnimatedPositions((prev) => ({
+          ...prev,
+          [String(playerId)]: to,
+        }))
+
+        if (holdMs > 0) {
+          await delay(holdMs)
+        }
+
+        setAnimatedPositions((prev) => {
+          const next = { ...prev }
+          delete next[String(playerId)]
+          return next
+        })
+        setIsMoving(false)
+      },
+      []
+    )
 
     const emitMockEndTurn = useCallback(() => {
       if (!isMockMode || !gameId) {
@@ -578,20 +609,39 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
           }
 
+          const rawTrigger =
+            payloadRecord?.trigger ??
+            payloadRecord?.moveTrigger ??
+            payloadRecord?.move_trigger ??
+            eventRecord?.trigger ??
+            eventRecord?.moveTrigger ??
+            eventRecord?.move_trigger
+          const normalizedTrigger =
+            typeof rawTrigger === 'string'
+              ? rawTrigger.trim().toLowerCase()
+              : ''
+          const destinationTileType = TILES[tileIndex]?.type
+          const shouldUseInstantMove =
+            normalizedTrigger === 'move_to_island' ||
+            normalizedTrigger === 'travel' ||
+            normalizedTrigger === 'travel_select' ||
+            (normalizedTrigger === 'chance' && destinationTileType === 'ISLAND')
+          const movePromise = shouldUseInstantMove
+            ? movePlayerInstantly(event.playerId!, tileIndex, { holdMs: 120 })
+            : movePlayerSequentially(event.playerId!, fromIndex, tileIndex)
+
           // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
-          movePlayerSequentially(event.playerId!, fromIndex, tileIndex).then(
-            () => {
-              if (playerKey && playerKey !== 'null') {
-                lastMovePositionRef.current[playerKey] = tileIndex
-              }
-              // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
-              handleArrivalRef.current(
-                tileIndex,
-                emitMockEndTurn,
-                event.playerId ?? null
-              )
+          movePromise.then(() => {
+            if (playerKey && playerKey !== 'null') {
+              lastMovePositionRef.current[playerKey] = tileIndex
             }
-          )
+            // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
+            handleArrivalRef.current(
+              tileIndex,
+              emitMockEndTurn,
+              event.playerId ?? null
+            )
+          })
           return
         }
 
@@ -630,6 +680,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         freezeDiceRollValues,
         flashDiceRollAnimation,
         localPlayerId,
+        movePlayerInstantly,
         movePlayerSequentially,
       ]
     )
@@ -648,15 +699,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [isMockMode, freezeDiceRollValues]
     )
 
-    useBoardEventQueue({
-      enabled: true,
-      playersRef,
-      setStatus,
-      setDice1,
-      setDice2,
-      onEventAnimation: handleEventAnimation,
-      onEventConsumed: handleBoardEventConsumed,
-    })
     useEffect(() => {
       return () => {
         stopDiceRollAnimation()
@@ -963,6 +1005,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     // 타이머 관리
     useEffect(() => {
+      stopDiceRollAnimation()
+      setDice1(1)
+      setDice2(1)
       localTimeLeftRef.current = DICE_TIMEOUT
       setIsTimerUrgent(false)
       setPromptTimerLeftSec(null)
@@ -995,7 +1040,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           setStatus(`${p.name}님은 파산 상태입니다`)
         }
       }
-    }, [curPlayer])
+    }, [curPlayer, stopDiceRollAnimation])
 
     useEffect(() => {
       if (rolling) return
@@ -1800,22 +1845,42 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       '확인'
     )
 
-    const hasBlockingModal =
-      canShowModal &&
-      (buyModalVisible ||
-        buildModalVisible ||
-        cardModal.open ||
-        travelModal.open ||
-        tollModalOpen ||
-        acquisitionModalOpen ||
-        sellModalOpen ||
-        insufficientFundsModal.open ||
-        aiModal.open ||
-        goToIslandModal.open ||
-        islandModal.open ||
-        diceTimerModalOpen ||
-        bankruptModal.open ||
-        gameResultModal.open)
+    const hasBlockingModalOpen =
+      buyModalVisible ||
+      buildModalVisible ||
+      cardModal.open ||
+      travelModal.open ||
+      tollModalOpen ||
+      acquisitionModalOpen ||
+      sellModalOpen ||
+      insufficientFundsModal.open ||
+      aiModal.open ||
+      goToIslandModal.open ||
+      islandModal.open ||
+      diceTimerModalOpen ||
+      bankruptModal.open ||
+      gameResultModal.open
+    const hasBlockingModal = canShowModal && hasBlockingModalOpen
+    const isEventQueuePaused =
+      hasAnimationBlocking ||
+      hasBlockingModalOpen ||
+      travelSelection.active ||
+      promptSubmittingChoice !== null
+
+    useEffect(() => {
+      onBlockingModalChange?.(isEventQueuePaused)
+    }, [isEventQueuePaused, onBlockingModalChange])
+
+    useBoardEventQueue({
+      enabled: true,
+      paused: isEventQueuePaused,
+      playersRef,
+      setStatus,
+      setDice1,
+      setDice2,
+      onEventAnimation: handleEventAnimation,
+      onEventConsumed: handleBoardEventConsumed,
+    })
     const activePlayerId = players[curPlayer]?.id ?? null
     const isAssetActionPhase =
       gamePhase === 'rolling' || gamePhase === 'resolving'

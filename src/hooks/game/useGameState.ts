@@ -46,6 +46,7 @@ export const useGameState = (gameId: string | null) => {
     const syncGameState = ({ force = false }: { force?: boolean } = {}) => {
       const gameChanged = syncedGameIdRef.current !== gameId
       const {
+        gameId: localGameId,
         players,
         revision,
         phase: currentPhase,
@@ -56,11 +57,16 @@ export const useGameState = (gameId: string | null) => {
       }
 
       // 초기 진입에서는 같은 게임 상태를 이미 들고 있으면 중복 sync를 생략한다.
-      if (!force && !gameChanged && players.length > 0) return
+      const hasUsableLocalState =
+        localGameId != null &&
+        String(localGameId) === String(gameId) &&
+        players.length > 0
+
+      if (!force && !gameChanged && hasUsableLocalState) return
 
       emitGameSync({
         gameId,
-        knownRevision: gameChanged ? 0 : revision,
+        knownRevision: hasUsableLocalState ? revision : -1,
       })
       syncedGameIdRef.current = gameId
     }
