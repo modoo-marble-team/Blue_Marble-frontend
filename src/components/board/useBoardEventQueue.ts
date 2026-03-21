@@ -14,6 +14,7 @@ import {
 
 interface UseBoardEventQueueParams {
   enabled: boolean
+  paused?: boolean
   playersRef: MutableRefObject<PlayerState[]>
   setStatus: Dispatch<SetStateAction<string>>
   setDice1: Dispatch<SetStateAction<number>>
@@ -24,6 +25,7 @@ interface UseBoardEventQueueParams {
 
 export function useBoardEventQueue({
   enabled,
+  paused = false,
   playersRef,
   setStatus,
   setDice1,
@@ -52,7 +54,7 @@ export function useBoardEventQueue({
     }
 
     const consumeIfPossible = () => {
-      if (disposed || consumingRef.current) {
+      if (disposed || consumingRef.current || paused) {
         return
       }
 
@@ -127,6 +129,7 @@ export function useBoardEventQueue({
     }
   }, [
     enabled,
+    paused,
     playersRef,
     setStatus,
     setDice1,
