@@ -8,6 +8,7 @@ import { renderWithProviders } from '../../../test/renderWithProviders'
 import LobbyPage from '../../lobby/LobbyPage'
 import WaitingRoomPage from './WaitingRoomPage'
 
+// Workflow gate verification branch marker.
 vi.mock('../../../config/env', () => ({
   IS_DEMO_MOCK_ENABLED: false,
   IS_SOCKET_MOCK_ENABLED: true,
