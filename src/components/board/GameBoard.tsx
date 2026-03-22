@@ -475,36 +475,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       },
       []
     )
-    const movePlayerInstantly = useCallback(
-      async (
-        playerId: PlayerId,
-        to: number,
-        options?: {
-          holdMs?: number
-        }
-      ) => {
-        setIsMoving(true)
-        const holdMs = options?.holdMs ?? 120
-
-        setAnimatedPositions((prev) => ({
-          ...prev,
-          [String(playerId)]: to,
-        }))
-
-        if (holdMs > 0) {
-          await delay(holdMs)
-        }
-
-        setAnimatedPositions((prev) => {
-          const next = { ...prev }
-          delete next[String(playerId)]
-          return next
-        })
-        setIsMoving(false)
-      },
-      []
-    )
-
     const emitMockEndTurn = useCallback(() => {
       if (!isMockMode || !gameId) {
         return
@@ -610,26 +580,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
           }
 
-          const rawTrigger =
-            payloadRecord?.trigger ??
-            payloadRecord?.moveTrigger ??
-            payloadRecord?.move_trigger ??
-            eventRecord?.trigger ??
-            eventRecord?.moveTrigger ??
-            eventRecord?.move_trigger
-          const normalizedTrigger =
-            typeof rawTrigger === 'string'
-              ? rawTrigger.trim().toLowerCase()
-              : ''
-          const destinationTileType = TILES[tileIndex]?.type
-          const shouldUseInstantMove =
-            normalizedTrigger === 'move_to_island' ||
-            normalizedTrigger === 'travel' ||
-            normalizedTrigger === 'travel_select' ||
-            (normalizedTrigger === 'chance' && destinationTileType === 'ISLAND')
-          const movePromise = shouldUseInstantMove
-            ? movePlayerInstantly(event.playerId!, tileIndex, { holdMs: 120 })
-            : movePlayerSequentially(event.playerId!, fromIndex, tileIndex)
+          const movePromise = movePlayerSequentially(
+            event.playerId!,
+            fromIndex,
+            tileIndex
+          )
 
           // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
           movePromise.then(() => {
@@ -681,7 +636,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         freezeDiceRollValues,
         flashDiceRollAnimation,
         localPlayerId,
-        movePlayerInstantly,
         movePlayerSequentially,
       ]
     )
