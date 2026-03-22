@@ -3,12 +3,19 @@
 ## Task
 
 - 작업 이름:
+- 작업 slug:
 - 요청 날짜:
 - 담당 범위:
 
 ## Goal
 
 - 이 작업이 해결해야 하는 핵심 문제
+
+## WAT Workflow
+
+1. plain English 단계 1
+2. plain English 단계 2
+3. plain English 단계 3
 
 ## In Scope
 
@@ -22,10 +29,23 @@
 
 - 우선 수정 예상 파일
 
+## Task Tracking
+
+- TODO line:
+- Session brief:
+- Reopen docs:
+
 ## Completion Criteria
 
 - 완료로 판단할 조건
 - 사용자 관점에서 확인할 수 있는 결과
+
+## Role Plan
+
+- Planner:
+- Implementer:
+- Reviewer:
+- Tester:
 
 ## Test Plan
 

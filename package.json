@@ -21,6 +21,8 @@
     "ai:self-review": "node scripts/ai/self-review.mjs",
     "ai:validation-plan": "node scripts/ai/validation-plan.mjs",
     "ai:task:new": "node scripts/ai/task-new.mjs",
+    "ai:session:brief": "node scripts/ai/session-brief.mjs",
+    "ai:workflow:audit": "node scripts/ai/workflow-audit.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

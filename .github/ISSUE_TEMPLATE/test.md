@@ -23,6 +23,12 @@ assignees: ''
 - [ ]
 - [ ]
 
+## 🤖 AI Workflow 메모
+
+- 테스트 전용 소규모 수정이면 task 문서를 생략할 수 있습니다.
+- 테스트 범위가 넓어지거나 handoff가 필요해지면 task slug를 정하고 `TODO.md`와 연결해주세요.
+- PR 전에는 어떤 계약과 시나리오를 검증했는지 `npm run ai:self-review`와 함께 정리해주세요.
+
 ## ✅ 완료 기준
 
 - [ ] 테스트 코드 작성 완료

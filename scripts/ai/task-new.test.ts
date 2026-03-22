@@ -52,12 +52,25 @@ describe('task-new', () => {
       'Auth Refresh Cookie Flow'
     )
     expect(contents.plan).toContain('작업 이름: Auth Refresh Cookie Flow')
+    expect(contents.plan).toContain('작업 slug: auth-refresh-cookie-flow')
     expect(contents.plan).toContain('`src/lib/axios.ts`')
+    expect(contents.plan).toContain('## WAT Workflow')
+    expect(contents.plan).toContain('TODO line:')
+    expect(contents.plan).toContain(
+      '`npm run ai:session:brief -- auth-refresh-cookie-flow`'
+    )
     expect(contents.plan).toContain('## Role Plan')
     expect(contents.context).toContain('`docs/ai/manuals/common.md`')
     expect(contents.context).toContain('## Relevant Manuals')
+    expect(contents.context).toContain('## Session Handoff Notes')
     expect(contents.checklist).toContain('`npm run lint`')
     expect(contents.checklist).toContain('Planner 기준 정리 완료')
+    expect(contents.checklist).toContain(
+      'WAT 단계와 역할 분담을 문서에 반영했다'
+    )
+    expect(contents.checklist).toContain(
+      '`TODO.md` task 한 줄을 최신 상태로 유지했다'
+    )
   })
 
   it('creates a task workspace and blocks overwrite by default', () => {
@@ -74,7 +87,7 @@ describe('task-new', () => {
       date: '2026-03-18',
     })
 
-    expect(created.createdFiles).toHaveLength(3)
+    expect(created.createdFiles).toHaveLength(4)
     expect(
       fs.readFileSync(
         path.join(
@@ -88,6 +101,9 @@ describe('task-new', () => {
         'utf8'
       )
     ).toContain('Socket Session Clear')
+    expect(fs.readFileSync(path.join(cwd, 'TODO.md'), 'utf8')).toContain(
+      '`socket-session-clear`'
+    )
 
     expect(() =>
       createTaskWorkspace({
