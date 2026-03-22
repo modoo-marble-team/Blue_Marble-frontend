@@ -37,6 +37,7 @@ import { DevControlPanel } from '../components/DevControlPanel'
 import { useWaitingRoomController } from '../hooks/hooks'
 import type { GameStartEventPayload, WaitingRoomSnapshot } from '../api/types'
 
+// Workflow gate verification branch marker.
 interface WaitingRoomLocationState {
   roomId?: string
   roomTitle?: string
