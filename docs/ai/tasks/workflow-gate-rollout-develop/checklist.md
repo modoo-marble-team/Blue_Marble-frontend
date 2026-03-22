@@ -9,12 +9,14 @@
 - [x] quickstart, usage, team-memory에 develop rollout 기준을 반영했다
 - [x] GitHub external setting blocker를 문서에 남겼다
 - [x] rollback 기준을 runbook에 반영했다
-- [x] team announcement template과 verification / observation log 형식을 runbook에 반영했다
+- [x] team announcement template과 representative verification 기준을 runbook에 반영했다
 - [x] `develop` branch protection에 `workflow-gate` required check가 추가됐다 (GitHub UI 수동 확인)
 - [x] smoke 검증용 branch `chore/workflow-gate-smoke-pr`를 origin에 push했다
-- [ ] smoke PR을 제출하고 `workflow-gate` pass 결과를 확인했다
-- [ ] grace period sample PR 5종 결과를 runbook log에 기록했다
-- [ ] required check 적용 후 3영업일 observation log를 채웠다
+- [x] high-risk valid / fail 검증용 branch 4개를 origin에 push했다
+- [x] 로컬 `ai:pr-gate` preflight가 smoke / valid / fail 3종 기대값과 일치하는지 확인했다
+- [x] smoke PR을 제출하고 `workflow-gate` pass 결과를 확인했다
+- [x] 초기 도입 sample PR 5종 결과를 runbook 참고 기록으로 남겼다
+- [x] rollout task를 fixed observation 단계 없이 closing-ready 상태로 정리했다
 
 ## Testing
 
