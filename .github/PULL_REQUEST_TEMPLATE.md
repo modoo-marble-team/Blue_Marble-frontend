@@ -15,10 +15,22 @@
 > `docs/ai/tasks/<task-slug>/plan.md`, `context.md`, `checklist.md` 링크를 남겨주세요.
 > 작은 단일 파일 수정이면 생략 가능합니다.
 > 이번 PR에서 task 문서 3종이 함께 변경됐으면 본문 링크를 생략해도 됩니다.
+> 큰 PR/high-risk PR은 task 문서, `TODO.md 연결`, manual, 검증 근거가 없으면 `Workflow Gate` check가 실패합니다.
 
 - plan:
 - context:
 - checklist:
+
+---
+
+## 📋 TODO.md 연결
+
+> 큰 작업이면 task slug와 `TODO.md` 상태를 적어주세요.
+> 작은 단일 파일 수정이면 `N/A`로 적어도 됩니다.
+
+- task slug:
+- TODO status:
+- TODO entry 확인:
 
 ---
 
@@ -44,6 +56,7 @@
 > - `npm run lint`
 > - `npx vitest run src/...`
 > - `npm run build`
+>   큰 PR/high-risk PR은 이 섹션이 비어 있으면 `Workflow Gate` check가 실패합니다.
 
 ---
 
@@ -62,6 +75,7 @@
 - [ ] 불필요한 console.log 제거
 - [ ] 관련 이슈 연결 완료
 - [ ] 큰 작업이면 task 문서 링크를 남겼다
+- [ ] 큰 작업이면 `TODO.md` / task slug 연결을 PR 본문에 남겼다
 - [ ] 참고한 기준 문서를 PR 본문에 남겼다
 - [ ] 실행한 검증과 남은 리스크를 PR 본문에 적었다
 
