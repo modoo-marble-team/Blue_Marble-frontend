@@ -6,3 +6,4 @@ MARBLE POP — 실시간 멀티플레이 보드게임 웹 서비스(로비/방/�
 
 - [Code Rules](./docs/rules.md)
 - [Testing Guide](./docs/testing.md)
+- 운영 smoke check용 문서 변경 PR
