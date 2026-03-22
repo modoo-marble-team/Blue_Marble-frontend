@@ -12,3 +12,4 @@
 
 - [x] `vendor-neutral-team-workflow-standardization` - Vendor Neutral Team Workflow Standardization (`docs/ai/tasks/vendor-neutral-team-workflow-standardization/`)
 - [x] `team-adoption-lightweight-governance` - Team Adoption Lightweight Governance (`docs/ai/tasks/team-adoption-lightweight-governance/`)
+- [x] `partial-workflow-gate-large-prs` - Partial Workflow Gate Large Prs (`docs/ai/tasks/partial-workflow-gate-large-prs/`)

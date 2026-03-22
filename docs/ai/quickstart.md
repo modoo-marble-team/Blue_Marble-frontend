@@ -96,6 +96,37 @@ PR 본문은 큰 작업 기준으로 채운다.
 - docs/ai/manuals/waiting-room.md
 ```
 
+큰 PR/high-risk PR은 아래 dry-run으로 미리 확인할 수 있다.
+
+```bash
+cat >/tmp/pr-body.md <<'EOF'
+## 🧠 Task 문서 (큰 작업이면 필수)
+- plan: docs/ai/tasks/waiting-room-host-transfer/plan.md
+- context: docs/ai/tasks/waiting-room-host-transfer/context.md
+- checklist: docs/ai/tasks/waiting-room-host-transfer/checklist.md
+
+## 📋 TODO.md 연결
+- task slug: waiting-room-host-transfer
+- TODO status: In Progress
+- TODO entry 확인: TODO.md와 docs/ai/tasks/waiting-room-host-transfer/가 1:1로 연결됨
+
+## 📚 참고한 기준 문서
+- `AGENTS.md`
+- `docs/rules.md`
+- `docs/testing.md`
+- `docs/ai/manuals/waiting-room.md`
+
+## 🧪 실행한 검증
+- `npm run lint`
+- `npm run ai:check:waiting-room`
+
+## ⚠️ 남은 리스크
+- 현재 확인된 추가 리스크는 없습니다.
+EOF
+
+npm run ai:pr-gate -- --files src/pages/waiting-room/page/WaitingRoomPage.tsx src/pages/waiting-room/page/WaitingRoomFlow.test.tsx --pr-body-file /tmp/pr-body.md
+```
+
 ## Scenario 3: High-Risk Realtime Change
 
 아래 변경은 항상 큰 작업으로 취급한다.
@@ -119,7 +150,11 @@ npm run ai:session:brief -- lobby-dm-unread-stability
 npm run ai:check:lobby
 npm run ai:check:build
 npm run ai:self-review -- --files src/features/presence/useDirectMessageController.ts src/features/presence/useDirectMessageController.test.tsx docs/ai/tasks/lobby-dm-unread-stability/plan.md docs/ai/tasks/lobby-dm-unread-stability/context.md docs/ai/tasks/lobby-dm-unread-stability/checklist.md
+npm run ai:pr-gate -- --files src/features/presence/useDirectMessageController.ts src/features/presence/useDirectMessageController.test.tsx --pr-body-file /tmp/pr-body.md
 ```
+
+`Workflow Gate` check는 큰 PR/high-risk PR에서만 blocking 된다.
+작은 PR과 docs-only PR은 계속 warning-only 운영을 유지한다.
 
 ## Weekly Audit
 
