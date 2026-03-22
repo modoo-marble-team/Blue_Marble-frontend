@@ -1,0 +1,49 @@
+name: Workflow Gate
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-gate:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Collect changed files
+        run: |
+          git diff --name-only --diff-filter=ACMR \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" > /tmp/changed-files.txt
+
+      - name: Prepare PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > /tmp/pr-body.md
+
+      - name: Enforce large PR workflow gate
+        run: |
+          node scripts/ai/pr-gate.mjs \
+            --mode enforce \
+            --changed-files-file /tmp/changed-files.txt \
+            --pr-body-file /tmp/pr-body.md

@@ -11,6 +11,10 @@
 - 관련 테스트 파일
 - 관련 문서
 
+## Relevant Manuals
+
+- 이번 작업에서 다시 읽을 manual / rules / testing 문서
+
 ## Constraints
 
 - 유지해야 하는 계약
@@ -21,6 +25,13 @@
 
 - 선택한 접근 방식
 - 버린 대안과 이유
+
+## Session Handoff Notes
+
+- 다음 세션에서 다시 읽을 문서
+- 바로 이어서 할 1개 단계
+- pending decision / blocker
+- 검증 재개 지점
 
 ## Open Risks
 
