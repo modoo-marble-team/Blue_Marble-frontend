@@ -18,6 +18,14 @@ export type BoardCardModalContent = {
   descriptionLine2?: string
 }
 
+export type BoardMoveDirection = 'clockwise' | 'counterclockwise'
+
+export type ChanceMoveAnimationHint = {
+  playerId: string
+  direction: BoardMoveDirection
+  steps: number
+}
+
 const normalizeEventType = (type: unknown) =>
   typeof type === 'string' ? type.trim().toUpperCase() : ''
 
@@ -156,6 +164,30 @@ const getRecordString = (
   return null
 }
 
+const getRecordNumber = (
+  record: Record<string, unknown> | null | undefined,
+  keys: string[]
+) => {
+  if (!record) {
+    return null
+  }
+
+  for (const key of keys) {
+    const raw = record[key]
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return raw
+    }
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      const parsed = Number.parseFloat(raw)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
 const getEventTileRecord = (
   event: ServerEvent
 ): Record<string, unknown> | null => {
@@ -243,6 +275,52 @@ export const resolveBoardEventTileIndex = (event: ServerEvent) => {
   }
 
   return getPayloadNumber(payload, ['toIndex', 'tileIndex', 'toTileId'])
+}
+
+export const resolveChanceMoveAnimationHint = (
+  event: ServerEvent
+): ChanceMoveAnimationHint | null => {
+  if (toCanonicalEventType(event.type) !== 'CHANCE_RESOLVED') {
+    return null
+  }
+
+  if (event.playerId == null) {
+    return null
+  }
+
+  const eventRecord = getEventRecord(event)
+  const chanceRecord =
+    (typeof eventRecord.chance === 'object' && eventRecord.chance !== null
+      ? (eventRecord.chance as Record<string, unknown>)
+      : undefined) ??
+    (event.payload?.chance &&
+    typeof event.payload.chance === 'object' &&
+    event.payload.chance !== null
+      ? (event.payload.chance as Record<string, unknown>)
+      : undefined)
+
+  const chanceType = getRecordString(chanceRecord, ['type'])
+    ?.trim()
+    .toUpperCase()
+  if (chanceType !== 'MOVE_FORWARD' && chanceType !== 'MOVE_BACKWARD') {
+    return null
+  }
+
+  const rawSteps =
+    getRecordNumber(chanceRecord, ['power', 'amount', 'steps']) ??
+    getPayloadNumber(event.payload, ['power', 'amount', 'steps'])
+  const steps = Math.trunc(Math.abs(rawSteps ?? 0))
+
+  if (!Number.isFinite(steps) || steps <= 0) {
+    return null
+  }
+
+  return {
+    playerId: String(event.playerId),
+    direction:
+      chanceType === 'MOVE_BACKWARD' ? 'counterclockwise' : 'clockwise',
+    steps,
+  }
 }
 
 const resolveEventTileName = (event: ServerEvent, tiles: TileData[]) => {

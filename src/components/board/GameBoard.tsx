@@ -53,8 +53,10 @@ import {
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
+  resolveChanceMoveAnimationHint,
   shouldDelayPromptModalByMovement,
   type BoardEventAnimationKind,
+  type BoardMoveDirection,
 } from './gameBoardEventQueueUtils'
 
 import { getBuildCost, getTollCost } from './board.constants'
@@ -345,6 +347,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     >({})
     const [isMoving, setIsMoving] = useState(false)
     const lastMovePositionRef = useRef<Record<string, number>>({})
+    const pendingChanceMoveHintRef = useRef<
+      Record<string, { direction: BoardMoveDirection; steps: number }>
+    >({})
     const isAnimatingRef = useRef(false)
     useEffect(() => {
       isAnimatingRef.current = isMoving
@@ -427,10 +432,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           initialDelayMs?: number
           stepDelayMs?: number
           endDelayMs?: number
+          direction?: BoardMoveDirection
         }
       ) => {
         setIsMoving(true)
         const totalTiles = TILES.length
+        const direction = options?.direction ?? 'clockwise'
         let current = from
         const initialDelayMs = options?.initialDelayMs ?? 800
         const stepDelayMs = options?.stepDelayMs ?? 380
@@ -449,7 +456,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         // 한 칸씩 이동
         while (current !== to) {
-          current = (current + 1) % totalTiles
+          current =
+            direction === 'counterclockwise'
+              ? (current - 1 + totalTiles) % totalTiles
+              : (current + 1) % totalTiles
           setAnimatedPositions((prev) => ({
             ...prev,
             [String(playerId)]: current,
@@ -542,6 +552,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 ? Number.parseInt(rawFromIndex, 10)
                 : null
           const playerKey = String(event.playerId ?? '')
+          const rawTrigger =
+            payloadRecord?.trigger ??
+            payloadRecord?.moveTrigger ??
+            payloadRecord?.move_trigger ??
+            eventRecord?.trigger ??
+            eventRecord?.moveTrigger ??
+            eventRecord?.move_trigger
+          const normalizedTrigger =
+            typeof rawTrigger === 'string'
+              ? rawTrigger.trim().toLowerCase()
+              : ''
+          const isChanceTriggeredMove = normalizedTrigger === 'chance'
+          const chanceMoveHint =
+            playerKey && playerKey !== 'null'
+              ? pendingChanceMoveHintRef.current[playerKey]
+              : undefined
           const lastKnownFrom =
             playerKey && playerKey !== 'null'
               ? lastMovePositionRef.current[playerKey]
@@ -556,38 +582,70 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             )?.pos ??
             0
 
+          const rawSteps =
+            payloadRecord?.total ??
+            payloadRecord?.steps ??
+            payloadRecord?.move ??
+            payloadRecord?.distance ??
+            payloadRecord?.diceTotal ??
+            payloadRecord?.dice_total ??
+            eventRecord?.total ??
+            eventRecord?.steps
+          const parsedSteps =
+            typeof rawSteps === 'number' && Number.isFinite(rawSteps)
+              ? rawSteps
+              : typeof rawSteps === 'string' && rawSteps.trim() !== ''
+                ? Number.parseInt(rawSteps, 10)
+                : null
+          const moveSteps =
+            parsedSteps != null && Number.isFinite(parsedSteps)
+              ? Math.trunc(Math.abs(parsedSteps))
+              : (chanceMoveHint?.steps ?? null)
+
+          let moveDirection: BoardMoveDirection = 'clockwise'
+          if (isChanceTriggeredMove && chanceMoveHint) {
+            moveDirection = chanceMoveHint.direction
+          } else if (
+            isChanceTriggeredMove &&
+            moveSteps != null &&
+            moveSteps > 0
+          ) {
+            const totalTiles = TILES.length
+            const normalizedSteps = moveSteps % totalTiles
+            const clockwiseTo = (fromIndex + normalizedSteps) % totalTiles
+            const counterclockwiseTo =
+              (fromIndex - normalizedSteps + totalTiles) % totalTiles
+
+            if (counterclockwiseTo === tileIndex && clockwiseTo !== tileIndex) {
+              moveDirection = 'counterclockwise'
+            }
+          }
+
           if (fromIndex === tileIndex) {
-            const rawSteps =
-              payloadRecord?.total ??
-              payloadRecord?.steps ??
-              payloadRecord?.move ??
-              payloadRecord?.distance ??
-              payloadRecord?.diceTotal ??
-              payloadRecord?.dice_total ??
-              eventRecord?.total ??
-              eventRecord?.steps
-            const parsedSteps =
-              typeof rawSteps === 'number' && Number.isFinite(rawSteps)
-                ? rawSteps
-                : typeof rawSteps === 'string' && rawSteps.trim() !== ''
-                  ? Number.parseInt(rawSteps, 10)
-                  : null
-            if (parsedSteps != null && Number.isFinite(parsedSteps)) {
+            if (moveSteps != null && moveSteps > 0) {
               const totalTiles = TILES.length
+              const normalizedSteps = moveSteps % totalTiles
               fromIndex =
-                (tileIndex - (parsedSteps % totalTiles) + totalTiles) %
-                totalTiles
+                moveDirection === 'counterclockwise'
+                  ? (tileIndex + normalizedSteps) % totalTiles
+                  : (tileIndex - normalizedSteps + totalTiles) % totalTiles
             }
           }
 
           const movePromise = movePlayerSequentially(
             event.playerId!,
             fromIndex,
-            tileIndex
+            tileIndex,
+            {
+              direction: moveDirection,
+            }
           )
 
           // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
           movePromise.then(() => {
+            if (isChanceTriggeredMove && playerKey && playerKey !== 'null') {
+              delete pendingChanceMoveHintRef.current[playerKey]
+            }
             if (playerKey && playerKey !== 'null') {
               lastMovePositionRef.current[playerKey] = tileIndex
             }
@@ -602,6 +660,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
 
         if (normalizedType === 'CHANCE_RESOLVED') {
+          const chanceMoveHint = resolveChanceMoveAnimationHint(event)
+          if (chanceMoveHint) {
+            pendingChanceMoveHintRef.current[chanceMoveHint.playerId] = {
+              direction: chanceMoveHint.direction,
+              steps: chanceMoveHint.steps,
+            }
+          }
+
           if (!isLocalPlayerEvent) {
             return
           }
