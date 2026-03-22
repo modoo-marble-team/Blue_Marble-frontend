@@ -206,13 +206,13 @@ PR 올리기 전에는 아래 dry-run을 먼저 실행해 주세요.
 
 grace period 동안 아래 표를 채운다.
 
-| Date       | PR / Branch                      | Case                                  | Expected | Actual | Result | Notes |
-| ---------- | -------------------------------- | ------------------------------------- | -------- | ------ | ------ | ----- |
-| YYYY-MM-DD | example/small-docs-pr            | small/docs-only                       | pass     | pass   | OK     |       |
-| YYYY-MM-DD | example/high-risk-valid          | high-risk + valid body                | pass     | pass   | OK     |       |
-| YYYY-MM-DD | example/high-risk-missing-task   | high-risk + missing task docs         | fail     | fail   | OK     |       |
-| YYYY-MM-DD | example/high-risk-slug-mismatch  | high-risk + TODO slug mismatch        | fail     | fail   | OK     |       |
-| YYYY-MM-DD | example/high-risk-missing-manual | high-risk + missing manual/validation | fail     | fail   | OK     |       |
+| Date       | PR / Branch                               | Case                                  | Expected | Actual | Result | Notes                         |
+| ---------- | ----------------------------------------- | ------------------------------------- | -------- | ------ | ------ | ----------------------------- |
+| 2026-03-23 | `chore/workflow-gate-smoke-pr`            | small/docs-only                       | pass     | pass   | OK     | smoke PR pass 확인            |
+| 2026-03-23 | `chore/workflow-gate-high-risk-valid`     | high-risk + valid body                | pass     | pass   | OK     | 정상 high-risk 본문 통과 확인 |
+| 2026-03-23 | `chore/workflow-gate-fail-missing-task`   | high-risk + missing task docs         | fail     | fail   | OK     | task 문서 누락 fail 확인      |
+| 2026-03-23 | `chore/workflow-gate-fail-slug-mismatch`  | high-risk + TODO slug mismatch        | fail     | fail   | OK     | TODO slug mismatch fail 확인  |
+| 2026-03-23 | `chore/workflow-gate-fail-missing-manual` | high-risk + missing manual/validation | fail     | fail   | OK     | manual 누락 fail 확인         |
 
 ## Post-Enable Observation Log
 
@@ -231,7 +231,6 @@ required check 적용 후 첫 3영업일 동안 아래 표를 채운다.
 
 ## Current Blocker
 
-- 이 작업 환경에서는 `gh auth status` 결과가 invalid token 상태다.
-- `GH_TOKEN`, `GITHUB_TOKEN` 환경 변수도 비어 있다.
-- `gh auth login -h github.com`을 다시 시도했지만 유효한 로그인 상태로 전환되지 않았다.
-- 따라서 repo 안 문서와 절차는 정리하되, 실제 `develop` required check 연결은 저장소 관리자 권한이 있는 사람이 GitHub 설정에서 수행해야 한다.
+- grace period 검증은 끝났고, 다음 단계는 실제 large/high-risk PR을 3영업일 동안 관찰하는 것이다.
+- 이 작업 환경에서는 `gh auth status` 결과가 invalid token 상태라 PR 생성/조회 자동화는 계속 불가능하다.
+- 따라서 `Post-Enable Observation Log` 기록은 GitHub UI 확인과 수동 로그 반영 기준으로 운영한다.

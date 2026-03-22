@@ -12,8 +12,10 @@
 - [x] team announcement template과 verification / observation log 형식을 runbook에 반영했다
 - [x] `develop` branch protection에 `workflow-gate` required check가 추가됐다 (GitHub UI 수동 확인)
 - [x] smoke 검증용 branch `chore/workflow-gate-smoke-pr`를 origin에 push했다
-- [ ] smoke PR을 제출하고 `workflow-gate` pass 결과를 확인했다
-- [ ] grace period sample PR 5종 결과를 runbook log에 기록했다
+- [x] high-risk valid / fail 검증용 branch 4개를 origin에 push했다
+- [x] 로컬 `ai:pr-gate` preflight가 smoke / valid / fail 3종 기대값과 일치하는지 확인했다
+- [x] smoke PR을 제출하고 `workflow-gate` pass 결과를 확인했다
+- [x] grace period sample PR 5종 결과를 runbook log에 기록했다
 - [ ] required check 적용 후 3영업일 observation log를 채웠다
 
 ## Testing

@@ -7,6 +7,23 @@
 - 사용자 확인 기준으로 `develop` branch protection에는 `workflow-gate` required check가 이미 추가되었다.
 - smoke 검증용 branch `chore/workflow-gate-smoke-pr`는 origin에 push되었고, PR 생성 URL도 준비되었다.
 - smoke PR 생성 URL: `https://github.com/modoo-marble-team/Blue_Marble-frontend/pull/new/chore/workflow-gate-smoke-pr`
+- 추가 검증용 branch도 origin에 push되었다.
+  - `chore/workflow-gate-high-risk-valid`
+  - `chore/workflow-gate-fail-missing-task`
+  - `chore/workflow-gate-fail-slug-mismatch`
+  - `chore/workflow-gate-fail-missing-manual`
+- 로컬 `ai:pr-gate` preflight 결과는 아래 기대값과 일치한다.
+  - smoke/docs-only: pass
+  - high-risk valid body: pass
+  - high-risk missing task docs: fail
+  - high-risk TODO slug mismatch: fail
+  - high-risk missing manual evidence: fail
+- 사용자 확인 기준으로 grace period sample PR 5종도 실제 GitHub에서 expected/actual 일치로 검증 완료됐다.
+  - `chore/workflow-gate-smoke-pr`: pass
+  - `chore/workflow-gate-high-risk-valid`: pass
+  - `chore/workflow-gate-fail-missing-task`: fail
+  - `chore/workflow-gate-fail-slug-mismatch`: fail
+  - `chore/workflow-gate-fail-missing-manual`: fail
 - `gh auth status` 결과 기본 계정 토큰이 invalid라, 이 환경에서 `gh pr create`로 PR을 자동 생성하는 것은 불가능하다.
 - `GH_TOKEN`, `GITHUB_TOKEN` 환경 변수도 비어 있고, `gh auth login -h github.com` 재시도 후에도 유효한 로그인 상태로 전환되지 않았다.
 
@@ -41,18 +58,19 @@
 - repo 안에는 rollout runbook를 추가하고, quickstart/usage/team-memory에는 짧은 링크와 durable rule만 남긴다.
 - 운영 담당자가 바로 쓸 수 있도록 runbook 안에 team announcement template과 verification / observation log 형식까지 포함한다.
 - branch protection 적용은 사용자가 GitHub UI에서 수동으로 완료한 것으로 간주하고, 이후 smoke/fail PR 검증 단계로 진행한다.
+- branch protection 적용과 sample PR 5종 검증은 모두 끝났고, 이제 observation 단계만 남았다.
 - `gh` 인증 문제 때문에 PR 생성은 브라우저 URL을 여는 방식으로 우회한다.
+- 검증용 PR 본문 초안은 `/tmp/workflow-gate-*.md` 파일로 준비되어 있다.
 - gate 정책 자체는 4차에서 바꾸지 않고 운영 전환 절차만 고정한다.
 
 ## Session Handoff Notes
 
 - 다시 읽을 문서: `docs/ai/workflow-gate-rollout.md`, `docs/ai/usage.md`, `docs/ai/quickstart.md`, `docs/ai/team-memory.md`
-- 바로 이어서 할 1개 단계: 브라우저에서 smoke PR을 제출하고 `workflow-gate` required check가 pass하는지 확인한다.
-- pending decision / blocker: `gh pr create`는 막혀 있으므로 브라우저에서 PR 제출/확인이 필요하다.
-- 검증 재개 지점: smoke PR 제출 후 `Workflow Gate` pass 여부를 runbook의 verification log 첫 줄에 기록
+- 바로 이어서 할 1개 단계: 실제 large/high-risk PR 결과를 `Post-Enable Observation Log`에 기록하기 시작한다.
+- pending decision / blocker: PR 자동 조회는 막혀 있으므로 운영 담당자가 GitHub UI에서 결과를 보고 수동으로 log를 남겨야 한다.
+- 검증 재개 지점: next real PR 발생 시 expected/actual, false positive, unblock 필요 여부를 observation log 첫 줄에 기록
 
 ## Open Risks
 
-- smoke PR이 제출되지 않으면 required check가 실제로 merge gate로 동작하는지 아직 검증되지 않는다.
 - 실제 required check 전환 후 첫 3 영업일 false positive 기록이 없으면 운영 품질을 판단하기 어렵다.
 - 운영 담당자가 runbook의 log를 남기지 않으면 rollback 판단 근거가 약해진다.
