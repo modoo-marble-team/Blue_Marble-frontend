@@ -7,6 +7,7 @@ import {
   getBoardEventAnimationHoldMs,
   getBoardEventConsumeDelayMs,
   getPendingMovePlayerIdsFromEvents,
+  resolveChanceMoveAnimationHint,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventAnimationKind,
   shouldDelayPromptModalByMovement,
@@ -335,5 +336,58 @@ describe('gameBoardEventQueueUtils', () => {
         isMoving: false,
       })
     ).toBe(false)
+  })
+
+  it('extracts backward chance move direction hint', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 2,
+      chance: {
+        type: 'MOVE_BACKWARD',
+        power: 3,
+      },
+    } as ServerEvent & {
+      chance: { type: string; power: number }
+    }
+
+    expect(resolveChanceMoveAnimationHint(event)).toEqual({
+      playerId: '2',
+      direction: 'counterclockwise',
+      steps: 3,
+    })
+  })
+
+  it('extracts forward chance move direction hint from payload aliases', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 'guest-1',
+      payload: {
+        chance: {
+          type: 'MOVE_FORWARD',
+          amount: '5',
+        },
+      },
+    } as ServerEvent
+
+    expect(resolveChanceMoveAnimationHint(event)).toEqual({
+      playerId: 'guest-1',
+      direction: 'clockwise',
+      steps: 5,
+    })
+  })
+
+  it('returns null for non-move chance cards', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 1,
+      chance: {
+        type: 'GAIN_MONEY',
+        power: 10000,
+      },
+    } as ServerEvent & {
+      chance: { type: string; power: number }
+    }
+
+    expect(resolveChanceMoveAnimationHint(event)).toBeNull()
   })
 })

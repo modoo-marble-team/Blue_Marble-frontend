@@ -7,6 +7,7 @@
 ## In Progress
 
 - [ ] `workflow-gate-rollout-develop` - Workflow Gate Rollout Develop (`docs/ai/tasks/workflow-gate-rollout-develop/`) - required check enabled, waiting for smoke PR submission and verification
+- [ ] `chance-move-direction-animation` - Chance Move Direction Animation (`docs/ai/tasks/chance-move-direction-animation/`) - chance 이동 방향 힌트 기반 순차 애니메이션 보정 및 검증
 
 ## Blocked
 
