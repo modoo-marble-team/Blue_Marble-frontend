@@ -62,6 +62,8 @@
 - `npm run ai:pr-gate`는 PR 본문과 changed files를 기준으로 large/high-risk PR blocking 여부를 로컬 dry-run 할 수 있는 도구다.
 - PR 본문에는 task 문서, 참고 문서, 실행한 검증, 남은 리스크, TODO/task slug 연결을 남긴다.
 - `Workflow Gate`는 큰 PR/high-risk PR에서만 task/TODO/manual/validation 누락을 차단한다.
+- `develop` 브랜치 운영 전환 절차와 required check 적용 순서는 `docs/ai/workflow-gate-rollout.md`를 따른다.
+- grace period 샘플 PR 결과와 post-enable false positive 기록도 같은 runbook의 log 형식으로 남긴다.
 - `AI Review`, Husky, CI는 계속 팀 공용 enforcement이며 특정 AI 도구에 의존하지 않는다.
 
 ## Error Handling

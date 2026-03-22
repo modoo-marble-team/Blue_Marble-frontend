@@ -6,6 +6,8 @@
 
 ## In Progress
 
+- [ ] `workflow-gate-rollout-develop` - Workflow Gate Rollout Develop (`docs/ai/tasks/workflow-gate-rollout-develop/`) - required check enabled, waiting for smoke PR submission and verification
+
 ## Blocked
 
 ## Done
