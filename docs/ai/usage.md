@@ -45,6 +45,7 @@
 ### PR 올리기 전
 
 - 가장 좁은 `ai:check:*`부터 실행하고, 마지막에 `npm run ai:self-review`를 본다.
+- 큰 PR/high-risk PR이면 `npm run ai:pr-gate -- --files ... --pr-body-file ...`로 blocking 조건을 로컬에서 먼저 확인한다.
 - PR 본문에는 task 문서, TODO/task slug 연결, 참고 문서, 실행한 검증, 남은 리스크를 남긴다.
 - 작은 작업이면 `Task 문서`와 `TODO.md 연결`을 `N/A`로 적고, 큰 작업이면 실제 slug와 상태를 적는다.
 
@@ -58,7 +59,9 @@
 - 큰 변경은 `planner -> implementer -> reviewer/tester` 순서를 기본값으로 둔다.
 - `npm run ai:self-review`는 diff 기반 warnings/test gaps/manual/validation 후보를 보는 공용 도구다.
 - `npm run ai:workflow:audit`는 queue-managed task workspace와 `TODO.md` 구조 정합성을 주간 점검용으로 보여주는 경고 전용 도구다.
+- `npm run ai:pr-gate`는 PR 본문과 changed files를 기준으로 large/high-risk PR blocking 여부를 로컬 dry-run 할 수 있는 도구다.
 - PR 본문에는 task 문서, 참고 문서, 실행한 검증, 남은 리스크, TODO/task slug 연결을 남긴다.
+- `Workflow Gate`는 큰 PR/high-risk PR에서만 task/TODO/manual/validation 누락을 차단한다.
 - `AI Review`, Husky, CI는 계속 팀 공용 enforcement이며 특정 AI 도구에 의존하지 않는다.
 
 ## Error Handling

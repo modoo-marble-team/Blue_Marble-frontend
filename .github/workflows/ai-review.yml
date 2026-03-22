@@ -26,12 +26,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Collect changed files
-        id: changed-files
         run: |
           git diff --name-only --diff-filter=ACMR \
             "${{ github.event.pull_request.base.sha }}" \
             "${{ github.event.pull_request.head.sha }}" > /tmp/changed-files.txt
+
+      - name: Prepare PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > /tmp/pr-body.md
+
+      - name: Run PR gate in report mode
+        run: |
+          node scripts/ai/pr-gate.mjs \
+            --mode report \
+            --changed-files-file /tmp/changed-files.txt \
+            --pr-body-file /tmp/pr-body.md \
+            --output-file /tmp/pr-gate.json
 
       - name: Upsert PR comment
         uses: actions/github-script@v7
@@ -42,274 +59,34 @@ jobs:
             const marker = '<!-- ai-review -->'
             const issueNumber = context.issue.number
             const { owner, repo } = context.repo
-            const highRiskPrefixes = [
-              'src/pages/lobby/',
-              'src/features/presence/',
-              'src/features/room-chat/',
-              'src/pages/waiting-room/',
-              'src/pages/GamePage.tsx',
-              'src/components/game/',
-              'src/components/board/',
-              'src/hooks/game/',
-              'src/services/socket/game.handler.ts',
-              'src/stores/game.store.ts',
-              'src/lib/socket.ts',
-            ]
-            const largeChangeFileCountThreshold = 8
+            const gate = JSON.parse(fs.readFileSync('/tmp/pr-gate.json', 'utf8'))
 
-            function readFile(path) {
-              return fs.existsSync(path) ? fs.readFileSync(path, 'utf8').trim() : ''
-            }
-
-            function startsWithAnyPrefix(file, prefixes) {
-              return prefixes.some((prefix) => file.startsWith(prefix))
-            }
-
-            function escapeRegExp(value) {
-              return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-            }
-
-            function extractSection(body, heading) {
-              const start = body.indexOf(heading)
-
-              if (start === -1) {
-                return ''
-              }
-
-              const rest = body.slice(start + heading.length)
-              const nextHeadingIndex = rest.search(/\n##\s/)
-              return (nextHeadingIndex === -1 ? rest : rest.slice(0, nextHeadingIndex)).trim()
-            }
-
-            function hasTaskDocumentLinks(body) {
-              return [
-                /docs\/ai\/tasks\/[^\s)]+\/plan\.md/,
-                /docs\/ai\/tasks\/[^\s)]+\/context\.md/,
-                /docs\/ai\/tasks\/[^\s)]+\/checklist\.md/,
-              ].every((pattern) => pattern.test(body))
-            }
-
-            function hasTaskDocumentTripletInChangedFiles(files) {
-              if (!Array.isArray(files) || files.length === 0) {
-                return false
-              }
-
-              const groupedKindsBySlug = new Map()
-
-              for (const file of files) {
-                const match = file.match(
-                  /^docs\/ai\/tasks\/([^/]+)\/(plan|context|checklist)\.md$/
-                )
-
-                if (!match) {
-                  continue
-                }
-
-                const [, slug, kind] = match
-                const kinds = groupedKindsBySlug.get(slug) ?? new Set()
-                kinds.add(kind)
-                groupedKindsBySlug.set(slug, kinds)
-              }
-
-              return Array.from(groupedKindsBySlug.values()).some(
-                (kinds) =>
-                  kinds.has('plan') &&
-                  kinds.has('context') &&
-                  kinds.has('checklist')
-              )
-            }
-
-            function hasMeaningfulValidationContent(section) {
-              return section
-                .split('\n')
-                .map((line) => line.trim())
-                .filter(Boolean)
-                .some((line) => {
-                  if (line.startsWith('>')) {
-                    return false
-                  }
-
-                  if (
-                    [
-                      '- [ ] `npm run lint`',
-                      '- [ ] `npm run test`',
-                      '- [ ] `npm run build`',
-                      '- [ ] 기타:',
-                    ].includes(line)
-                  ) {
-                    return false
-                  }
-
-                  if (line.startsWith('- [x]')) {
-                    return true
-                  }
-
-                  if (/^- \[ \] 기타:\s*\S+/.test(line)) {
-                    return true
-                  }
-
-                  if (/^- `.+`$/.test(line) || /^- npm run /.test(line)) {
-                    return true
-                  }
-
-                  return false
-                })
-            }
-
-            function hasMeaningfulRiskContent(section) {
-              return section
-                .split('\n')
-                .map((line) => line.trim())
-                .filter(Boolean)
-                .some((line) => {
-                  if (line.startsWith('>')) {
-                    return false
-                  }
-
-                  if (line === '- 없음 / 또는 리스크 작성') {
-                    return false
-                  }
-
-                  return line.startsWith('- ')
-                })
-            }
-
-            function hasRequiredManualEvidence(section, files) {
-              const manualLines = section
-                .split('\n')
-                .map((line) => line.trim())
-                .filter((line) => line.startsWith('- '))
-
-              if (manualLines.length === 0) {
-                return false
-              }
-
-              const requiredManuals = []
-
-              if (
-                files.some((file) =>
-                  startsWithAnyPrefix(file, [
-                    'src/pages/lobby/',
-                    'src/features/presence/',
-                    'src/features/room-chat/',
-                  ])
-                )
-              ) {
-                requiredManuals.push('docs/ai/manuals/lobby.md')
-              }
-
-              if (files.some((file) => file.startsWith('src/pages/waiting-room/'))) {
-                requiredManuals.push('docs/ai/manuals/waiting-room.md')
-              }
-
-              if (
-                files.some((file) =>
-                  startsWithAnyPrefix(file, [
-                    'src/pages/GamePage.tsx',
-                    'src/components/game/',
-                    'src/components/board/',
-                    'src/hooks/game/',
-                    'src/services/socket/game.handler.ts',
-                    'src/stores/game.store.ts',
-                    'src/mocks/handlers/game.handler.ts',
-                  ])
-                )
-              ) {
-                requiredManuals.push('docs/ai/manuals/game-runtime.md')
-              }
-
-              if (
-                files.some((file) =>
-                  startsWithAnyPrefix(file, [
-                    'src/contracts/socket/',
-                    'mock-socket-server/',
-                    'src/lib/socket.ts',
-                  ])
-                )
-              ) {
-                requiredManuals.push('docs/socket-mock-server.md')
-              }
-
-              if (requiredManuals.length === 0) {
-                return true
-              }
-
-              return requiredManuals.every((manual) =>
-                manualLines.some((line) => line.includes(manual))
-              )
-            }
-
-            const pullRequestBody = context.payload.pull_request?.body ?? ''
-            const changedFiles = readFile('/tmp/changed-files.txt')
-            const changedFileArray = changedFiles
-              ? changedFiles.split('\n').filter(Boolean)
-              : []
-
-            const taskSection = extractSection(
-              pullRequestBody,
-              '## 🧠 Task 문서 (큰 작업이면 필수)'
-            )
-            const manualSection = extractSection(
-              pullRequestBody,
-              '## 📚 참고한 기준 문서'
-            )
-            const validationSection = extractSection(
-              pullRequestBody,
-              '## 🧪 실행한 검증'
-            )
-            const riskSection = extractSection(
-              pullRequestBody,
-              '## ⚠️ 남은 리스크'
-            )
-
-            const isLargeChange =
-              changedFileArray.length >= largeChangeFileCountThreshold ||
-              changedFileArray.some((file) =>
-                startsWithAnyPrefix(file, highRiskPrefixes)
-              )
-            const hasTaskDocumentEvidence =
-              hasTaskDocumentLinks(taskSection) ||
-              hasTaskDocumentTripletInChangedFiles(changedFileArray)
-            const warnings = []
-
-            if (isLargeChange && !hasTaskDocumentEvidence) {
-              warnings.push(
-                `큰 변경으로 보이지만 task 문서 근거(plan/context/checklist)가 없습니다. 기준: 파일 ${largeChangeFileCountThreshold}개 이상 또는 고위험 경로 변경.`
-              )
-            }
-
-            if (
-              isLargeChange &&
-              !hasRequiredManualEvidence(manualSection, changedFileArray)
-            ) {
-              warnings.push(
-                '고위험 변경으로 보이지만 참고한 기준 문서 섹션에 필요한 manual 근거가 없습니다.'
-              )
-            }
-
-            if (!hasMeaningfulValidationContent(validationSection)) {
-              warnings.push(
-                '`실행한 검증` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
-              )
-            }
-
-            if (!hasMeaningfulRiskContent(riskSection)) {
-              warnings.push(
-                '`남은 리스크` 섹션이 비어 있거나 기본 placeholder 상태입니다.'
-              )
-            }
-
-            const warningSection = warnings.length
-              ? warnings.map((warning) => `- ${warning}`).join('\n')
+            const errorSection = gate.errors.length
+              ? gate.errors.map((error) => `- ${error}`).join('\n')
+              : '- none'
+            const warningSection = gate.warnings.length
+              ? gate.warnings.map((warning) => `- ${warning}`).join('\n')
+              : '- none'
+            const reasonSection = gate.gateReasons.length
+              ? gate.gateReasons.map((reason) => `- ${reason}`).join('\n')
               : '- none'
 
             const body = `${marker}
             ## 🛡️ PR Guard
 
-            이 코멘트는 PR 본문에서 빠진 근거를 확인하기 위한 경량 검수입니다.
-            코드 품질 검사는 CI가, 생성형 리뷰는 Gemini Code Assist가 담당합니다.
+            이 코멘트는 PR 본문의 workflow 근거를 확인하기 위한 경량 검수입니다.
+            blocking check는 별도 \`Workflow Gate\`가 담당합니다.
 
-            ### PR 경고
+            ### Gate 대상
+            - ${gate.isEnforcedLargeChange ? 'yes' : 'no'}
+
+            ### Gate 이유
+            ${reasonSection}
+
+            ### Hard errors
+            ${errorSection}
+
+            ### Warnings
             ${warningSection}
             `
 
