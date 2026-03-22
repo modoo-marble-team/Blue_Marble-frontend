@@ -156,6 +156,10 @@ npm run ai:pr-gate -- --files src/features/presence/useDirectMessageController.t
 `Workflow Gate` check는 큰 PR/high-risk PR에서만 blocking 된다.
 작은 PR과 docs-only PR은 계속 warning-only 운영을 유지한다.
 
+운영 전환 절차와 `develop` required check 적용 순서는
+`docs/ai/workflow-gate-rollout.md`를 기준으로 본다.
+운영 담당자는 같은 문서의 team announcement / verification log / observation log를 그대로 사용한다.
+
 ## Weekly Audit
 
 주 1회 또는 PR 전 정리 단계에서 아래 명령을 사용한다.

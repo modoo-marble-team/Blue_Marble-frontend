@@ -13,3 +13,5 @@
 - 큰 작업은 가능하면 이슈 단계에서 예상 task slug를 먼저 정한다.
 - handoff 전에는 checklist, `TODO.md`, `npm run ai:session:brief -- <slug>` 상태를 맞춘다.
 - 주간 운영 점검은 `npm run ai:workflow:audit`로 경고만 확인한다.
+- `develop` PR의 large/high-risk 변경은 `Workflow Gate` required check 대상이다.
+- 큰 PR은 PR 작성 전에 `npm run ai:pr-gate` dry-run을 먼저 실행한다.
