@@ -2,6 +2,7 @@ import type { PlayerState, TileData } from './board.constants'
 import type { ServerEvent } from '../../types/domain'
 import { formatWon } from '../../lib/utils'
 
+// Workflow gate verification branch marker.
 export type BoardEventAnimationKind =
   | 'none'
   | 'dice'
