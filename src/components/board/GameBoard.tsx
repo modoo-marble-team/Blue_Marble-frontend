@@ -29,6 +29,7 @@ import {
   resolvePromptModalKind,
 } from '../game/modals/promptModalMapping'
 
+// Workflow gate verification branch marker.
 import {
   TILES,
   TOP_ROW,
