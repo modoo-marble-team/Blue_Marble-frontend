@@ -158,7 +158,7 @@ npm run ai:pr-gate -- --files src/features/presence/useDirectMessageController.t
 
 운영 전환 절차와 `develop` required check 적용 순서는
 `docs/ai/workflow-gate-rollout.md`를 기준으로 본다.
-운영 담당자는 같은 문서의 team announcement / verification log / observation log를 그대로 사용한다.
+운영 담당자는 같은 문서의 dry-run 예시와 problem handling 기준을 그대로 사용한다.
 
 ## Weekly Audit
 

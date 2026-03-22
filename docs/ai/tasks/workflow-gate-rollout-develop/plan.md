@@ -9,7 +9,7 @@
 
 ## Goal
 
-- `Workflow Gate`를 `develop` 브랜치 운영에 안전하게 전환할 수 있도록 runbook와 검증 절차를 정리하고, external blocker를 문서화한다.
+- `Workflow Gate`를 `develop` 브랜치에서 간단히 유지할 수 있도록 runbook를 정리하고, 과한 rollout 절차 없이 required check 운영 기준만 남긴다.
 
 ## WAT Workflow
 
@@ -51,9 +51,9 @@
 
 ## Completion Criteria
 
-- rollout runbook 한 문서에서 gate 대상, fail 조건, sample PR, grace period, branch protection 절차, rollback 기준을 바로 확인할 수 있다.
+- rollout runbook 한 문서에서 gate 대상, fail 조건, required check 유지, local dry-run, representative verification, problem handling을 바로 확인할 수 있다.
 - quickstart, usage, team-memory가 `develop` required check 운영을 같은 방향으로 설명한다.
-- 이 환경에서 GitHub settings를 직접 못 바꾸는 blocker가 task 문서와 runbook에 명시된다.
+- rollout task를 별도 observation 단계 없이 닫을 수 있게 문서와 TODO 상태가 정리된다.
 
 ## Role Plan
 

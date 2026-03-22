@@ -1,7 +1,7 @@
 # Workflow Gate Rollout
 
-이 문서는 `Workflow Gate`를 `develop` 브랜치 운영에 실제로 연결할 때
-팀이 따라야 하는 rollout / verification / rollback 절차를 고정한다.
+이 문서는 `Workflow Gate`를 `develop` 브랜치 운영에 유지할 때
+팀이 따라야 하는 최소 운영 기준을 고정한다.
 
 ## Goal
 
@@ -134,32 +134,25 @@ npm run ai:pr-gate -- --mode enforce --changed-files-file /tmp/pr-gate-changed-f
 ## 🧪 실행한 검증
 ```
 
-## Rollout Plan
+## Activation And Verification
 
-### 1. Grace Period
+### 1. Enable Required Check
 
 - 대상 브랜치: `develop`
-- 기간: 1 영업일
-- 이 기간에는 `Workflow Gate` workflow를 실행만 하고, GitHub branch protection의 required check로는 연결하지 않는다.
-- 팀에는 아래를 미리 공유한다:
-  - large/high-risk PR 기준
-  - `npm run ai:pr-gate` dry-run 예시
-  - fail 조건 5개
-  - `AI Review`는 comment-only라는 점
+- GitHub 저장소 설정에서 `workflow-gate`를 `develop`의 required check로 유지한다.
+- `AI Review`는 comment-only로 유지하고 required check에는 추가하지 않는다.
 
-### 2. Sample PR Verification
+### 2. Initial Or Policy-Change Verification
 
-유예 기간 동안 아래 샘플을 test PR로 확인한다.
+초기 도입이나 gate 정책 변경 시에는 아래 대표 케이스만 다시 확인한다.
 
 - small/docs-only PR: pass
 - high-risk PR + 정상 본문: pass
-- high-risk PR + task 문서 없음: fail
-- high-risk PR + TODO slug mismatch: fail
-- high-risk PR + manual/validation 누락: fail
+- high-risk PR + 대표 fail 케이스 1건: fail
 
-### 3. Enable Required Check
+### 3. Branch Protection Setup
 
-유예 기간이 끝나면 GitHub 저장소 설정에서 아래 순서로 적용한다.
+GitHub 저장소 설정에서 아래 순서로 적용하거나 확인한다.
 
 1. GitHub 저장소 `Settings`
 2. `Branches`
@@ -174,12 +167,9 @@ npm run ai:pr-gate -- --mode enforce --changed-files-file /tmp/pr-gate-changed-f
 운영 담당자는 아래 순서만 따르면 된다.
 
 1. 팀 공지에 runbook 링크와 dry-run 예시를 공유한다.
-2. 1영업일 grace period 동안 sample PR 5종을 실제로 확인한다.
-3. sample PR 결과를 아래 verification log에 기록한다.
-4. `develop` branch protection에 `Workflow Gate`를 required check로 추가한다.
-5. 추가 직후 실제 PR 1건 이상에서 expected pass/fail을 확인한다.
-6. 첫 3영업일 동안 false positive와 unblock 요청을 observation log에 기록한다.
-7. false positive가 2건 이상이면 required check를 잠시 해제하고 후속 task slug를 만든다.
+2. 초기 도입이나 gate 정책 변경 시에는 smoke PR과 대표 fail 케이스를 실제로 확인한다.
+3. 필요하면 아래 초기 도입 기록 표를 참고하거나 업데이트한다.
+4. repeated false positive나 unblock 요청이 이어지면 required check를 잠시 해제하고 후속 task slug를 만든다.
 
 ## Team Announcement Template
 
@@ -189,7 +179,6 @@ npm run ai:pr-gate -- --mode enforce --changed-files-file /tmp/pr-gate-changed-f
 `Workflow Gate` rollout을 시작합니다.
 
 - 대상 브랜치: `develop`
-- grace period: 1영업일
 - blocking 대상: large PR 또는 high-risk 경로 변경
 - hard fail 조건: task 문서, `TODO.md 연결`, TODO actual slug, required manual, validation
 - `AI Review`는 comment-only 유지
@@ -202,9 +191,10 @@ PR 올리기 전에는 아래 dry-run을 먼저 실행해 주세요.
 `docs/ai/workflow-gate-rollout.md`
 ```
 
-## Grace Period Verification Log
+## Initial Adoption Reference
 
-grace period 동안 아래 표를 채운다.
+아래 표는 2026-03-23 초기 도입 시 representative verification 결과다.
+이 표를 매 운영 주기마다 다시 채울 필요는 없고, gate 정책을 크게 바꿀 때만 참고하거나 갱신한다.
 
 | Date       | PR / Branch                               | Case                                  | Expected | Actual | Result | Notes                         |
 | ---------- | ----------------------------------------- | ------------------------------------- | -------- | ------ | ------ | ----------------------------- |
@@ -214,23 +204,9 @@ grace period 동안 아래 표를 채운다.
 | 2026-03-23 | `chore/workflow-gate-fail-slug-mismatch`  | high-risk + TODO slug mismatch        | fail     | fail   | OK     | TODO slug mismatch fail 확인  |
 | 2026-03-23 | `chore/workflow-gate-fail-missing-manual` | high-risk + missing manual/validation | fail     | fail   | OK     | manual 누락 fail 확인         |
 
-## Post-Enable Observation Log
+## Problem Handling
 
-required check 적용 후 첫 3영업일 동안 아래 표를 채운다.
-
-| Date       | PR   | Expected | Actual | False Positive | Unblock Needed | Notes |
-| ---------- | ---- | -------- | ------ | -------------- | -------------- | ----- |
-| YYYY-MM-DD | #123 | pass     | pass   | no             | no             |       |
-
-## Rollback
-
-- required check 적용 후 첫 3 영업일 동안 false positive를 기록한다.
-- false positive가 2건 이상이면 `Workflow Gate` required check를 잠시 해제한다.
+- repeated false positive나 unblock 요청이 이어지면 `Workflow Gate` required check를 잠시 해제한다.
 - 해제와 동시에 새 task slug를 만들고, gate 기준 수정 작업으로 넘긴다.
-- 4차에서는 large/high-risk 기준, hard fail 항목, warning-only 항목을 바꾸지 않는다.
-
-## Current Blocker
-
-- grace period 검증은 끝났고, 다음 단계는 실제 large/high-risk PR을 3영업일 동안 관찰하는 것이다.
-- 이 작업 환경에서는 `gh auth status` 결과가 invalid token 상태라 PR 생성/조회 자동화는 계속 불가능하다.
-- 따라서 `Post-Enable Observation Log` 기록은 GitHub UI 확인과 수동 로그 반영 기준으로 운영한다.
+- large/high-risk 기준과 hard fail 조건은 후속 task에서만 조정한다.
+- 이 작업 환경에서 `gh auth status`가 invalid token이면 GitHub UI에서 수동으로 check 결과와 branch protection을 확인한다.

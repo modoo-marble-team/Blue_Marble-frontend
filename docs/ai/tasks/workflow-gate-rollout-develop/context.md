@@ -18,7 +18,7 @@
   - high-risk missing task docs: fail
   - high-risk TODO slug mismatch: fail
   - high-risk missing manual evidence: fail
-- 사용자 확인 기준으로 grace period sample PR 5종도 실제 GitHub에서 expected/actual 일치로 검증 완료됐다.
+- 사용자 확인 기준으로 초기 도입 sample PR 5종도 실제 GitHub에서 expected/actual 일치로 검증 완료됐다.
   - `chore/workflow-gate-smoke-pr`: pass
   - `chore/workflow-gate-high-risk-valid`: pass
   - `chore/workflow-gate-fail-missing-task`: fail
@@ -49,28 +49,26 @@
 ## Constraints
 
 - `develop`만 대상이고 다른 보호 브랜치는 이번 단계에서 건드리지 않는다.
-- 유예 기간은 1 영업일로 고정한다.
-- false positive 2건 이상이면 required check를 잠시 해제하고 후속 task로 넘긴다.
+- repeated false positive가 이어지면 required check를 잠시 해제하고 후속 task로 넘긴다.
 - 이 환경에서 GitHub branch protection 직접 변경은 불가능하므로 수동 적용 절차를 문서화해야 한다.
 
 ## Decision Notes
 
-- repo 안에는 rollout runbook를 추가하고, quickstart/usage/team-memory에는 짧은 링크와 durable rule만 남긴다.
-- 운영 담당자가 바로 쓸 수 있도록 runbook 안에 team announcement template과 verification / observation log 형식까지 포함한다.
+- repo 안에는 rollout runbook를 유지하되, quickstart/usage/team-memory에는 required check와 dry-run 같은 durable rule만 남긴다.
+- 운영 담당자가 바로 쓸 수 있도록 runbook 안에 team announcement template, local dry-run, representative verification 기준을 포함한다.
 - branch protection 적용은 사용자가 GitHub UI에서 수동으로 완료한 것으로 간주하고, 이후 smoke/fail PR 검증 단계로 진행한다.
-- branch protection 적용과 sample PR 5종 검증은 모두 끝났고, 이제 observation 단계만 남았다.
+- branch protection 적용과 sample PR 5종 검증은 모두 끝났고, 추가 고정 observation 단계는 두지 않는다.
 - `gh` 인증 문제 때문에 PR 생성은 브라우저 URL을 여는 방식으로 우회한다.
 - 검증용 PR 본문 초안은 `/tmp/workflow-gate-*.md` 파일로 준비되어 있다.
-- gate 정책 자체는 4차에서 바꾸지 않고 운영 전환 절차만 고정한다.
+- gate 정책 자체는 유지하고 운영 문서만 간소화한다.
 
 ## Session Handoff Notes
 
 - 다시 읽을 문서: `docs/ai/workflow-gate-rollout.md`, `docs/ai/usage.md`, `docs/ai/quickstart.md`, `docs/ai/team-memory.md`
-- 바로 이어서 할 1개 단계: 실제 large/high-risk PR 결과를 `Post-Enable Observation Log`에 기록하기 시작한다.
-- pending decision / blocker: PR 자동 조회는 막혀 있으므로 운영 담당자가 GitHub UI에서 결과를 보고 수동으로 log를 남겨야 한다.
-- 검증 재개 지점: next real PR 발생 시 expected/actual, false positive, unblock 필요 여부를 observation log 첫 줄에 기록
+- 바로 이어서 할 1개 단계: repeated false positive가 생길 때만 새 task를 열어 gate 기준 조정 여부를 판단한다.
+- pending decision / blocker: PR 자동 조회는 막혀 있으므로 GitHub check 확인이 필요하면 운영 담당자가 GitHub UI를 본다.
+- 검증 재개 지점: false positive나 unblock 요청이 반복될 때 runbook의 problem handling 기준을 적용
 
 ## Open Risks
 
-- 실제 required check 전환 후 첫 3 영업일 false positive 기록이 없으면 운영 품질을 판단하기 어렵다.
-- 운영 담당자가 runbook의 log를 남기지 않으면 rollback 판단 근거가 약해진다.
+- 자동 운영 로그를 강제하지 않기 때문에 repeated false positive 판단은 팀 운영자가 직접 해야 한다.
