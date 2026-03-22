@@ -23,6 +23,12 @@ assignees: ''
 - [ ]
 - [ ]
 
+## 🤖 AI Workflow 메모
+
+- 단일 파일, 단일 세션, 낮은 회귀 위험이면 task 문서를 생략할 수 있습니다.
+- 작업이 커지면 task slug를 정하고 `TODO.md`와 `docs/ai/tasks/<slug>/`를 1:1로 연결해주세요.
+- PR 전에는 관련 검증과 `npm run ai:self-review` 결과를 기준으로 본문을 정리해주세요.
+
 ## ✅ 완료 기준
 
 - [ ] 기존 기능 동작 유지 확인

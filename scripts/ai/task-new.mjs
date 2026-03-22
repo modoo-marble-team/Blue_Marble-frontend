@@ -3,7 +3,12 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-import { getManualsForFiles, getSuggestedScripts } from './lib.mjs'
+import {
+  buildDefaultTodoContents,
+  getManualsForFiles,
+  getSuggestedScripts,
+  upsertTodoTask,
+} from './lib.mjs'
 
 const TASKS_ROOT = path.join('docs', 'ai', 'tasks')
 const TEMPLATE_ROOT = path.join(TASKS_ROOT, '_template')
@@ -122,6 +127,12 @@ export function buildTaskFileContents({ slug, files, date = getTodayDate() }) {
     suggestedScripts,
     '- 최소 검증 명령을 직접 채워주세요'
   )
+  const watSteps = [
+    '1. 범위와 완료 기준을 문서로 고정한다',
+    '2. 최소 범위 구현과 필요한 문서/테스트 수정 범위를 정리한다',
+    '3. 가장 좁은 검증부터 실행하고 handoff 상태를 남긴다',
+  ].join('\n')
+  const todoLine = `- [ ] \`${slug}\` - ${taskName} (\`docs/ai/tasks/${slug}/\`)`
 
   return {
     plan: `# Plan
@@ -129,12 +140,17 @@ export function buildTaskFileContents({ slug, files, date = getTodayDate() }) {
 ## Task
 
 - 작업 이름: ${taskName}
+- 작업 slug: ${slug}
 - 요청 날짜: ${date}
 - 담당 범위: ${files.length ? '입력 파일 기준 초안 생성' : '직접 채워주세요'}
 
 ## Goal
 
 - ${taskName} 작업의 목표를 직접 채워주세요
+
+## WAT Workflow
+
+${watSteps}
 
 ## In Scope
 
@@ -147,6 +163,12 @@ ${targetFiles}
 ## Target Files
 
 ${targetFiles}
+
+## Task Tracking
+
+- TODO line: ${todoLine}
+- Session brief: \`npm run ai:session:brief -- ${slug}\`
+- Reopen docs: \`docs/ai/tasks/${slug}/plan.md\`, \`context.md\`, \`checklist.md\`, 관련 manuals
 
 ## Completion Criteria
 
@@ -188,6 +210,13 @@ ${manualNotes}
 - 선택한 접근 방식과 이유를 직접 정리해주세요
 - 버린 대안과 이유를 직접 정리해주세요
 
+## Session Handoff Notes
+
+- 다음 세션에서 다시 읽을 문서를 직접 정리해주세요
+- 바로 이어서 할 1개 단계를 직접 정리해주세요
+- pending decision / blocker를 직접 정리해주세요
+- 검증 재개 지점을 직접 정리해주세요
+
 ## Open Risks
 
 - 아직 확인이 덜 된 부분을 직접 정리해주세요
@@ -199,6 +228,7 @@ ${manualNotes}
 
 - [ ] 관련 manual과 기존 문서를 읽었다
 - [ ] 영향 범위를 정리했다
+- [ ] WAT 단계와 역할 분담을 문서에 반영했다
 - [ ] 최소 범위로 구현했다
 - [ ] mock/real 경로를 함께 확인했다
 - [ ] 타입/contract 변경이 있으면 관련 코드도 같이 수정했다
@@ -219,6 +249,9 @@ ${
 - [ ] Tester 검증 실행
 - [ ] \`docs/rules.md\` 기준으로 셀프 리뷰했다
 - [ ] 리다이렉트, cleanup, 중복 구독, 에러 처리 경계를 확인했다
+- [ ] \`TODO.md\` task 한 줄을 최신 상태로 유지했다
+- [ ] session handoff notes를 최신 상태로 갱신했다
+- [ ] \`npm run ai:session:brief -- ${slug}\` 출력이 현재 상태와 맞는다
 - [ ] 변경 파일 / 실행한 검증 / 남은 리스크를 정리했다
 `,
   }
@@ -258,14 +291,25 @@ export function createTaskWorkspace({
     files,
     date,
   })
+  const todoPath = path.join(cwd, 'TODO.md')
+  const todoContent = fs.existsSync(todoPath)
+    ? fs.readFileSync(todoPath, 'utf8')
+    : buildDefaultTodoContents()
+  const nextTodoContent = upsertTodoTask(todoContent, {
+    slug,
+    title: humanizeSlug(slug),
+    section: 'Ready',
+  })
 
   fs.writeFileSync(path.join(taskDir, 'plan.md'), contents.plan)
   fs.writeFileSync(path.join(taskDir, 'context.md'), contents.context)
   fs.writeFileSync(path.join(taskDir, 'checklist.md'), contents.checklist)
+  fs.writeFileSync(todoPath, nextTodoContent)
 
   return {
     taskDir,
     createdFiles: [
+      todoPath,
       path.join(taskDir, 'plan.md'),
       path.join(taskDir, 'context.md'),
       path.join(taskDir, 'checklist.md'),
