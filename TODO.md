@@ -13,6 +13,8 @@
 
 ## Done
 
+- [x] `global-effect-ui` - Global Effect UI (`docs/ai/tasks/global-effect-ui/`) - 전역 효과 보드 오버레이 및 팝업 신규 추가
+- [x] `island-modal-text-fix` - Island Modal Text Fix (`docs/ai/tasks/island-modal-text-fix/`) - 무인도 팝업 문항 고정 및 남은 턴수 상시 표시
 - [x] `blue-marble-cheatsheet-refresh` - Blue Marble Cheatsheet Refresh (`docs/ai/tasks/blue-marble-cheatsheet-refresh/`) - 일반 Claude Code 치트시트를 프로젝트 전용 운영 가이드로 재작성
 - [x] `ai-workflow-pr-split-guidance` - AI Workflow PR Split Guidance (`docs/ai/tasks/ai-workflow-pr-split-guidance/`) - workflow docs의 repo guardrails, PR 분할 기준, 로컬 Claude 자산 비커밋 규칙 정리
 - [x] `vendor-neutral-team-workflow-standardization` - Vendor Neutral Team Workflow Standardization (`docs/ai/tasks/vendor-neutral-team-workflow-standardization/`)
