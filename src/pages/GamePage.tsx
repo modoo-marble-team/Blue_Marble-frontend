@@ -7,6 +7,8 @@ import RollButton from '../components/game/controls/RollButton'
 import ExitGameModal from '../components/game/modals/ExitGameModal'
 import { isPromptHandledByBoardModal } from '../components/game/modals/promptModalMapping'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
+import GlobalEffectModal from '../components/game/GlobalEffectModal'
+import GlobalEffectOverlay from '../components/game/GlobalEffectOverlay'
 import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/session/store'
 import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
@@ -82,6 +84,7 @@ const GamePage: React.FC = () => {
   const gameResult = useGameStore((s) => s.gameResult)
   const isGameOver = useGameStore((s) => s.isGameOver)
   const winnerId = useGameStore((s) => s.winnerId)
+  const round = useGameStore((s) => s.round)
   const prompt = useGameStore((s) => s.prompt)
   const pendingAction = useGameStore((s) => s.pendingAction)
   const lastAck = useGameStore((s) => s.lastAck)
@@ -90,6 +93,7 @@ const GamePage: React.FC = () => {
   const storeGameId = useGameStore((s) => s.gameId)
   const clearPrompt = useGameStore((s) => s.clearPrompt)
   const setLastError = useGameStore((s) => s.setLastError)
+  const activeGlobalEffect = useGameStore((s) => s.activeGlobalEffect)
   const resetGame = useGameStore((s) => s.resetGame)
   const activeGameId =
     locationState?.gameId ??
@@ -103,6 +107,8 @@ const GamePage: React.FC = () => {
   >(null)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
+  const [isGlobalEffectModalOpen, setIsGlobalEffectModalOpen] = useState(false)
+  const previousGlobalEffectRef = useRef(activeGlobalEffect)
   const [isRecoveringFromFatalGameRoute, setIsRecoveringFromFatalGameRoute] =
     useState(false)
   const boardRef = useRef<BoardGameHandle>(null)
@@ -117,6 +123,18 @@ const GamePage: React.FC = () => {
   }, [])
 
   useGameState(activeGameId)
+
+  useEffect(() => {
+    if (
+      activeGlobalEffect &&
+      (!previousGlobalEffectRef.current ||
+        previousGlobalEffectRef.current.effect !== activeGlobalEffect.effect ||
+        activeGlobalEffect.duration > previousGlobalEffectRef.current.duration)
+    ) {
+      setIsGlobalEffectModalOpen(true)
+    }
+    previousGlobalEffectRef.current = activeGlobalEffect
+  }, [activeGlobalEffect])
 
   const currentUserId =
     authSession?.userId ??
@@ -528,7 +546,7 @@ const GamePage: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
-            notice={GAME_START_NOTICE}
+            notice={round > 1 ? undefined : GAME_START_NOTICE}
           />
         </div>
 
@@ -665,6 +683,14 @@ const GamePage: React.FC = () => {
         roomId={activeRoomId ?? ''}
         senderOptions={roomChatSenderOptions}
         preferredSenderId={preferredRoomChatSenderId}
+      />
+
+      <GlobalEffectOverlay activeEffect={activeGlobalEffect} />
+
+      <GlobalEffectModal
+        open={isGlobalEffectModalOpen}
+        chance={activeGlobalEffect}
+        onClose={() => setIsGlobalEffectModalOpen(false)}
       />
     </div>
   )

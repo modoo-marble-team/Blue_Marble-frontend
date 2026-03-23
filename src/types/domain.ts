@@ -44,6 +44,20 @@ export type PlayerStateType =
   | 'bankrupt'
   | 'disconnected'
 
+export type GlobalEffectType =
+  | 'PANDEMIC'
+  | 'FESTIVAL'
+  | 'INFLATION'
+  | 'DEFLATION'
+
+export interface GlobalEffectState {
+  type: 'TOLL_MULTIPLIER' | 'PRICE_MULTIPLIER'
+  effect: GlobalEffectType
+  duration: number
+  multiplier: number
+  description: string
+}
+
 export interface Card {
   title: string
   description: string
@@ -225,6 +239,7 @@ export interface GameSnapshot {
   gameResult?: GameResult | null
   isGameOver?: boolean
   winnerId?: PlayerId | null
+  activeGlobalEffect?: GlobalEffectState | null
 }
 
 export interface GamePatchEnvelope {
@@ -258,4 +273,5 @@ export interface GameState extends GameSnapshot {
   gameResult: GameResult | null
   isGameOver: boolean
   winnerId: PlayerId | null
+  activeGlobalEffect: GlobalEffectState | null
 }

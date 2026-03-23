@@ -11,6 +11,8 @@ import type {
   Player,
   PlayerId,
   Tile,
+  GlobalEffectState,
+  GlobalEffectType,
 } from '../../types/domain'
 import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
@@ -52,6 +54,7 @@ type GameStateResponse = {
   phase: GameSnapshot['phase']
   prompt: GamePrompt | null
   promptIssuedAtMs: number | null
+  activeGlobalEffect: GlobalEffectState | null
 }
 
 type MockGameActionPayload = {
@@ -96,6 +99,7 @@ const createInitialGameState = (): GameStateResponse => ({
   phase: 'waiting',
   prompt: null,
   promptIssuedAtMs: null,
+  activeGlobalEffect: null,
 })
 
 const mockGameState: GameStateResponse = createInitialGameState()
@@ -111,6 +115,7 @@ const resetMockGameState = () => {
   mockGameState.phase = initialState.phase
   mockGameState.prompt = initialState.prompt
   mockGameState.promptIssuedAtMs = initialState.promptIssuedAtMs
+  mockGameState.activeGlobalEffect = initialState.activeGlobalEffect
 }
 
 const buildStateResponse = () => ({
@@ -120,6 +125,7 @@ const buildStateResponse = () => ({
   currentTurn: mockGameState.currentTurn,
   round: mockGameState.round,
   revision: mockGameState.revision,
+  activeGlobalEffect: structuredClone(mockGameState.activeGlobalEffect),
 })
 
 const buildSnapshot = (gameId: string): GameSnapshot => ({
@@ -137,6 +143,7 @@ const buildSnapshot = (gameId: string): GameSnapshot => ({
   gameResult: null,
   isGameOver: false,
   winnerId: null,
+  activeGlobalEffect: structuredClone(mockGameState.activeGlobalEffect),
 })
 
 const emitSocketEvent = (eventName: string, payload: unknown) => {
@@ -235,6 +242,11 @@ const buildStatePatch = (gameId: string): GamePatchEnvelope['patch'] => [
   { op: 'set', path: 'gameResult', value: null },
   { op: 'set', path: 'isGameOver', value: false },
   { op: 'set', path: 'winnerId', value: null },
+  {
+    op: 'set',
+    path: 'activeGlobalEffect',
+    value: structuredClone(mockGameState.activeGlobalEffect),
+  },
   {
     op: 'set',
     path: 'session',
@@ -583,6 +595,36 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
   } else {
     advanceMockTurn()
     mockGameState.phase = 'rolling'
+
+    // Mock Global Effect logic
+    if (
+      mockGameState.activeGlobalEffect &&
+      mockGameState.activeGlobalEffect.duration > 0
+    ) {
+      mockGameState.activeGlobalEffect.duration -= 1
+      if (mockGameState.activeGlobalEffect.duration <= 0) {
+        mockGameState.activeGlobalEffect = null
+      }
+    } else if (Math.random() < 0.2) {
+      // 20% chance to trigger
+      const effects: GlobalEffectType[] = [
+        'PANDEMIC',
+        'FESTIVAL',
+        'INFLATION',
+        'DEFLATION',
+      ]
+      const randomEffect = effects[Math.floor(Math.random() * effects.length)]
+      const isMultiplier =
+        randomEffect === 'PANDEMIC' || randomEffect === 'FESTIVAL'
+      mockGameState.activeGlobalEffect = {
+        type: isMultiplier ? 'TOLL_MULTIPLIER' : 'PRICE_MULTIPLIER',
+        effect: randomEffect,
+        duration: 3,
+        multiplier:
+          randomEffect === 'PANDEMIC' || randomEffect === 'DEFLATION' ? 0.5 : 2,
+        description: `테스트 글로벌 효과: ${randomEffect}`,
+      }
+    }
   }
   const revision = nextRevision()
 

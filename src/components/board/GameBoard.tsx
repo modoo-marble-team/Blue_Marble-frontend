@@ -1907,19 +1907,29 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     /* byTile logic refactored out for flat token rendering */
 
-    const getTokenOffset = (playerIdx: number, totalInTile: number) => {
-      if (totalInTile <= 1) return { x: 0, y: 0 }
+    const getTokenOffset = (
+      playerIdx: number,
+      totalInTile: number,
+      tileId: number
+    ) => {
+      const owner = tileOwners[tileId]
+      const hasBuilding =
+        owner && owner.level > 0 && boardTiles[tileId]?.type === 'PROPERTY'
+      // 건물이 있으면 토큰을 14px 아래로 내려서 건물을 가리지 않게 함
+      const baseY = hasBuilding ? 14 : 0
+
+      if (totalInTile <= 1) return { x: 0, y: baseY }
 
       // 4인 기준 바둑판 배치 (토큰 크기 26px 대비 넉넉하게 16px 오프셋)
       // 중심 간 거리 32px로 토큰 사이 6px 간격 확보 (완판 오버랩 방지)
       const d = 16
       const offsets = [
-        { x: -d, y: -d },
-        { x: d, y: -d },
-        { x: -d, y: d },
-        { x: d, y: d },
+        { x: -d, y: -d + baseY },
+        { x: d, y: -d + baseY },
+        { x: -d, y: d + baseY },
+        { x: d, y: d + baseY },
       ]
-      return offsets[playerIdx % 4] || { x: 0, y: 0 }
+      return offsets[playerIdx % 4] || { x: 0, y: baseY }
     }
 
     const CS = CORNER_SIZE
@@ -2391,7 +2401,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   return renderPos === pos
                 })
                 const pIdx = players.findIndex((pl) => pl.id === p.id)
-                const offset = getTokenOffset(pIdx, tokensAtThisPos.length)
+                const offset = getTokenOffset(pIdx, tokensAtThisPos.length, pos)
                 const hasStrip = ![
                   'START',
                   'ISLAND',

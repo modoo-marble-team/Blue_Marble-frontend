@@ -1,21 +1,12 @@
 import React from 'react'
-
-export type GlobalEffect = 'PANDEMIC' | 'FESTIVAL' | 'INFLATION' | 'DEFLATION'
-
-interface GlobalEffectState {
-  type: 'TOLL_MULTIPLIER' | 'PRICE_MULTIPLIER'
-  effect: GlobalEffect
-  duration: number
-  multiplier: number
-  description: string
-}
+import type { GlobalEffectType, GlobalEffectState } from '../../types/domain'
 
 export interface GlobalEffectOverlayProps {
   activeEffect: GlobalEffectState | null
 }
 
 const EFFECT_CONFIG: Record<
-  GlobalEffect,
+  GlobalEffectType,
   {
     label: string
     borderColor: string

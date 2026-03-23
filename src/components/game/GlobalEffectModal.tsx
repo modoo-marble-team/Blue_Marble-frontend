@@ -1,22 +1,17 @@
 import React, { useEffect } from 'react'
 import BaseModal from './modals/BaseModal'
-import type { GlobalEffect } from '../game/GlobalEffectOverlay'
-
-interface GlobalEffectChance {
-  type: 'TOLL_MULTIPLIER' | 'PRICE_MULTIPLIER'
-  effect: GlobalEffect
-  duration: number
-  multiplier: number
-  description: string
-}
+import type { GlobalEffectState, GlobalEffectType } from '../../types/domain'
 
 export interface GlobalEffectModalProps {
   open: boolean
-  chance: GlobalEffectChance | null
+  chance: GlobalEffectState | null
   onClose: () => void
 }
 
-const EFFECT_DISPLAY: Record<GlobalEffect, { icon: string; title: string }> = {
+const EFFECT_DISPLAY: Record<
+  GlobalEffectType,
+  { icon: string; title: string }
+> = {
   PANDEMIC: { icon: '🦠', title: '전염병 확산' },
   FESTIVAL: { icon: '🎉', title: '축제 시작' },
   INFLATION: { icon: '📈', title: '인플레이션 발생' },
