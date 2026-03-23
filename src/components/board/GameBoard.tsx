@@ -17,7 +17,7 @@ import CitySellModal from '../game/modals/CitySellModal'
 import InsufficientFundsModal from '../game/modals/InsufficientFundsModal'
 import TollModal from '../game/modals/TollModal'
 import BankruptModal from '../game/modals/BankruptModal'
-import DiceTimerModal from '../game/modals/DiceTimerModal'
+import DoubleDicePopup from '../game/modals/DoubleDicePopup'
 import GameResultModal from '../game/modals/GameResultModal'
 import GoToIslandModal from '../game/modals/GoToIslandModal'
 import IslandModal from '../game/modals/IslandModal'
@@ -89,14 +89,12 @@ import type {
   AIPenaltyModalState,
   BankruptModalState,
   BuildModalState,
-  BuyModalState,
   CardModalState,
   TravelModalState,
-  CityAcquisitionModalState,
   CitySellModalState,
   InsufficientFundsModalState,
-  TollModalState,
   GameResultModalState,
+  DoubleDiceModalState,
   GoToIslandModalState,
   IslandModalState,
 } from './gameBoard.types'
@@ -123,14 +121,6 @@ const BOARD_RENDER_BASE_SIZE =
   BOARD_GRID_BASE_SIZE + BOARD_INNER_PADDING + BOARD_INNER_BORDER
 const MIN_BOARD_SCALE = 0.55
 const MAX_BOARD_SCALE = 2.4
-
-const INITIAL_CITY_ACQUISITION_MODAL_STATE: CityAcquisitionModalState = {
-  open: false,
-  tileId: null,
-  ownerName: '',
-  currentLevel: 0,
-  acquisitionCost: 0,
-}
 
 const INITIAL_CITY_SELL_MODAL_STATE: CitySellModalState = {
   open: false,
@@ -380,6 +370,81 @@ interface GameBoardProps {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
+const toFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+const toBooleanOrNull = (value: unknown): boolean | null => {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (!normalized) {
+      return null
+    }
+    if (['true', '1', 'yes', 'y'].includes(normalized)) {
+      return true
+    }
+    if (['false', '0', 'no', 'n'].includes(normalized)) {
+      return false
+    }
+  }
+
+  return null
+}
+
+const resolveDoubleDiceInfo = (event: ServerEvent) => {
+  const payloadRecord = isRecord(event.payload) ? event.payload : null
+  const eventRecord = isRecord(event) ? event : null
+  const rawDoubleCount =
+    payloadRecord?.double_count ??
+    payloadRecord?.doubleCount ??
+    payloadRecord?.extra_roll_count ??
+    payloadRecord?.extraRollCount ??
+    payloadRecord?.extra_rolls ??
+    payloadRecord?.extraRolls ??
+    eventRecord?.double_count ??
+    eventRecord?.doubleCount ??
+    eventRecord?.extra_roll_count ??
+    eventRecord?.extraRollCount ??
+    eventRecord?.extra_rolls ??
+    eventRecord?.extraRolls
+  const rawIsDouble =
+    payloadRecord?.is_double ??
+    payloadRecord?.isDouble ??
+    eventRecord?.is_double ??
+    eventRecord?.isDouble
+
+  const extraRollCount = toFiniteNumber(rawDoubleCount)
+  const hasSignal = rawIsDouble !== undefined || rawDoubleCount !== undefined
+  const isDouble =
+    toBooleanOrNull(rawIsDouble) ??
+    (extraRollCount != null ? extraRollCount > 0 : false)
+
+  return {
+    hasSignal,
+    isDouble,
+    extraRollCount,
+  }
+}
+
 function toBoardBuildingLevel(
   tile: { building?: number; level?: number },
   hasOwner: boolean
@@ -430,7 +495,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       curPlayer,
       gamePhase = null,
       allowAssetActions = false,
-      suppressDiceTimerModal = false,
       activePrompt = null,
       promptSubmittingChoice = null,
       onPromptChoice,
@@ -446,9 +510,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
   ) => {
     const localTimeLeftRef = useRef(DICE_TIMEOUT)
     const [isTimerUrgent, setIsTimerUrgent] = useState(false)
-    const [promptTimerLeftSec, setPromptTimerLeftSec] = useState<number | null>(
-      null
-    )
     const [dice1, setDice1] = useState(1)
     const [dice2, setDice2] = useState(1)
     const [isDiceRolling, setIsDiceRolling] = useState(false)
@@ -640,6 +701,22 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             new Audio('/audio/dice-roll.mp3').play().catch(() => {})
           } catch {
             // audio playback blocked
+          }
+
+          const doubleInfo = resolveDoubleDiceInfo(event)
+          if (
+            isLocalPlayerEvent &&
+            doubleInfo.hasSignal &&
+            doubleInfo.isDouble
+          ) {
+            setDoubleDiceModal({
+              open: true,
+              extraRollCount:
+                typeof doubleInfo.extraRollCount === 'number' &&
+                doubleInfo.extraRollCount > 0
+                  ? doubleInfo.extraRollCount
+                  : null,
+            })
           }
         }
 
@@ -897,7 +974,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
     const isTravelPromptOpen = promptModalKind === 'travel'
-    const isDiceTimerPromptOpen = promptModalKind === 'dice_timer'
 
     const promptTileId = getPromptPayloadNumber(activePrompt, [
       'tileId',
@@ -1033,10 +1109,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       activePrompt,
       'travelCancel'
     )
-    const promptTimerConfirmChoiceValue = resolvePromptChoiceValue(
-      activePrompt,
-      'timerConfirm'
-    )
 
     const submitPromptChoice = (
       choiceValue: string | null,
@@ -1136,16 +1208,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setDice2(1)
       localTimeLeftRef.current = DICE_TIMEOUT
       setIsTimerUrgent(false)
-      setPromptTimerLeftSec(null)
+      // timer removed
 
       // Close all other modals when turn changes
-      setBuyModal({ open: false, tileId: null })
-      setBuildModal({ open: false, tileId: null })
       setCardModal({ open: false, variant: 'EVENT' })
       setTravelModal({ open: false })
       setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
-      setTollModal({ open: false, tileId: null, ownerName: '', tollText: '' })
-      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
       setCitySellModal(INITIAL_CITY_SELL_MODAL_STATE)
       setCityBuildModal(INITIAL_CITY_BUILD_MODAL_STATE)
       setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
@@ -1169,44 +1237,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }, [curPlayer, stopDiceRollAnimation])
 
     useEffect(() => {
-      if (rolling) return
-
-      const timer = setInterval(() => {
-        const prev = localTimeLeftRef.current
-        if (prev <= 1) {
-          localTimeLeftRef.current = 0
-          clearInterval(timer)
-          setIsTimerUrgent(false)
-          return
-        }
-        const next = prev - 1
-        localTimeLeftRef.current = next
-        const wasUrgent = prev <= 10 && prev > 0
-        const isNowUrgent = next <= 10 && next > 0
-        if (wasUrgent !== isNowUrgent) {
-          setIsTimerUrgent(isNowUrgent)
-        }
-      }, 1000)
-
-      return () => clearInterval(timer)
-    }, [curPlayer, rolling, isDiceTimerPromptOpen])
-
-    useEffect(() => {
-      if (!isDiceTimerPromptOpen || !activePrompt) {
-        setPromptTimerLeftSec(null)
-        return
-      }
-
-      const initialTimeoutSec =
-        typeof activePrompt.timeoutSec === 'number' &&
-        activePrompt.timeoutSec > 0
-          ? Math.ceil(activePrompt.timeoutSec)
-          : DICE_TIMEOUT
-
-      setPromptTimerLeftSec(initialTimeoutSec)
-    }, [activePrompt, isDiceTimerPromptOpen])
-
-    useEffect(() => {
       if (!activePrompt || !isBuyPromptOpen) {
         setDismissedBuyPromptId(null)
       }
@@ -1218,38 +1248,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
     }, [activePrompt, isBuildPromptOpen])
 
-    useEffect(() => {
-      if (
-        !isDiceTimerPromptOpen ||
-        promptTimerLeftSec === null ||
-        promptTimerLeftSec <= 0
-      ) {
-        return
-      }
-
-      const timer = window.setTimeout(() => {
-        setPromptTimerLeftSec((prev) => {
-          if (prev === null || prev <= 0) {
-            return 0
-          }
-
-          return prev - 1
-        })
-      }, 1000)
-
-      return () => {
-        window.clearTimeout(timer)
-      }
-    }, [isDiceTimerPromptOpen, promptTimerLeftSec])
-
-    const [buyModal, setBuyModal] = useState<BuyModalState>({
-      open: false,
-      tileId: null,
-    })
-    const [buildModal, setBuildModal] = useState<BuildModalState>({
-      open: false,
-      tileId: null,
-    })
     const [cardModal, setCardModal] = useState<CardModalState>({
       open: false,
       variant: 'EVENT',
@@ -1333,14 +1331,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
     }, [activePrompt, isTravelPromptOpen])
 
-    const [tollModal, setTollModal] = useState<TollModalState>({
-      open: false,
-      tileId: null,
-      ownerName: '',
-      tollText: '',
-    })
-    const [cityAcquisitionModal, setCityAcquisitionModal] =
-      useState<CityAcquisitionModalState>(INITIAL_CITY_ACQUISITION_MODAL_STATE)
     const [citySellModal, setCitySellModal] = useState<CitySellModalState>(
       INITIAL_CITY_SELL_MODAL_STATE
     )
@@ -1379,6 +1369,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [gameResultModal, setGameResultModal] =
       useState<GameResultModalState>({
         open: false,
+      })
+    const [doubleDiceModal, setDoubleDiceModal] =
+      useState<DoubleDiceModalState>({
+        open: false,
+        extraRollCount: null,
       })
     const [goToIslandModal, setGoToIslandModal] =
       useState<GoToIslandModalState>({
@@ -1511,6 +1506,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { onDoneCallback } = bankruptModal
       setBankruptModal({ open: false, playerIdx: -1, playerName: '' })
       onDoneCallback?.()
+    }
+
+    function handleDoubleDiceConfirm() {
+      setDoubleDiceModal({ open: false, extraRollCount: null })
     }
 
     function advanceTurn(onDone?: () => void) {
@@ -1646,36 +1645,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       submitPromptChoice(promptChoiceValue ?? null)
     }
 
-    function handleDiceTimerConfirm() {
-      if (
-        isDiceTimerPromptOpen &&
-        submitPromptChoice(promptTimerConfirmChoiceValue)
-      ) {
-        return
-      }
-
-      const hasUnderlyingModal =
-        buyModal.open ||
-        buildModal.open ||
-        cardModal.open ||
-        travelModal.open ||
-        tollModal.open ||
-        cityAcquisitionModal.open ||
-        citySellModal.open ||
-        insufficientFundsModal.open ||
-        aiModal.open ||
-        goToIslandModal.open
-
-      if (hasUnderlyingModal) {
-        return
-      }
-
-      advanceTurn()
-    }
-
     function handleCityAcquisitionCancel() {
-      setCityAcquisitionModal(INITIAL_CITY_ACQUISITION_MODAL_STATE)
-
       submitPromptChoice(promptAcquisitionCancelChoiceValue)
     }
 
@@ -2005,7 +1975,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       activePrompt?.id != null && dismissedBuildPromptId === activePrompt.id
 
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
-    const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
+
     const hasAnimationBlocking = isMoving || rolling
     const canShowModal = !hasAnimationBlocking
     const activePromptPlayerId =
@@ -2040,10 +2010,24 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const sellModalVisible =
       canShowModal &&
       (citySellModal.open || (isSellPromptOpen && !shouldDelayPromptModal))
-    const diceTimerModalVisible =
-      canShowModal && diceTimerModalOpen && !shouldDelayPromptModal
+
+    const doubleDiceModalVisible = canShowModal && doubleDiceModal.open
 
     const activePlayerMoney = players[curPlayer]?.money ?? 0
+    const islandRestTurns = (() => {
+      const player = players[curPlayer]
+      if (!player) return null
+      const rawTurns =
+        typeof player.skipTurns === 'number'
+          ? player.skipTurns
+          : typeof player.stateDuration === 'number'
+            ? player.stateDuration
+            : null
+      if (rawTurns == null || !Number.isFinite(rawTurns) || rawTurns <= 0) {
+        return null
+      }
+      return rawTurns
+    })()
     const buildCost =
       getPromptPayloadNumber(activePrompt, [
         'buildCost',
@@ -2061,14 +2045,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       ]) ??
       getTollCost(buildTile?.price ?? 0, (currentLevel + 1) as BuildingLevel)
 
-    const diceTimerTitle = activePrompt?.title
-    const diceTimerMessage = activePrompt?.message
-    const diceTimerConfirmLabel = getPromptChoiceLabel(
-      activePrompt,
-      promptTimerConfirmChoiceValue,
-      '확인'
-    )
-
     const hasBlockingModalOpen =
       buyModalVisible ||
       buildModalVisible ||
@@ -2081,7 +2057,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       aiModal.open ||
       goToIslandModal.open ||
       islandModal.open ||
-      diceTimerModalVisible ||
+      doubleDiceModalVisible ||
       bankruptModal.open ||
       gameResultModal.open
     const hasBlockingModal = canShowModal && hasBlockingModalOpen
@@ -2649,23 +2625,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           playerName={bankruptModal.playerName}
           onConfirm={handleBankruptConfirm}
         />
-        <DiceTimerModal
-          open={diceTimerModalVisible}
-          title={diceTimerTitle}
-          description={diceTimerMessage}
-          timeLeftSec={
-            isDiceTimerPromptOpen
-              ? (promptTimerLeftSec ??
-                (typeof activePrompt?.timeoutSec === 'number'
-                  ? activePrompt.timeoutSec
-                  : DICE_TIMEOUT))
-              : null
-          }
-          confirmLabel={diceTimerConfirmLabel}
-          isSubmitting={
-            promptSubmittingChoice !== null && isDiceTimerPromptOpen
-          }
-          onConfirm={handleDiceTimerConfirm}
+        <DoubleDicePopup
+          open={doubleDiceModalVisible}
+          extraRollCount={doubleDiceModal.extraRollCount}
+          onConfirm={handleDoubleDiceConfirm}
         />
         <GameResultModal
           open={canShowModal && gameResultModal.open}
@@ -2684,6 +2647,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         {/* 🏝️ 무인도 (직접 도착) 팝업 */}
         <IslandModal
           open={canShowModal && islandModal.open}
+          restTurns={islandRestTurns}
           onConfirm={handleIslandConfirm}
         />
         {cityBuildModal.open && cityBuildModal.tileId != null && (

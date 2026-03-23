@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react'
 
 interface IslandModalProps {
   open: boolean
+  restTurns?: number | null
   onConfirm?: () => void
 }
 
-const IslandModal: React.FC<IslandModalProps> = ({ open, onConfirm }) => {
+const IslandModal: React.FC<IslandModalProps> = ({
+  open,
+  restTurns = null,
+  onConfirm,
+}) => {
   const [isVisible, setIsVisible] = useState(open)
 
   useEffect(() => {
@@ -20,6 +25,11 @@ const IslandModal: React.FC<IslandModalProps> = ({ open, onConfirm }) => {
   if (!isVisible) {
     return null
   }
+
+  const description =
+    typeof restTurns === 'number' && restTurns > 0
+      ? `당신은 무인도에 갇혔습니다. ${restTurns}턴 동안 쉽니다.`
+      : '당신은 무인도에 갇혔습니다.'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2438]/30">
@@ -38,7 +48,7 @@ const IslandModal: React.FC<IslandModalProps> = ({ open, onConfirm }) => {
 
         {/* Subtitle */}
         <p className="mb-8 text-[15px] font-medium tracking-tight text-[#6A788A]">
-          당신은 무인도에서 갇혔습니다
+          {description}
         </p>
 
         {/* Confirm Button */}
