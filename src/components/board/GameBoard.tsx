@@ -1108,6 +1108,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     }, [activePrompt, isBuyPromptOpen])
 
     useEffect(() => {
+      if (!activePrompt || !isBuildPromptOpen) {
+        setDismissedBuildPromptId(null)
+      }
+    }, [activePrompt, isBuildPromptOpen])
+
+    useEffect(() => {
       if (
         !isDiceTimerPromptOpen ||
         promptTimerLeftSec === null ||
@@ -1165,13 +1171,53 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
+      const promptPlayerId =
+        activePrompt?.playerId != null ? String(activePrompt.playerId) : null
+      const shouldDelayTravelModalOpen = shouldDelayPromptModalByMovement({
+        promptPlayerId,
+        pendingMovePlayerIdSet,
+        animatedPositions,
+        isMoving: isMoving || rolling,
+      })
+      if (shouldDelayTravelModalOpen) {
+        return
+      }
+
+      const travelPromptTileId = getPromptPayloadNumber(activePrompt, [
+        'tileId',
+        'tile_id',
+        'targetTileId',
+        'target_tile_id',
+        'toTileId',
+        'to_tile_id',
+      ])
+      const promptPlayerPosition =
+        promptPlayerId != null
+          ? players.find((player) => String(player.id) === promptPlayerId)?.pos
+          : players[curPlayer]?.pos
+      if (
+        travelPromptTileId != null &&
+        promptPlayerPosition != null &&
+        promptPlayerPosition !== travelPromptTileId
+      ) {
+        return
+      }
+
       if (!travelModal.open && !travelSelection.active) {
         setTravelModal({ open: true })
       }
     }, [
+      activePrompt,
       activePrompt?.id,
+      activePrompt?.playerId,
+      animatedPositions,
+      curPlayer,
       dismissedTravelPromptId,
       isTravelPromptOpen,
+      isMoving,
+      pendingMovePlayerIdSet,
+      players,
+      rolling,
       travelModal.open,
       travelSelection.active,
     ])
@@ -1203,6 +1249,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [dismissedBuyPromptId, setDismissedBuyPromptId] = useState<
       string | null
     >(null)
+    const [dismissedBuildPromptId, setDismissedBuildPromptId] = useState<
+      string | null
+    >(null)
+    useEffect(() => {
+      if (
+        promptSubmittingChoice === null &&
+        dismissedBuildPromptId != null &&
+        activePrompt?.id === dismissedBuildPromptId
+      ) {
+        setDismissedBuildPromptId(null)
+      }
+    }, [activePrompt?.id, dismissedBuildPromptId, promptSubmittingChoice])
+
     const [aiModal, setAiModal] = useState<AIPenaltyModalState>({
       open: false,
       status: 'loading',
@@ -1474,6 +1533,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     function handleInsufficientFundsConfirm() {
       const { promptChoiceValue } = insufficientFundsModal
+      if (isBuildPromptOpen && activePrompt?.id) {
+        setDismissedBuildPromptId(activePrompt.id)
+      }
       setInsufficientFundsModal(INITIAL_INSUFFICIENT_FUNDS_MODAL_STATE)
 
       submitPromptChoice(promptChoiceValue ?? null)
@@ -1832,6 +1894,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const isBuyPromptDismissed =
       activePrompt?.id != null && dismissedBuyPromptId === activePrompt.id
+    const isBuildPromptDismissed =
+      activePrompt?.id != null && dismissedBuildPromptId === activePrompt.id
 
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
     const diceTimerModalOpen = !suppressDiceTimerModal && isDiceTimerPromptOpen
@@ -1856,6 +1920,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       canShowModal &&
       buildModalOpen &&
       !shouldDelayPromptModal &&
+      !isBuildPromptDismissed &&
       !insufficientFundsModal.open
     const tollModalVisible =
       canShowModal && tollModalOpen && !shouldDelayPromptModal
@@ -2463,7 +2528,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleCardConfirm}
         />
         <TravelModal
-          open={canShowModal && travelModal.open}
+          open={canShowModal && !shouldDelayPromptModal && travelModal.open}
           onConfirm={handleTravelConfirm}
           onCancel={handleTravelCancel}
           showCancel={false}
