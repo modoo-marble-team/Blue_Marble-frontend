@@ -13,6 +13,14 @@
 5. `TODO.md`
 6. `docs/ai/tasks/README.md`
 
+## Repository Guardrails
+
+- 공용 workflow SSOT는 `AGENTS.md`, `docs/*`, `TODO.md`, `scripts/ai/*`다.
+- 비사소한 작업은 `TODO.md` 한 줄과 `docs/ai/tasks/<slug>/` 3종 문서를 1:1로 맞춘다.
+- 기존 task를 이어서 할 때는 구현 전에 `npm run ai:session:brief -- <slug>`부터 실행한다.
+- 경로별 manual loading은 `AGENTS.md`를 기준으로 하고, 항상 `docs/rules.md`, `docs/testing.md`를 함께 읽는다.
+- `CLAUDE.md`, `.claude/`, 개인 MCP/hook/IDE 설정은 로컬 전용이며 저장소 PR에 포함하지 않는다.
+
 ## Scenario 1: Small Change
 
 아래 조건이면 task 문서 없이 시작해도 된다.
@@ -126,6 +134,14 @@ EOF
 
 npm run ai:pr-gate -- --files src/pages/waiting-room/page/WaitingRoomPage.tsx src/pages/waiting-room/page/WaitingRoomFlow.test.tsx --pr-body-file /tmp/pr-body.md
 ```
+
+## PR Split Rule Of Thumb
+
+- workflow 설명이나 onboarding 정리는 `README.md`, `docs/ai/*`, task 문서 중심의 docs-only PR로 묶는다.
+- `scripts/ai/*`, `package.json`, `.github/workflows/*`처럼 실행 동작이나 gate를 바꾸는 변경은 docs-only PR과 분리한다.
+- `AGENTS.md`, `docs/ai/manuals/*`, `docs/socket-mock-server.md`처럼 manual loading이나 도메인 규칙을 바꾸는 변경은 문서/자동화 변경과 분리한다.
+- `CLAUDE.md`, `.claude/`, 개인 MCP/hook/IDE 설정은 로컬에만 두고 어떤 PR에도 포함하지 않는다.
+- 한 작업이 문서와 스크립트를 모두 건드리면, 동작 의존성이 없을 때는 docs PR을 먼저 올리고 자동화 PR을 후속으로 나눈다.
 
 ## Scenario 3: High-Risk Realtime Change
 

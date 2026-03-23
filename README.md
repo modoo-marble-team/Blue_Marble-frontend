@@ -14,3 +14,5 @@ MARBLE POP — 실시간 멀티플레이 보드게임 웹 서비스(로비/방/�
 - [AI Usage Guide](./docs/ai/usage.md): task/TODO/handoff/review 운영 루프
 - [TODO.md](./TODO.md): 현재 task queue
 - [AI Task Workspace](./docs/ai/tasks/README.md): `docs/ai/tasks/<slug>/` 작성 규칙
+- 공용 workflow SSOT: `AGENTS.md`, `docs/*`, `TODO.md`, `scripts/ai/*`
+- `CLAUDE.md`, `.claude/`, 개인 MCP/hook/IDE 설정은 로컬 전용이며 저장소에 커밋하지 않음

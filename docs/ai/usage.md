@@ -13,6 +13,12 @@
 6. `TODO.md`
 7. `docs/ai/tasks/README.md`
 
+## Repository Guardrails
+
+- 공용 workflow SSOT는 `AGENTS.md`, `docs/*`, `TODO.md`, `scripts/ai/*`다.
+- `CLAUDE.md`, `.claude/`, 개인 MCP/hook/IDE 설정 같은 tool-specific runtime file은 로컬 전용으로 두고 저장소에 커밋하지 않는다.
+- 경로별 manual loading 판단은 `AGENTS.md`를 기준으로 하고, 공통 품질 기준은 `docs/rules.md`, `docs/testing.md`를 우선한다.
+
 ## Core Loop
 
 1. `AGENTS.md`, 관련 manual, `docs/rules.md`, `docs/testing.md`를 읽는다.
@@ -27,6 +33,14 @@
 - 새 task는 `npm run ai:task:new -- <slug> [--files ...]`로 만들 수 있다.
 - 다시 시작할 때는 `npm run ai:session:brief -- <slug>`로 읽을 문서, 다음 단계, 검증 후보를 먼저 확인한다.
 - 한 세션에는 가능한 한 한 feature만 다룬다.
+
+## PR Split Guidelines
+
+- workflow 설명, onboarding, task template, PR 본문 예시 같은 문서 변경은 docs-only PR로 묶는다.
+- `scripts/ai/*`, `package.json`, `.github/workflows/*`가 바뀌면 실행 동작과 gate 영향이 있으므로 docs-only PR과 분리한다.
+- `AGENTS.md`, `docs/ai/manuals/*`, `docs/socket-mock-server.md`처럼 manual loading이나 도메인 규칙을 바꾸는 변경은 문서/자동화 변경과 분리한다.
+- `CLAUDE.md`, `.claude/`, 개인 MCP/hook/IDE 설정은 로컬 자산으로 유지하고 어떤 PR에도 포함하지 않는다.
+- 문서와 스크립트를 함께 바꿔야 하는 작업이면, 먼저 docs PR로 의도와 운영 기준을 고정하고 후속 PR에서 자동화를 보강한다.
 
 ## Daily Operating Rhythm
 

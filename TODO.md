@@ -13,6 +13,7 @@
 
 ## Done
 
+- [x] `ai-workflow-pr-split-guidance` - AI Workflow PR Split Guidance (`docs/ai/tasks/ai-workflow-pr-split-guidance/`) - workflow docs의 repo guardrails, PR 분할 기준, 로컬 Claude 자산 비커밋 규칙 정리
 - [x] `vendor-neutral-team-workflow-standardization` - Vendor Neutral Team Workflow Standardization (`docs/ai/tasks/vendor-neutral-team-workflow-standardization/`)
 - [x] `team-adoption-lightweight-governance` - Team Adoption Lightweight Governance (`docs/ai/tasks/team-adoption-lightweight-governance/`)
 - [x] `partial-workflow-gate-large-prs` - Partial Workflow Gate Large Prs (`docs/ai/tasks/partial-workflow-gate-large-prs/`)
