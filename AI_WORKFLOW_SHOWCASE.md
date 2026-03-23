@@ -1,111 +1,183 @@
-# AI Collaboration Showcase
+# Blue Marble AI Workflow Cheat Sheet
 
-이 문서는 `Blue_Marble-frontend`에서 AI 활용을 특정 도구 기능이 아니라,
-**팀이 공유하는 workflow와 enforcement 구조**로 운영한 방식을 요약한다.
+이 문서는 일반적인 Claude Code 팁을 `Blue_Marble-frontend` 운영 기준에 맞게 다시 쓴 치트시트다.
 
-핵심은 “어떤 AI를 쓰느냐”보다,
-**모든 AI-assisted 작업이 같은 task/TODO/validation/PR 루프를 따르게 만드는 것**이다.
+핵심은 “Claude 기능을 얼마나 많이 쓰느냐”가 아니라,
+**팀 공용 source of truth를 기준으로 AI-assisted 작업을 안전하게 반복하게 만드는 것**이다.
 
-## 1. Team-Wide Entry Points
+## 1. Blue Marble에서 먼저 지켜야 할 것
 
-- 공용 source of truth는 `AGENTS.md`, `docs/ai/manuals/*`, `docs/rules.md`, `docs/testing.md`, `docs/ai/usage.md`다.
-- 온보딩 entrypoint는 `README.md -> docs/ai/quickstart.md -> AGENTS.md -> docs/ai/usage.md -> TODO.md -> docs/ai/tasks/README.md`로 고정한다.
-- 저장소에는 tool-specific runtime file을 두지 않고, 각 도구 사용자는 이 공용 문서를 로컬에서 참조하게 한다.
+### 1-1. 팀 공용 규칙이 먼저다
 
-관련 파일:
+- 팀 공용 workflow SSOT는 `AGENTS.md`, `docs/*`, `TODO.md`, `scripts/ai/*`다.
+- 개인 도구 설정이나 특정 AI 제품 기능은 팀 규칙을 대체하지 않는다.
+- 큰 작업은 설명만 듣고 바로 구현하지 말고, 먼저 manual과 기존 문서를 읽는다.
 
-- [`README.md`](./README.md)
-- [`docs/ai/quickstart.md`](./docs/ai/quickstart.md)
-- [`AGENTS.md`](./AGENTS.md)
-- [`docs/ai/manuals/common.md`](./docs/ai/manuals/common.md)
-- [`docs/rules.md`](./docs/rules.md)
-- [`docs/testing.md`](./docs/testing.md)
-- [`docs/ai/usage.md`](./docs/ai/usage.md)
+### 1-2. 개인 도구와 팀 문서를 섞지 않는다
 
-## 2. Task Memory And Handoff
+- 개인 메모, `/memory`, 음성 입력, MCP on/off, 개인 hook은 각자 로컬에서 관리한다.
+- `CLAUDE.md`, `.claude/*`, 프로젝트별 personal skill/agent 설정은 로컬 전용으로 취급한다.
+- 팀이 공유해야 하는 durable한 사실은 `AGENTS.md`, `docs/*`, `TODO.md`, task 문서에 남긴다.
 
-- 긴 작업은 `docs/ai/tasks/<slug>/plan.md`, `context.md`, `checklist.md`로 남긴다.
-- task마다 루트 `TODO.md`에 정확히 한 줄을 유지해 `Ready / In Progress / Blocked / Done` 상태를 추적한다.
-- 큰 작업은 issue 단계에서 예상 task slug와 manual/validation 초안을 먼저 적는다.
-- `npm run ai:task:new -- <slug> [--files ...]`는 task scaffold와 TODO entry를 함께 만든다.
-- `npm run ai:session:brief -- <slug>`는 다음 세션에서 다시 읽을 문서, 다음 단계, validation 후보를 보여준다.
+### 1-3. `In Progress` task는 ownership부터 확인한다
 
-관련 파일:
+- `TODO.md`에서 `In Progress`인 항목은 누군가 이미 진행 중일 가능성이 크다.
+- 다른 팀원 작업이면 임의로 이어서 구현하지 말고, owner 또는 handoff 여부를 먼저 확인한다.
+- 이어받을 때도 `npm run ai:session:brief -- <slug>`와 task 문서를 먼저 본다.
 
-- [`TODO.md`](./TODO.md)
-- [`docs/ai/tasks/README.md`](./docs/ai/tasks/README.md)
-- [`docs/ai/tasks/_template/plan.md`](./docs/ai/tasks/_template/plan.md)
-- [`docs/ai/tasks/_template/context.md`](./docs/ai/tasks/_template/context.md)
-- [`docs/ai/tasks/_template/checklist.md`](./docs/ai/tasks/_template/checklist.md)
-- [`scripts/ai/task-new.mjs`](./scripts/ai/task-new.mjs)
-- [`scripts/ai/session-brief.mjs`](./scripts/ai/session-brief.mjs)
-- [`.github/ISSUE_TEMPLATE/feat.md`](./.github/ISSUE_TEMPLATE/feat.md)
-- [`.github/ISSUE_TEMPLATE/fix.md`](./.github/ISSUE_TEMPLATE/fix.md)
+## 2. 실제 작업 루프
 
-## 3. Validation And Enforcement
+### 2-1. 시작 순서
 
-- 변경 범위별 빠른 검증은 `ai:check:*` 스크립트로 유지한다.
-- `npm run ai:self-review`는 changed files 기준으로 manuals, warnings, test gaps, validation 후보를 다시 보여준다.
-- `npm run ai:workflow:audit`는 queue-managed task workspace와 `TODO.md` 정합성을 주간 점검용으로 보여주는 경고 전용 스크립트다.
-- PR template과 PR Guard는 task 문서, TODO/task slug 연결, 실행한 검증, 남은 리스크가 빠지지 않았는지 확인한다.
-- Husky, CI, Gemini Code Assist는 팀 공용 enforcement다.
+작업 시작 시 이 순서를 기본값으로 둔다.
 
-관련 파일:
+1. `README.md`
+2. `docs/ai/quickstart.md`
+3. `AGENTS.md`
+4. `docs/rules.md`
+5. `docs/testing.md`
+6. `TODO.md`
+7. 필요 시 `docs/ai/tasks/<slug>/`
 
-- [`package.json`](./package.json)
-- [`scripts/ai/check-fast.mjs`](./scripts/ai/check-fast.mjs)
-- [`scripts/ai/check-ui.mjs`](./scripts/ai/check-ui.mjs)
-- [`scripts/ai/self-review.mjs`](./scripts/ai/self-review.mjs)
-- [`scripts/ai/workflow-audit.mjs`](./scripts/ai/workflow-audit.mjs)
-- [`.github/PULL_REQUEST_TEMPLATE.md`](./.github/PULL_REQUEST_TEMPLATE.md)
-- [`.github/workflows/ai-review.yml`](./.github/workflows/ai-review.yml)
-- [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
-- [`.husky/pre-commit`](./.husky/pre-commit)
-- [`.husky/pre-push`](./.husky/pre-push)
+### 2-2. 작업 크기 분류
 
-## 4. Why This Matters In This Repo
+- `small`: 단일 파일 또는 아주 좁은 범위 수정, 같은 세션에서 끝남
+- `large`: 여러 파일/여러 단계, handoff 가능성 있음
+- `high-risk`: realtime socket, waiting-room, game runtime, contract, cleanup, redirect 영향이 큼
 
-이 프로젝트는 아래 특성이 강하다.
+이 분류에 따라 task 문서, 검증, PR guard가 달라진다.
 
-- realtime socket 상태와 화면 상태가 같이 움직인다
-- mock 환경과 실제 runtime 경로를 함께 맞춰야 한다
-- cleanup, 중복 요청, 이벤트 순서 같은 비동기 경계 조건이 많다
-- 로비, 대기방, 게임 런타임이 이어져 있어 작은 수정도 회귀를 만들기 쉽다
+### 2-3. 비사소한 작업은 task workspace를 만든다
 
-그래서 AI 활용의 핵심도 프롬프트 기교보다 아래에 있다.
+- 비사소한 작업은 `docs/ai/tasks/<slug>/plan.md`, `context.md`, `checklist.md`를 만든다.
+- `TODO.md` 한 줄과 task slug를 1:1로 맞춘다.
+- 새 task는 `npm run ai:task:new -- <slug> [--files ...]`로 시작할 수 있다.
 
-- 먼저 공용 규칙을 읽게 만들 것
-- 범위를 task 문서와 TODO queue로 고정할 것
-- 다음 세션 handoff를 스크립트로 보조할 것
+### 2-4. 세션 재개는 `session:brief`부터
+
+- 이전 task를 이어서 할 때는 구현 전에 `npm run ai:session:brief -- <slug>`부터 실행한다.
+- session brief는 다시 읽을 문서, 다음 단계, validation 후보를 보여준다.
+- handoff가 필요한 작업은 `context.md`, `checklist.md`, `TODO.md`, `session:brief` 출력이 서로 맞아야 한다.
+
+### 2-5. 구현 전 기준 문서
+
+- 항상 함께 읽기: `docs/ai/manuals/common.md`, `docs/rules.md`, `docs/testing.md`
+- path-based manual loading은 `AGENTS.md`를 따른다.
+- lobby / waiting-room / game-runtime / socket-contract 경로는 관련 manual을 추가로 읽는다.
+
+### 2-6. 검증 순서
+
+가장 좁은 검증부터 시작한다.
+
+1. 관련 Vitest
+2. 필요 시 `npm run lint`
+3. 필요 시 `npm run build`
+4. 사용자 플로우가 크면 Playwright
+5. 마지막에 `npm run ai:self-review`
+
+large / high-risk PR이면:
+
+- `npm run ai:pr-gate -- --files ... --pr-body-file ...`
+- `workflow-gate` required check 기준까지 함께 본다.
+
+## 3. Claude 일반 팁 중 이 프로젝트에서 그대로 유효한 것
+
+### 3-1. Plan 먼저
+
+- 큰 변경은 먼저 범위, 완료 기준, 영향 파일, 검증을 고정한다.
+- 이 프로젝트에서는 Plan의 결과를 task 문서와 TODO queue에 남기는 것이 중요하다.
+- 단순히 생각만 정리하는 데서 끝내지 않고, 다음 세션도 따라갈 수 있는 형태로 남겨야 한다.
+
+### 3-2. 한 세션 = 한 feature
+
+- 여러 기능을 한 세션에 섞으면 handoff 품질이 급격히 떨어진다.
+- 가능하면 한 세션에 한 feature 또는 한 task만 다룬다.
+- 중간에 방향이 바뀌면 코드보다 먼저 `context.md`나 `checklist.md`를 갱신한다.
+
+### 3-3. 에러 로그는 원문 그대로
+
+- 에러를 요약하거나 해석해서 전달하지 않는다.
+- raw log, stack trace, 실행 명령을 그대로 남긴다.
+- 외부 AI에게 비평을 요청할 때도 source of truth는 여전히 repo 문서와 task 문서다.
+
+### 3-4. 무거운 작업은 스크립트로 분리
+
+- 대량 로그 분석, 대규모 비교, 반복 검증은 대화 안에서 직접 처리하지 않는다.
+- 스크립트를 만들고 결과는 `summary.json`, `report.md`처럼 구조화해 받는다.
+- 대화에는 결과 요약만 남기고, 근거는 파일로 저장한다.
+
+### 3-5. 다른 AI 비평은 가능하지만 기준은 고정
+
+- ChatGPT, Gemini 등 다른 AI에게 비평을 받을 수 있다.
+- 다만 질문은 버그, 회귀 위험, 누락 테스트, 계약 불일치 같은 high-signal 항목으로 제한한다.
+- 외부 비평 전에는 task 문서와 `npm run ai:self-review` 결과를 먼저 정리한다.
+
+## 4. Claude 전용 기능은 어디까지 써도 되는가
+
+### 4-1. 개인 생산성 기능은 허용된다
+
+- `/memory`, 개인 skill, 개인 sub-agent, voice, 개인 hook은 써도 된다.
+- 다만 저장소 workflow SSOT로 승격시키지는 않는다.
+- 팀원이 같은 도구를 쓰지 않아도 동일한 문서와 스크립트만으로 작업을 재현할 수 있어야 한다.
+
+### 4-2. Skills / Sub-Agent / Hooks는 선택적 고급 활용이다
+
+- 반복 작업을 위한 skill, 대량 출력 격리를 위한 sub-agent, 알림용 hook은 도움이 될 수 있다.
+- 하지만 이 저장소는 vendor-neutral 원칙을 우선하므로 `.claude/*`를 repo-managed 기본 방식으로 두지 않는다.
+- “개인 도구 사용”과 “팀 공용 규칙”은 항상 분리해서 설명한다.
+
+### 4-3. MCP는 core workflow가 아니다
+
+- 외부 연동이 필요하면 MCP를 쓸 수 있다.
+- 그러나 이 저장소의 공용 workflow는 MCP 유무와 무관하게 성립해야 한다.
+- 가능한 경우 로컬 스크립트와 repo 문서 기반 루프를 먼저 유지한다.
+
+## 5. PR을 어떻게 나누는가
+
+- workflow 설명, onboarding, task template, showcase 문서 같은 문서 변경은 docs-only PR로 묶는다.
+- `scripts/ai/*`, `package.json`, `.github/workflows/*`가 바뀌면 자동화 PR로 분리한다.
+- `AGENTS.md`, `docs/ai/manuals/*`, `docs/socket-mock-server.md`처럼 규칙/도메인 manual이 바뀌면 manual PR로 분리한다.
+- `CLAUDE.md`, `.claude/*`, 개인 MCP/hook/IDE 설정은 PR에 넣지 않는다.
+
+핵심은 “팀 전체에 적용되는 것”과 “내 개인 도구 설정”을 같은 PR에 넣지 않는 것이다.
+
+## 6. 한눈에 보는 체크리스트
+
+### 작업 시작 전
+
+- `README.md`, `docs/ai/quickstart.md`, `AGENTS.md`를 확인했다
+- 작업이 `small / large / high-risk` 중 어디인지 판단했다
+- `In Progress` task owner/handoff 여부를 확인했다
+- 비사소한 작업이면 task slug와 `TODO.md`를 맞췄다
+- 관련 manual, `docs/rules.md`, `docs/testing.md`를 읽었다
+
+### 작업 중
+
+- 한 세션에 한 feature만 다뤘다
+- 방향이 바뀌면 코드보다 먼저 task 문서를 갱신했다
+- raw error log와 실제 변경 파일을 기준으로 판단했다
+- mock / real / contract / test / doc이 함께 움직여야 하는지 확인했다
+
+### PR 전
+
+- 가장 좁은 Vitest부터 실행했다
+- 필요 시 `npm run lint`, `npm run build`, Playwright를 실행했다
+- `npm run ai:self-review`를 돌렸다
+- large / high-risk PR이면 `npm run ai:pr-gate`를 확인했다
+- PR 본문에 task 문서, TODO 연결, 참고 문서, 검증, 남은 리스크를 적었다
+
+## 7. 결론
+
+이 프로젝트에서 AI 활용의 핵심은 Claude의 고유 기능을 많이 쓰는 것이 아니다.
+
+핵심은 아래 5가지를 지키는 것이다.
+
+- 팀 공용 source of truth를 먼저 읽게 할 것
+- task slug와 TODO queue로 범위를 고정할 것
+- session brief로 다음 세션 handoff를 보조할 것
 - 가장 좁은 검증부터 빠르게 다시 돌릴 것
-- 외부 AI 비평도 공용 문서 위에서만 쓰게 만들 것
+- 개인 도구 설정과 팀 공용 규칙을 절대 섞지 않을 것
 
-## 5. Representative Examples And Team Use
-
-- [`docs/ai/tasks/example-lobby-dm-unread-stability/plan.md`](./docs/ai/tasks/example-lobby-dm-unread-stability/plan.md)
-- [`docs/ai/tasks/example-waiting-room-leave-sequence-hardening/plan.md`](./docs/ai/tasks/example-waiting-room-leave-sequence-hardening/plan.md)
-- [`docs/ai/tasks/example-game-prompt-contract-normalization/plan.md`](./docs/ai/tasks/example-game-prompt-contract-normalization/plan.md)
-
-이 예시들은 unread state, leave sequence, runtime contract처럼
-실시간 프론트엔드에서 AI가 가장 실수하기 쉬운 지점을 task 문서와 targeted validation으로 다루는 방식을 보여준다.
-
-2차 운영 정착 이후에는 아래 사용 방식도 같은 문서 집합 위에서 반복한다.
-
-- issue 단계에서 task slug와 manual 후보를 먼저 적는 방식
-- 작은 작업은 `N/A`, 큰 작업은 task/TODO 링크를 남기는 PR 작성 방식
-- 주간 `npm run ai:workflow:audit`로 queue-managed task 구조를 점검하는 방식
-
-## 6. Suggested Review Path
-
-짧게 보려면 아래 순서가 가장 빠르다.
-
-1. [`README.md`](./README.md)
-2. [`docs/ai/quickstart.md`](./docs/ai/quickstart.md)
-3. [`AGENTS.md`](./AGENTS.md)
-4. [`docs/ai/usage.md`](./docs/ai/usage.md)
-5. [`TODO.md`](./TODO.md)
-6. [`docs/ai/tasks/README.md`](./docs/ai/tasks/README.md)
-7. [`scripts/ai/session-brief.mjs`](./scripts/ai/session-brief.mjs)
-
-이 순서만 봐도,
-“AI를 어떻게 팀 공용 workflow로 통제하고, 다음 세션으로 이어지게 만들었는지”를 빠르게 확인할 수 있다.
+Claude 전용 생산성 기능은 “개인 가속 장치”로는 유효하다.
+하지만 `Blue_Marble-frontend`의 기준에서는 언제나
+**`AGENTS.md`, `docs/*`, `TODO.md`, `scripts/ai/*`가 먼저다.**

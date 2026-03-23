@@ -13,6 +13,7 @@
 
 ## Done
 
+- [x] `blue-marble-cheatsheet-refresh` - Blue Marble Cheatsheet Refresh (`docs/ai/tasks/blue-marble-cheatsheet-refresh/`) - 일반 Claude Code 치트시트를 프로젝트 전용 운영 가이드로 재작성
 - [x] `ai-workflow-pr-split-guidance` - AI Workflow PR Split Guidance (`docs/ai/tasks/ai-workflow-pr-split-guidance/`) - workflow docs의 repo guardrails, PR 분할 기준, 로컬 Claude 자산 비커밋 규칙 정리
 - [x] `vendor-neutral-team-workflow-standardization` - Vendor Neutral Team Workflow Standardization (`docs/ai/tasks/vendor-neutral-team-workflow-standardization/`)
 - [x] `team-adoption-lightweight-governance` - Team Adoption Lightweight Governance (`docs/ai/tasks/team-adoption-lightweight-governance/`)
