@@ -60,17 +60,29 @@ export interface PlayerState {
 }
 
 export const TILES: TileData[] = [
-  { id: 0, name: 'START', type: 'START', emoji: '🚩' },
+  { id: 0, name: '출발', type: 'START', emoji: '🚩' },
   { id: 1, name: '수원', type: 'PROPERTY', color: '#EF5350', price: 100000000 },
   { id: 2, name: '용인', type: 'PROPERTY', color: '#FFD15B', price: 120000000 },
-  { id: 3, name: '', type: 'CHANCE', svgIcon: '/event-question.svg' },
+  { id: 3, name: '찬스', type: 'CHANCE', svgIcon: '/event-question.svg' },
   { id: 4, name: '군산', type: 'PROPERTY', color: '#66BB6A', price: 140000000 },
-  { id: 5, name: '평택', type: 'PROPERTY', color: '#42A5F5', price: 160000000 },
-  { id: 6, name: '익산', type: 'PROPERTY', color: '#42A5F5', price: 180000000 },
+  {
+    id: 5,
+    name: '태백',
+    type: 'PROPERTY',
+    color: '#42A5F5',
+    price: 160000000,
+  },
+  {
+    id: 6,
+    name: '울산',
+    type: 'PROPERTY',
+    color: '#42A5F5',
+    price: 180000000,
+  },
   { id: 7, name: '이벤트', type: 'EVENT', svgIcon: '/chance-box.svg' },
   { id: 8, name: '무인도', type: 'ISLAND', emoji: '🏝️' },
   { id: 9, name: '경주', type: 'PROPERTY', color: '#FF7043', price: 200000000 },
-  { id: 10, name: '', type: 'CHANCE', svgIcon: '/event-question.svg' },
+  { id: 10, name: '찬스', type: 'CHANCE', svgIcon: '/event-question.svg' },
   {
     id: 11,
     name: '포항',
@@ -87,14 +99,14 @@ export const TILES: TileData[] = [
   },
   {
     id: 13,
-    name: '청원',
+    name: '창원',
     type: 'PROPERTY',
     color: '#7E57C2',
     price: 320000000,
   },
   {
     id: 14,
-    name: '울산',
+    name: '익산',
     type: 'PROPERTY',
     color: '#EF5350',
     price: 360000000,
@@ -106,7 +118,7 @@ export const TILES: TileData[] = [
     color: '#EF5350',
     price: 400000000,
   },
-  { id: 16, name: '국내여행', type: 'TRAVEL', emoji: '✈️' },
+  { id: 16, name: '여행', type: 'TRAVEL', emoji: '✈️' },
   {
     id: 17,
     name: '제주',
@@ -150,12 +162,12 @@ export const TILES: TileData[] = [
   },
   {
     id: 23,
-    name: '원주',
+    name: '전주',
     type: 'PROPERTY',
     color: '#FF7043',
     price: 750000000,
   },
-  { id: 24, name: '무인도\n이동칸', type: 'MOVE_TO_ISLAND', emoji: '👮' },
+  { id: 24, name: '섬으로 이동', type: 'MOVE_TO_ISLAND', emoji: '👮' },
   {
     id: 25,
     name: '청주',
@@ -170,7 +182,7 @@ export const TILES: TileData[] = [
     color: '#42A5F5',
     price: 900000000,
   },
-  { id: 27, name: '', type: 'CHANCE', svgIcon: '/event-question.svg' },
+  { id: 27, name: '찬스', type: 'CHANCE', svgIcon: '/event-question.svg' },
   {
     id: 28,
     name: '대전',

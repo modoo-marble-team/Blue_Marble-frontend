@@ -11,7 +11,7 @@ interface TravelModalProps {
   onCancel?: () => void
 }
 
-const DEFAULT_TITLE = '국내여행'
+const DEFAULT_TITLE = '여행'
 const DEFAULT_DESCRIPTION = '원하는 도시를 클릭하여 이동할 수 있습니다'
 const DEFAULT_CONFIRM_LABEL = '확인'
 
@@ -34,7 +34,7 @@ const TravelModal: React.FC<TravelModalProps> = ({
         <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-[30px] border border-[#CFE1FF] bg-[#EFF5FF]">
           <img
             src="/Travel- airplane.svg"
-            alt="국내여행 아이콘"
+            alt="여행 아이콘"
             className="h-16 w-16"
           />
         </div>

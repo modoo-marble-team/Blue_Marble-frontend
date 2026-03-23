@@ -48,6 +48,7 @@ export const useGameState = (gameId: string | null) => {
       const {
         gameId: localGameId,
         players,
+        tiles,
         revision,
         phase: currentPhase,
         isGameOver: gameEnded,
@@ -60,13 +61,16 @@ export const useGameState = (gameId: string | null) => {
       const hasUsableLocalState =
         localGameId != null &&
         String(localGameId) === String(gameId) &&
-        players.length > 0
+        players.length > 0 &&
+        tiles.length > 0
 
       if (!force && !gameChanged && hasUsableLocalState) return
 
+      const shouldForceFullSync = gameChanged || !hasUsableLocalState
+
       emitGameSync({
         gameId,
-        knownRevision: hasUsableLocalState ? revision : -1,
+        knownRevision: shouldForceFullSync ? -1 : revision,
       })
       syncedGameIdRef.current = gameId
     }

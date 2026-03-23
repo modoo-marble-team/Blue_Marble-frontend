@@ -43,6 +43,7 @@ import {
   BuildingLevel,
   DICE_TIMEOUT,
   type TileData,
+  type TileType,
 } from './board.constants'
 
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
@@ -191,6 +192,131 @@ const DOTS: Record<number, [number, number][]> = {
   ],
 }
 
+type BoardTilePayload = {
+  index: number
+  owner_id?: string | number | null
+  ownerId?: string | number | null
+  building: number
+  level?: number
+  price?: number
+  name?: string
+  type?: string
+  transportType?: string
+  color?: string
+}
+
+const BOARD_TILE_TYPES: TileType[] = [
+  'START',
+  'PROPERTY',
+  'CHANCE',
+  'MOVE_TO_ISLAND',
+  'ISLAND',
+  'EVENT',
+  'TRAVEL',
+]
+
+const TILE_DECORATIONS: Record<
+  TileType,
+  Pick<TileData, 'emoji' | 'svgIcon'>
+> = {
+  START: { emoji: '🚩' },
+  PROPERTY: {},
+  CHANCE: { svgIcon: '/event-question.svg' },
+  MOVE_TO_ISLAND: { emoji: '👮' },
+  ISLAND: { emoji: '🏝️' },
+  EVENT: { svgIcon: '/chance-box.svg' },
+  TRAVEL: { emoji: '✈️' },
+}
+
+const resolveBoardTileType = (
+  tile: Pick<BoardTilePayload, 'type' | 'transportType'>,
+  fallback: TileType
+): TileType => {
+  const transportType =
+    typeof tile.transportType === 'string'
+      ? tile.transportType.trim().toUpperCase()
+      : ''
+
+  if (BOARD_TILE_TYPES.includes(transportType as TileType)) {
+    return transportType as TileType
+  }
+
+  if (typeof tile.type !== 'string' || tile.type.trim() === '') {
+    return fallback
+  }
+
+  const normalized = tile.type.trim().toUpperCase()
+  if (BOARD_TILE_TYPES.includes(normalized as TileType)) {
+    return normalized as TileType
+  }
+
+  const lowered = tile.type.trim().toLowerCase()
+  if (lowered === 'property' || lowered === 'city') return 'PROPERTY'
+  if (lowered === 'start') return 'START'
+  if (lowered === 'chance' || lowered === 'card') return 'CHANCE'
+  if (
+    lowered === 'event' ||
+    lowered === 'tax' ||
+    lowered === 'penalty' ||
+    lowered === 'park' ||
+    lowered === 'ai'
+  ) {
+    return 'EVENT'
+  }
+  if (lowered === 'travel' || lowered === 'airport') return 'TRAVEL'
+  if (lowered === 'go_to_island') return 'MOVE_TO_ISLAND'
+  if (lowered === 'island' || lowered === 'jail') return 'ISLAND'
+
+  return fallback
+}
+
+const buildBoardTileCatalog = (tiles: BoardTilePayload[]): TileData[] => {
+  if (!tiles || tiles.length === 0) {
+    return TILES
+  }
+
+  const tileMap = new Map<number, BoardTilePayload>()
+  tiles.forEach((tile) => {
+    if (typeof tile.index === 'number' && Number.isFinite(tile.index)) {
+      tileMap.set(tile.index, tile)
+    }
+  })
+
+  return TILES.map((fallbackTile) => {
+    const storeTile = tileMap.get(fallbackTile.id)
+    if (!storeTile) {
+      return fallbackTile
+    }
+
+    const resolvedType = resolveBoardTileType(storeTile, fallbackTile.type)
+    const decoration = TILE_DECORATIONS[resolvedType]
+    const name =
+      typeof storeTile.name === 'string' && storeTile.name.trim().length > 0
+        ? storeTile.name
+        : fallbackTile.name
+    const price =
+      typeof storeTile.price === 'number' ? storeTile.price : fallbackTile.price
+    const color =
+      resolvedType === 'PROPERTY'
+        ? typeof storeTile.color === 'string' &&
+          storeTile.color.trim().length > 0
+          ? storeTile.color
+          : fallbackTile.color
+        : undefined
+
+    return {
+      ...fallbackTile,
+      id: fallbackTile.id,
+      name,
+      type: resolvedType,
+      price,
+      color,
+      emoji: decoration.emoji,
+      svgIcon: decoration.svgIcon,
+    }
+  })
+}
+
 function DiceFace({ value, rolling }: { value: number; rolling: boolean }) {
   return (
     <div
@@ -242,13 +368,7 @@ interface GameBoardProps {
   activePrompt?: GamePrompt | null
   promptSubmittingChoice?: string | null
   onPromptChoice?: (choice: string, payload?: Record<string, unknown>) => void
-  tiles?: Array<{
-    index: number
-    owner_id?: string | number | null
-    building: number
-    level?: number
-    price?: number
-  }>
+  tiles?: BoardTilePayload[]
   localPlayerId?: string | number | null
   gameResult?: GameResult | null
   isGameOver?: boolean
@@ -273,23 +393,19 @@ function toBoardBuildingLevel(
 }
 
 function buildTileOwnersFromProps(
-  tiles: Array<{
-    index: number
-    owner_id?: string | number | null
-    building: number
-    level?: number
-  }>,
+  tiles: BoardTilePayload[],
   players: PlayerState[]
 ) {
   const nextOwners: Record<number, TileOwner> = {}
 
   tiles.forEach((tile) => {
-    if (tile.owner_id === null || tile.owner_id === undefined) {
+    const ownerId = tile.owner_id ?? tile.ownerId ?? null
+    if (ownerId === null || ownerId === undefined) {
       return
     }
 
     const ownerPlayer = players.find(
-      (player) => String(player.id) === String(tile.owner_id)
+      (player) => String(player.id) === String(ownerId)
     )
 
     if (!ownerPlayer) {
@@ -363,6 +479,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       () => new Set(pendingMovePlayerIds),
       [pendingMovePlayerIds]
     )
+    const boardTiles = useMemo(() => buildBoardTileCatalog(tiles), [tiles])
 
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
@@ -436,7 +553,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
       ) => {
         setIsMoving(true)
-        const totalTiles = TILES.length
+        const totalTiles = boardTiles.length
         const direction = options?.direction ?? 'clockwise'
         let current = from
         const initialDelayMs = options?.initialDelayMs ?? 800
@@ -483,7 +600,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         })
         setIsMoving(false)
       },
-      []
+      [boardTiles.length]
     )
     const emitMockEndTurn = useCallback(() => {
       if (!isMockMode || !gameId) {
@@ -610,7 +727,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             moveSteps != null &&
             moveSteps > 0
           ) {
-            const totalTiles = TILES.length
+            const totalTiles = boardTiles.length
             const normalizedSteps = moveSteps % totalTiles
             const clockwiseTo = (fromIndex + normalizedSteps) % totalTiles
             const counterclockwiseTo =
@@ -623,7 +740,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           if (fromIndex === tileIndex) {
             if (moveSteps != null && moveSteps > 0) {
-              const totalTiles = TILES.length
+              const totalTiles = boardTiles.length
               const normalizedSteps = moveSteps % totalTiles
               fromIndex =
                 moveDirection === 'counterclockwise'
@@ -674,7 +791,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           const cardModalContent = resolveBoardCardModalContentFromEvent(
             event,
-            TILES
+            boardTiles
           )
 
           if (!cardModalContent) {
@@ -698,6 +815,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
       },
       [
+        boardTiles,
         emitMockEndTurn,
         freezeDiceRollValues,
         flashDiceRollAnimation,
@@ -771,19 +889,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [tiles, players]
     )
     const tileOwners = derivedTileOwners
-    const tilesWithServerPrice = useMemo(() => {
-      const priceMap: Record<number, number> = {}
-      for (const t of tiles) {
-        if (typeof t.index === 'number' && typeof t.price === 'number') {
-          priceMap[t.index] = t.price
-        }
-      }
-      const map: Record<number, TileData> = {}
-      for (let i = 0; i < TILES.length; i++) {
-        map[i] = i in priceMap ? { ...TILES[i], price: priceMap[i] } : TILES[i]
-      }
-      return map
-    }, [tiles])
     const tileOwnersRef = useRef<Record<number, TileOwner>>(tileOwners)
     const promptModalKind = resolvePromptModalKind(activePrompt)
     const isBuyPromptOpen = promptModalKind === 'buy'
@@ -802,7 +907,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       'toTileId',
       'to_tile_id',
     ])
-    const promptTile = promptTileId != null ? TILES[promptTileId] : null
+    const promptTile = promptTileId != null ? boardTiles[promptTileId] : null
     const promptOwnerId = getPromptPayloadNumber(activePrompt, [
       'ownerId',
       'owner_id',
@@ -1244,7 +1349,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             return
           }
 
-          const tile = TILES[Number(tileId)]
+          const tile = boardTiles[Number(tileId)]
           propertyValue += tile?.price ?? 0
           cityCount++
         })
@@ -1271,7 +1376,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         }
         return right.totalAsset - left.totalAsset
       })
-    }, [players, tileOwners])
+    }, [boardTiles, players, tileOwners])
     const fallbackPlayerResults = useMemo(
       () => getPlayerResults(),
       [getPlayerResults]
@@ -1380,7 +1485,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const player = playersRef.current[playerIdx]
       if (!player) return
 
-      const islandTile = TILES.find((t) => t.type === 'ISLAND')
+      const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
       if (islandTile) {
         // 무인도 이동도 한 칸씩 전진 애니메이션 적용
         await movePlayerSequentially(
@@ -1518,7 +1623,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const activePlayerMoney = playersRef.current[activePlayerIdx]?.money ?? 0
       const requiredAcquisitionCost =
         promptAcquisitionCost ??
-        (promptTileId != null ? (TILES[promptTileId]?.price ?? 0) : 0)
+        (promptTileId != null ? (boardTiles[promptTileId]?.price ?? 0) : 0)
 
       if (activePlayerMoney < requiredAcquisitionCost) {
         setInsufficientFundsModal({
@@ -1551,7 +1656,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       if (isMockMode && (hasIslandKeyword || isFallbackIslandEventCard)) {
         const playerIdx = curPlayerRef.current
         const player = playersRef.current[playerIdx]
-        const islandTile = TILES.find((t) => t.type === 'ISLAND')
+        const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
 
         if (player && islandTile) {
           await movePlayerSequentially(player.id, player.pos, islandTile.id, {
@@ -1587,7 +1692,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         active: true,
         onDoneCallback,
       })
-      setStatus('국내여행: 이동할 칸을 클릭하세요.')
+      const travelTileName =
+        boardTiles.find((tile) => tile.type === 'TRAVEL')?.name ?? '여행'
+      setStatus(`${travelTileName}: 이동할 칸을 클릭하세요.`)
     }
 
     function handleTravelCancel() {
@@ -1646,12 +1753,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       const destinationName =
-        TILES[tileId]?.name.replace('\n', ' ') || '선택 칸'
+        boardTiles[tileId]?.name.replace('\n', ' ') || '선택 칸'
       setStatus(
         `${currentPlayer.name}님이 ${destinationName} 칸으로 이동합니다.`
       )
 
-      // ✈️ 국내여행 이동 소리 재생
+      // ✈️ 여행 이동 소리 재생
       playLongSfx('/audio/plane-fly.mp3')
 
       window.setTimeout(() => {
@@ -1664,7 +1771,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       onDone?: () => void,
       eventPlayerId?: PlayerId | null
     ) {
-      const tile = TILES[tileId]
+      const tile = boardTiles[tileId]
 
       const isLocalPlayerTurn =
         localPlayerId == null ||
@@ -1798,7 +1905,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tollOwnerName = promptOwnerName
     const tollAmountText = formatWon(promptAmount ?? 0)
     const sellTileId = isSellPromptOpen ? promptTileId : citySellModal.tileId
-    const sellTile = sellTileId != null ? TILES[sellTileId] : null
+    const sellTile = sellTileId != null ? boardTiles[sellTileId] : null
     const sellOwnerName = isSellPromptOpen
       ? promptSellerName
       : citySellModal.ownerName
@@ -1808,11 +1915,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const sellPrice = isSellPromptOpen
       ? (promptSellPrice ??
         (sellTileId != null
-          ? getBoardSellFallbackRefund(sellTileId, promptCurrentLevel)
+          ? getBoardSellFallbackRefund(sellTile?.price ?? 0, promptCurrentLevel)
           : (sellTile?.price ?? 0)))
       : citySellModal.sellPrice ||
         (sellTileId != null
-          ? getBoardSellFallbackRefund(sellTileId, sellCurrentLevel)
+          ? getBoardSellFallbackRefund(sellTile?.price ?? 0, sellCurrentLevel)
           : (sellTile?.price ?? 0))
     const acquisitionTile = promptTile
     const acquisitionModalOpenRaw = isAcquisitionPromptOpen
@@ -1927,6 +2034,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       enabled: true,
       paused: isEventQueuePaused,
       playersRef,
+      tiles: boardTiles,
       setStatus,
       setDice1,
       setDice2,
@@ -2006,7 +2114,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         tileId,
         ownerName: ownerPlayer.name ?? '',
         currentLevel: owner.level,
-        sellPrice: getBoardSellFallbackRefund(tileId, owner.level),
+        sellPrice: getBoardSellFallbackRefund(
+          boardTiles[tileId]?.price ?? 0,
+          owner.level
+        ),
       })
     }
 
@@ -2104,7 +2215,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={tilesWithServerPrice[id]}
+                      tile={boardTiles[id]}
                       dir={isCornerTile ? 'corner' : 'top'}
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
@@ -2138,7 +2249,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={tilesWithServerPrice[id]}
+                      tile={boardTiles[id]}
                       dir={isCornerTile ? 'corner' : 'bottom'}
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
@@ -2171,7 +2282,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={tilesWithServerPrice[id]}
+                      tile={boardTiles[id]}
                       dir="left"
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
@@ -2204,7 +2315,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     }}
                   >
                     <BoardTile
-                      tile={tilesWithServerPrice[id]}
+                      tile={boardTiles[id]}
                       dir="right"
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
@@ -2247,7 +2358,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   'TRAVEL',
                   'CHANCE',
                   'EVENT',
-                ].includes(TILES[pos].type)
+                ].includes(boardTiles[pos].type)
 
                 return (
                   <PlayerToken
@@ -2514,7 +2625,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           <BuildModal
             open={true}
             cityName={
-              TILES[cityBuildModal.tileId]?.name.replace('\n', ' ') || ''
+              boardTiles[cityBuildModal.tileId]?.name.replace('\n', ' ') || ''
             }
             nextLevel={
               Math.min(
@@ -2524,13 +2635,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
             buildCostText={formatWon(
               getBuildCost(
-                TILES[cityBuildModal.tileId]?.price || 0,
+                boardTiles[cityBuildModal.tileId]?.price || 0,
                 (tileOwners[cityBuildModal.tileId]?.level || 0) as BuildingLevel
               )
             )}
             nextTollText={formatWon(
               getTollCost(
-                TILES[cityBuildModal.tileId]?.price || 0,
+                boardTiles[cityBuildModal.tileId]?.price || 0,
                 Math.min(
                   (tileOwners[cityBuildModal.tileId]?.level || 0) + 1,
                   3

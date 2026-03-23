@@ -128,7 +128,7 @@ export function createGameBoardActionHandlers(
       })
     }
 
-    const refund = getBoardSellFallbackRefund(tileId, owner.level)
+    const refund = getBoardSellFallbackRefund(getTilePrice(tileId), owner.level)
     const nextLevel = Math.max(owner.level - 1, 0) as BuildingLevel
     const releaseOwnership = nextLevel <= 0
 

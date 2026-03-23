@@ -9,6 +9,7 @@ type SetupOptions = {
   currentTurn?: string | number | null
   revision?: number
   playersLength?: number
+  tilesLength?: number
   phase?: 'waiting' | 'rolling' | 'moving' | 'resolving' | 'prompt' | 'finished'
   isGameOver?: boolean
 }
@@ -25,6 +26,7 @@ async function setupUseGameState(options: SetupOptions) {
     currentTurn: options.currentTurn ?? null,
     revision: options.revision ?? 0,
     playersLength: options.playersLength ?? 0,
+    tilesLength: options.tilesLength ?? 0,
     phase: options.phase ?? 'rolling',
     isGameOver: options.isGameOver ?? false,
   }
@@ -91,6 +93,7 @@ async function setupUseGameState(options: SetupOptions) {
         getState: () => {
           gameId: string | null
           players: unknown[]
+          tiles: unknown[]
           revision: number
           phase: string
           isGameOver: boolean
@@ -99,6 +102,9 @@ async function setupUseGameState(options: SetupOptions) {
     ).getState = () => ({
       gameId: runtime.localGameId,
       players: createPlayers(runtime.playersLength),
+      tiles: Array.from({ length: runtime.tilesLength }, (_, index) => ({
+        index,
+      })),
       revision: runtime.revision,
       phase: runtime.phase,
       isGameOver: runtime.isGameOver,
@@ -164,6 +170,7 @@ describe('useGameState', () => {
       localGameId: 'game-2',
       revision: 3,
       playersLength: 2,
+      tilesLength: 2,
     })
 
     renderHook(() => useGameState('game-2'))
@@ -171,7 +178,7 @@ describe('useGameState', () => {
     expect(connectSocketWithAuthIfNeeded).toHaveBeenCalledTimes(1)
     expect(emitGameSync).toHaveBeenNthCalledWith(1, {
       gameId: 'game-2',
-      knownRevision: 3,
+      knownRevision: -1,
     })
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(1)
 
