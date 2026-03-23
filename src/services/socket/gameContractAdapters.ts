@@ -1,4 +1,5 @@
 import type {
+  GlobalEffectState,
   GamePatchEnvelope,
   GamePatchOperation,
   GamePrompt,
@@ -82,6 +83,18 @@ const PLAYER_STATE_TO_INTERNAL_MAP: Record<string, Player['state']> = {
   LOCKED: 'locked',
   BANKRUPT: 'bankrupt',
 }
+
+const GLOBAL_EFFECT_ENUM_VALUES = [
+  'PANDEMIC',
+  'FESTIVAL',
+  'INFLATION',
+  'DEFLATION',
+] as const
+
+const GLOBAL_EFFECT_MODE_ENUM_VALUES = [
+  'TOLL_MULTIPLIER',
+  'PRICE_MULTIPLIER',
+] as const
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
@@ -301,6 +314,114 @@ export const normalizePhase = (phase: unknown): GameSnapshot['phase'] => {
 
   const normalizedPhase = phase.trim().toUpperCase()
   return PHASE_TO_INTERNAL_MAP[normalizedPhase] ?? 'waiting'
+}
+
+const normalizeGlobalEffectEnum = (
+  value: unknown
+): GlobalEffectState['effect'] | null => {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return null
+  }
+
+  const normalized = value.trim().toUpperCase()
+  if (
+    GLOBAL_EFFECT_ENUM_VALUES.includes(
+      normalized as (typeof GLOBAL_EFFECT_ENUM_VALUES)[number]
+    )
+  ) {
+    return normalized as GlobalEffectState['effect']
+  }
+
+  return null
+}
+
+const normalizeGlobalEffectMode = (
+  value: unknown
+): GlobalEffectState['type'] | null => {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return null
+  }
+
+  const normalized = value.trim().toUpperCase()
+  if (
+    GLOBAL_EFFECT_MODE_ENUM_VALUES.includes(
+      normalized as (typeof GLOBAL_EFFECT_MODE_ENUM_VALUES)[number]
+    )
+  ) {
+    return normalized as GlobalEffectState['type']
+  }
+
+  return null
+}
+
+const resolveDefaultGlobalEffectMode = (
+  effect: GlobalEffectState['effect']
+): GlobalEffectState['type'] =>
+  effect === 'PANDEMIC' || effect === 'FESTIVAL'
+    ? 'TOLL_MULTIPLIER'
+    : 'PRICE_MULTIPLIER'
+
+const resolveDefaultGlobalEffectMultiplier = (
+  effect: GlobalEffectState['effect']
+) => (effect === 'PANDEMIC' || effect === 'DEFLATION' ? 0.5 : 2)
+
+const normalizeGlobalEffectPayload = (
+  effectPayload: unknown
+): GlobalEffectState | null => {
+  if (!isRecord(effectPayload)) {
+    return null
+  }
+
+  const normalizedEffect =
+    normalizeGlobalEffectEnum(
+      effectPayload.effect ??
+        effectPayload.effectType ??
+        effectPayload.effect_type ??
+        effectPayload.globalEffect ??
+        effectPayload.global_effect
+    ) ??
+    normalizeGlobalEffectEnum(effectPayload.type) ??
+    null
+
+  if (!normalizedEffect) {
+    return null
+  }
+
+  const normalizedMode =
+    normalizeGlobalEffectMode(
+      effectPayload.type ??
+        effectPayload.effectMode ??
+        effectPayload.effect_mode ??
+        effectPayload.mode
+    ) ?? resolveDefaultGlobalEffectMode(normalizedEffect)
+
+  const durationRaw = toFiniteNumber(
+    effectPayload.duration ??
+      effectPayload.remainingRounds ??
+      effectPayload.remaining_rounds ??
+      effectPayload.remainingTurns ??
+      effectPayload.remaining_turns
+  )
+  const multiplierRaw = toFiniteNumber(
+    effectPayload.multiplier ??
+      effectPayload.factor ??
+      effectPayload.rate ??
+      effectPayload.value
+  )
+
+  return {
+    type: normalizedMode,
+    effect: normalizedEffect,
+    duration: durationRaw != null ? Math.max(0, Math.trunc(durationRaw)) : 3,
+    multiplier:
+      multiplierRaw != null
+        ? multiplierRaw
+        : resolveDefaultGlobalEffectMultiplier(normalizedEffect),
+    description:
+      toStringOrNull(
+        effectPayload.description ?? effectPayload.message ?? effectPayload.text
+      ) ?? `${normalizedEffect} effect is active.`,
+  }
 }
 
 export const normalizePromptChoiceValue = (choice: unknown): string =>
@@ -793,6 +914,12 @@ export const normalizeSnapshotPayload = (
         snapshotPayload.pending_prompt ??
         snapshotPayload.pendingPrompt
     ),
+    activeGlobalEffect: normalizeGlobalEffectPayload(
+      snapshotPayload.activeGlobalEffect ??
+        snapshotPayload.active_global_effect ??
+        snapshotPayload.globalEffect ??
+        snapshotPayload.global_effect
+    ),
     gameResult: normalizedGameResult,
     isGameOver: normalizedIsGameOver,
     winnerId: normalizedWinnerId,
@@ -842,6 +969,9 @@ const normalizePathSegment = (segment: string | number): string | number => {
   if (segment === 'winner_id') return 'winnerId'
   if (segment === 'is_game_over') return 'isGameOver'
   if (segment === 'game_result') return 'gameResult'
+  if (segment === 'active_global_effect') return 'activeGlobalEffect'
+  if (segment === 'global_effect') return 'activeGlobalEffect'
+  if (segment === 'globalEffect') return 'activeGlobalEffect'
   if (segment === 'building_level') return 'building'
   if (segment === 'buildingLevel') return 'building'
   if (segment === 'tile_type') return 'type'
@@ -908,6 +1038,10 @@ const normalizePatchSetValue = (
     return normalizePromptPayload(value)
   }
 
+  if (pathSegments.length === 1 && firstSegment === 'activeGlobalEffect') {
+    return normalizeGlobalEffectPayload(value)
+  }
+
   if (
     pathSegments.length === 2 &&
     firstSegment === 'players' &&
@@ -940,6 +1074,25 @@ const normalizePatchSetValue = (
 
   if (lastSegment === 'position') {
     return toFiniteInt(value, 0)
+  }
+
+  if (lastSegment === 'duration' && pathSegments[0] === 'activeGlobalEffect') {
+    return Math.max(0, toFiniteInt(value, 0))
+  }
+
+  if (
+    lastSegment === 'multiplier' &&
+    pathSegments[0] === 'activeGlobalEffect'
+  ) {
+    return toFiniteNumber(value) ?? 1
+  }
+
+  if (lastSegment === 'effect' && pathSegments[0] === 'activeGlobalEffect') {
+    return normalizeGlobalEffectEnum(value) ?? value
+  }
+
+  if (lastSegment === 'type' && pathSegments[0] === 'activeGlobalEffect') {
+    return normalizeGlobalEffectMode(value) ?? value
   }
 
   if (lastSegment === 'balance') {
