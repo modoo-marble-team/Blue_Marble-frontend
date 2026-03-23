@@ -24,3 +24,4 @@
 - [x] `partial-workflow-gate-large-prs` - Partial Workflow Gate Large Prs (`docs/ai/tasks/partial-workflow-gate-large-prs/`)
 - [x] `dice-popup-refactor` - Dice Popup Refactor (`docs/ai/tasks/dice-popup-refactor/`) - 주사위 타이머 제거 및 더블 전용 팝업 개편 및 GameBoard 정리
 - [x] `workflow-gate-rollout-develop` - Workflow Gate Rollout Develop (`docs/ai/tasks/workflow-gate-rollout-develop/`) - required check 유지, dry-run 가이드, 초기 검증 참고 기록까지 정리 완료
+- [x] `git-flow-automation-scaffold` - Git Flow Automation Scaffold (`docs/ai/tasks/git-flow-automation-scaffold/`) - 로컬 git-flow skill을 저장소 공용 issue/branch/commit/PR scaffold로 옮기고 테스트 가능하게 정리

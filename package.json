@@ -23,6 +23,7 @@
     "ai:task:new": "node scripts/ai/task-new.mjs",
     "ai:session:brief": "node scripts/ai/session-brief.mjs",
     "ai:workflow:audit": "node scripts/ai/workflow-audit.mjs",
+    "ai:git-flow": "node scripts/ai/git-flow.mjs",
     "ai:pr-gate": "node scripts/ai/pr-gate.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
