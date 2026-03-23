@@ -137,10 +137,7 @@ function MyPage() {
                     />
 
                     <div className="w-full max-w-sm">
-                      <label
-                        htmlFor="my-page-nickname"
-                        className="block text-sm font-semibold text-ui-text-primary"
-                      >
+                      <label htmlFor="my-page-nickname" className="sr-only">
                         닉네임
                       </label>
                       <input
@@ -154,8 +151,9 @@ function MyPage() {
                           handleNicknameChange(event.target.value)
                         }
                         placeholder="예) GoormEE"
-                        className="mt-2 h-12 w-full rounded-2xl border border-ui-border bg-ui-surface px-4 text-base text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
+                        className="h-12 w-full rounded-2xl border border-ui-border bg-ui-surface px-4 text-base text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
                         autoComplete="off"
+                        aria-label="닉네임"
                       />
                       <p
                         className={`mt-3 text-sm font-medium ${
