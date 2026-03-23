@@ -78,15 +78,16 @@ function MyPage() {
         <button
           type="button"
           onClick={() => navigate('/lobby')}
-          className="inline-flex items-center gap-2 rounded-xl px-2 py-1 text-ui-text-primary transition-colors hover:bg-ui-surface-muted"
+          aria-label="로비로 돌아가기"
+          className="inline-flex items-center justify-center rounded-xl p-1 text-ui-text-primary transition-colors hover:bg-ui-surface-muted"
         >
           <span className="flex size-9 items-center justify-center rounded-full border border-ui-border bg-ui-surface-soft">
             <ArrowLeft className="size-4" />
           </span>
-          <span className="text-xl font-bold leading-none text-ui-text-strong">
-            내 정보
-          </span>
         </button>
+        <span className="ml-2 text-xl font-bold leading-none text-ui-text-strong">
+          내 정보
+        </span>
       </header>
 
       <main className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6">
