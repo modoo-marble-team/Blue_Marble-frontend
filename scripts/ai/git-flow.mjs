@@ -23,6 +23,22 @@ const DEFAULT_RISK_LINE = '- 현재 확인된 추가 리스크는 없습니다.'
 const DEFAULT_PR_BODY_FILE = '/tmp/ai-git-flow-pr-body.md'
 const DEFAULT_ISSUE_BODY_FILE = '/tmp/ai-git-flow-issue-body.md'
 const N_A_LIST = ['- plan: N/A', '- context: N/A', '- checklist: N/A']
+const SUPPORTED_FLAGS = new Set([
+  '--files',
+  '--task-slug',
+  '--issue-number',
+  '--type',
+  '--title',
+  '--base',
+  '--issue-body-file',
+  '--pr-body-file',
+  '--todo-file',
+  '--commit-message',
+  '--risk-line',
+  '--execute',
+  '--yes',
+  '--json',
+])
 const COMMIT_TYPES = [
   'feat',
   'fix',
@@ -81,6 +97,572 @@ function formatCodeBulletList(items) {
   return items.map((item) => `- \`${item}\``).join('\n')
 }
 
+function normalizeMarkdown(value) {
+  return value.replace(/\r\n/g, '\n')
+}
+
+function parseMarkdownFrontmatter(contents) {
+  const normalized = normalizeMarkdown(contents)
+
+  if (!normalized.startsWith('---\n')) {
+    return {
+      attributes: {},
+      body: normalized,
+    }
+  }
+
+  const endIndex = normalized.indexOf('\n---\n', 4)
+
+  if (endIndex === -1) {
+    return {
+      attributes: {},
+      body: normalized,
+    }
+  }
+
+  const frontmatter = normalized.slice(4, endIndex)
+  const attributes = {}
+
+  for (const line of frontmatter.split('\n')) {
+    const separatorIndex = line.indexOf(':')
+
+    if (separatorIndex === -1) {
+      continue
+    }
+
+    const key = line.slice(0, separatorIndex).trim()
+    const rawValue = line.slice(separatorIndex + 1).trim()
+    attributes[key] = rawValue.replace(/^['"]|['"]$/g, '')
+  }
+
+  return {
+    attributes,
+    body: normalized.slice(endIndex + '\n---\n'.length),
+  }
+}
+
+function readTemplateFile(relativePath, cwd = process.cwd()) {
+  const absolutePath = path.join(cwd, relativePath)
+
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`템플릿 파일을 찾을 수 없습니다: ${relativePath}`)
+  }
+
+  return parseMarkdownFrontmatter(fs.readFileSync(absolutePath, 'utf8'))
+}
+
+function getTemplateHeadings(templateBody) {
+  return normalizeMarkdown(templateBody)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^##\s+/.test(line))
+}
+
+function ensureTemplateHeadings(templateBody, expectedHeadings) {
+  const headings = getTemplateHeadings(templateBody)
+
+  for (const heading of expectedHeadings) {
+    if (!headings.includes(heading)) {
+      throw new Error(`템플릿 heading을 찾을 수 없습니다: ${heading}`)
+    }
+  }
+}
+
+function extractMarkdownSectionLines(contents, heading) {
+  const lines = normalizeMarkdown(contents).split('\n')
+  const headingLine = `## ${heading}`
+  const startIndex = lines.findIndex((line) => line.trim() === headingLine)
+
+  if (startIndex === -1) {
+    return []
+  }
+
+  const sectionLines = []
+
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+
+    if (/^##\s+/.test(line.trim())) {
+      break
+    }
+
+    sectionLines.push(line)
+  }
+
+  return sectionLines
+}
+
+function trimSectionLines(lines) {
+  return lines.map((line) => line.trim()).filter(Boolean)
+}
+
+function normalizeBulletText(line) {
+  return line.replace(/^[-*]\s+/, '').trim()
+}
+
+function buildListFromLines(lines, fallbackLines, marker = '-') {
+  const source = (lines.length > 0 ? lines : fallbackLines)
+    .map((line) => normalizeBulletText(line))
+    .filter(Boolean)
+
+  if (source.length === 0) {
+    return `${marker} 없음`
+  }
+
+  return source.map((line) => `${marker} ${line}`).join('\n')
+}
+
+function buildUncheckedChecklist(lines, fallbackLines) {
+  const source = (lines.length > 0 ? lines : fallbackLines)
+    .map((line) => normalizeBulletText(line))
+    .filter(Boolean)
+
+  const resolved = source.length > 0 ? source : ['직접 정리 필요']
+  return resolved.map((line) => `- [ ] ${line}`).join('\n')
+}
+
+function buildBlockquote(lines, fallbackLine) {
+  const source = lines.map((line) => normalizeBulletText(line)).filter(Boolean)
+  const resolved = source.length > 0 ? source : [fallbackLine]
+
+  return resolved.map((line) => `> ${line}`).join('\n')
+}
+
+function createFallbackTaskContext(title, files) {
+  return {
+    goalLines: [`${title} 작업을 진행합니다.`],
+    inScopeLines: files.map((file) => `${file} 변경을 반영합니다.`).slice(0, 4),
+    completionLines: [`${title} 관련 변경이 의도대로 동작합니다.`],
+    testPlanLines: ['관련 Vitest와 lint를 확인합니다.'],
+    currentBehaviorLines: [`현재 ${title} 관련 자동 생성 결과가 충분히 구체적이지 않습니다.`],
+    decisionLines: [`${title} 관련 본문을 템플릿 기준으로 생성합니다.`],
+  }
+}
+
+function readTaskContext(taskSlug, cwd = process.cwd()) {
+  if (!taskSlug) {
+    return null
+  }
+
+  const taskRoot = path.join(cwd, 'docs', 'ai', 'tasks', taskSlug)
+  const planPath = path.join(taskRoot, 'plan.md')
+  const contextPath = path.join(taskRoot, 'context.md')
+
+  if (!fs.existsSync(planPath) && !fs.existsSync(contextPath)) {
+    return null
+  }
+
+  const planContents = fs.existsSync(planPath)
+    ? fs.readFileSync(planPath, 'utf8')
+    : ''
+  const contextContents = fs.existsSync(contextPath)
+    ? fs.readFileSync(contextPath, 'utf8')
+    : ''
+
+  return {
+    goalLines: trimSectionLines(extractMarkdownSectionLines(planContents, 'Goal')),
+    inScopeLines: trimSectionLines(
+      extractMarkdownSectionLines(planContents, 'In Scope')
+    ),
+    completionLines: trimSectionLines(
+      extractMarkdownSectionLines(planContents, 'Completion Criteria')
+    ),
+    testPlanLines: trimSectionLines(
+      extractMarkdownSectionLines(planContents, 'Test Plan')
+    ),
+    currentBehaviorLines: trimSectionLines(
+      extractMarkdownSectionLines(contextContents, 'Current Behavior')
+    ),
+    decisionLines: trimSectionLines(
+      extractMarkdownSectionLines(contextContents, 'Decision Notes')
+    ),
+  }
+}
+
+function summarizeScopeByKind(files, prefixes, fallback) {
+  const matches = files.filter((file) =>
+    prefixes.some((prefix) => file.startsWith(prefix))
+  )
+
+  if (matches.length === 0) {
+    return fallback
+  }
+
+  return matches.map((file) => `\`${file}\``).join(', ')
+}
+
+function buildScopeTableRows(files) {
+  return [
+    `| 페이지 / 화면 | ${summarizeScopeByKind(files, ['src/pages/'], '관련 변경 없음')} |`,
+    `| 컴포넌트 | ${summarizeScopeByKind(files, ['src/components/', 'src/features/'], '관련 변경 없음')} |`,
+    `| API / WebSocket | ${summarizeScopeByKind(files, ['src/features/auth/api/', 'src/lib/socket.ts', 'src/contracts/socket/', 'mock-socket-server/'], '관련 변경 없음')} |`,
+    `| 상태 관리 | ${summarizeScopeByKind(files, ['src/stores/', 'src/features/auth/session/', 'src/features/auth/profile/'], '관련 변경 없음')} |`,
+  ].join('\n')
+}
+
+function buildIssueWorkflowSection({
+  taskSlug,
+  referenceDocs,
+  validationCommands,
+}) {
+  const hasTask = Boolean(taskSlug)
+  const hasLint = validationCommands.some((command) => command.includes('lint'))
+  const hasVitest = validationCommands.some((command) =>
+    command.includes('vitest')
+  )
+  const hasBuild = validationCommands.some((command) => command.includes('build'))
+  const hasPlaywright = validationCommands.some((command) =>
+    command.includes('playwright')
+  )
+  const hasCommonManual = referenceDocs.includes('docs/ai/manuals/common.md')
+
+  return [
+    '> 비사소한 작업이면 구현 전에 task slug, 읽을 문서, 검증 범위를 먼저 정해주세요.',
+    '',
+    `- 예상 task slug: ${taskSlug ? `\`${taskSlug}\`` : 'N/A'}`,
+    `- task 문서 필요 여부: [${hasTask ? 'x' : ' '}] 필요 [${
+      hasTask ? ' ' : 'x'
+    }] 불필요`,
+    '- 먼저 읽을 기준 문서:',
+    `  - [x] AGENTS.md`,
+    `  - [${hasCommonManual ? 'x' : ' '}] docs/ai/manuals/common.md`,
+    `  - [x] docs/rules.md`,
+    `  - [x] docs/testing.md`,
+    '  - [ ] 추가 manual:',
+    '- 예상 검증:',
+    `  - [${hasLint ? 'x' : ' '}] npm run lint`,
+    `  - [${hasVitest ? 'x' : ' '}] 관련 Vitest`,
+    `  - [${hasBuild ? 'x' : ' '}] npm run build`,
+    `  - [${hasPlaywright ? 'x' : ' '}] 관련 Playwright`,
+    '  - [ ] 기타:',
+  ].join('\n')
+}
+
+function buildIssueMetaNote(taskSlug, scaffold) {
+  if (taskSlug) {
+    return `- \`docs/ai/tasks/${taskSlug}/\`와 \`TODO.md\`를 함께 연결합니다.`
+  }
+
+  return `- 변경 파일 ${scaffold.files.length}개를 기준으로 issue/PR 흐름을 정리합니다.`
+}
+
+function renderIssueTemplateSections(type, scaffold) {
+  const taskContext =
+    readTaskContext(scaffold.taskSlug, scaffold.cwd) ??
+    createFallbackTaskContext(scaffold.title, scaffold.files)
+
+  const defaultWorkLines =
+    taskContext.inScopeLines.length > 0
+      ? taskContext.inScopeLines
+      : scaffold.files.map((file) => `${file} 변경을 반영합니다.`).slice(0, 4)
+  const defaultCompletionLines =
+    taskContext.completionLines.length > 0
+      ? taskContext.completionLines
+      : [`${scaffold.title} 관련 결과를 확인합니다.`]
+  const currentBehaviorLines =
+    taskContext.currentBehaviorLines.length > 0
+      ? taskContext.currentBehaviorLines
+      : [`현재 ${scaffold.title} 관련 자동화 결과를 정리해야 합니다.`]
+  const decisionLines =
+    taskContext.decisionLines.length > 0
+      ? taskContext.decisionLines
+      : [`${scaffold.title} 관련 템플릿 기준 본문을 준비합니다.`]
+
+  const commonWorkflowSection = buildIssueWorkflowSection({
+    taskSlug: scaffold.taskSlug,
+    referenceDocs: scaffold.referenceDocs,
+    validationCommands: scaffold.validationCommands,
+  })
+
+  const baseSections = {
+    feat: {
+      '## ✨ 기능 개요': buildBlockquote(
+        taskContext.goalLines,
+        `${scaffold.title} 기능을 추가합니다.`
+      ),
+      '## 🎯 기능 상세 설명': buildBlockquote(
+        defaultWorkLines,
+        `${scaffold.title} 동작을 구체화합니다.`
+      ),
+      '## 💡 제안 배경 / 동기': buildBlockquote(
+        currentBehaviorLines,
+        `${scaffold.title} 기능이 필요한 배경을 정리합니다.`
+      ),
+      '## 📂 작업 범위 (Scope)': [
+        '| 구분 | 대상 |',
+        '| --- | --- |',
+        buildScopeTableRows(scaffold.files),
+      ].join('\n'),
+      '## 🤖 AI Workflow 준비': commonWorkflowSection,
+      '## 📝 세부 작업 목록': buildUncheckedChecklist(defaultWorkLines, [
+        `${scaffold.title} 작업 범위를 정리합니다.`,
+      ]),
+      '## ✅ 완료 기준 (Acceptance Criteria)': buildUncheckedChecklist(
+        defaultCompletionLines,
+        [`${scaffold.title} 완료 기준을 정리합니다.`]
+      ),
+      '## 🖼️ UI/UX 참고 (선택)': buildBlockquote(
+        [],
+        '관련 UI/UX 참고는 추후 연결합니다.'
+      ),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    chore: {
+      '## 💡 작업 개요': buildBlockquote(
+        taskContext.goalLines,
+        `${scaffold.title} 작업을 정리합니다.`
+      ),
+      '## 📂 수정 대상': [
+        '| 파일 경로 | 수정 내용 |',
+        '| --------- | --------- |',
+        ...scaffold.files.map((file) => `| \`${file}\` | ${scaffold.title} 관련 정리 |`),
+      ].join('\n'),
+      '## 📝 세부 작업 목록': buildUncheckedChecklist(defaultWorkLines, [
+        `${scaffold.title} 변경을 반영합니다.`,
+      ]),
+      '## 🤖 AI Workflow 메모': [
+        '- 단일 파일, 단일 세션, 낮은 회귀 위험이면 task 문서를 생략할 수 있습니다.',
+        scaffold.taskSlug
+          ? `- 이번 작업은 \`${scaffold.taskSlug}\` slug와 task 문서를 사용합니다.`
+          : '- 이번 작업은 task 문서 없이 진행 가능한지 먼저 확인합니다.',
+        '- PR 전에는 관련 검증과 `npm run ai:self-review` 결과를 기준으로 본문을 정리합니다.',
+      ].join('\n'),
+      '## ✅ 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
+        `${scaffold.title} 변경 확인`,
+      ]),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    docs: {
+      '## 📝 문서화 대상': buildBlockquote(
+        taskContext.goalLines,
+        `${scaffold.title} 문서를 정리합니다.`
+      ),
+      '## 📂 문서 종류': buildUncheckedChecklist(
+        scaffold.files.map((file) => file),
+        ['README.md']
+      ),
+      '## ✏️ 작업 내용': [
+        '**추가:**',
+        '',
+        buildListFromLines(defaultWorkLines, [`${scaffold.title} 문서 추가`]),
+        '',
+        '**수정:**',
+        '',
+        buildListFromLines(defaultWorkLines, [`${scaffold.title} 문서 수정`]),
+        '',
+        '**삭제:**',
+        '',
+        '- 없음',
+      ].join('\n'),
+      '## 🤖 AI Workflow 메모': [
+        '- 단일 문서 수정이면 task 문서 없이 진행할 수 있습니다.',
+        scaffold.taskSlug
+          ? `- 이번 작업은 \`${scaffold.taskSlug}\` task 문서를 함께 사용합니다.`
+          : '- 범위가 커지면 task slug와 `TODO.md` 연결을 추가합니다.',
+        '- PR 전에는 문서 링크, 실행한 검증, 남은 리스크를 본문에 정리해주세요.',
+      ].join('\n'),
+      '## ✅ 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
+        `${scaffold.title} 문서 정리 완료`,
+      ]),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    test: {
+      '## ✅ 작업 개요': buildBlockquote(
+        taskContext.goalLines,
+        `${scaffold.title} 테스트를 정리합니다.`
+      ),
+      '## 📂 테스트 대상': [
+        '| 테스트 파일 | 테스트 대상 |',
+        '| ----------- | ----------- |',
+        ...scaffold.files.map((file) => `| \`${file}\` | ${scaffold.title} 관련 검증 |`),
+      ].join('\n'),
+      '## 📝 테스트 케이스 목록': buildUncheckedChecklist(defaultWorkLines, [
+        `${scaffold.title} 테스트 케이스 정리`,
+      ]),
+      '## 🤖 AI Workflow 메모': [
+        '- 테스트 전용 소규모 수정이면 task 문서를 생략할 수 있습니다.',
+        scaffold.taskSlug
+          ? `- 이번 작업은 \`${scaffold.taskSlug}\` task 문서를 사용합니다.`
+          : '- 테스트 범위가 넓어지면 task slug와 `TODO.md`를 연결합니다.',
+        '- PR 전에는 어떤 계약과 시나리오를 검증했는지 `npm run ai:self-review`와 함께 정리해주세요.',
+      ].join('\n'),
+      '## ✅ 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
+        `${scaffold.title} 테스트 완료`,
+      ]),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    build: {
+      '## 🚚 작업 개요': buildBlockquote(
+        taskContext.goalLines,
+        `${scaffold.title} 빌드 관련 작업을 진행합니다.`
+      ),
+      '## 📂 수정 대상': buildUncheckedChecklist(scaffold.files, [
+        'package.json / 설정 파일',
+      ]),
+      '## 📝 변경 사항 상세': [
+        '| 항목 | 변경 전 | 변경 후 |',
+        '| ---- | ------- | ------- |',
+        `| 빌드/설정 | 기존 동작 유지 | ${scaffold.title} 반영 |`,
+      ].join('\n'),
+      '## ⚠️ 영향 범위': buildUncheckedChecklist([], ['없음']),
+      '## 🤖 AI Workflow 준비': commonWorkflowSection,
+      '## ✅ 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
+        '로컬 빌드 정상 확인',
+      ]),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    refactor: {
+      '## ♻️ 리팩터링 목적': buildBlockquote(
+        taskContext.goalLines,
+        `${scaffold.title} 리팩터링 목적을 정리합니다.`
+      ),
+      '## 📂 대상 파일 / 컴포넌트': [
+        '| 파일 경로 | 리팩터링 이유 |',
+        '| --------- | ------------- |',
+        ...scaffold.files.map((file) => `| \`${file}\` | ${scaffold.title} 정리 |`),
+      ].join('\n'),
+      '## 🚨 현재 문제점': [
+        '```typescript',
+        '// 문제가 있는 현재 코드 예시 (선택)',
+        '```',
+        '',
+        '**문제점:**',
+        '',
+        buildListFromLines(currentBehaviorLines, [`${scaffold.title} 관련 문제점 정리`]),
+      ].join('\n'),
+      '## 💡 개선 방향': [
+        '```typescript',
+        '// 개선 후 예상 코드 예시 (선택)',
+        '```',
+        '',
+        '**개선 내용:**',
+        '',
+        buildListFromLines(defaultWorkLines, [`${scaffold.title} 개선 방향 정리`]),
+      ].join('\n'),
+      '## 🤖 AI Workflow 준비': commonWorkflowSection,
+      '## ✅ 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
+        `${scaffold.title} 리팩터링 완료`,
+      ]),
+      '## ⚠️ 사이드 이펙트 검토': buildUncheckedChecklist(
+        decisionLines,
+        ['영향 범위를 확인합니다.']
+      ),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    fix: {
+      '## 🐛 버그 설명': buildBlockquote(
+        currentBehaviorLines,
+        `${scaffold.title} 버그를 설명합니다.`
+      ),
+      '## 📍 재현 방법': [
+        '1. 관련 화면에 진입한다.',
+        '2. 현재 동작을 재현한다.',
+        '3. 문제를 확인한다.',
+      ].join('\n'),
+      '## 🎯 기대 동작': buildBlockquote(
+        defaultCompletionLines,
+        `${scaffold.title} 기대 동작을 정리합니다.`
+      ),
+      '## 💥 실제 동작': buildBlockquote(
+        currentBehaviorLines,
+        `${scaffold.title} 실제 동작을 정리합니다.`
+      ),
+      '## 📸 스크린샷 / 에러 로그': [
+        '<details>',
+        '<summary>에러 로그 펼치기</summary>',
+        '',
+        '```',
+        '로그는 구현 중 직접 채워주세요',
+        '```',
+        '',
+        '</details>',
+      ].join('\n'),
+      '## 🌐 환경 정보': [
+        '| 항목 | 내용 |',
+        '| ---- | ---- |',
+        '| OS | 미정 |',
+        '| 브라우저 | 미정 |',
+        '| 화면 / 페이지 | 관련 변경 파일 기준 정리 |',
+        '| 발생 시점 | 재현 단계 기준 정리 |',
+      ].join('\n'),
+      '## 📂 예상 원인 및 수정 범위': [
+        '| 구분 | 내용 |',
+        '| ---- | ---- |',
+        `| 예상 원인 | ${normalizeBulletText(currentBehaviorLines[0] ?? `${scaffold.title} 원인 분석 예정`)} |`,
+        `| 수정 파일 | ${formatCodeBulletList(scaffold.files).replace(/\n/g, '<br />')} |`,
+      ].join('\n'),
+      '## 🤖 AI Workflow 준비': commonWorkflowSection,
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+    hotfix: {
+      '## 🚨 긴급 상황 요약': buildBlockquote(
+        currentBehaviorLines,
+        `${scaffold.title} 긴급 상황을 정리합니다.`
+      ),
+      '## 💥 증상': buildBlockquote(
+        currentBehaviorLines,
+        `${scaffold.title} 증상을 설명합니다.`
+      ),
+      '## 📍 발생 위치': [
+        '| 항목 | 내용 |',
+        '| ---- | ---- |',
+        '| 화면 / 페이지 | 관련 변경 파일 기준 정리 |',
+        '| 발생 시점 | 재현 단계 기준 정리 |',
+        '| 영향 범위 | 확인 필요 |',
+      ].join('\n'),
+      '## 📸 에러 로그': [
+        '<details>',
+        '<summary>에러 로그 펼치기</summary>',
+        '',
+        '```',
+        '에러 메시지를 여기에 붙여넣기',
+        '```',
+        '',
+        '</details>',
+      ].join('\n'),
+      '## ⚡ 임시 대응 방안 (선택)': buildBlockquote(
+        decisionLines,
+        '임시 대응 방안은 확인 후 정리합니다.'
+      ),
+      '## 🔧 근본 원인 분석': buildBlockquote(
+        decisionLines,
+        `${scaffold.title} 근본 원인을 분석합니다.`
+      ),
+      '## 🤖 AI Workflow 준비': commonWorkflowSection,
+      '## ✅ 수정 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
+        `${scaffold.title} 긴급 수정 완료`,
+      ]),
+      '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
+      '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
+    },
+  }
+
+  return baseSections[type]
+}
+
+function renderTemplateBodyFromSections(headings, sections, options = {}) {
+  const separator = options.separator ?? '\n\n'
+  const renderedSections = headings
+    .map((heading) => {
+      const body = sections[heading]
+
+      if (typeof body !== 'string') {
+        throw new Error(`템플릿 section 값이 없습니다: ${heading}`)
+      }
+
+      return `${heading}\n\n${body}`.trimEnd()
+    })
+
+  return renderedSections.join(separator)
+}
+
 function formatTaskDocumentSection(taskSlug) {
   if (!taskSlug) {
     return N_A_LIST.join('\n')
@@ -113,6 +695,17 @@ function formatTodoSection(taskSlug, todoStatus) {
     `- TODO status: ${resolvedStatus}`,
     `- TODO entry 확인: ${entryNote}`,
   ].join('\n')
+}
+
+function parseTemplateChecklist(lines) {
+  return lines
+    .map((line) => line.trim())
+    .filter((line) => /^- \[[ x]\]/.test(line))
+    .map((line) =>
+      line
+        .replace(/^- \[[ x]\]\s*/, '')
+        .trim()
+    )
 }
 
 function inferType(files, explicitType) {
@@ -178,31 +771,6 @@ function inferTitle(files, taskSlug, explicitTitle) {
   return 'Workflow Update'
 }
 
-function buildIssueBody({ title, taskSlug, files, manuals }) {
-  const completionCriteria = [
-    '- [ ] 변경 범위와 목적이 이슈 본문에 반영된다',
-    taskSlug
-      ? `- [ ] TODO.md와 docs/ai/tasks/${taskSlug}/ 연결이 유지된다`
-      : '- [ ] small/docs-only 변경이면 Task 문서가 없어도 괜찮은지 확인한다',
-    '- [ ] 최소 검증과 PR 본문 근거를 정리한다',
-  ]
-
-  return [
-    '## 작업 내용',
-    `- ${title} 작업을 진행한다`,
-    `- 변경 파일 ${files.length}개를 기준으로 issue/PR 흐름을 정리한다`,
-    '',
-    '## 변경 파일',
-    formatCodeBulletList(files),
-    '',
-    '## 참고 문서',
-    formatCodeBulletList(manuals),
-    '',
-    '## 완료 기준',
-    completionCriteria.join('\n'),
-  ].join('\n')
-}
-
 function buildValidationCommands(files, options) {
   const commands = []
   const suggestedScripts = getSuggestedScripts(files, {
@@ -257,89 +825,117 @@ function buildReferenceDocs(files) {
   ])
 }
 
-function buildWorkSummaryLines(scaffold) {
-  const summaryLines = [
-    `- ${scaffold.title} 변경을 반영했습니다.`,
-    `- 변경 파일 ${scaffold.files.length}개를 기준으로 git-flow를 정리했습니다.`,
+function buildPrWorkSummaryLines(scaffold) {
+  const taskContext =
+    readTaskContext(scaffold.taskSlug, scaffold.cwd) ??
+    createFallbackTaskContext(scaffold.title, scaffold.files)
+  const summaryCandidates = [
+    ...taskContext.inScopeLines,
+    ...taskContext.goalLines,
   ]
+    .map((line) => normalizeBulletText(line))
+    .filter(Boolean)
 
-  if (scaffold.taskSlug) {
-    summaryLines.push(
-      `- task slug \`${scaffold.taskSlug}\` 기준으로 TODO 및 task 문서를 연결했습니다.`
-    )
-  } else {
-    summaryLines.push(
-      '- small/docs-only 변경 기준으로 task 문서는 `N/A` 처리했습니다.'
-    )
+  if (summaryCandidates.length > 0) {
+    return unique(summaryCandidates).slice(0, 4).map((line) => `- ${line}`)
   }
 
-  if (scaffold.gateContext.isEnforcedLargeChange) {
-    summaryLines.push(
-      '- large/high-risk PR 기준으로 manual과 validation 근거를 함께 포함했습니다.'
-    )
-  }
+  return [
+    `- ${scaffold.title} 변경을 반영했습니다.`,
+    `- 관련 변경 파일 ${scaffold.files.length}개를 기준으로 동작을 정리했습니다.`,
+  ]
+}
 
-  return summaryLines
+function buildPrChecklistSection(templateBody, scaffold) {
+  const checklistLines = parseTemplateChecklist(
+    extractMarkdownSectionLines(templateBody, '✅ 체크리스트')
+  )
+
+  return checklistLines
+    .map((line) => {
+      const checked =
+        line === '관련 이슈 연결 완료' ||
+        line === '참고한 기준 문서를 PR 본문에 남겼다' ||
+        line === '실행한 검증과 남은 리스크를 PR 본문에 적었다' ||
+        (line === '큰 작업이면 task 문서 링크를 남겼다' &&
+          Boolean(scaffold.taskSlug)) ||
+        (line === '큰 작업이면 `TODO.md` / task slug 연결을 PR 본문에 남겼다' &&
+          Boolean(scaffold.taskSlug))
+
+      return `- [${checked ? 'x' : ' '}] ${line}`
+    })
+    .join('\n')
+}
+
+function buildPrTemplateSections(scaffold, templateBody, riskLine) {
+  const issueLine = scaffold.issueNumber
+    ? `> closes #${scaffold.issueNumber}`
+    : '> closes #이슈번호'
+
+  return {
+    '## 📌 관련 이슈': issueLine,
+    '## 📝 작업 내용': buildPrWorkSummaryLines(scaffold).join('\n'),
+    '## 🧠 Task 문서 (큰 작업이면 필수)': formatTaskDocumentSection(
+      scaffold.taskSlug
+    ),
+    '## 📋 TODO.md 연결': formatTodoSection(scaffold.taskSlug, scaffold.todoStatus),
+    '## 📚 참고한 기준 문서': formatCodeBulletList(scaffold.referenceDocs),
+    '## 🧪 실행한 검증': formatCodeBulletList(scaffold.validationCommands),
+    '## ⚠️ 남은 리스크': riskLine,
+    '## ✅ 체크리스트': buildPrChecklistSection(templateBody, scaffold),
+    '## 📸 스크린샷 (선택)':
+      '> UI 변경이 있을 경우 첨부해주세요.',
+  }
 }
 
 function buildPrBody({ scaffold, riskLine = DEFAULT_RISK_LINE }) {
-  const issueLine = scaffold.issueNumber
-    ? `> closes #${scaffold.issueNumber}`
-    : '> closes #<issue-number>'
+  const prTemplate = readTemplateFile('.github/PULL_REQUEST_TEMPLATE.md', scaffold.cwd)
+  const headings = getTemplateHeadings(prTemplate.body)
 
-  return [
+  ensureTemplateHeadings(prTemplate.body, [
     '## 📌 관련 이슈',
-    '',
-    issueLine,
-    '',
-    '---',
-    '',
     '## 📝 작업 내용',
-    '',
-    buildWorkSummaryLines(scaffold).join('\n'),
-    '',
-    '---',
-    '',
     '## 🧠 Task 문서 (큰 작업이면 필수)',
-    '',
-    formatTaskDocumentSection(scaffold.taskSlug),
-    '',
-    '---',
-    '',
     '## 📋 TODO.md 연결',
-    '',
-    formatTodoSection(scaffold.taskSlug, scaffold.todoStatus),
-    '',
-    '---',
-    '',
     '## 📚 참고한 기준 문서',
-    '',
-    formatCodeBulletList(scaffold.referenceDocs),
-    '',
-    '---',
-    '',
     '## 🧪 실행한 검증',
-    '',
-    formatCodeBulletList(scaffold.validationCommands),
-    '',
-    '---',
-    '',
     '## ⚠️ 남은 리스크',
-    '',
-    riskLine,
-    '',
-    '---',
-    '',
     '## ✅ 체크리스트',
-    '',
-    '- [ ] 로컬에서 정상 동작 확인',
-    '- [ ] 불필요한 console.log 제거',
-    '- [ ] 관련 이슈 연결 완료',
-    '- [ ] 큰 작업이면 task 문서 링크를 남겼다',
-    '- [ ] 큰 작업이면 `TODO.md` / task slug 연결을 PR 본문에 남겼다',
-    '- [ ] 참고한 기준 문서를 PR 본문에 남겼다',
-    '- [ ] 실행한 검증과 남은 리스크를 PR 본문에 적었다',
-  ].join('\n')
+    '## 📸 스크린샷 (선택)',
+  ])
+
+  return renderTemplateBodyFromSections(
+    headings,
+    buildPrTemplateSections(scaffold, prTemplate.body, riskLine),
+    { separator: '\n\n---\n\n' }
+  )
+}
+
+function buildIssueScaffold(type, scaffold) {
+  const issueTemplate = readTemplateFile(
+    `.github/ISSUE_TEMPLATE/${type}.md`,
+    scaffold.cwd
+  )
+  const headings = getTemplateHeadings(issueTemplate.body)
+  const issueSections = renderIssueTemplateSections(type, scaffold)
+
+  for (const heading of Object.keys(issueSections)) {
+    ensureTemplateHeadings(issueTemplate.body, [heading])
+  }
+
+  const issueTitlePrefix = issueTemplate.attributes.title ?? ''
+  const labels = (issueTemplate.attributes.labels ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  return {
+    issueTitle: `${issueTitlePrefix}${scaffold.title}`.trim(),
+    issueLabels: labels,
+    issueBody: renderTemplateBodyFromSections(headings, issueSections),
+    issueTemplatePath: `.github/ISSUE_TEMPLATE/${type}.md`,
+    issueTemplateName: issueTemplate.attributes.name ?? '',
+  }
 }
 
 function parseIssueNumber(value) {
@@ -482,6 +1078,10 @@ export function parseGitFlowArgs(argv) {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]
 
+    if (arg.startsWith('--') && !SUPPORTED_FLAGS.has(arg)) {
+      throw new Error(`지원하지 않는 옵션입니다: ${arg}`)
+    }
+
     switch (arg) {
       case '--files': {
         const files = []
@@ -563,6 +1163,7 @@ export function buildGitFlowScaffold(options = {}) {
   const issueNumber = options.issueNumber?.trim() ?? ''
   const baseBranch = options.base ?? DEFAULT_BASE_BRANCH
   const todoContent = options.todoContent ?? ''
+  const cwd = options.cwd ?? process.cwd()
   const todoStatus = taskSlug
     ? getTodoSectionForTask(todoContent, taskSlug)
     : null
@@ -577,19 +1178,12 @@ export function buildGitFlowScaffold(options = {}) {
   const branchName = issueNumber
     ? `${type}/${issueNumber}-${branchSlug}`
     : `${type}/<issue-number>-${branchSlug}`
-  const issueTitle = `${type}: ${title}`
   const commitMessage = options.commitMessage?.trim() || `${type}: ${title}`
 
   validateCommitType(type)
 
-  const issueBody = buildIssueBody({
-    title,
-    taskSlug,
-    files,
-    manuals: referenceDocs,
-  })
-
   const scaffold = {
+    cwd,
     files,
     taskSlug,
     todoStatus,
@@ -598,22 +1192,26 @@ export function buildGitFlowScaffold(options = {}) {
     title,
     baseBranch,
     branchName,
-    issueTitle,
-    issueBody,
     commitMessage,
-    prTitle: issueTitle,
+    prTitle: `${type}: ${title}`,
     validationCommands,
     referenceDocs,
     gateContext,
   }
 
+  const issueScaffold = buildIssueScaffold(type, scaffold)
+
   const prBody = buildPrBody({
-    scaffold,
+    scaffold: {
+      ...scaffold,
+      ...issueScaffold,
+    },
     riskLine: options.riskLine || DEFAULT_RISK_LINE,
   })
 
   return {
     ...scaffold,
+    ...issueScaffold,
     prBody,
   }
 }
@@ -753,6 +1351,7 @@ export async function runGitFlow(options = {}, deps = {}) {
         scaffold.issueTitle,
         '--body-file',
         issueBodyFile,
+        ...scaffold.issueLabels.flatMap((label) => ['--label', label]),
       ],
       { cwd },
       'GitHub issue 생성'
