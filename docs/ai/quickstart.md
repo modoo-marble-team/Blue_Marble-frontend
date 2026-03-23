@@ -155,6 +155,8 @@ npm run ai:git-flow -- \
 ```
 
 위 명령은 issue/branch/commit/PR 초안을 만들고, 큰 PR/high-risk PR이면 `Workflow Gate`를 통과하는 데 필요한 task/TODO/manual/validation 섹션까지 채워준다.
+issue/PR 본문은 내부 문자열이 아니라 `.github/ISSUE_TEMPLATE/*.md`와 `.github/PULL_REQUEST_TEMPLATE.md`를 source of truth로 사용한다.
+지원하지 않는 `--flag`를 주면 조용히 무시하지 않고 즉시 실패한다.
 
 실제로 issue 생성부터 PR 생성까지 진행하려면 `--execute`를 추가한다.
 

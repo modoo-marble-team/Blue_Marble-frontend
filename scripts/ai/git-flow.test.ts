@@ -45,43 +45,60 @@ describe('parseGitFlowArgs', () => {
     expect(parsed.yes).toBe(true)
     expect(parsed.json).toBe(true)
   })
+
+  it('fails on unknown flags instead of ignoring them', () => {
+    expect(() =>
+      parseGitFlowArgs([
+        'node',
+        'scripts/ai/git-flow.mjs',
+        '--files',
+        'docs/ai/usage.md',
+        '--summary',
+        'ignored',
+      ])
+    ).toThrow('지원하지 않는 옵션입니다: --summary')
+  })
 })
 
 describe('buildGitFlowScaffold', () => {
-  it('builds a docs-only small PR scaffold with filled summary and N/A task sections', () => {
+  it('builds a docs-only small PR scaffold from the repo templates', () => {
     const scaffold = buildGitFlowScaffold({
       files: ['docs/ai/usage.md'],
-      title: 'Workflow Docs Refresh',
+      title: '워크플로우 문서 정리',
       todoContent:
         '# TODO\n\n## Ready\n\n## In Progress\n\n## Blocked\n\n## Done\n',
     })
 
     expect(scaffold.type).toBe('docs')
     expect(scaffold.branchName).toBe(
-      'docs/<issue-number>-workflow-docs-refresh'
+      'docs/<issue-number>-update'
     )
-    expect(scaffold.prBody).toContain(
-      '- Workflow Docs Refresh 변경을 반영했습니다.'
-    )
+    expect(scaffold.issueTitle).toBe('📝 [DOCS] 워크플로우 문서 정리')
+    expect(scaffold.issueLabels).toEqual(['docs'])
+    expect(scaffold.issueBody).toContain('## 📝 문서화 대상')
+    expect(scaffold.issueBody).toContain('## 📂 문서 종류')
     expect(scaffold.prBody).toContain('- plan: N/A')
     expect(scaffold.prBody).toContain('- task slug: N/A')
     expect(scaffold.prBody).toContain('`docs/ai/manuals/common.md`')
     expect(scaffold.prBody).toContain(
       '`npm run ai:self-review -- --files docs/ai/usage.md`'
     )
+    expect(scaffold.prBody).toContain('- 워크플로우 문서 정리 작업을 진행합니다.')
+    expect(scaffold.prBody).not.toContain('git-flow를 정리했습니다')
     expect(scaffold.gateContext.isEnforcedLargeChange).toBe(false)
   })
 
-  it('builds a large high-risk scaffold with task/TODO/manual evidence', () => {
+  it('builds a large scaffold with template issue title, labels, and task-based PR summary', () => {
     const scaffold = buildGitFlowScaffold({
       files: [
-        'docs/ai/tasks/waiting-room-host-transfer/plan.md',
-        'docs/ai/tasks/waiting-room-host-transfer/context.md',
-        'docs/ai/tasks/waiting-room-host-transfer/checklist.md',
-        'src/pages/waiting-room/page/WaitingRoomPage.tsx',
+        'docs/ai/tasks/mypage-nickname-change/plan.md',
+        'docs/ai/tasks/mypage-nickname-change/context.md',
+        'docs/ai/tasks/mypage-nickname-change/checklist.md',
+        'src/pages/MyPage.tsx',
+        'src/features/auth/profile/hooks/useMyPageNicknameForm.ts',
       ],
       issueNumber: '123',
-      title: 'Waiting Room Host Transfer',
+      title: '마이페이지 닉네임 변경',
       prBodyFile: '/tmp/pr-body.md',
       todoContent: `
         # TODO
@@ -89,7 +106,7 @@ describe('buildGitFlowScaffold', () => {
         ## Ready
 
         ## In Progress
-        - [ ] \`waiting-room-host-transfer\` - Waiting Room Host Transfer (\`docs/ai/tasks/waiting-room-host-transfer/\`)
+        - [ ] \`mypage-nickname-change\` - 마이페이지 닉네임 변경 (\`docs/ai/tasks/mypage-nickname-change/\`)
 
         ## Blocked
 
@@ -98,18 +115,21 @@ describe('buildGitFlowScaffold', () => {
     })
 
     expect(scaffold.type).toBe('feat')
-    expect(scaffold.taskSlug).toBe('waiting-room-host-transfer')
+    expect(scaffold.taskSlug).toBe('mypage-nickname-change')
     expect(scaffold.todoStatus).toBe('In Progress')
-    expect(scaffold.branchName).toBe('feat/123-waiting-room-host-transfer')
+    expect(scaffold.branchName).toBe('feat/123-mypage-nickname-change')
+    expect(scaffold.issueTitle).toBe('✨ [FEAT] 마이페이지 닉네임 변경')
+    expect(scaffold.issueLabels).toEqual(['feat'])
     expect(scaffold.prBody).toContain(
-      '- plan: docs/ai/tasks/waiting-room-host-transfer/plan.md'
+      '- plan: docs/ai/tasks/mypage-nickname-change/plan.md'
     )
     expect(scaffold.prBody).toContain('- TODO status: In Progress')
-    expect(scaffold.prBody).toContain('`docs/ai/manuals/waiting-room.md`')
+    expect(scaffold.prBody).toContain('- MyPage 프로필 카드에 닉네임 인라인 편집 UI 추가')
+    expect(scaffold.prBody).not.toContain('git-flow를 정리했습니다')
     expect(scaffold.prBody).toContain(
-      '`npm run ai:pr-gate -- --files docs/ai/tasks/waiting-room-host-transfer/checklist.md docs/ai/tasks/waiting-room-host-transfer/context.md docs/ai/tasks/waiting-room-host-transfer/plan.md src/pages/waiting-room/page/WaitingRoomPage.tsx --pr-body-file /tmp/pr-body.md`'
+      '`npm run ai:self-review -- --files docs/ai/tasks/mypage-nickname-change/checklist.md docs/ai/tasks/mypage-nickname-change/context.md docs/ai/tasks/mypage-nickname-change/plan.md src/features/auth/profile/hooks/useMyPageNicknameForm.ts src/pages/MyPage.tsx`'
     )
-    expect(scaffold.gateContext.isEnforcedLargeChange).toBe(true)
+    expect(scaffold.prBody).toContain('## ✅ 체크리스트')
   })
 })
 
@@ -129,7 +149,7 @@ describe('runGitFlow', () => {
 
       if (
         normalized ===
-        'gh issue create --title chore: Git Flow Automation Scaffold --body-file /tmp/issue.md'
+        'gh issue create --title 💡 [CHORE] Git Flow Automation Scaffold --body-file /tmp/issue.md --label chore'
       ) {
         return {
           status: 0,
@@ -279,7 +299,7 @@ describe('runGitFlow', () => {
     ])
     expect(writtenFiles.get('/tmp/pr.md')).toContain('## 📌 관련 이슈')
     expect(commands).toContain(
-      'gh issue create --title chore: Git Flow Automation Scaffold --body-file /tmp/issue.md'
+      'gh issue create --title 💡 [CHORE] Git Flow Automation Scaffold --body-file /tmp/issue.md --label chore'
     )
     expect(commands).toContain(
       'git add -- TODO.md docs/ai/quickstart.md docs/ai/tasks/git-flow-automation-scaffold/checklist.md docs/ai/tasks/git-flow-automation-scaffold/context.md docs/ai/tasks/git-flow-automation-scaffold/plan.md docs/ai/usage.md package.json scripts/ai/git-flow.mjs scripts/ai/git-flow.test.ts'
@@ -299,7 +319,7 @@ describe('runGitFlow', () => {
 
       if (
         normalized ===
-        'gh issue create --title feat: Waiting Room Host Transfer --body-file /tmp/issue.md'
+        'gh issue create --title ✨ [FEAT] Waiting Room Host Transfer --body-file /tmp/issue.md --label feat'
       ) {
         return {
           status: 0,
