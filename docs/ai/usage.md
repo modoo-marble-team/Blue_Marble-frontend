@@ -34,6 +34,39 @@
 - 다시 시작할 때는 `npm run ai:session:brief -- <slug>`로 읽을 문서, 다음 단계, 검증 후보를 먼저 확인한다.
 - 한 세션에는 가능한 한 한 feature만 다룬다.
 
+## Git Flow Scaffold
+
+- 로컬 전용 `.claude/skills/git-flow/SKILL.md`는 PR에 커밋하지 않는다.
+- 저장소에서 재현 가능한 scaffold가 필요하면 `npm run ai:git-flow -- --files ...`를 사용한다.
+- 이 명령은 현재 changed files 또는 `--files` 기준으로 issue 제목/본문, branch 이름, commit 메시지, PR 제목/본문 초안을 만든다.
+- `--execute`를 주면 `gh issue create -> git fetch/rebase -> git switch -c 또는 기존 branch 유지 -> git add -- <files> -> git commit -> git push -> gh pr create`를 실제로 수행한다.
+- `--yes`를 같이 주면 issue/commit/push/PR 단계 확인을 생략한다. 기본값은 단계별 확인이다.
+- `--task-slug`, `--issue-number`, `--title`을 주면 TODO/task/PR 본문 근거까지 바로 채울 수 있다.
+- `--pr-body-file /tmp/pr-body.md`를 주면 `npm run ai:pr-gate -- --files ... --pr-body-file /tmp/pr-body.md`에 바로 연결할 수 있다.
+- 기본 스테이징은 `git add -A`가 아니라 `--files` 또는 감지된 변경 파일만 대상으로 한다.
+
+예시:
+
+```bash
+npm run ai:git-flow -- \
+  --files scripts/ai/git-flow.mjs scripts/ai/git-flow.test.ts package.json docs/ai/usage.md docs/ai/quickstart.md TODO.md docs/ai/tasks/git-flow-automation-scaffold/plan.md docs/ai/tasks/git-flow-automation-scaffold/context.md docs/ai/tasks/git-flow-automation-scaffold/checklist.md \
+  --task-slug git-flow-automation-scaffold \
+  --issue-number 123 \
+  --title "Git Flow Automation Scaffold" \
+  --pr-body-file /tmp/pr-body.md
+```
+
+실행형 예시:
+
+```bash
+npm run ai:git-flow -- \
+  --execute \
+  --files scripts/ai/git-flow.mjs scripts/ai/git-flow.test.ts package.json docs/ai/usage.md docs/ai/quickstart.md TODO.md docs/ai/tasks/git-flow-automation-scaffold/plan.md docs/ai/tasks/git-flow-automation-scaffold/context.md docs/ai/tasks/git-flow-automation-scaffold/checklist.md \
+  --task-slug git-flow-automation-scaffold \
+  --title "Git Flow Automation Scaffold" \
+  --pr-body-file /tmp/pr-body.md
+```
+
 ## PR Split Guidelines
 
 - workflow 설명, onboarding, task template, PR 본문 예시 같은 문서 변경은 docs-only PR로 묶는다.

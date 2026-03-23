@@ -143,6 +143,38 @@ npm run ai:pr-gate -- --files src/pages/waiting-room/page/WaitingRoomPage.tsx sr
 - `CLAUDE.md`, `.claude/`, 개인 MCP/hook/IDE 설정은 로컬에만 두고 어떤 PR에도 포함하지 않는다.
 - 한 작업이 문서와 스크립트를 모두 건드리면, 동작 의존성이 없을 때는 docs PR을 먼저 올리고 자동화 PR을 후속으로 나눈다.
 
+git-flow 초안이 필요할 때는 로컬 `.claude/skills/git-flow/SKILL.md`를 커밋하지 말고 아래처럼 저장소 공용 scaffold 명령을 사용한다.
+
+```bash
+npm run ai:git-flow -- \
+  --files src/pages/waiting-room/page/WaitingRoomPage.tsx docs/ai/tasks/waiting-room-host-transfer/plan.md docs/ai/tasks/waiting-room-host-transfer/context.md docs/ai/tasks/waiting-room-host-transfer/checklist.md \
+  --task-slug waiting-room-host-transfer \
+  --issue-number 123 \
+  --title "Waiting Room Host Transfer" \
+  --pr-body-file /tmp/pr-body.md
+```
+
+위 명령은 issue/branch/commit/PR 초안을 만들고, 큰 PR/high-risk PR이면 `Workflow Gate`를 통과하는 데 필요한 task/TODO/manual/validation 섹션까지 채워준다.
+
+실제로 issue 생성부터 PR 생성까지 진행하려면 `--execute`를 추가한다.
+
+```bash
+npm run ai:git-flow -- \
+  --execute \
+  --files src/pages/waiting-room/page/WaitingRoomPage.tsx docs/ai/tasks/waiting-room-host-transfer/plan.md docs/ai/tasks/waiting-room-host-transfer/context.md docs/ai/tasks/waiting-room-host-transfer/checklist.md \
+  --task-slug waiting-room-host-transfer \
+  --title "Waiting Room Host Transfer" \
+  --pr-body-file /tmp/pr-body.md
+```
+
+이 실행형 모드는 아래 순서를 따른다.
+
+- issue 생성 또는 기존 issue 번호 재사용
+- base 브랜치 fetch/rebase 후 새 branch 생성, 또는 기존 feature branch 유지
+- 명시 파일만 스테이징 후 commit
+- push 전 rebase, 필요 시 `--force-with-lease` push
+- large/high-risk면 `ai:pr-gate` 확인 후 PR 생성
+
 ## Scenario 3: High-Risk Realtime Change
 
 아래 변경은 항상 큰 작업으로 취급한다.
