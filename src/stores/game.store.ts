@@ -15,6 +15,7 @@ import type {
   PlayerId,
   ServerEvent,
   Tile,
+  GlobalEffectState,
 } from '../types/domain'
 
 interface GameActions {
@@ -35,6 +36,8 @@ interface GameActions {
   enqueueEvents: (events: ServerEvent[]) => void
   consumeNextEvent: () => ServerEvent | null
   setLastError: (error: GameError | null) => void
+  setGlobalEffect: (effect: GlobalEffectState | null) => void
+  clearGlobalEffect: () => void
   resetGame: () => void
 }
 
@@ -316,6 +319,7 @@ const INITIAL_STATE: GameState = {
   gameResult: null,
   isGameOver: false,
   winnerId: null,
+  activeGlobalEffect: null,
 }
 
 export const useGameStore = create<GameStoreState>()(
@@ -541,6 +545,16 @@ export const useGameStore = create<GameStoreState>()(
     setLastError: (error: GameError | null) =>
       set((draft) => {
         draft.lastError = error
+      }),
+
+    setGlobalEffect: (effect) =>
+      set((draft) => {
+        draft.activeGlobalEffect = effect
+      }),
+
+    clearGlobalEffect: () =>
+      set((draft) => {
+        draft.activeGlobalEffect = null
       }),
 
     resetGame: () =>
