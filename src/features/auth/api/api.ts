@@ -320,6 +320,17 @@ export async function setNickname(params: {
       }
     }
 
+    if (parsedError.status === 404) {
+      return {
+        ok: false,
+        code: 'NOT_FOUND',
+        message: getParsedApiErrorMessage(
+          parsedError,
+          '사용자 정보를 찾을 수 없습니다.'
+        ),
+      }
+    }
+
     if (
       parsedError.status === 409 ||
       parsedError.code === 'DUPLICATE_NICKNAME'
@@ -347,7 +358,7 @@ export async function setNickname(params: {
 
     return {
       ok: false,
-      code: 'INVALID_FORMAT',
+      code: 'UNKNOWN',
       message: getParsedApiErrorMessage(
         parsedError,
         '닉네임 설정에 실패했습니다.'

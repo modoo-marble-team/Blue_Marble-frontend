@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRequireActiveSession } from '../features/auth/session/hooks/useRequireActiveSession'
 import { useAuthStore } from '../features/auth/session/store'
 import { useMyPageProfileQuery } from '../features/auth/profile/hooks/useMyPageProfileQuery'
+import { useMyPageNicknameForm } from '../features/auth/profile/hooks/useMyPageNicknameForm'
 import { Avatar } from '../components/avatar/Avatar'
 import { getAvatarBackground } from '../components/header/profileMenu'
 
@@ -37,6 +38,22 @@ function MyPage() {
   const session = useAuthStore((state) => state.session)
   const isAllowedSession = useRequireActiveSession(session)
   const { data: profile, isLoading, isError } = useMyPageProfileQuery(session)
+  const {
+    draftNickname,
+    helperFeedback,
+    isEditing,
+    isSubmitting,
+    isSaveDisabled,
+    startEditing,
+    cancelEditing,
+    handleNicknameChange,
+    handleNicknameFocus,
+    handleNicknameBlur,
+    handleSubmit,
+  } = useMyPageNicknameForm({
+    session,
+    profile: profile ?? null,
+  })
 
   // 리다이렉트 조건에서는 화면을 렌더링하지 않음
   if (!isAllowedSession || !session) {
@@ -103,20 +120,98 @@ function MyPage() {
                 <p className="text-sm font-medium text-ui-danger">
                   프로필 정보를 불러오지 못했습니다.
                 </p>
+              ) : isEditing ? (
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex w-full flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"
+                >
+                  <div className="flex items-start gap-6">
+                    <Avatar
+                      size="lg"
+                      displayName={draftNickname || profile.nickname}
+                      imageUrl={profile.profileImage}
+                      imageAlt={`${profile.nickname} 프로필`}
+                      backgroundColor={getAvatarBackground(session.userId)}
+                      className="border border-ui-border"
+                      textClassName="text-black"
+                    />
+
+                    <div className="w-full max-w-sm">
+                      <label
+                        htmlFor="my-page-nickname"
+                        className="block text-sm font-semibold text-ui-text-primary"
+                      >
+                        닉네임
+                      </label>
+                      <input
+                        id="my-page-nickname"
+                        type="text"
+                        value={draftNickname}
+                        maxLength={10}
+                        onFocus={handleNicknameFocus}
+                        onBlur={handleNicknameBlur}
+                        onChange={(event) =>
+                          handleNicknameChange(event.target.value)
+                        }
+                        placeholder="예) GoormEE"
+                        className="mt-2 h-12 w-full rounded-2xl border border-ui-border bg-ui-surface px-4 text-base text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
+                        autoComplete="off"
+                      />
+                      <p
+                        className={`mt-3 text-sm font-medium ${
+                          helperFeedback.tone === 'danger'
+                            ? 'text-ui-danger'
+                            : helperFeedback.tone === 'success'
+                              ? 'text-ui-presence-lobby'
+                              : 'text-ui-text-muted'
+                        }`}
+                      >
+                        {helperFeedback.message}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2 self-end lg:self-center">
+                    <button
+                      type="button"
+                      onClick={cancelEditing}
+                      className="inline-flex h-11 items-center justify-center rounded-xl border border-ui-border bg-ui-surface px-4 text-sm font-semibold text-ui-text-primary transition-colors hover:bg-ui-surface-muted"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSaveDisabled}
+                      className="inline-flex h-11 items-center justify-center rounded-xl bg-ui-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-ui-brand-strong disabled:cursor-not-allowed disabled:bg-ui-disabled-bg disabled:text-ui-disabled-text"
+                    >
+                      {isSubmitting ? '저장 중...' : '저장'}
+                    </button>
+                  </div>
+                </form>
               ) : (
-                <div className="flex items-center gap-6">
-                  <Avatar
-                    size="lg"
-                    displayName={profile.nickname}
-                    imageUrl={profile.profileImage}
-                    imageAlt={`${profile.nickname} 프로필`}
-                    backgroundColor={getAvatarBackground(session.userId)}
-                    className="border border-ui-border"
-                    textClassName="text-black"
-                  />
-                  <h1 className="text-3xl font-extrabold tracking-tight text-ui-text-strong">
-                    {profile.nickname}
-                  </h1>
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex items-center gap-6">
+                    <Avatar
+                      size="lg"
+                      displayName={profile.nickname}
+                      imageUrl={profile.profileImage}
+                      imageAlt={`${profile.nickname} 프로필`}
+                      backgroundColor={getAvatarBackground(session.userId)}
+                      className="border border-ui-border"
+                      textClassName="text-black"
+                    />
+                    <h1 className="text-3xl font-extrabold tracking-tight text-ui-text-strong">
+                      {profile.nickname}
+                    </h1>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    className="inline-flex h-11 items-center justify-center self-end rounded-xl border border-ui-border bg-ui-surface px-4 text-sm font-semibold text-ui-text-primary transition-colors hover:bg-ui-surface-muted lg:self-center"
+                  >
+                    닉네임 변경
+                  </button>
                 </div>
               )}
             </article>

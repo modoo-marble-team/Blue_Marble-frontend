@@ -8,6 +8,7 @@
 
 - [ ] `board-sot-sync` - Board SoT sync + initial full sync (`docs/ai/tasks/board-sot-sync/`) - 보드판 SoT를 백엔드 기준으로 전환하고 최초 sync knownRevision=-1 요청 반영
 - [ ] `chance-move-direction-animation` - Chance Move Direction Animation (`docs/ai/tasks/chance-move-direction-animation/`) - chance 이동 방향 힌트 기반 순차 애니메이션 보정 및 검증
+- [ ] `mypage-nickname-change` - MyPage Nickname Change (`docs/ai/tasks/mypage-nickname-change/`) - 게스트 제한은 유지하고 카카오 사용자는 마이페이지에서 닉네임을 반복 변경할 수 있게 정리
 
 ## Blocked
 
