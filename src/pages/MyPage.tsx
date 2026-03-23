@@ -136,7 +136,7 @@ function MyPage() {
                       textClassName="text-black"
                     />
 
-                    <div className="w-full max-w-sm">
+                    <div className="flex min-h-24 w-full max-w-sm flex-col justify-end">
                       <label htmlFor="my-page-nickname" className="sr-only">
                         닉네임
                       </label>
