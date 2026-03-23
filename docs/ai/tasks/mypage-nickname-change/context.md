@@ -21,3 +21,4 @@
 - 형식 검증 규칙과 helper feedback 계산은 기존 nickname 규칙을 재사용한다.
 - 저장 성공 시 React Query cache와 auth store를 함께 갱신해 즉시 반영한다.
 - 프론트에서 변경 횟수 제한이나 1회 제한은 추가하지 않는다.
+- 편집 상태에서만 보이는 `닉네임` 라벨은 숨기고, 입력의 접근성 이름은 `sr-only` label 또는 `aria-label`로 유지한다.
