@@ -47,6 +47,7 @@ export const PlayerToken = React.memo<TokenProps>(
           borderRadius: '50%',
           backgroundColor: player.color,
           border: '2.5px solid white',
+
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -57,13 +58,7 @@ export const PlayerToken = React.memo<TokenProps>(
           boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
         }}
       >
-        {isIsland ? (
-          <span style={{ fontSize: 10 }}>🏝️</span>
-        ) : typeof player.id === 'number' ? (
-          player.id + 1
-        ) : (
-          player.id
-        )}
+        {isIsland && <span style={{ fontSize: 10 }}>🏝️</span>}
         {(player.skipTurns ?? 0) > 0 && (
           <div
             style={{
