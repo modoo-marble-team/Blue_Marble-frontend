@@ -2,8 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { ServerEvent } from '../../types/domain'
 import { useGameStore } from '../../stores/game.store'
-import type { PlayerState } from './board.constants'
-import { TILES } from './board.constants'
+import type { PlayerState, TileData } from './board.constants'
 import {
   createBoardStatusFromEvent,
   extractEventDice,
@@ -16,6 +15,7 @@ interface UseBoardEventQueueParams {
   enabled: boolean
   paused?: boolean
   playersRef: MutableRefObject<PlayerState[]>
+  tiles: TileData[]
   setStatus: Dispatch<SetStateAction<string>>
   setDice1: Dispatch<SetStateAction<number>>
   setDice2: Dispatch<SetStateAction<number>>
@@ -27,6 +27,7 @@ export function useBoardEventQueue({
   enabled,
   paused = false,
   playersRef,
+  tiles,
   setStatus,
   setDice1,
   setDice2,
@@ -86,7 +87,7 @@ export function useBoardEventQueue({
       const statusText = createBoardStatusFromEvent(
         nextEvent,
         playersRef.current,
-        TILES
+        tiles
       )
       if (statusText) {
         setStatus(statusText)
@@ -131,6 +132,7 @@ export function useBoardEventQueue({
     enabled,
     paused,
     playersRef,
+    tiles,
     setStatus,
     setDice1,
     setDice2,

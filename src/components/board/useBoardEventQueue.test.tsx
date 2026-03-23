@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useGameStore } from '../../stores/game.store'
-import type { PlayerState } from './board.constants'
+import type { PlayerState, TileData } from './board.constants'
 import { useBoardEventQueue } from './useBoardEventQueue'
 
 const playersRef: { current: PlayerState[] } = {
@@ -25,6 +25,11 @@ const playersRef: { current: PlayerState[] } = {
   ],
 }
 
+const tiles: TileData[] = [
+  { id: 0, name: '출발', type: 'START', emoji: '🚩' },
+  { id: 1, name: '수원', type: 'PROPERTY', price: 100000000, color: '#EF5350' },
+]
+
 const setupHook = ({
   enabled = true,
   paused = false,
@@ -43,6 +48,7 @@ const setupHook = ({
         enabled: isEnabled,
         paused: isPaused,
         playersRef,
+        tiles,
         setStatus,
         setDice1,
         setDice2,

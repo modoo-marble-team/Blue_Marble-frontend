@@ -1,4 +1,4 @@
-import { TILES, type BuildingLevel } from './board.constants'
+import { type BuildingLevel } from './board.constants'
 
 export function toBoardActionErrorMessage(statusCode: number) {
   if (statusCode === 401) return '로그인이 필요합니다.'
@@ -9,10 +9,9 @@ export function toBoardActionErrorMessage(statusCode: number) {
 }
 
 export function getBoardSellFallbackRefund(
-  tileId: number,
+  basePrice: number,
   level: BuildingLevel
 ) {
-  const basePrice = TILES[tileId]?.price ?? 0
   if (level < 0 || basePrice === 0) return 0
 
   let refund = basePrice
