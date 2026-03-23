@@ -26,4 +26,6 @@ npm-debug.log*
 .cursor
 
 .agents/
+.claude/
+CLAUDE.md
 .env*
