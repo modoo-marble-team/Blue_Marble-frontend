@@ -84,6 +84,11 @@ export interface GameResultModalState {
   open: boolean
 }
 
+export interface DoubleDiceModalState {
+  open: boolean
+  extraRollCount?: number | null
+}
+
 export interface GoToIslandModalState {
   open: boolean
   onDoneCallback?: () => void

@@ -1,20 +1,21 @@
 import React from 'react'
 
-interface DiceTimerModalProps {
+interface DoubleDicePopupProps {
   open: boolean
-  title?: string
-  description?: string
-  timeLeftSec?: number | null
-  confirmLabel?: string
-  isSubmitting?: boolean
+  extraRollCount?: number | null
   onConfirm?: () => void
 }
 
-const DEFAULT_TITLE =
-  '\uC774\uB7F0... \uC2DC\uAC04\uC774 \uB2E4\uB410\uB124\uC694'
-const DEFAULT_DESCRIPTION =
-  '\uC790\uB3D9\uC73C\uB85C \uD134\uC774 \uC885\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4'
-const DEFAULT_CONFIRM_LABEL = '\uD655\uC778'
+const DEFAULT_TITLE = '주사위 더블!'
+const DEFAULT_CONFIRM_LABEL = '확인'
+
+const buildDoubleDescription = (extraRollCount?: number | null) => {
+  if (typeof extraRollCount === 'number' && extraRollCount > 0) {
+    return `주사위 더블이 나왔습니다.\n주사위를 ${extraRollCount}번 더 던질 수 있습니다.`
+  }
+
+  return '주사위 더블이 나왔습니다.\n주사위를 한 번 더 던질 수 있습니다!'
+}
 
 const DiceIcon: React.FC = () => {
   const renderPip = (className: string, color = '#202633') => (
@@ -43,18 +44,16 @@ const DiceIcon: React.FC = () => {
   )
 }
 
-const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
+const DoubleDicePopup: React.FC<DoubleDicePopupProps> = ({
   open,
-  title = DEFAULT_TITLE,
-  description = DEFAULT_DESCRIPTION,
-  timeLeftSec = null,
-  confirmLabel = DEFAULT_CONFIRM_LABEL,
-  isSubmitting = false,
+  extraRollCount = null,
   onConfirm,
 }) => {
   if (!open) {
     return null
   }
+
+  const resolvedDescription = buildDoubleDescription(extraRollCount)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,36,56,0.35)]">
@@ -64,29 +63,23 @@ const DiceTimerModal: React.FC<DiceTimerModalProps> = ({
         </div>
 
         <h2 className="text-center text-[35px] font-black tracking-tight text-[#1F2A44]">
-          {title}
+          {DEFAULT_TITLE}
         </h2>
 
-        <p className="mb-10 mt-5 text-center text-[22px] font-bold leading-[1.35] text-[#5A6D8A]">
-          {description}
+        <p className="mb-10 mt-5 whitespace-pre-wrap text-center text-[22px] font-bold leading-[1.35] text-[#5A6D8A]">
+          {resolvedDescription}
         </p>
-        {typeof timeLeftSec === 'number' && (
-          <p className="mb-8 text-center text-[18px] font-extrabold text-[#245FE5]">
-            남은 시간: {Math.max(0, Math.ceil(timeLeftSec))}초
-          </p>
-        )}
 
         <button
           type="button"
           onClick={onConfirm}
-          disabled={isSubmitting}
-          className="mx-auto flex h-15 w-full max-w-102 items-center justify-center rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-[0_12px_24px_rgba(36,95,229,0.3)] transition-colors hover:bg-[#1F56D1] disabled:cursor-not-allowed disabled:opacity-50"
+          className="mx-auto flex h-15 w-full max-w-102 items-center justify-center rounded-[22px] bg-[#245FE5] text-[24px] font-black tracking-tight text-white shadow-[0_12px_24px_rgba(36,95,229,0.3)] transition-colors hover:bg-[#1F56D1]"
         >
-          {confirmLabel}
+          {DEFAULT_CONFIRM_LABEL}
         </button>
       </div>
     </div>
   )
 }
 
-export default DiceTimerModal
+export default DoubleDicePopup

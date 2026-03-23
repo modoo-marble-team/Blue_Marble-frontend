@@ -536,6 +536,7 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
 
   const dice1 = Math.floor(Math.random() * 6) + 1
   const dice2 = Math.floor(Math.random() * 6) + 1
+  const isDouble = dice1 === dice2
   const total = dice1 + dice2
   const fromIndex = currentPlayer.position
   const toIndex = (fromIndex + total) % mockGameState.tiles.length
@@ -599,6 +600,8 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
       payload: {
         dice: [dice1, dice2],
         total,
+        is_double: isDouble,
+        double_count: isDouble ? 1 : 0,
       },
     },
     {
