@@ -65,6 +65,45 @@ describe('MyPage', () => {
     expect(getMyPageProfileMock).not.toHaveBeenCalled()
   })
 
+  it('뒤로가기는 원형 아이콘 버튼에만 연결되고 제목 텍스트는 버튼에 포함되지 않는다', async () => {
+    const user = userEvent.setup()
+
+    useAuthStore.setState({
+      hasHydrated: true,
+      session: createAuthSessionFixture({
+        userId: 'user-1',
+        nickname: '헤더유저',
+        isGuest: false,
+        provider: 'kakao',
+      }),
+    })
+    getMyPageProfileMock.mockResolvedValue({
+      ok: true,
+      profile: {
+        id: 'user-1',
+        nickname: '헤더유저',
+        profileImage: null,
+        stats: {
+          total: 3,
+          wins: 2,
+          losses: 1,
+        },
+      },
+    })
+
+    renderWithProviders(<MyPage />, {
+      initialEntries: ['/my-page'],
+    })
+
+    expect(
+      screen.queryByRole('button', { name: '내 정보' })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '로비로 돌아가기' }))
+
+    expect(navigateMock).toHaveBeenCalledWith('/lobby')
+  })
+
   it('카카오 사용자는 마이페이지에서 닉네임을 변경하고 즉시 반영한다', async () => {
     const user = userEvent.setup()
     useAuthStore.setState({
