@@ -378,7 +378,7 @@ describe('auth api integration helpers', () => {
   })
 
   it('setNickname은 성공 시 trim된 닉네임을 반환한다', async () => {
-    vi.spyOn(apiClient, 'patch').mockResolvedValue({
+    const patchSpy = vi.spyOn(apiClient, 'patch').mockResolvedValue({
       data: {
         id: 11,
         nickname: '  마블러  ',
@@ -392,6 +392,9 @@ describe('auth api integration helpers', () => {
 
     expect(result).toEqual({
       ok: true,
+      nickname: '마블러',
+    })
+    expect(patchSpy).toHaveBeenCalledWith('/users/me/nickname', {
       nickname: '마블러',
     })
   })
@@ -467,6 +470,28 @@ describe('auth api integration helpers', () => {
     })
   })
 
+  it('setNickname은 사용자 없음 에러를 NOT_FOUND로 매핑한다', async () => {
+    vi.spyOn(apiClient, 'patch').mockRejectedValue(
+      createAxiosError({
+        status: 404,
+        data: {
+          detail: 'User not found',
+        },
+      })
+    )
+
+    const result = await setNickname({
+      session: baseSession,
+      nickname: '마블러',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      code: 'NOT_FOUND',
+      message: 'User not found',
+    })
+  })
+
   it('setNickname은 알 수 없는 오류도 실패 메시지로 수렴한다', async () => {
     vi.spyOn(apiClient, 'patch').mockRejectedValue(new Error('network down'))
 
@@ -477,7 +502,7 @@ describe('auth api integration helpers', () => {
 
     expect(result).toEqual({
       ok: false,
-      code: 'INVALID_FORMAT',
+      code: 'UNKNOWN',
       message: 'network down',
     })
   })

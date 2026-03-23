@@ -60,7 +60,12 @@ export type NicknameSetResult =
     }
   | {
       ok: false
-      code: 'INVALID_FORMAT' | 'DUPLICATE' | 'FORBIDDEN'
+      code:
+        | 'INVALID_FORMAT'
+        | 'DUPLICATE'
+        | 'FORBIDDEN'
+        | 'NOT_FOUND'
+        | 'UNKNOWN'
       message: string
     }
 

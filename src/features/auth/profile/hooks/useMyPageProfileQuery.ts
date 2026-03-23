@@ -4,10 +4,14 @@ import type { AuthSession } from '../../session/types'
 
 const MY_PAGE_PROFILE_STALE_TIME_MS = 30_000
 
+export function getMyPageProfileQueryKey(userId?: string) {
+  return ['my-page', userId] as const
+}
+
 // 로그인 사용자의 마이페이지 프로필을 React Query로 조회
 export function useMyPageProfileQuery(session: AuthSession | null) {
   return useQuery({
-    queryKey: ['my-page', session?.userId],
+    queryKey: getMyPageProfileQueryKey(session?.userId),
     // 게스트/닉네임 미설정 상태에서는 조회를 비활성화
     enabled: Boolean(
       session && !session.isGuest && !session.needsNicknameSetup
