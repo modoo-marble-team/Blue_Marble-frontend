@@ -1228,7 +1228,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setGoToIslandModal({ open: false })
 
       const p = playersRef.current[curPlayer]
-      const roundLabel = round != null ? ` · ${round}/20라운드` : ''
+      const roundLabel = round != null ? ` · ${round}/20턴` : ''
       if (p) {
         if (p.state === 'island') {
           setStatus(
