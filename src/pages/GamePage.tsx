@@ -28,7 +28,6 @@ import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
-  calcPlayerTotalAssets,
 } from './game/gameViewModel'
 import {
   consumePendingGameChatEcho,
@@ -278,15 +277,18 @@ const GamePage: React.FC = () => {
       new Map(
         boardPlayers.map((player, index) => [
           player.id,
-          calcPlayerTotalAssets(
-            storePlayers[index] ?? { balance: player.money, owned_tiles: [] },
-            storeTiles
-          ),
+          storePlayers[index]?.totalAssets,
         ])
       ),
-    [boardPlayers, storePlayers, storeTiles]
+    [boardPlayers, storePlayers]
   )
-  const maxTotalAssets = Math.max(...playerTotalAssetsMap.values())
+  const totalAssetsValues = [...playerTotalAssetsMap.values()].filter(
+    (value): value is number => typeof value === 'number'
+  )
+  const maxTotalAssets =
+    totalAssetsValues.length > 0
+      ? Math.max(...totalAssetsValues)
+      : Number.NEGATIVE_INFINITY
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
     currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
@@ -607,8 +609,12 @@ const GamePage: React.FC = () => {
                 return leftBankrupt - rightBankrupt
               }
 
-              if (left.totalAssets !== right.totalAssets) {
-                return right.totalAssets - left.totalAssets
+              const leftTotalAssets =
+                left.totalAssets ?? Number.NEGATIVE_INFINITY
+              const rightTotalAssets =
+                right.totalAssets ?? Number.NEGATIVE_INFINITY
+              if (leftTotalAssets !== rightTotalAssets) {
+                return rightTotalAssets - leftTotalAssets
               }
 
               return left.originalIndex - right.originalIndex
@@ -626,7 +632,9 @@ const GamePage: React.FC = () => {
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
                 isRichest={
-                  player.money > 0 && player.totalAssets === maxTotalAssets
+                  player.money > 0 &&
+                  player.totalAssets !== undefined &&
+                  player.totalAssets === maxTotalAssets
                 }
                 isBankrupt={player.money <= 0}
               />

@@ -25,7 +25,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
   isBankrupt = false,
 }) => {
   const money = player.money ?? 0
-  const totalAssets = player.totalAssets ?? money
+  const totalAssets = player.totalAssets
 
   return (
     <div
@@ -154,7 +154,11 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
             className="text-[13px] text-[#B0BBC8]"
             style={{ color: isBankrupt ? '#EF5350' : undefined }}
           >
-            {isBankrupt ? '파산' : formatWon(totalAssets)}
+            {isBankrupt
+              ? '파산'
+              : totalAssets !== undefined
+                ? formatWon(totalAssets)
+                : '-'}
           </span>
         </div>
       </div>
