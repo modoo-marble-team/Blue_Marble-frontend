@@ -39,12 +39,14 @@
 - 로컬 전용 `.claude/skills/git-flow/SKILL.md`는 PR에 커밋하지 않는다.
 - 저장소에서 재현 가능한 scaffold가 필요하면 `npm run ai:git-flow -- --files ...`를 사용한다.
 - 이 명령은 현재 changed files 또는 `--files` 기준으로 `.github/ISSUE_TEMPLATE/*.md`, `.github/PULL_REQUEST_TEMPLATE.md`를 직접 읽어 issue 제목/labels/본문과 PR 본문 초안을 만든다.
-- `--execute`를 주면 `gh issue create -> git fetch/rebase -> git switch -c 또는 기존 branch 유지 -> git add -- <files> -> git commit -> git push -> gh pr create`를 실제로 수행한다.
+- `--execute`를 주면 `gh issue create -> git fetch/rebase -> git switch -c 또는 기존 branch 유지 -> git add -- <files> -> git commit -> git fetch/rebase -> git push -> gh pr create`를 실제로 수행한다.
+- 즉, 수동 `git push` 대신 `npm run ai:git-flow -- --execute ...`를 쓰면 branch 생성 전과 push 전에 필요한 rebase를 스크립트가 직접 처리한다.
 - `--yes`를 같이 주면 issue/commit/push/PR 단계 확인을 생략한다. 기본값은 단계별 확인이다.
 - `--task-slug`, `--issue-number`, `--title`을 주면 TODO/task/PR 본문 근거까지 바로 채울 수 있다.
 - `--pr-body-file /tmp/pr-body.md`를 주면 `npm run ai:pr-gate -- --files ... --pr-body-file /tmp/pr-body.md`에 바로 연결할 수 있다.
 - 기본 스테이징은 `git add -A`가 아니라 `--files` 또는 감지된 변경 파일만 대상으로 한다.
 - 지원하지 않는 `--flag`는 조용히 무시하지 않고 즉시 에러가 난다.
+- rebase로 HEAD가 바뀌면 스크립트가 자동으로 `--force-with-lease` push로 전환하고, 충돌이 나면 `git rebase --continue` / `git rebase --abort` 안내와 함께 즉시 중단한다.
 
 예시:
 

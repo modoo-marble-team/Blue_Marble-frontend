@@ -157,6 +157,7 @@ npm run ai:git-flow -- \
 위 명령은 issue/branch/commit/PR 초안을 만들고, 큰 PR/high-risk PR이면 `Workflow Gate`를 통과하는 데 필요한 task/TODO/manual/validation 섹션까지 채워준다.
 issue/PR 본문은 내부 문자열이 아니라 `.github/ISSUE_TEMPLATE/*.md`와 `.github/PULL_REQUEST_TEMPLATE.md`를 source of truth로 사용한다.
 지원하지 않는 `--flag`를 주면 조용히 무시하지 않고 즉시 실패한다.
+수동으로 `git push`하지 말고 실행형 모드를 사용하면, branch 생성 전과 push 전의 `origin/<base>` rebase를 스크립트가 직접 수행한다.
 
 실제로 issue 생성부터 PR 생성까지 진행하려면 `--execute`를 추가한다.
 
@@ -174,7 +175,9 @@ npm run ai:git-flow -- \
 - issue 생성 또는 기존 issue 번호 재사용
 - base 브랜치 fetch/rebase 후 새 branch 생성, 또는 기존 feature branch 유지
 - 명시 파일만 스테이징 후 commit
-- push 전 rebase, 필요 시 `--force-with-lease` push
+- push 전 `git fetch origin && git rebase origin/<base>` 재실행
+- rebase로 HEAD가 바뀌면 `--force-with-lease` push, 아니면 일반 push
+- rebase 충돌 시 `git rebase --continue` 또는 `git rebase --abort` 후 다시 진행
 - large/high-risk면 `ai:pr-gate` 확인 후 PR 생성
 
 ## Scenario 3: High-Risk Realtime Change

@@ -101,6 +101,15 @@ function normalizeMarkdown(value) {
   return value.replace(/\r\n/g, '\n')
 }
 
+function buildRebasePolicy(baseBranch) {
+  return [
+    `base 브랜치에서 시작하면 branch 생성 전에 \`git fetch origin && git rebase origin/${baseBranch}\`를 실행합니다.`,
+    `기존 feature branch에서도 push 직전에 \`git fetch origin && git rebase origin/${baseBranch}\`를 다시 실행합니다.`,
+    'push 전 rebase로 HEAD가 바뀌면 `git push --force-with-lease`, 바뀌지 않으면 일반 `git push`를 사용합니다.',
+    'rebase 충돌 시 즉시 중단하고 `git rebase --continue` 또는 `git rebase --abort`를 직접 실행하도록 안내합니다.',
+  ]
+}
+
 function parseMarkdownFrontmatter(contents) {
   const normalized = normalizeMarkdown(contents)
 
@@ -234,7 +243,9 @@ function createFallbackTaskContext(title, files) {
     inScopeLines: files.map((file) => `${file} 변경을 반영합니다.`).slice(0, 4),
     completionLines: [`${title} 관련 변경이 의도대로 동작합니다.`],
     testPlanLines: ['관련 Vitest와 lint를 확인합니다.'],
-    currentBehaviorLines: [`현재 ${title} 관련 자동 생성 결과가 충분히 구체적이지 않습니다.`],
+    currentBehaviorLines: [
+      `현재 ${title} 관련 자동 생성 결과가 충분히 구체적이지 않습니다.`,
+    ],
     decisionLines: [`${title} 관련 본문을 템플릿 기준으로 생성합니다.`],
   }
 }
@@ -260,7 +271,9 @@ function readTaskContext(taskSlug, cwd = process.cwd()) {
     : ''
 
   return {
-    goalLines: trimSectionLines(extractMarkdownSectionLines(planContents, 'Goal')),
+    goalLines: trimSectionLines(
+      extractMarkdownSectionLines(planContents, 'Goal')
+    ),
     inScopeLines: trimSectionLines(
       extractMarkdownSectionLines(planContents, 'In Scope')
     ),
@@ -310,7 +323,9 @@ function buildIssueWorkflowSection({
   const hasVitest = validationCommands.some((command) =>
     command.includes('vitest')
   )
-  const hasBuild = validationCommands.some((command) => command.includes('build'))
+  const hasBuild = validationCommands.some((command) =>
+    command.includes('build')
+  )
   const hasPlaywright = validationCommands.some((command) =>
     command.includes('playwright')
   )
@@ -416,7 +431,9 @@ function renderIssueTemplateSections(type, scaffold) {
       '## 📂 수정 대상': [
         '| 파일 경로 | 수정 내용 |',
         '| --------- | --------- |',
-        ...scaffold.files.map((file) => `| \`${file}\` | ${scaffold.title} 관련 정리 |`),
+        ...scaffold.files.map(
+          (file) => `| \`${file}\` | ${scaffold.title} 관련 정리 |`
+        ),
       ].join('\n'),
       '## 📝 세부 작업 목록': buildUncheckedChecklist(defaultWorkLines, [
         `${scaffold.title} 변경을 반영합니다.`,
@@ -477,7 +494,9 @@ function renderIssueTemplateSections(type, scaffold) {
       '## 📂 테스트 대상': [
         '| 테스트 파일 | 테스트 대상 |',
         '| ----------- | ----------- |',
-        ...scaffold.files.map((file) => `| \`${file}\` | ${scaffold.title} 관련 검증 |`),
+        ...scaffold.files.map(
+          (file) => `| \`${file}\` | ${scaffold.title} 관련 검증 |`
+        ),
       ].join('\n'),
       '## 📝 테스트 케이스 목록': buildUncheckedChecklist(defaultWorkLines, [
         `${scaffold.title} 테스트 케이스 정리`,
@@ -524,7 +543,9 @@ function renderIssueTemplateSections(type, scaffold) {
       '## 📂 대상 파일 / 컴포넌트': [
         '| 파일 경로 | 리팩터링 이유 |',
         '| --------- | ------------- |',
-        ...scaffold.files.map((file) => `| \`${file}\` | ${scaffold.title} 정리 |`),
+        ...scaffold.files.map(
+          (file) => `| \`${file}\` | ${scaffold.title} 정리 |`
+        ),
       ].join('\n'),
       '## 🚨 현재 문제점': [
         '```typescript',
@@ -533,7 +554,9 @@ function renderIssueTemplateSections(type, scaffold) {
         '',
         '**문제점:**',
         '',
-        buildListFromLines(currentBehaviorLines, [`${scaffold.title} 관련 문제점 정리`]),
+        buildListFromLines(currentBehaviorLines, [
+          `${scaffold.title} 관련 문제점 정리`,
+        ]),
       ].join('\n'),
       '## 💡 개선 방향': [
         '```typescript',
@@ -542,16 +565,17 @@ function renderIssueTemplateSections(type, scaffold) {
         '',
         '**개선 내용:**',
         '',
-        buildListFromLines(defaultWorkLines, [`${scaffold.title} 개선 방향 정리`]),
+        buildListFromLines(defaultWorkLines, [
+          `${scaffold.title} 개선 방향 정리`,
+        ]),
       ].join('\n'),
       '## 🤖 AI Workflow 준비': commonWorkflowSection,
       '## ✅ 완료 기준': buildUncheckedChecklist(defaultCompletionLines, [
         `${scaffold.title} 리팩터링 완료`,
       ]),
-      '## ⚠️ 사이드 이펙트 검토': buildUncheckedChecklist(
-        decisionLines,
-        ['영향 범위를 확인합니다.']
-      ),
+      '## ⚠️ 사이드 이펙트 검토': buildUncheckedChecklist(decisionLines, [
+        '영향 범위를 확인합니다.',
+      ]),
       '## 🔗 관련 이슈 / PR': '- PR: 생성 후 연결 예정',
       '## 📌 추가 메모': buildIssueMetaNote(scaffold.taskSlug, scaffold),
     },
@@ -649,16 +673,15 @@ function renderIssueTemplateSections(type, scaffold) {
 
 function renderTemplateBodyFromSections(headings, sections, options = {}) {
   const separator = options.separator ?? '\n\n'
-  const renderedSections = headings
-    .map((heading) => {
-      const body = sections[heading]
+  const renderedSections = headings.map((heading) => {
+    const body = sections[heading]
 
-      if (typeof body !== 'string') {
-        throw new Error(`템플릿 section 값이 없습니다: ${heading}`)
-      }
+    if (typeof body !== 'string') {
+      throw new Error(`템플릿 section 값이 없습니다: ${heading}`)
+    }
 
-      return `${heading}\n\n${body}`.trimEnd()
-    })
+    return `${heading}\n\n${body}`.trimEnd()
+  })
 
   return renderedSections.join(separator)
 }
@@ -701,11 +724,7 @@ function parseTemplateChecklist(lines) {
   return lines
     .map((line) => line.trim())
     .filter((line) => /^- \[[ x]\]/.test(line))
-    .map((line) =>
-      line
-        .replace(/^- \[[ x]\]\s*/, '')
-        .trim()
-    )
+    .map((line) => line.replace(/^- \[[ x]\]\s*/, '').trim())
 }
 
 function inferType(files, explicitType) {
@@ -837,7 +856,9 @@ function buildPrWorkSummaryLines(scaffold) {
     .filter(Boolean)
 
   if (summaryCandidates.length > 0) {
-    return unique(summaryCandidates).slice(0, 4).map((line) => `- ${line}`)
+    return unique(summaryCandidates)
+      .slice(0, 4)
+      .map((line) => `- ${line}`)
   }
 
   return [
@@ -878,18 +899,23 @@ function buildPrTemplateSections(scaffold, templateBody, riskLine) {
     '## 🧠 Task 문서 (큰 작업이면 필수)': formatTaskDocumentSection(
       scaffold.taskSlug
     ),
-    '## 📋 TODO.md 연결': formatTodoSection(scaffold.taskSlug, scaffold.todoStatus),
+    '## 📋 TODO.md 연결': formatTodoSection(
+      scaffold.taskSlug,
+      scaffold.todoStatus
+    ),
     '## 📚 참고한 기준 문서': formatCodeBulletList(scaffold.referenceDocs),
     '## 🧪 실행한 검증': formatCodeBulletList(scaffold.validationCommands),
     '## ⚠️ 남은 리스크': riskLine,
     '## ✅ 체크리스트': buildPrChecklistSection(templateBody, scaffold),
-    '## 📸 스크린샷 (선택)':
-      '> UI 변경이 있을 경우 첨부해주세요.',
+    '## 📸 스크린샷 (선택)': '> UI 변경이 있을 경우 첨부해주세요.',
   }
 }
 
 function buildPrBody({ scaffold, riskLine = DEFAULT_RISK_LINE }) {
-  const prTemplate = readTemplateFile('.github/PULL_REQUEST_TEMPLATE.md', scaffold.cwd)
+  const prTemplate = readTemplateFile(
+    '.github/PULL_REQUEST_TEMPLATE.md',
+    scaffold.cwd
+  )
   const headings = getTemplateHeadings(prTemplate.body)
 
   ensureTemplateHeadings(prTemplate.body, [
@@ -1196,6 +1222,7 @@ export function buildGitFlowScaffold(options = {}) {
     prTitle: `${type}: ${title}`,
     validationCommands,
     referenceDocs,
+    rebasePolicy: buildRebasePolicy(baseBranch),
     gateContext,
   }
 
@@ -1222,6 +1249,10 @@ function printExecutionSummary(scaffold) {
   console.log(`- Current Issue: ${scaffold.issueNumber || 'new issue needed'}`)
   console.log(`- Branch Name: ${scaffold.branchName}`)
   console.log(`- Commit Message: ${scaffold.commitMessage}`)
+  console.log(`- Rebase Target: origin/${scaffold.baseBranch}`)
+  console.log(
+    '- Rebase Flow: branch-before-create(if on base) + before-push(always)'
+  )
   console.log(
     `- Workflow Gate: ${scaffold.gateContext.isEnforcedLargeChange ? 'enforced' : 'not enforced'}`
   )
@@ -1254,6 +1285,9 @@ export function printGitFlowScaffold(title, scaffold) {
   console.log('Commit Message')
   console.log(scaffold.commitMessage)
   console.log('')
+  console.log('Rebase Policy')
+  console.log(formatBulletList(scaffold.rebasePolicy))
+  console.log('')
   console.log('PR Title')
   console.log(scaffold.prTitle)
   console.log('')
@@ -1273,6 +1307,7 @@ function createExecutionResult(scaffold) {
   return {
     issueNumber: scaffold.issueNumber || '',
     issueUrl: '',
+    baseBranch: scaffold.baseBranch,
     branchName: scaffold.branchName,
     branchCreated: false,
     skippedBranchCreation: false,
@@ -1598,7 +1633,16 @@ export function printGitFlowExecutionResult(result) {
   console.log('')
   console.log('Execution Result')
   console.log(`- Issue: ${result.issueUrl || result.issueNumber || 'N/A'}`)
+  console.log(`- Base Branch: ${result.baseBranch}`)
   console.log(`- Branch: ${result.branchName}`)
+  console.log(`- Rebase Target: origin/${result.baseBranch}`)
+  console.log(
+    `- Rebase Before Branch: ${result.rebaseBeforeBranch ? 'yes' : 'no'}`
+  )
+  console.log(`- Rebase Before Push: ${result.rebaseBeforePush ? 'yes' : 'no'}`)
+  console.log(
+    `- Rebased Before Push: ${result.rebasedBeforePush ? 'yes' : 'no'}`
+  )
   console.log(`- Commit: ${result.commitSha || 'N/A'}`)
   console.log(`- Push Mode: ${result.pushMode || 'N/A'}`)
   console.log(`- PR: ${result.prUrl || 'N/A'}`)
