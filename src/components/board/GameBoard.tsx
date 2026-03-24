@@ -352,6 +352,7 @@ interface GameBoardProps {
   gameId?: string | null
   players: PlayerState[]
   curPlayer: number
+  round?: number
   gamePhase?: GamePhase | null
   allowAssetActions?: boolean
   suppressDiceTimerModal?: boolean
@@ -493,6 +494,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       gameId,
       players,
       curPlayer,
+      round,
       gamePhase = null,
       allowAssetActions = false,
       activePrompt = null,
@@ -1221,20 +1223,23 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setGoToIslandModal({ open: false })
 
       const p = playersRef.current[curPlayer]
+      const roundLabel = round != null ? ` · ${round}라운드` : ''
       if (p) {
         if (p.state === 'island') {
           setStatus(
-            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)`
+            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)${roundLabel}`
           )
         } else if ((p.skipTurns ?? 0) > 0) {
           setStatus(
-            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)`
+            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)${roundLabel}`
           )
         } else if (p.state === 'bankrupt') {
-          setStatus(`${p.name}님은 파산 상태입니다`)
+          setStatus(`${p.name}님은 파산 상태입니다${roundLabel}`)
+        } else {
+          setStatus(`${p.name}님의 차례입니다${roundLabel}`)
         }
       }
-    }, [curPlayer, stopDiceRollAnimation])
+    }, [curPlayer, round, stopDiceRollAnimation])
 
     useEffect(() => {
       if (!activePrompt || !isBuyPromptOpen) {

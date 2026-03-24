@@ -563,6 +563,7 @@ const GamePage: React.FC = () => {
               gameId={activeGameId}
               players={boardPlayers}
               curPlayer={boardCurPlayer}
+              round={round}
               suppressDiceTimerModal={isExitModalOpen}
               tiles={normalizedTilesForBoard}
               activePrompt={activeBoardPrompt}
