@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GamePrompt, Player, Tile } from '../types/domain'
 import { useGameStore } from './game.store'
 
@@ -27,6 +27,7 @@ const createTile = (overrides: Partial<Tile> = {}): Tile => ({
 
 describe('game store partial updates', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     useGameStore.getState().resetGame()
   })
 
@@ -353,6 +354,89 @@ describe('game store partial updates', () => {
 
     expect(nextState.round).toBe(6)
     expect(nextState.revision).toBe(5)
+  })
+
+  it('resets turn timer key when TURN_ENDED event arrives for same player turn', () => {
+    const store = useGameStore.getState()
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(17_000)
+
+    store.setGameState({
+      revision: 4,
+      phase: 'rolling',
+      round: 4,
+      currentPlayerId: 'player-1',
+      currentTurn: 'player-1',
+      turnTimerKey: 10,
+    })
+
+    store.applyPatchEnvelope({
+      revision: 5,
+      patch: [],
+      events: [
+        {
+          type: 'TURN_ENDED',
+          playerId: 'player-1',
+          payload: { nextPlayerId: 'player-1' },
+        },
+      ],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.turnTimerKey).toBe(17_000)
+    expect(dateNowSpy).toHaveBeenCalled()
+  })
+
+  it('resets turn timer key and round when envelope turn increments', () => {
+    const store = useGameStore.getState()
+    vi.spyOn(Date, 'now').mockReturnValue(33_000)
+
+    store.setGameState({
+      revision: 8,
+      phase: 'rolling',
+      round: 8,
+      currentPlayerId: 'player-1',
+      currentTurn: 'player-1',
+      turnTimerKey: 20,
+    })
+
+    store.applyPatchEnvelope({
+      revision: 9,
+      turn: 9,
+      patch: [],
+      events: [],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.round).toBe(9)
+    expect(nextState.turnTimerKey).toBe(33_000)
+  })
+
+  it('does not reset turn timer key for non-turn patch updates', () => {
+    const store = useGameStore.getState()
+    vi.spyOn(Date, 'now').mockReturnValue(44_000)
+
+    store.setGameState({
+      revision: 11,
+      phase: 'rolling',
+      round: 11,
+      currentPlayerId: 'player-1',
+      currentTurn: 'player-1',
+      turnTimerKey: 30,
+      players: [createPlayer({ id: 'player-1', balance: 500 })],
+    })
+
+    store.applyPatchEnvelope({
+      revision: 12,
+      patch: [{ op: 'set', path: 'players.0.balance', value: 750 }],
+      events: [],
+    })
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.players[0]?.balance).toBe(750)
+    expect(nextState.turnTimerKey).toBe(30)
   })
 
   it('marks game over when phase is patched to finished', () => {
