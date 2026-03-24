@@ -16,6 +16,7 @@
 
 ## Done
 
+- [x] `game-runtime-warning-cleanup` - Game Runtime Warning Cleanup (`docs/ai/tasks/game-runtime-warning-cleanup/`) - GameBoard deps warning과 GamePage.test act warning을 기능 변경 없이 정리
 - [x] `current-round-badge-style` - Current Round Badge Style (`docs/ai/tasks/current-round-badge-style/`) - 게임 화면 현재 라운드 뱃지를 더 자연스럽게 보이도록 정리
 - [x] `panel-total-assets-authoritative` - Panel Total Assets Authoritative (`docs/ai/tasks/panel-total-assets-authoritative/`) - GAME_OVER 이벤트와 reconnect snapshot을 `gameResult`로 복구해 우측 패널/종료 결과를 서버 권위 기준으로 정렬
 - [x] `add-round-display-ui` - Add Round Display UI (`docs/ai/tasks/add-round-display-ui/`) - 주사위 버튼 상단에 서버 round 정보를 표시하는 디자인 UI 추가

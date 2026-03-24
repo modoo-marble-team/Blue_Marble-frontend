@@ -530,6 +530,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       Record<string, number>
     >({})
     const [isMoving, setIsMoving] = useState(false)
+    const [travelingPlayerIds, setTravelingPlayerIds] = useState<
+      Record<string, boolean>
+    >({})
+    const travelFxTimeoutRef = useRef<Record<string, number>>({})
     const lastMovePositionRef = useRef<Record<string, number>>({})
     const pendingChanceMoveHintRef = useRef<
       Record<string, { direction: BoardMoveDirection; steps: number }>
@@ -548,6 +552,36 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [pendingMovePlayerIds]
     )
     const boardTiles = useMemo(() => buildBoardTileCatalog(tiles), [tiles])
+    const clearTravelTokenFx = useCallback((playerId: PlayerId) => {
+      const playerKey = String(playerId)
+      const timeoutId = travelFxTimeoutRef.current[playerKey]
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId)
+        delete travelFxTimeoutRef.current[playerKey]
+      }
+      setTravelingPlayerIds((prev) => {
+        if (!prev[playerKey]) {
+          return prev
+        }
+        const next = { ...prev }
+        delete next[playerKey]
+        return next
+      })
+    }, [])
+    const startTravelTokenFx = useCallback(
+      (playerId: PlayerId, durationMs = 1400) => {
+        const playerKey = String(playerId)
+        const prevTimeout = travelFxTimeoutRef.current[playerKey]
+        if (prevTimeout != null) {
+          window.clearTimeout(prevTimeout)
+        }
+        setTravelingPlayerIds((prev) => ({ ...prev, [playerKey]: true }))
+        travelFxTimeoutRef.current[playerKey] = window.setTimeout(() => {
+          clearTravelTokenFx(playerId)
+        }, durationMs)
+      },
+      [clearTravelTokenFx]
+    )
 
     const curPlayerRef = useRef(curPlayer)
     const playersRef = useRef<PlayerState[]>(players)
@@ -915,11 +949,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       },
       [
         boardTiles,
+        clearTravelTokenFx,
         emitMockEndTurn,
         freezeDiceRollValues,
         flashDiceRollAnimation,
         localPlayerId,
         movePlayerSequentially,
+        startTravelTokenFx,
       ]
     )
     const handleEventAnimation = useCallback(
@@ -1284,10 +1320,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [travelSelection, setTravelSelection] = useState(
       INITIAL_TRAVEL_SELECTION_STATE
     )
-    const [travelingPlayerIds, setTravelingPlayerIds] = useState<
-      Record<string, boolean>
-    >({})
-    const travelFxTimeoutRef = useRef<Record<string, number>>({})
     const [dismissedTravelPromptId, setDismissedTravelPromptId] = useState<
       string | null
     >(null)
@@ -1725,38 +1757,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
       submitPromptChoice(promptTravelCancelChoiceValue ?? 'SKIP')
     }
-
-    const clearTravelTokenFx = useCallback((playerId: PlayerId) => {
-      const playerKey = String(playerId)
-      const timeoutId = travelFxTimeoutRef.current[playerKey]
-      if (timeoutId != null) {
-        window.clearTimeout(timeoutId)
-        delete travelFxTimeoutRef.current[playerKey]
-      }
-      setTravelingPlayerIds((prev) => {
-        if (!prev[playerKey]) {
-          return prev
-        }
-        const next = { ...prev }
-        delete next[playerKey]
-        return next
-      })
-    }, [])
-
-    const startTravelTokenFx = useCallback(
-      (playerId: PlayerId, durationMs = 1400) => {
-        const playerKey = String(playerId)
-        const prevTimeout = travelFxTimeoutRef.current[playerKey]
-        if (prevTimeout != null) {
-          window.clearTimeout(prevTimeout)
-        }
-        setTravelingPlayerIds((prev) => ({ ...prev, [playerKey]: true }))
-        travelFxTimeoutRef.current[playerKey] = window.setTimeout(() => {
-          clearTravelTokenFx(playerId)
-        }, durationMs)
-      },
-      [clearTravelTokenFx]
-    )
 
     useEffect(() => {
       return () => {
