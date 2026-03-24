@@ -228,6 +228,34 @@ describe('gameContractAdapters', () => {
     })
   })
 
+  it('normalizes active global effect from snapshot aliases', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-global-effect',
+        revision: 18,
+        phase: 'RESOLVING',
+        players: [],
+        tiles: [],
+        active_global_effect: {
+          effect: 'pandemic',
+          type: 'toll_multiplier',
+          duration: '3',
+          multiplier: '0.5',
+          description: '통행료가 50%로 감소합니다.',
+        },
+      },
+      { envelopeRevision: 18 }
+    )
+
+    expect(normalized?.activeGlobalEffect).toEqual({
+      effect: 'PANDEMIC',
+      type: 'TOLL_MULTIPLIER',
+      duration: 3,
+      multiplier: 0.5,
+      description: '통행료가 50%로 감소합니다.',
+    })
+  })
+
   it('normalizes game over snapshot aliases and infers isGameOver from finished phase', () => {
     const normalized = normalizeSnapshotPayload(
       {
@@ -654,6 +682,51 @@ describe('gameContractAdapters', () => {
         op: 'set',
         path: 'gameResult',
         value: { reason: 'round_limit', rankings: undefined, winner: null },
+      },
+    ])
+  })
+
+  it('normalizes patch aliases for active global effect fields', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-global-effect-patch',
+      revision: 92,
+      patch: [
+        {
+          op: 'set',
+          path: 'active_global_effect',
+          value: {
+            effect: 'festival',
+            type: 'toll_multiplier',
+            duration: '2',
+            multiplier: '2',
+            description: '통행료가 2배로 증가합니다.',
+          },
+        },
+        {
+          op: 'set',
+          path: 'active_global_effect.duration',
+          value: '1',
+        },
+      ],
+      events: [],
+    })
+
+    expect(normalized.patch).toEqual([
+      {
+        op: 'set',
+        path: 'activeGlobalEffect',
+        value: {
+          effect: 'FESTIVAL',
+          type: 'TOLL_MULTIPLIER',
+          duration: 2,
+          multiplier: 2,
+          description: '통행료가 2배로 증가합니다.',
+        },
+      },
+      {
+        op: 'set',
+        path: 'activeGlobalEffect.duration',
+        value: 1,
       },
     ])
   })
