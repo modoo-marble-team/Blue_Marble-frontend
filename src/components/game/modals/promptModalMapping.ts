@@ -8,6 +8,8 @@ export type PromptModalKind =
   | 'acquisition'
   | 'dice_timer'
   | 'travel'
+  | 'island'
+  | 'go_to_island'
   | 'unknown'
 
 export type PromptChoiceRuleKey =
@@ -56,6 +58,12 @@ const DICE_TIMER_TYPE_TOKENS = [
   'TURN_TIMER',
   'ROLL_TIMEOUT',
   'DICE_ROLL_TIMEOUT',
+]
+const ISLAND_TYPE_TOKENS = ['ISLAND_PROMPT', 'ISLAND_WAIT', 'ISLAND_TURN']
+const GO_TO_ISLAND_TYPE_TOKENS = [
+  'GO_TO_ISLAND',
+  'ARREST_PROMPT',
+  'JAIL_PROMPT',
 ]
 const PROMPT_CHOICE_RULES: Record<
   PromptChoiceRuleKey,
@@ -212,6 +220,14 @@ export const resolvePromptModalKind = (
       hasChoiceToken(prompt, ['END_TURN']))
   ) {
     return 'dice_timer'
+  }
+
+  if (hasTypeToken(prompt, ISLAND_TYPE_TOKENS)) {
+    return 'island'
+  }
+
+  if (hasTypeToken(prompt, GO_TO_ISLAND_TYPE_TOKENS)) {
+    return 'go_to_island'
   }
 
   return 'unknown'

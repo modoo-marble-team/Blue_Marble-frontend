@@ -981,6 +981,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
     const isTravelPromptOpen = promptModalKind === 'travel'
+    const isIslandPromptOpen = promptModalKind === 'island'
+    const isGoToIslandPromptOpen = promptModalKind === 'go_to_island'
 
     const promptTileId = getPromptPayloadNumber(activePrompt, [
       'tileId',
@@ -2034,6 +2036,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const islandRestTurns = (() => {
+      const promptTurns = getPromptPayloadNumber(activePrompt, [
+        'restTurns',
+        'rest_turns',
+        'skipTurns',
+        'skip_turns',
+        'duration',
+      ])
+      if (promptTurns != null) return promptTurns
+
       const player = players[curPlayer]
       if (!player) return null
       const rawTurns =
@@ -2604,12 +2615,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <GoToIslandModal
-          open={canShowModal && goToIslandModal.open}
+          open={
+            canShowModal && (isGoToIslandPromptOpen || goToIslandModal.open)
+          }
           onConfirm={handleGoToIslandConfirm}
         />
         {/* 🏝️ 무인도 (직접 도착) 팝업 */}
         <IslandModal
-          open={canShowModal && islandModal.open}
+          open={canShowModal && (isIslandPromptOpen || islandModal.open)}
           restTurns={islandRestTurns}
           onConfirm={handleIslandConfirm}
         />
