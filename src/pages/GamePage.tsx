@@ -282,13 +282,7 @@ const GamePage: React.FC = () => {
       ),
     [boardPlayers, storePlayers]
   )
-  const totalAssetsValues = [...playerTotalAssetsMap.values()].filter(
-    (value): value is number => typeof value === 'number'
-  )
-  const maxTotalAssets =
-    totalAssetsValues.length > 0
-      ? Math.max(...totalAssetsValues)
-      : Number.NEGATIVE_INFINITY
+  const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
     currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
@@ -609,12 +603,8 @@ const GamePage: React.FC = () => {
                 return leftBankrupt - rightBankrupt
               }
 
-              const leftTotalAssets =
-                left.totalAssets ?? Number.NEGATIVE_INFINITY
-              const rightTotalAssets =
-                right.totalAssets ?? Number.NEGATIVE_INFINITY
-              if (leftTotalAssets !== rightTotalAssets) {
-                return rightTotalAssets - leftTotalAssets
+              if (left.money !== right.money) {
+                return right.money - left.money
               }
 
               return left.originalIndex - right.originalIndex
@@ -631,11 +621,7 @@ const GamePage: React.FC = () => {
                   totalAssets: player.totalAssets,
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
-                isRichest={
-                  player.money > 0 &&
-                  player.totalAssets !== undefined &&
-                  player.totalAssets === maxTotalAssets
-                }
+                isRichest={player.money > 0 && player.money === maxMoney}
                 isBankrupt={player.money <= 0}
               />
             ))}
