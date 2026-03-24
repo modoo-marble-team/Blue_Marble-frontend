@@ -70,9 +70,7 @@ describe('buildGitFlowScaffold', () => {
     })
 
     expect(scaffold.type).toBe('docs')
-    expect(scaffold.branchName).toBe(
-      'docs/<issue-number>-update'
-    )
+    expect(scaffold.branchName).toBe('docs/<issue-number>-update')
     expect(scaffold.issueTitle).toBe('📝 [DOCS] 워크플로우 문서 정리')
     expect(scaffold.issueLabels).toEqual(['docs'])
     expect(scaffold.issueBody).toContain('## 📝 문서화 대상')
@@ -83,8 +81,16 @@ describe('buildGitFlowScaffold', () => {
     expect(scaffold.prBody).toContain(
       '`npm run ai:self-review -- --files docs/ai/usage.md`'
     )
-    expect(scaffold.prBody).toContain('- 워크플로우 문서 정리 작업을 진행합니다.')
+    expect(scaffold.prBody).toContain(
+      '- 워크플로우 문서 정리 작업을 진행합니다.'
+    )
     expect(scaffold.prBody).not.toContain('git-flow를 정리했습니다')
+    expect(scaffold.rebasePolicy).toContain(
+      'base 브랜치에서 시작하면 branch 생성 전에 `git fetch origin && git rebase origin/develop`를 실행합니다.'
+    )
+    expect(scaffold.rebasePolicy).toContain(
+      'push 전 rebase로 HEAD가 바뀌면 `git push --force-with-lease`, 바뀌지 않으면 일반 `git push`를 사용합니다.'
+    )
     expect(scaffold.gateContext.isEnforcedLargeChange).toBe(false)
   })
 
@@ -124,7 +130,9 @@ describe('buildGitFlowScaffold', () => {
       '- plan: docs/ai/tasks/mypage-nickname-change/plan.md'
     )
     expect(scaffold.prBody).toContain('- TODO status: In Progress')
-    expect(scaffold.prBody).toContain('- MyPage 프로필 카드에 닉네임 인라인 편집 UI 추가')
+    expect(scaffold.prBody).toContain(
+      '- MyPage 프로필 카드에 닉네임 인라인 편집 UI 추가'
+    )
     expect(scaffold.prBody).not.toContain('git-flow를 정리했습니다')
     expect(scaffold.prBody).toContain(
       '`npm run ai:self-review -- --files docs/ai/tasks/mypage-nickname-change/checklist.md docs/ai/tasks/mypage-nickname-change/context.md docs/ai/tasks/mypage-nickname-change/plan.md src/features/auth/profile/hooks/useMyPageNicknameForm.ts src/pages/MyPage.tsx`'
@@ -288,7 +296,10 @@ describe('runGitFlow', () => {
 
     expect(result.issueNumber).toBe('123')
     expect(result.issueUrl).toContain('/issues/123')
+    expect(result.baseBranch).toBe('develop')
     expect(result.branchCreated).toBe(true)
+    expect(result.rebaseBeforeBranch).toBe(true)
+    expect(result.rebaseBeforePush).toBe(true)
     expect(result.rebasedBeforePush).toBe(true)
     expect(result.pushMode).toBe('force-with-lease')
     expect(result.prUrl).toContain('/pull/456')

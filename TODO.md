@@ -15,6 +15,8 @@
 
 ## Done
 
+- [x] `git-flow-rebase-safeguards` - Git Flow Rebase Safeguards (`docs/ai/tasks/git-flow-rebase-safeguards/`) - ai:git-flow의 branch 생성 전 / push 전 rebase 정책을 실행 결과와 사용 문서에서 더 명확히 드러내도록 정리
+
 - [x] `round-counter` - Round Counter (`docs/ai/tasks/round-counter/`) - 보드판 위 상태 알람에 현재 라운드 번호 표시 추가
 
 - [x] `player-token-ui-fix` - Player Token UI Fix (`docs/ai/tasks/player-token-ui-fix/`) - 플레이어 말 위 숫자 표시 제거
