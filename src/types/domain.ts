@@ -123,6 +123,7 @@ export type GameRanking = {
 export type GameResult = {
   reason:
     | 'bankrupt'
+    | 'player_left'
     | 'round_limit'
     | 'last_player_standing'
     | 'max_rounds'

@@ -712,6 +712,9 @@ const normalizeGameResultReason = (value: unknown): GameResult['reason'] => {
   if (normalizedReason === 'bankrupt') {
     return 'bankrupt'
   }
+  if (normalizedReason === 'player_left') {
+    return 'player_left'
+  }
 
   return 'max_rounds'
 }
@@ -865,6 +868,128 @@ const resolveWinnerIdFromGameResult = (
   return null
 }
 
+const normalizeGameOverEventResult = (
+  eventPayload: unknown
+): GameSnapshot['gameResult'] | null => {
+  if (!isRecord(eventPayload)) {
+    return null
+  }
+
+  const eventType =
+    toStringOrNull(eventPayload.type) ??
+    toStringOrNull(eventPayload.eventType) ??
+    toStringOrNull(eventPayload.event_type)
+  if (eventType?.trim().toUpperCase() !== 'GAME_OVER') {
+    return null
+  }
+
+  const nestedPayload =
+    eventPayload.payload && isRecord(eventPayload.payload)
+      ? (eventPayload.payload as Record<string, unknown>)
+      : null
+
+  return normalizeGameResultPayload({
+    reason:
+      eventPayload.reason ?? nestedPayload?.reason ?? nestedPayload?.endReason,
+    winner: eventPayload.winner ?? nestedPayload?.winner,
+    rankings:
+      eventPayload.rankings ??
+      eventPayload.results ??
+      nestedPayload?.rankings ??
+      nestedPayload?.results,
+  })
+}
+
+const createSnapshotRankingEntries = (
+  players: Player[],
+  winnerId: PlayerId | null
+): GameRanking[] =>
+  players
+    .map((player, index) => ({
+      player_id: player.id,
+      nickname: player.nickname,
+      final_assets: player.totalAssets ?? player.balance,
+      is_winner: winnerId != null && String(player.id) === String(winnerId),
+      originalIndex: index,
+    }))
+    .sort((left, right) => {
+      if (left.final_assets !== right.final_assets) {
+        return right.final_assets - left.final_assets
+      }
+
+      const leftWinner = left.is_winner ? 1 : 0
+      const rightWinner = right.is_winner ? 1 : 0
+      if (leftWinner !== rightWinner) {
+        return rightWinner - leftWinner
+      }
+
+      return left.originalIndex - right.originalIndex
+    })
+    .map((ranking, index) => ({
+      rank: index + 1,
+      player_id: ranking.player_id,
+      nickname: ranking.nickname,
+      final_assets: ranking.final_assets,
+      is_winner: ranking.is_winner,
+    }))
+
+const synthesizeGameResultFromFinishedSnapshot = (
+  snapshotPayload: Record<string, unknown>,
+  players: Player[],
+  winnerId: PlayerId | null,
+  isGameOver: boolean,
+  existingGameResult: GameSnapshot['gameResult'] | null
+): GameSnapshot['gameResult'] | null => {
+  if (existingGameResult || !isGameOver) {
+    return existingGameResult
+  }
+
+  const allDisconnected =
+    players.length > 0 &&
+    players.every((player) => player.state === 'disconnected')
+  const fallbackReason =
+    winnerId == null && (players.length === 0 || allDisconnected)
+      ? 'disconnect_timeout'
+      : 'max_rounds'
+  const reason = normalizeGameResultReason(
+    snapshotPayload.reason ??
+      snapshotPayload.endReason ??
+      snapshotPayload.gameOverReason ??
+      snapshotPayload.game_over_reason ??
+      fallbackReason
+  )
+
+  if (players.length === 0 || allDisconnected) {
+    return {
+      reason,
+      rankings: undefined,
+      winner: null,
+    }
+  }
+
+  const rankings = createSnapshotRankingEntries(players, winnerId)
+  const resolvedWinnerId = winnerId ?? rankings[0]?.player_id ?? null
+  const winnerPlayer =
+    resolvedWinnerId == null
+      ? null
+      : (players.find(
+          (player) => String(player.id) === String(resolvedWinnerId)
+        ) ?? null)
+
+  return {
+    reason,
+    rankings: rankings.length > 0 ? rankings : undefined,
+    winner: winnerPlayer
+      ? {
+          playerId: winnerPlayer.id,
+          nickname: winnerPlayer.nickname,
+          balance: winnerPlayer.balance,
+          assets: winnerPlayer.totalAssets ?? winnerPlayer.balance,
+        }
+      : null,
+  }
+}
+
 export const normalizeSnapshotPayload = (
   snapshotPayload: unknown,
   options: SnapshotNormalizeOptions
@@ -883,6 +1008,8 @@ export const normalizeSnapshotPayload = (
     : isRecord(snapshotPayload.tiles)
       ? Object.values(snapshotPayload.tiles)
       : []
+  const normalizedPlayers = playersRaw.map(normalizePlayerFromSnapshot)
+  const normalizedTiles = tilesRaw.map(normalizeTileFromSnapshot)
   const currentPlayerId = toPlayerIdOrNull(
     snapshotPayload.currentPlayerId ??
       snapshotPayload.current_player_id ??
@@ -901,6 +1028,13 @@ export const normalizeSnapshotPayload = (
   const normalizedIsGameOver =
     Boolean(snapshotPayload.isGameOver ?? snapshotPayload.is_game_over) ||
     normalizedPhase === 'finished'
+  const resolvedGameResult = synthesizeGameResultFromFinishedSnapshot(
+    snapshotPayload,
+    normalizedPlayers,
+    normalizedWinnerId,
+    normalizedIsGameOver,
+    normalizedGameResult
+  )
 
   return {
     roomId: toStringOrNull(snapshotPayload.roomId),
@@ -910,8 +1044,8 @@ export const normalizeSnapshotPayload = (
       null,
     revision: toFiniteInt(snapshotPayload.revision, options.envelopeRevision),
     phase: normalizedPhase,
-    players: playersRaw.map(normalizePlayerFromSnapshot),
-    tiles: tilesRaw.map(normalizeTileFromSnapshot),
+    players: normalizedPlayers,
+    tiles: normalizedTiles,
     currentPlayerId,
     currentTurn: currentPlayerId,
     round: toFiniteInt(snapshotPayload.round, roundFromTurn),
@@ -930,7 +1064,7 @@ export const normalizeSnapshotPayload = (
         snapshotPayload.globalEffect ??
         snapshotPayload.global_effect
     ),
-    gameResult: normalizedGameResult,
+    gameResult: resolvedGameResult,
     isGameOver: normalizedIsGameOver,
     winnerId: normalizedWinnerId,
   }
@@ -1165,18 +1299,64 @@ const normalizePatchOperation = (operation: GamePatchOperation) => {
 
 export const normalizePatchEnvelopePayload = (
   payload: GamePatchEnvelope
-): GamePatchEnvelope => ({
-  ...payload,
-  revision: toFiniteInt(payload.revision, 0),
-  patch: Array.isArray(payload.patch)
+): GamePatchEnvelope => {
+  const normalizedPatch = Array.isArray(payload.patch)
     ? payload.patch.map(normalizePatchOperation)
-    : [],
-  events: Array.isArray(payload.events)
-    ? payload.events
-        .map(normalizeServerEvent)
-        .filter((event): event is ServerEvent => event !== null)
-    : [],
-})
+    : []
+  const rawEvents = Array.isArray(payload.events) ? payload.events : []
+  const normalizedEvents = rawEvents
+    .map(normalizeServerEvent)
+    .filter((event): event is ServerEvent => event !== null)
+  const gameResultFromEvent =
+    rawEvents
+      .map(normalizeGameOverEventResult)
+      .find((result) => result !== null) ?? null
+
+  const hasTopLevelSetPatch = (
+    pathKey: 'gameResult' | 'winnerId' | 'isGameOver'
+  ) =>
+    normalizedPatch.some((operation) => {
+      if (operation.op !== 'set') {
+        return false
+      }
+
+      const pathSegments = toPathSegments(operation.path)
+      return pathSegments.length === 1 && pathSegments[0] === pathKey
+    })
+
+  const syntheticPatch = [...normalizedPatch]
+
+  if (gameResultFromEvent && !hasTopLevelSetPatch('gameResult')) {
+    syntheticPatch.push({
+      op: 'set',
+      path: 'gameResult',
+      value: gameResultFromEvent,
+    })
+  }
+
+  if (gameResultFromEvent && !hasTopLevelSetPatch('winnerId')) {
+    syntheticPatch.push({
+      op: 'set',
+      path: 'winnerId',
+      value: resolveWinnerIdFromGameResult(gameResultFromEvent),
+    })
+  }
+
+  if (gameResultFromEvent && !hasTopLevelSetPatch('isGameOver')) {
+    syntheticPatch.push({
+      op: 'set',
+      path: 'isGameOver',
+      value: true,
+    })
+  }
+
+  return {
+    ...payload,
+    revision: toFiniteInt(payload.revision, 0),
+    patch: syntheticPatch,
+    events: normalizedEvents,
+  }
+}
 
 export const normalizeTimerSyncPayload = (
   payload: unknown

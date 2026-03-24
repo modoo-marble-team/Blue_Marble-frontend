@@ -22,7 +22,7 @@ import {
   emitPromptResponse,
 } from '../services/socket/game.handler'
 import { useGameStore } from '../stores/game.store'
-import type { GamePromptChoice } from '../types/domain'
+import type { GamePromptChoice, GameRanking, PlayerId } from '../types/domain'
 import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
@@ -62,6 +62,81 @@ const FALLBACK_PROMPT_CHOICES: GamePromptChoice[] = [
     value: 'confirm',
   },
 ]
+
+type PlayerPanelViewModel = {
+  id: string
+  nickname: string
+  color?: string
+  money: number
+  totalAssets: number
+  originalIndex: number
+  isActive: boolean
+  isBankrupt: boolean
+  isRichest: boolean
+}
+
+const toComparablePlayerId = (playerId: PlayerId | null | undefined) =>
+  playerId == null ? null : String(playerId)
+
+const comparePlayerPanelsByAssets = (
+  left: Pick<
+    PlayerPanelViewModel,
+    'isBankrupt' | 'totalAssets' | 'money' | 'originalIndex'
+  >,
+  right: Pick<
+    PlayerPanelViewModel,
+    'isBankrupt' | 'totalAssets' | 'money' | 'originalIndex'
+  >
+) => {
+  const leftBankrupt = left.isBankrupt ? 1 : 0
+  const rightBankrupt = right.isBankrupt ? 1 : 0
+
+  if (leftBankrupt !== rightBankrupt) {
+    return leftBankrupt - rightBankrupt
+  }
+
+  if (left.totalAssets !== right.totalAssets) {
+    return right.totalAssets - left.totalAssets
+  }
+
+  if (left.money !== right.money) {
+    return right.money - left.money
+  }
+
+  return left.originalIndex - right.originalIndex
+}
+
+const applyRichestFlag = (
+  players: PlayerPanelViewModel[],
+  richestPlayerId: string | null
+) =>
+  players.map((player) => ({
+    ...player,
+    isRichest: richestPlayerId !== null && player.id === richestPlayerId,
+  }))
+
+const mapRankingToPanelPlayer = (
+  ranking: GameRanking,
+  index: number,
+  basePlayerById: Map<string, PlayerPanelViewModel>,
+  activePlayerId: string | null
+): PlayerPanelViewModel => {
+  const rankingPlayerId = String(ranking.player_id)
+  const basePlayer = basePlayerById.get(rankingPlayerId)
+
+  return {
+    id: rankingPlayerId,
+    nickname: basePlayer?.nickname ?? ranking.nickname,
+    color: basePlayer?.color,
+    money: basePlayer?.money ?? 0,
+    totalAssets: ranking.final_assets,
+    originalIndex: basePlayer?.originalIndex ?? index,
+    isActive:
+      basePlayer?.isActive ?? activePlayerId === String(ranking.player_id),
+    isBankrupt: basePlayer?.isBankrupt ?? false,
+    isRichest: Boolean(ranking.is_winner || ranking.rank === 1),
+  }
+}
 
 interface GamePageLocationState {
   roomId?: string
@@ -153,6 +228,7 @@ const GamePage: React.FC = () => {
     Math.max(round ?? 1, 1),
     MAX_ROUND_BADGE_VALUE
   )
+  const activePlayerId = toComparablePlayerId(normalizedCurrentTurn)
 
   const boardPlayers = useMemo(
     () => mapStorePlayersToBoardPlayers(storePlayers),
@@ -276,17 +352,111 @@ const GamePage: React.FC = () => {
 
   const diceRoll = useDiceRoll()
 
-  const playerTotalAssetsMap = useMemo(
-    () =>
-      new Map(
-        boardPlayers.map((player, index) => [
-          player.id,
-          storePlayers[index]?.totalAssets,
-        ])
-      ),
-    [boardPlayers, storePlayers]
-  )
-  const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
+  const panelPlayers = useMemo(() => {
+    const basePanelPlayers: PlayerPanelViewModel[] = storePlayers.map(
+      (storePlayer, index) => {
+        const boardPlayer = boardPlayers[index]
+        const playerId = String(storePlayer.id)
+        const money = storePlayer.balance ?? boardPlayer?.money ?? 0
+
+        return {
+          id: playerId,
+          nickname:
+            storePlayer.nickname || boardPlayer?.name || `Player ${index + 1}`,
+          color: storePlayer.color || boardPlayer?.color,
+          money,
+          totalAssets: storePlayer.totalAssets ?? money,
+          originalIndex: index,
+          isActive: activePlayerId === playerId,
+          isBankrupt:
+            Boolean(storePlayer.is_bankrupt) ||
+            storePlayer.state === 'bankrupt' ||
+            money <= 0,
+          isRichest: false,
+        }
+      }
+    )
+
+    const basePlayerById = new Map(
+      basePanelPlayers.map((player) => [player.id, player])
+    )
+
+    if (gameResult?.rankings && gameResult.rankings.length > 0) {
+      const rankedPlayers = [...gameResult.rankings]
+        .sort((left, right) => left.rank - right.rank)
+        .map((ranking, index) =>
+          mapRankingToPanelPlayer(
+            ranking,
+            index,
+            basePlayerById,
+            activePlayerId
+          )
+        )
+      const rankedPlayerIds = new Set(rankedPlayers.map((player) => player.id))
+      const remainingPlayers = basePanelPlayers
+        .filter((player) => !rankedPlayerIds.has(player.id))
+        .sort(comparePlayerPanelsByAssets)
+
+      return applyRichestFlag(
+        [...rankedPlayers, ...remainingPlayers],
+        rankedPlayers[0]?.id ?? null
+      )
+    }
+
+    if (gameResult?.winner) {
+      const winner = gameResult.winner
+      const winnerPlayerId = String(winner.playerId)
+      const winnerBaseExists = basePanelPlayers.some(
+        (player) => player.id === winnerPlayerId
+      )
+      const winnerPanelPlayers = winnerBaseExists
+        ? basePanelPlayers.map((player) =>
+            player.id === winnerPlayerId
+              ? {
+                  ...player,
+                  money: winner.balance,
+                  totalAssets: winner.assets,
+                }
+              : player
+          )
+        : [
+            ...basePanelPlayers,
+            {
+              id: winnerPlayerId,
+              nickname: winner.nickname,
+              color: undefined,
+              money: winner.balance,
+              totalAssets: winner.assets,
+              originalIndex: basePanelPlayers.length,
+              isActive: activePlayerId === winnerPlayerId,
+              isBankrupt: false,
+              isRichest: false,
+            },
+          ]
+
+      return applyRichestFlag(
+        [...winnerPanelPlayers].sort((left, right) => {
+          const leftWinner = left.id === winnerPlayerId ? 1 : 0
+          const rightWinner = right.id === winnerPlayerId ? 1 : 0
+
+          if (leftWinner !== rightWinner) {
+            return rightWinner - leftWinner
+          }
+
+          return comparePlayerPanelsByAssets(left, right)
+        }),
+        winnerPlayerId
+      )
+    }
+
+    const sortedPlayers = [...basePanelPlayers].sort(
+      comparePlayerPanelsByAssets
+    )
+    const richestPlayerId =
+      sortedPlayers.find((player) => !player.isBankrupt)?.id ?? null
+
+    return applyRichestFlag(sortedPlayers, richestPlayerId)
+  }, [activePlayerId, boardPlayers, gameResult, storePlayers])
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
     currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
@@ -597,41 +767,21 @@ const GamePage: React.FC = () => {
         </div>
 
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
-          {[...boardPlayers]
-            .map((player, index) => ({
-              ...player,
-              originalIndex: index,
-              totalAssets: playerTotalAssetsMap.get(player.id) ?? player.money,
-            }))
-            .sort((left, right) => {
-              const leftBankrupt = left.money <= 0 ? 1 : 0
-              const rightBankrupt = right.money <= 0 ? 1 : 0
-              if (leftBankrupt !== rightBankrupt) {
-                return leftBankrupt - rightBankrupt
-              }
-
-              if (left.money !== right.money) {
-                return right.money - left.money
-              }
-
-              return left.originalIndex - right.originalIndex
-            })
-            .map((player) => (
-              <PlayerPanel
-                key={player.id}
-                player={{
-                  id: String(player.id),
-                  name: player.name ?? `Player ${player.id + 1}`,
-                  nickname: player.name ?? `Player ${player.id + 1}`,
-                  color: player.color,
-                  money: player.money,
-                  totalAssets: player.totalAssets,
-                }}
-                isActive={player.originalIndex === boardCurPlayer}
-                isRichest={player.money > 0 && player.money === maxMoney}
-                isBankrupt={player.money <= 0}
-              />
-            ))}
+          {panelPlayers.map((player) => (
+            <PlayerPanel
+              key={player.id}
+              player={{
+                id: player.id,
+                nickname: player.nickname,
+                color: player.color,
+                money: player.money,
+                totalAssets: player.totalAssets,
+              }}
+              isActive={player.isActive}
+              isRichest={player.isRichest}
+              isBankrupt={player.isBankrupt}
+            />
+          ))}
         </div>
       </div>
 

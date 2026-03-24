@@ -340,6 +340,82 @@ describe('gameContractAdapters', () => {
     })
   })
 
+  it('synthesizes reconnect gameResult from finished snapshot when authoritative gameResult is missing', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-finished-reconnect',
+        revision: 23,
+        phase: 'GAME_OVER',
+        winner_id: 'player-2',
+        is_game_over: true,
+        players: [
+          {
+            id: 'player-1',
+            nickname: 'alpha',
+            balance: 300,
+            totalAssets: 600,
+          },
+          {
+            id: 'player-2',
+            nickname: 'beta',
+            balance: 250,
+            totalAssets: 600,
+          },
+        ],
+        tiles: [],
+      },
+      { envelopeRevision: 23 }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized?.gameResult).toEqual({
+      reason: 'max_rounds',
+      rankings: [
+        {
+          rank: 1,
+          player_id: 'player-2',
+          nickname: 'beta',
+          final_assets: 6000000,
+          is_winner: true,
+        },
+        {
+          rank: 2,
+          player_id: 'player-1',
+          nickname: 'alpha',
+          final_assets: 6000000,
+          is_winner: false,
+        },
+      ],
+      winner: {
+        playerId: 'player-2',
+        nickname: 'beta',
+        balance: 2500000,
+        assets: 6000000,
+      },
+    })
+  })
+
+  it('keeps finished reconnect snapshot result empty for all-disconnected exception', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-finished-disconnected',
+        revision: 24,
+        phase: 'GAME_OVER',
+        is_game_over: true,
+        players: [],
+        tiles: [],
+      },
+      { envelopeRevision: 24 }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized?.gameResult).toEqual({
+      reason: 'disconnect_timeout',
+      rankings: undefined,
+      winner: null,
+    })
+  })
+
   it('normalizes object-shaped snapshot collections', () => {
     const normalized = normalizeSnapshotPayload(
       {
@@ -694,6 +770,133 @@ describe('gameContractAdapters', () => {
         op: 'set',
         path: 'gameResult',
         value: { reason: 'round_limit', rankings: undefined, winner: null },
+      },
+    ])
+  })
+
+  it('synthesizes gameResult, winnerId, and isGameOver patches from GAME_OVER events', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-over-event-patch',
+      revision: 93,
+      patch: [{ op: 'set', path: 'phase', value: 'GAME_OVER' }],
+      events: [
+        {
+          type: 'GAME_OVER',
+          reason: 'player_left',
+          winner: {
+            playerId: 1,
+            nickname: 'host',
+            balance: 100,
+            assets: 500,
+          },
+          rankings: [
+            {
+              rank: 1,
+              playerId: 1,
+              nickname: 'host',
+              finalAssets: 500,
+              isWinner: true,
+            },
+            {
+              rank: 2,
+              playerId: 2,
+              nickname: 'guest',
+              finalAssets: 300,
+              isWinner: false,
+            },
+          ],
+        } as unknown as ServerEvent,
+      ],
+    })
+
+    expect(normalized.patch).toEqual([
+      { op: 'set', path: 'phase', value: 'finished' },
+      {
+        op: 'set',
+        path: 'gameResult',
+        value: {
+          reason: 'player_left',
+          rankings: [
+            {
+              rank: 1,
+              player_id: 1,
+              nickname: 'host',
+              final_assets: 5000000,
+              is_winner: true,
+            },
+            {
+              rank: 2,
+              player_id: 2,
+              nickname: 'guest',
+              final_assets: 3000000,
+              is_winner: false,
+            },
+          ],
+          winner: {
+            playerId: 1,
+            nickname: 'host',
+            balance: 1000000,
+            assets: 5000000,
+          },
+        },
+      },
+      { op: 'set', path: 'winnerId', value: 1 },
+      { op: 'set', path: 'isGameOver', value: true },
+    ])
+  })
+
+  it('does not duplicate authoritative 종료 patches when gameResult fields already exist', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-over-event-existing',
+      revision: 94,
+      patch: [
+        { op: 'set', path: 'winner_id', value: 1 },
+        { op: 'set', path: 'is_game_over', value: 1 },
+        {
+          op: 'set',
+          path: 'game_result',
+          value: {
+            reason: 'disconnect_timeout',
+            winner: {
+              playerId: 1,
+              nickname: 'host',
+              balance: 100,
+              assets: 500,
+            },
+          },
+        },
+      ],
+      events: [
+        {
+          type: 'GAME_OVER',
+          reason: 'disconnect_timeout',
+          winner: {
+            playerId: 1,
+            nickname: 'host',
+            balance: 100,
+            assets: 500,
+          },
+          rankings: [],
+        } as unknown as ServerEvent,
+      ],
+    })
+
+    expect(normalized.patch).toEqual([
+      { op: 'set', path: 'winnerId', value: 1 },
+      { op: 'set', path: 'isGameOver', value: true },
+      {
+        op: 'set',
+        path: 'gameResult',
+        value: {
+          reason: 'disconnect_timeout',
+          rankings: undefined,
+          winner: {
+            playerId: 1,
+            nickname: 'host',
+            balance: 1000000,
+            assets: 5000000,
+          },
+        },
       },
     ])
   })

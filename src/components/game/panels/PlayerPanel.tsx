@@ -14,7 +14,7 @@ interface Player {
 interface PlayerPanelProps {
   player: Player
   isActive: boolean
-  isRichest?: boolean // 보유금 1위일 때 왕관 표시
+  isRichest?: boolean // 총자산 1위일 때 왕관 표시
   isBankrupt?: boolean
 }
 
@@ -62,7 +62,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = ({
       )}
       {/* ── 아바타 + 왕관 ── */}
       <div className="relative shrink-0">
-        {/* 왕관 — 보유금 1위 */}
+        {/* 왕관 — 총자산 1위 */}
         {isRichest && (
           <span
             style={{

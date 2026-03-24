@@ -117,10 +117,22 @@ vi.mock('../components/board/GameBoard', () => ({
       onGameResultConfirm?: () => void
     }
   >(function MockBoardGame(props, ref) {
+    const gameResult = props.gameResult as
+      | {
+          rankings?: unknown[]
+          winner?: unknown | null
+        }
+      | null
+      | undefined
+    const hasAuthoritativeGameResult = Boolean(
+      gameResult?.winner ||
+      (Array.isArray(gameResult?.rankings) && gameResult.rankings.length > 0)
+    )
+
     return (
       <div ref={ref} data-testid="mock-board-game">
         게임 보드
-        {Boolean(props.isGameOver || props.gameResult) && (
+        {hasAuthoritativeGameResult && (
           <button type="button" onClick={props.onGameResultConfirm}>
             대기방으로 돌아가기
           </button>
@@ -163,7 +175,34 @@ vi.mock('../components/game/modals/promptModalMapping', () => ({
 }))
 
 vi.mock('../components/game/panels/PlayerPanel', () => ({
-  default: () => <div>플레이어 패널</div>,
+  default: ({
+    player,
+    isActive,
+    isRichest,
+    isBankrupt,
+  }: {
+    player: {
+      id: string
+      nickname?: string
+      money?: number
+      totalAssets?: number
+    }
+    isActive: boolean
+    isRichest?: boolean
+    isBankrupt?: boolean
+  }) => (
+    <div
+      data-testid="mock-player-panel"
+      data-player-id={player.id}
+      data-is-active={String(isActive)}
+      data-is-richest={String(Boolean(isRichest))}
+      data-is-bankrupt={String(Boolean(isBankrupt))}
+    >
+      <span>{player.nickname}</span>
+      <span>{`money:${player.money ?? 0}`}</span>
+      <span>{`assets:${player.totalAssets ?? 'none'}`}</span>
+    </div>
+  ),
 }))
 
 vi.mock('../features/room-chat/DevRoomChatControlPanel', () => ({
@@ -215,6 +254,21 @@ const getRoundBadge = (): HTMLElement => {
   }
 
   return badge
+}
+
+const getPlayerPanels = (): HTMLElement[] =>
+  screen.getAllByTestId('mock-player-panel')
+
+const getPlayerPanelById = (playerId: string): HTMLElement => {
+  const panel = getPlayerPanels().find(
+    (candidate) => candidate.dataset.playerId === playerId
+  )
+
+  if (!panel) {
+    throw new Error(`Player panel for ${playerId} was not rendered.`)
+  }
+
+  return panel
 }
 
 describe('GamePage chat flow', () => {
@@ -272,6 +326,129 @@ describe('GamePage chat flow', () => {
     expect(getRoundBadge()).toHaveTextContent('20')
     expect(getRoundBadge()).toHaveTextContent('/ 20')
     expect(getRoundBadge()).not.toHaveTextContent('21')
+  })
+
+  it('우측 패널은 totalAssets를 우선 표시하고 그 기준으로 정렬과 왕관을 표시한다', () => {
+    useGameStore.getState().setGameState({
+      players: [
+        createPlayer({
+          id: 'user-1',
+          nickname: '유저1',
+          balance: 5000,
+          totalAssets: 5000,
+        }),
+        createPlayer({
+          id: 'user-2',
+          nickname: '유저2',
+          color: '#0000ff',
+          balance: 1000,
+          totalAssets: 9000,
+        }),
+      ],
+    })
+
+    renderGamePage()
+
+    expect(getPlayerPanels().map((panel) => panel.dataset.playerId)).toEqual([
+      'user-2',
+      'user-1',
+    ])
+    expect(getPlayerPanelById('user-2')).toHaveTextContent('money:1000')
+    expect(getPlayerPanelById('user-2')).toHaveTextContent('assets:9000')
+    expect(getPlayerPanelById('user-2').dataset.isRichest).toBe('true')
+    expect(getPlayerPanelById('user-1').dataset.isRichest).toBe('false')
+  })
+
+  it('게임 종료 시 rankings 기준으로 우측 패널 순서와 자산을 맞춘다', () => {
+    useGameStore.getState().setGameState({
+      phase: 'finished',
+      isGameOver: true,
+      players: [
+        createPlayer({
+          id: 'user-1',
+          nickname: '유저1',
+          balance: 3000,
+          totalAssets: 3000,
+        }),
+        createPlayer({
+          id: 'user-2',
+          nickname: '유저2',
+          color: '#0000ff',
+          balance: 7000,
+          totalAssets: 7000,
+        }),
+      ],
+      gameResult: {
+        reason: 'max_rounds',
+        rankings: [
+          {
+            rank: 1,
+            player_id: 'user-1',
+            nickname: '유저1',
+            final_assets: 12000,
+            is_winner: true,
+          },
+          {
+            rank: 2,
+            player_id: 'user-2',
+            nickname: '유저2',
+            final_assets: 11000,
+            is_winner: false,
+          },
+        ],
+      },
+    })
+
+    renderGamePage()
+
+    expect(getPlayerPanels().map((panel) => panel.dataset.playerId)).toEqual([
+      'user-1',
+      'user-2',
+    ])
+    expect(getPlayerPanelById('user-1')).toHaveTextContent('assets:12000')
+    expect(getPlayerPanelById('user-1').dataset.isRichest).toBe('true')
+    expect(getPlayerPanelById('user-2')).toHaveTextContent('assets:11000')
+  })
+
+  it('게임 종료 시 winner만 있어도 우측 패널 승자 자산을 winner.assets로 보정한다', () => {
+    useGameStore.getState().setGameState({
+      phase: 'finished',
+      isGameOver: true,
+      winnerId: 'user-2',
+      players: [
+        createPlayer({
+          id: 'user-1',
+          nickname: '유저1',
+          balance: 5000,
+          totalAssets: 8000,
+        }),
+        createPlayer({
+          id: 'user-2',
+          nickname: '유저2',
+          color: '#0000ff',
+          balance: 3000,
+          totalAssets: 6000,
+        }),
+      ],
+      gameResult: {
+        reason: 'disconnect_timeout',
+        winner: {
+          playerId: 'user-2',
+          nickname: '유저2',
+          balance: 3000,
+          assets: 13000,
+        },
+      },
+    })
+
+    renderGamePage()
+
+    expect(getPlayerPanels().map((panel) => panel.dataset.playerId)).toEqual([
+      'user-2',
+      'user-1',
+    ])
+    expect(getPlayerPanelById('user-2')).toHaveTextContent('assets:13000')
+    expect(getPlayerPanelById('user-2').dataset.isRichest).toBe('true')
   })
 
   it('renders a local chat message immediately and avoids duplicates when the server echo arrives', async () => {
@@ -402,6 +579,39 @@ describe('GamePage chat flow', () => {
 
     expect(screen.queryByText('게임 로딩 중...')).not.toBeInTheDocument()
     expect(screen.getByTestId('mock-board-game')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '대기방으로 돌아가기' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('authoritative gameResult가 있으면 종료 결과 액션을 노출한다', () => {
+    useGameStore.getState().resetGame()
+    useGameStore.getState().setGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      phase: 'finished',
+      isGameOver: true,
+      players: [],
+      tiles: [],
+      gameResult: {
+        reason: 'max_rounds',
+        rankings: [
+          {
+            rank: 1,
+            player_id: 'user-1',
+            nickname: '유저1',
+            final_assets: 455000,
+            is_winner: true,
+          },
+        ],
+      },
+    })
+
+    renderGamePage()
+
+    expect(
+      screen.getByRole('button', { name: '대기방으로 돌아가기' })
+    ).toBeInTheDocument()
   })
 
   it('종료 상태가 아니고 players가 비어 있으면 기존처럼 로딩 화면을 렌더한다', () => {
