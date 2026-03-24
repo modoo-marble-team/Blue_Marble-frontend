@@ -91,6 +91,7 @@ export interface Player {
   nickname: string
   position: number
   balance: Money
+  totalAssets?: Money
   owned_tiles: number[]
   is_in_jail: boolean
   jail_turn_count: number

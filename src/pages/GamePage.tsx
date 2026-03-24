@@ -605,13 +605,14 @@ const GamePage: React.FC = () => {
                   nickname: player.name ?? `Player ${player.id + 1}`,
                   color: player.color,
                   money: player.money,
-                  totalAssets: calcPlayerTotalAssets(
-                    storePlayers[player.originalIndex] ?? {
-                      balance: player.money,
-                      owned_tiles: [],
-                    },
-                    storeTiles
-                  ),
+                  totalAssets:
+                    storePlayers[player.originalIndex]?.totalAssets ??
+                    (storePlayers[player.originalIndex]
+                      ? calcPlayerTotalAssets(
+                          storePlayers[player.originalIndex],
+                          storeTiles
+                        )
+                      : player.money),
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
                 isRichest={player.money > 0 && player.money === maxMoney}
