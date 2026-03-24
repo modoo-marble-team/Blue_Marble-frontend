@@ -15,6 +15,7 @@
 
 ## Done
 
+- [x] `public-readme-project-docs` - Public Readme Project Docs (`docs/ai/tasks/public-readme-project-docs/`) - 루트 README를 대외용 소개 문서로 재구성하고 `docs/project/` 공개 문서 구조를 추가
 - [x] `round-counter` - Round Counter (`docs/ai/tasks/round-counter/`) - 보드판 위 상태 알람에 현재 라운드 번호 표시 추가
 
 - [x] `player-token-ui-fix` - Player Token UI Fix (`docs/ai/tasks/player-token-ui-fix/`) - 플레이어 말 위 숫자 표시 제거
