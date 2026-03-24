@@ -28,7 +28,6 @@ import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
-  calcPlayerTotalAssets,
 } from './game/gameViewModel'
 import {
   consumePendingGameChatEcho,
@@ -605,14 +604,7 @@ const GamePage: React.FC = () => {
                   nickname: player.name ?? `Player ${player.id + 1}`,
                   color: player.color,
                   money: player.money,
-                  totalAssets:
-                    storePlayers[player.originalIndex]?.totalAssets ??
-                    (storePlayers[player.originalIndex]
-                      ? calcPlayerTotalAssets(
-                          storePlayers[player.originalIndex],
-                          storeTiles
-                        )
-                      : player.money),
+                  totalAssets: storePlayers[player.originalIndex]?.totalAssets,
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
                 isRichest={player.money > 0 && player.money === maxMoney}
