@@ -272,7 +272,23 @@ const GamePage: React.FC = () => {
 
   const diceRoll = useDiceRoll()
 
-  const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
+  const playerTotalAssetsMap = useMemo(
+    () =>
+      new Map(
+        boardPlayers.map((player, index) => [
+          player.id,
+          storePlayers[index]?.totalAssets,
+        ])
+      ),
+    [boardPlayers, storePlayers]
+  )
+  const totalAssetsValues = [...playerTotalAssetsMap.values()].filter(
+    (value): value is number => typeof value === 'number'
+  )
+  const maxTotalAssets =
+    totalAssetsValues.length > 0
+      ? Math.max(...totalAssetsValues)
+      : Number.NEGATIVE_INFINITY
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
     currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
@@ -581,7 +597,11 @@ const GamePage: React.FC = () => {
 
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {[...boardPlayers]
-            .map((player, index) => ({ ...player, originalIndex: index }))
+            .map((player, index) => ({
+              ...player,
+              originalIndex: index,
+              totalAssets: playerTotalAssetsMap.get(player.id) ?? player.money,
+            }))
             .sort((left, right) => {
               const leftBankrupt = left.money <= 0 ? 1 : 0
               const rightBankrupt = right.money <= 0 ? 1 : 0
@@ -589,8 +609,12 @@ const GamePage: React.FC = () => {
                 return leftBankrupt - rightBankrupt
               }
 
-              if (left.money !== right.money) {
-                return right.money - left.money
+              const leftTotalAssets =
+                left.totalAssets ?? Number.NEGATIVE_INFINITY
+              const rightTotalAssets =
+                right.totalAssets ?? Number.NEGATIVE_INFINITY
+              if (leftTotalAssets !== rightTotalAssets) {
+                return rightTotalAssets - leftTotalAssets
               }
 
               return left.originalIndex - right.originalIndex
@@ -604,10 +628,14 @@ const GamePage: React.FC = () => {
                   nickname: player.name ?? `Player ${player.id + 1}`,
                   color: player.color,
                   money: player.money,
-                  totalAssets: storePlayers[player.originalIndex]?.totalAssets,
+                  totalAssets: player.totalAssets,
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
-                isRichest={player.money > 0 && player.money === maxMoney}
+                isRichest={
+                  player.money > 0 &&
+                  player.totalAssets !== undefined &&
+                  player.totalAssets === maxTotalAssets
+                }
                 isBankrupt={player.money <= 0}
               />
             ))}
