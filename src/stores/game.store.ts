@@ -453,13 +453,8 @@ export const useGameStore = create<GameStoreState>()(
         Object.assign(draft, normalizeState(draft))
 
         const nextCurrentPlayerId = draft.currentPlayerId ?? draft.currentTurn
-        const envelopeTurn =
-          typeof envelope.turn === 'number' && Number.isFinite(envelope.turn)
-            ? Math.trunc(envelope.turn)
-            : null
-        if (envelopeTurn != null) {
-          draft.round = envelopeTurn
-        }
+        // envelope.turn은 이제 draft.round를 직접 덮어쓰지 않고,
+        // 서버의 patch 연산(op: 'set', path: 'round')을 통해 round가 업데이트되는 것을 기다립니다.
 
         const hasTurnEndedEvent = (envelope.events ?? []).some(
           (event) =>
@@ -470,8 +465,7 @@ export const useGameStore = create<GameStoreState>()(
           previousPhase !== 'rolling' && draft.phase === 'rolling'
         const currentPlayerChanged =
           previousCurrentPlayerId !== nextCurrentPlayerId
-        const roundAdvanced =
-          envelopeTurn != null && envelopeTurn > previousRound
+        const roundAdvanced = draft.round > previousRound
         const revisionAdvanced =
           hasRevision && envelope.revision > previousRevision
         const turnBoundaryByEvent =
