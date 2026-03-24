@@ -981,6 +981,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const isSellPromptOpen = promptModalKind === 'sell'
     const isAcquisitionPromptOpen = promptModalKind === 'acquisition'
     const isTravelPromptOpen = promptModalKind === 'travel'
+    const isIslandPromptOpen = promptModalKind === 'island'
+    const isGoToIslandPromptOpen = promptModalKind === 'go_to_island'
 
     const promptTileId = getPromptPayloadNumber(activePrompt, [
       'tileId',
@@ -1228,20 +1230,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setGoToIslandModal({ open: false })
 
       const p = playersRef.current[curPlayer]
-      const roundLabel = round != null ? ` · ${round}/20턴` : ''
       if (p) {
         if (p.state === 'island') {
           setStatus(
-            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)${roundLabel}`
+            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)`
           )
         } else if ((p.skipTurns ?? 0) > 0) {
           setStatus(
-            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)${roundLabel}`
+            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)`
           )
         } else if (p.state === 'bankrupt') {
-          setStatus(`${p.name}님은 파산 상태입니다${roundLabel}`)
+          setStatus(`${p.name}님은 파산 상태입니다`)
         } else {
-          setStatus(`${p.name}님의 차례입니다${roundLabel}`)
+          setStatus(`${p.name}님의 차례입니다`)
         }
       }
     }, [curPlayer, round, stopDiceRollAnimation])
@@ -2035,6 +2036,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const activePlayerMoney = players[curPlayer]?.money ?? 0
     const islandRestTurns = (() => {
+      const promptTurns = getPromptPayloadNumber(activePrompt, [
+        'restTurns',
+        'rest_turns',
+        'skipTurns',
+        'skip_turns',
+        'duration',
+      ])
+      if (promptTurns != null) return promptTurns
+
       const player = players[curPlayer]
       if (!player) return null
       const rawTurns =
@@ -2605,12 +2615,14 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <GoToIslandModal
-          open={canShowModal && goToIslandModal.open}
+          open={
+            canShowModal && (isGoToIslandPromptOpen || goToIslandModal.open)
+          }
           onConfirm={handleGoToIslandConfirm}
         />
         {/* 🏝️ 무인도 (직접 도착) 팝업 */}
         <IslandModal
-          open={canShowModal && islandModal.open}
+          open={canShowModal && (isIslandPromptOpen || islandModal.open)}
           restTurns={islandRestTurns}
           onConfirm={handleIslandConfirm}
         />

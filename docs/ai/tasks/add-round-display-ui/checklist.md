@@ -1,0 +1,4 @@
+- [ ] `game.store.ts`의 `applyPatchEnvelope`에서 `draft.round = envelopeTurn` 로직 제거
+- [ ] `GamePage.tsx`에 라운드 표시 전용 배지 UI 구현 (주사위 버튼 위)
+- [ ] 디자인 디테일 적용 (white bg, rounded-3xl, black bold text etc.)
+- [ ] `round`가 갱신될 때 UI가 즉각 반응하는지 확인 (Mock/Real 환경)

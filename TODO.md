@@ -15,6 +15,8 @@
 
 ## Done
 
+- [x] `add-round-display-ui` - Add Round Display UI (`docs/ai/tasks/add-round-display-ui/`) - 주사위 버튼 상단에 서버 round 정보를 표시하는 디자인 UI 추가
+- [x] `feat-round-progress` - Remove Round/Turn Progress UI (`docs/ai/tasks/feat-round-progress/`) - 화면에 상시 노출되던 (1/20 턴) 및 Turn X / 20 UI를 모두 제거하고, 최초 1턴에만 시작 안내 문구가 나오도록 원상복구
 - [x] `fix-round-display` - Fix Round Display (`docs/ai/tasks/fix-round-display/`) - 서버 패치의 turn 값을 라운드 변수에 제약 없이 즉각 반영하고, UI의 '라운드' 문자열을 '턴'으로 교체
 
 - [x] `sell-modal-server-driven` - Sell Modal Server Driven (`docs/ai/tasks/sell-modal-server-driven/`) - 강제호출 매각모달 팝업 제거 및 채팅창 라운드 표출 갱신

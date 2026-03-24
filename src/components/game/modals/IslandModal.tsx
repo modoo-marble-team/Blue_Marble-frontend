@@ -26,7 +26,7 @@ const IslandModal: React.FC<IslandModalProps> = ({
     return null
   }
 
-  const description = `당신은 무인도에 갇혔습니다.\n${restTurns ?? 3}턴 동안 쉬거나, 주사위 더블 시 탈출합니다.`
+  const description = `당신은 무인도에 갇혔습니다. ${restTurns ?? 3}턴 동안 쉬거나,\n주사위 더블 시 탈출합니다.`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2438]/30">
@@ -44,7 +44,7 @@ const IslandModal: React.FC<IslandModalProps> = ({
         </h2>
 
         {/* Subtitle */}
-        <p className="mb-8 text-[15px] font-medium tracking-tight text-[#6A788A]">
+        <p className="mb-8 text-center text-[15px] font-medium tracking-tight text-[#6A788A] whitespace-pre-line">
           {description}
         </p>
 

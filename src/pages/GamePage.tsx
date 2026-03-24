@@ -555,7 +555,9 @@ const GamePage: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
-            notice={`게임 시작! 순서를 정했습니다. (${round ?? 1}/20 턴)`}
+            notice={
+              (round ?? 1) > 1 ? undefined : '게임 시작! 순서를 정했습니다.'
+            }
           />
         </div>
 
@@ -628,7 +630,16 @@ const GamePage: React.FC = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-10 right-10 z-20">
+      <div className="absolute bottom-10 right-10 z-20 flex flex-col items-center gap-4">
+        {/* Round Badge */}
+        <div className="flex items-center gap-3 rounded-2xl bg-white/95 px-7 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.12)] backdrop-blur-sm border border-white/20">
+          <span className="text-4xl font-black tracking-tighter text-[#1e293b]">
+            {round ?? 1}/20
+          </span>
+          <span className="text-2xl font-black tracking-tight text-[#1e293b]">
+            round
+          </span>
+        </div>
         <RollButton
           isMyTurn={canControlTurn}
           mode={rollButtonMode}
