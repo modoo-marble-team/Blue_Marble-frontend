@@ -207,6 +207,16 @@ function renderGamePage(options?: {
   )
 }
 
+const getRoundBadge = (): HTMLElement => {
+  const badge = screen.getByText('Round').parentElement
+
+  if (!badge) {
+    throw new Error('Round badge was not rendered.')
+  }
+
+  return badge
+}
+
 describe('GamePage chat flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -239,6 +249,29 @@ describe('GamePage chat flow', () => {
   afterEach(() => {
     useGameStore.getState().resetGame()
     useAuthStore.setState({ session: null })
+  })
+
+  it('라운드 배지는 현재 round 값을 그대로 표시한다', () => {
+    useGameStore.getState().setGameState({
+      round: 7,
+    })
+
+    renderGamePage()
+
+    expect(getRoundBadge()).toHaveTextContent('7')
+    expect(getRoundBadge()).toHaveTextContent('/ 20')
+  })
+
+  it('라운드 배지는 20을 초과하면 20으로 clamp해서 표시한다', () => {
+    useGameStore.getState().setGameState({
+      round: 21,
+    })
+
+    renderGamePage()
+
+    expect(getRoundBadge()).toHaveTextContent('20')
+    expect(getRoundBadge()).toHaveTextContent('/ 20')
+    expect(getRoundBadge()).not.toHaveTextContent('21')
   })
 
   it('renders a local chat message immediately and avoids duplicates when the server echo arrives', async () => {
