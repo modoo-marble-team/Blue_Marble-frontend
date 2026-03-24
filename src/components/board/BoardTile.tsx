@@ -16,10 +16,19 @@ interface TokenProps {
   stripOffset?: number
   offset?: { x: number; y: number }
   style?: React.CSSProperties
+  isTraveling?: boolean
+  travelIconSrc?: string
 }
 
 export const PlayerToken = React.memo<TokenProps>(
-  ({ player, stripOffset = 0, offset = { x: 0, y: 0 }, style }) => {
+  ({
+    player,
+    stripOffset = 0,
+    offset = { x: 0, y: 0 },
+    style,
+    isTraveling = false,
+    travelIconSrc = '/Travel- airplane.svg',
+  }) => {
     const { x, y } = offset
     const isIsland = player.state === 'island' || (player.skipTurns ?? 0) > 0
 
@@ -31,21 +40,31 @@ export const PlayerToken = React.memo<TokenProps>(
         animate={{
           x: x,
           y: y + stripOffset,
-          scale: 1,
+          scale: isTraveling ? [1, 1.09, 1] : 1,
+          rotate: isTraveling ? [0, -7, 7, 0] : 0,
           opacity: 1,
         }}
-        transition={{
-          type: 'tween',
-          duration: 0.2,
-          ease: 'linear',
-        }}
+        transition={
+          isTraveling
+            ? {
+                x: { type: 'tween', duration: 0.2, ease: 'linear' },
+                y: { type: 'tween', duration: 0.2, ease: 'linear' },
+                scale: { duration: 0.7, repeat: Infinity, ease: 'easeInOut' },
+                rotate: { duration: 0.7, repeat: Infinity, ease: 'easeInOut' },
+              }
+            : {
+                type: 'tween',
+                duration: 0.2,
+                ease: 'linear',
+              }
+        }
         style={{
           ...style,
           position: 'relative', // Grid 컨테이너 내에서의 상대 정렬
           width: 26,
           height: 26,
           borderRadius: '50%',
-          backgroundColor: player.color,
+          backgroundColor: isTraveling ? '#ffffff' : player.color,
           border: '2.5px solid white',
 
           display: 'flex',
@@ -55,10 +74,19 @@ export const PlayerToken = React.memo<TokenProps>(
           fontWeight: 900,
           color: '#fff',
           zIndex: 20,
-          boxShadow: '0 2px 6px rgba(0,0,0,0.35)',
+          boxShadow: isTraveling
+            ? '0 3px 10px rgba(36,95,229,0.45)'
+            : '0 2px 6px rgba(0,0,0,0.35)',
         }}
       >
-        {isIsland && <span style={{ fontSize: 10 }}>🏝️</span>}
+        {isTraveling && (
+          <img
+            src={travelIconSrc}
+            alt="여행 이동 중"
+            style={{ width: 19, height: 19, objectFit: 'contain' }}
+          />
+        )}
+        {isIsland && !isTraveling && <span style={{ fontSize: 10 }}>🏝️</span>}
         {(player.skipTurns ?? 0) > 0 && (
           <div
             style={{
@@ -90,6 +118,8 @@ export const PlayerToken = React.memo<TokenProps>(
       prev.offset?.x === next.offset?.x &&
       prev.offset?.y === next.offset?.y &&
       prev.stripOffset === next.stripOffset &&
+      prev.isTraveling === next.isTraveling &&
+      prev.travelIconSrc === next.travelIconSrc &&
       prev.style?.gridRow === next.style?.gridRow &&
       prev.style?.gridColumn === next.style?.gridColumn
     )
@@ -137,6 +167,7 @@ interface BoardTileProps {
   tileOwner?: TileOwner
   isUrgent?: boolean
   isActivePlayerTile?: boolean
+  activeEffectTileBorderColor?: string | null
 }
 
 const BoardTile: React.FC<BoardTileProps> = ({
@@ -145,6 +176,7 @@ const BoardTile: React.FC<BoardTileProps> = ({
   tileOwner,
   isUrgent: isUrgentProp = false,
   isActivePlayerTile = false,
+  activeEffectTileBorderColor = null,
 }) => {
   const isProperty = tile.type === 'PROPERTY'
   const buildingLevel = tileOwner?.level ?? 0
@@ -171,7 +203,9 @@ const BoardTile: React.FC<BoardTileProps> = ({
       : null // 미구매 건물은 줄 없음
     : getStripColor(tile)
   const tileBg = ownerStyle ? ownerStyle.bg : '#FFFFFF'
-  const outerBorderColor = ownerStyle ? ownerStyle.strip : '#E2E8F0'
+  const outerBorderColor =
+    (isProperty && activeEffectTileBorderColor) ||
+    (ownerStyle ? ownerStyle.strip : '#E2E8F0')
 
   const isUrgent = isActivePlayerTile && isUrgentProp
 

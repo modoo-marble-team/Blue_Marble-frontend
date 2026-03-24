@@ -577,4 +577,19 @@ describe('GamePage chat flow', () => {
       },
     })
   })
+
+  it('라운드 정보가 뱃지에 올바르게 표시된다', async () => {
+    useGameStore.getState().setGameState({
+      round: 3,
+    })
+
+    renderGamePage()
+
+    // Round number
+    expect(screen.getByText('3')).toBeInTheDocument()
+    // Total rounds
+    expect(screen.getByText('/ 20')).toBeInTheDocument()
+    // Label
+    expect(screen.getByText('Round')).toBeInTheDocument()
+  })
 })

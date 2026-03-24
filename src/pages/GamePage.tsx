@@ -8,7 +8,6 @@ import ExitGameModal from '../components/game/modals/ExitGameModal'
 import { isPromptHandledByBoardModal } from '../components/game/modals/promptModalMapping'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import GlobalEffectModal from '../components/game/GlobalEffectModal'
-import GlobalEffectOverlay from '../components/game/GlobalEffectOverlay'
 import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/session/store'
 import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
@@ -587,6 +586,7 @@ const GamePage: React.FC = () => {
               isGameOver={isGameOver}
               winnerId={winnerId}
               onGameResultConfirm={handleGameResultConfirm}
+              activeGlobalEffect={activeGlobalEffect}
             />
           </div>
         </div>
@@ -706,8 +706,6 @@ const GamePage: React.FC = () => {
         senderOptions={roomChatSenderOptions}
         preferredSenderId={preferredRoomChatSenderId}
       />
-
-      <GlobalEffectOverlay activeEffect={activeGlobalEffect} />
 
       <GlobalEffectModal
         open={isGlobalEffectModalOpen}
