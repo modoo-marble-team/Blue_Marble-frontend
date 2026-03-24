@@ -45,7 +45,7 @@ const ALLOW_ALL_MOCK_TURNS =
   import.meta.env.DEV && import.meta.env.VITE_ALLOW_ALL_MOCK_TURNS === 'true'
 
 const GAME_CHAT_TITLE = '실시간 채팅'
-const GAME_START_NOTICE = '게임 시작! 순서를 정했습니다.'
+const GAME_START_NOTICE = '게임 시작! 순서를 정했습니다. (1/20 라운드)'
 const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
@@ -282,13 +282,7 @@ const GamePage: React.FC = () => {
       ),
     [boardPlayers, storePlayers]
   )
-  const totalAssetsValues = [...playerTotalAssetsMap.values()].filter(
-    (value): value is number => typeof value === 'number'
-  )
-  const maxTotalAssets =
-    totalAssetsValues.length > 0
-      ? Math.max(...totalAssetsValues)
-      : Number.NEGATIVE_INFINITY
+  const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
     currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
@@ -609,12 +603,8 @@ const GamePage: React.FC = () => {
                 return leftBankrupt - rightBankrupt
               }
 
-              const leftTotalAssets =
-                left.totalAssets ?? Number.NEGATIVE_INFINITY
-              const rightTotalAssets =
-                right.totalAssets ?? Number.NEGATIVE_INFINITY
-              if (leftTotalAssets !== rightTotalAssets) {
-                return rightTotalAssets - leftTotalAssets
+              if (left.money !== right.money) {
+                return right.money - left.money
               }
 
               return left.originalIndex - right.originalIndex
@@ -631,11 +621,7 @@ const GamePage: React.FC = () => {
                   totalAssets: player.totalAssets,
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
-                isRichest={
-                  player.money > 0 &&
-                  player.totalAssets !== undefined &&
-                  player.totalAssets === maxTotalAssets
-                }
+                isRichest={player.money > 0 && player.money === maxMoney}
                 isBankrupt={player.money <= 0}
               />
             ))}

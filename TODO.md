@@ -15,6 +15,8 @@
 
 ## Done
 
+- [x] `game-ux-improvements` - Game UX Improvements (`docs/ai/tasks/game-ux-improvements/`) - 무인도 문구, 20라운드 표기, 여행 애니메이션 단축 등 UX 개선 모음
+
 - [x] `sort-by-total-assets` - Sort By Total Assets (`docs/ai/tasks/sort-by-total-assets/`) - 왕관 및 플레이어 패널 순위를 보유금 대신 총자산 기준으로 변경
 
 - [x] `round-counter` - Round Counter (`docs/ai/tasks/round-counter/`) - 보드판 위 상태 알람에 현재 라운드 번호 표시 추가

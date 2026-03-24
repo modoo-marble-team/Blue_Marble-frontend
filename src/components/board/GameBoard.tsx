@@ -828,12 +828,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
           }
 
+          const isTravelMove = fromIndex === 20
+
           const movePromise = movePlayerSequentially(
             event.playerId!,
             fromIndex,
             tileIndex,
             {
               direction: moveDirection,
+              stepDelayMs: isTravelMove ? 80 : undefined,
+              initialDelayMs: isTravelMove ? 200 : undefined,
+              endDelayMs: isTravelMove ? 100 : undefined,
             }
           )
 
@@ -1223,7 +1228,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setGoToIslandModal({ open: false })
 
       const p = playersRef.current[curPlayer]
-      const roundLabel = round != null ? ` · ${round}라운드` : ''
+      const roundLabel = round != null ? ` · ${round}/20라운드` : ''
       if (p) {
         if (p.state === 'island') {
           setStatus(
