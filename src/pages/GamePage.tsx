@@ -28,7 +28,6 @@ import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
-  calcPlayerTotalAssets,
 } from './game/gameViewModel'
 import {
   consumePendingGameChatEcho,
@@ -46,7 +45,7 @@ const ALLOW_ALL_MOCK_TURNS =
   import.meta.env.DEV && import.meta.env.VITE_ALLOW_ALL_MOCK_TURNS === 'true'
 
 const GAME_CHAT_TITLE = '실시간 채팅'
-const GAME_START_NOTICE = '게임 시작! 순서를 정했습니다.'
+const GAME_START_NOTICE = '게임 시작! 순서를 정했습니다. (1/20 라운드)'
 const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
@@ -273,6 +272,16 @@ const GamePage: React.FC = () => {
 
   const diceRoll = useDiceRoll()
 
+  const playerTotalAssetsMap = useMemo(
+    () =>
+      new Map(
+        boardPlayers.map((player, index) => [
+          player.id,
+          storePlayers[index]?.totalAssets,
+        ])
+      ),
+    [boardPlayers, storePlayers]
+  )
   const maxMoney = Math.max(...boardPlayers.map((player) => player.money))
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt =
@@ -582,7 +591,11 @@ const GamePage: React.FC = () => {
 
         <div className="flex h-full w-[320px] shrink-0 flex-col gap-4 overflow-y-auto py-8">
           {[...boardPlayers]
-            .map((player, index) => ({ ...player, originalIndex: index }))
+            .map((player, index) => ({
+              ...player,
+              originalIndex: index,
+              totalAssets: playerTotalAssetsMap.get(player.id) ?? player.money,
+            }))
             .sort((left, right) => {
               const leftBankrupt = left.money <= 0 ? 1 : 0
               const rightBankrupt = right.money <= 0 ? 1 : 0
@@ -605,13 +618,7 @@ const GamePage: React.FC = () => {
                   nickname: player.name ?? `Player ${player.id + 1}`,
                   color: player.color,
                   money: player.money,
-                  totalAssets: calcPlayerTotalAssets(
-                    storePlayers[player.originalIndex] ?? {
-                      balance: player.money,
-                      owned_tiles: [],
-                    },
-                    storeTiles
-                  ),
+                  totalAssets: player.totalAssets,
                 }}
                 isActive={player.originalIndex === boardCurPlayer}
                 isRichest={player.money > 0 && player.money === maxMoney}

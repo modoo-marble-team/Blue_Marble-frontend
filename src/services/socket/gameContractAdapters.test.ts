@@ -101,6 +101,7 @@ describe('gameContractAdapters', () => {
             nickname: 'alpha',
             currentTileId: 7,
             balance: 300,
+            totalAssets: 610000,
             ownedTiles: [2, 4],
             playerState: 'LOCKED',
             stateDuration: 2,
@@ -143,6 +144,7 @@ describe('gameContractAdapters', () => {
       id: 'player-1',
       position: 7,
       balance: 3000000,
+      totalAssets: 6100000000,
       owned_tiles: [2, 4],
       state: 'locked',
       is_in_jail: true,
@@ -523,6 +525,11 @@ describe('gameContractAdapters', () => {
         },
         {
           op: 'set',
+          path: 'players.0.total_assets',
+          value: 610000,
+        },
+        {
+          op: 'set',
           path: 'pending_prompt',
           value: {
             promptId: 'p-10',
@@ -579,6 +586,11 @@ describe('gameContractAdapters', () => {
         op: 'set',
         path: 'players.0.balance',
         value: 4500000,
+      },
+      {
+        op: 'set',
+        path: 'players.0.totalAssets',
+        value: 6100000000,
       },
       {
         op: 'set',

@@ -394,6 +394,11 @@ export const useGameStore = create<GameStoreState>()(
         if (hasRevision && envelope.revision < draft.revision) {
           return
         }
+        const previousRevision = draft.revision
+        const previousPhase = draft.phase
+        const previousCurrentPlayerId =
+          draft.currentPlayerId ?? draft.currentTurn
+        const previousRound = draft.round
 
         for (const operation of envelope.patch) {
           const path = toPathSegments(operation.path)
@@ -446,6 +451,44 @@ export const useGameStore = create<GameStoreState>()(
         }
         draft.eventQueue.push(...(envelope.events ?? []))
         Object.assign(draft, normalizeState(draft))
+
+        const nextCurrentPlayerId = draft.currentPlayerId ?? draft.currentTurn
+        const envelopeTurn =
+          typeof envelope.turn === 'number' && Number.isFinite(envelope.turn)
+            ? Math.trunc(envelope.turn)
+            : null
+        if (envelopeTurn != null && envelopeTurn > draft.round) {
+          draft.round = envelopeTurn
+        }
+
+        const hasTurnEndedEvent = (envelope.events ?? []).some(
+          (event) =>
+            typeof event.type === 'string' &&
+            event.type.trim().toUpperCase() === 'TURN_ENDED'
+        )
+        const enteredRollingPhase =
+          previousPhase !== 'rolling' && draft.phase === 'rolling'
+        const currentPlayerChanged =
+          previousCurrentPlayerId !== nextCurrentPlayerId
+        const roundAdvanced =
+          envelopeTurn != null && envelopeTurn > previousRound
+        const revisionAdvanced =
+          hasRevision && envelope.revision > previousRevision
+        const turnBoundaryByEvent =
+          hasTurnEndedEvent &&
+          (roundAdvanced ||
+            currentPlayerChanged ||
+            enteredRollingPhase ||
+            revisionAdvanced)
+
+        if (
+          turnBoundaryByEvent ||
+          enteredRollingPhase ||
+          currentPlayerChanged ||
+          roundAdvanced
+        ) {
+          draft.turnTimerKey = Date.now()
+        }
       }),
 
     applyTimerSync: (timerSync) =>
