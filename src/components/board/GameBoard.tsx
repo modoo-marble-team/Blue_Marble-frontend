@@ -835,6 +835,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           const isTravelMove =
             normalizedTrigger === 'travel' ||
+            fromIndex === 8 ||
             fromIndex === 16 ||
             fromIndex === 20
           if (isTravelMove && event.playerId != null) {
@@ -1578,7 +1579,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         await movePlayerSequentially(
           player.id,
           player.pos === islandTile.id ? 24 : player.pos,
-          islandTile.id
+          islandTile.id,
+          {
+            stepDelayMs: 80,
+            initialDelayMs: 200,
+            endDelayMs: 100,
+          }
         )
 
         const updatedPlayers = [...playersRef.current]
