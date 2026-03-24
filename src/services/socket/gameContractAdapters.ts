@@ -33,6 +33,8 @@ const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
 const MONEY_KEYS = new Set([
   'amount',
   'balance',
+  'totalAssets',
+  'total_assets',
   'buildCost',
   'build_cost',
   'buyoutCost',
@@ -588,6 +590,13 @@ const normalizePlayerFromSnapshot = (
       playerRecord.jail_turn_count,
     0
   )
+  const totalAssetsRaw =
+    playerRecord.totalAssets ??
+    playerRecord.total_assets ??
+    playerRecord.totalAsset ??
+    playerRecord.total_asset
+  const totalAssets =
+    totalAssetsRaw == null ? undefined : normalizeMoneyToWon(totalAssetsRaw, 0)
 
   return {
     id: toPlayerId(
@@ -606,6 +615,7 @@ const normalizePlayerFromSnapshot = (
       0
     ),
     balance: toFiniteInt(resolvePlayerBalance(playerRecord), 0),
+    totalAssets,
     owned_tiles: normalizeOwnedTileIds(
       playerRecord.owned_tiles ?? playerRecord.ownedTiles
     ),
@@ -963,6 +973,8 @@ const normalizePathSegment = (segment: string | number): string | number => {
   if (segment === 'player_state') return 'state'
   if (segment === 'money') return 'balance'
   if (segment === 'cash') return 'balance'
+  if (segment === 'total_assets') return 'totalAssets'
+  if (segment === 'totalAsset') return 'totalAssets'
   if (segment === 'ownedTiles') return 'owned_tiles'
   if (segment === 'pending_prompt') return 'prompt'
   if (segment === 'pendingPrompt') return 'prompt'
@@ -1099,6 +1111,10 @@ const normalizePatchSetValue = (
     return normalizeMoneyToWon(value, 0)
   }
 
+  if (lastSegment === 'totalAssets') {
+    return normalizeMoneyToWon(value, 0)
+  }
+
   if (lastSegment === 'price') {
     return normalizeMoneyToWon(value, 0)
   }
@@ -1129,7 +1145,9 @@ const normalizePatchOperation = (operation: GamePatchOperation) => {
 
   if (operation.op === 'inc') {
     const normalizedValue =
-      lastSegment === 'balance' || lastSegment === 'price'
+      lastSegment === 'balance' ||
+      lastSegment === 'totalAssets' ||
+      lastSegment === 'price'
         ? normalizeMoneyToWon(operation.value, 0)
         : toFiniteInt(operation.value, 0)
     return {
