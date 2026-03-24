@@ -49,6 +49,7 @@ const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
 const MOCK_LOCAL_PLAYER_INDEX = 0
+const MAX_ROUND_BADGE_VALUE = 20
 const FATAL_GAME_ROUTE_ERROR_CODES = new Set([
   'GAME_NOT_FOUND',
   'NOT_GAME_MEMBER',
@@ -148,6 +149,10 @@ const GamePage: React.FC = () => {
     currentUserId
       ? currentUserId
       : effectiveCurrentTurn
+  const displayedRoundBadgeValue = Math.min(
+    Math.max(round ?? 1, 1),
+    MAX_ROUND_BADGE_VALUE
+  )
 
   const boardPlayers = useMemo(
     () => mapStorePlayersToBoardPlayers(storePlayers),
@@ -632,12 +637,15 @@ const GamePage: React.FC = () => {
 
       <div className="absolute bottom-10 right-10 z-20 flex flex-col items-center gap-4">
         {/* Round Badge */}
-        <div className="flex items-baseline gap-1.5 rounded-full border-[3px] border-white bg-[#EFF5FF] px-6 py-2.5 shadow-[0_8px_16px_rgba(36,95,229,0.12)]">
+        <div
+          aria-label="현재 라운드 배지"
+          className="flex items-baseline gap-1.5 rounded-full border-[3px] border-white bg-[#EFF5FF] px-6 py-2.5 shadow-[0_8px_16px_rgba(36,95,229,0.12)]"
+        >
           <span className="text-[28px] font-black leading-none tracking-tighter text-[#245FE5]">
-            {round ?? 1}
+            {displayedRoundBadgeValue}
           </span>
           <span className="text-xl font-bold leading-none tracking-tight text-[#8BA3CB]">
-            / 20
+            / {MAX_ROUND_BADGE_VALUE}
           </span>
           <span className="ml-1 text-base font-black uppercase leading-none tracking-widest text-[#5E708D]">
             Round
