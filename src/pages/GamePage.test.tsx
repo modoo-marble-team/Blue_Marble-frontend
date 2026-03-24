@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GamePage from './GamePage'
@@ -222,6 +222,39 @@ const createPlayer = (overrides: Partial<Player> = {}): Player => ({
   ...overrides,
 })
 
+type GameStoreState = ReturnType<typeof useGameStore.getState>
+type GameStatePatch = Parameters<GameStoreState['setGameState']>[0]
+type TestAuthSession = ReturnType<typeof createAuthSessionFixture> | null
+
+const runStoreUpdate = (callback: () => void) => {
+  act(() => {
+    callback()
+  })
+}
+
+const setTestAuthSession = (session: TestAuthSession) => {
+  runStoreUpdate(() => {
+    useAuthStore.setState({ session })
+  })
+}
+
+const resetTestGameStore = () => {
+  runStoreUpdate(() => {
+    useGameStore.getState().resetGame()
+  })
+}
+
+const setTestGameState = (state: GameStatePatch) => {
+  runStoreUpdate(() => {
+    useGameStore.getState().setGameState(state)
+  })
+}
+
+const resetAndSetTestGameState = (state: GameStatePatch) => {
+  resetTestGameStore()
+  setTestGameState(state)
+}
+
 function renderGamePage(options?: {
   initialEntries?: Array<{
     pathname: string
@@ -275,15 +308,14 @@ describe('GamePage chat flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    useAuthStore.setState({
-      session: createAuthSessionFixture({
+    setTestAuthSession(
+      createAuthSessionFixture({
         userId: 'user-1',
         nickname: '유저1',
-      }),
-    })
+      })
+    )
 
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       currentTurn: 'user-2',
@@ -301,12 +333,13 @@ describe('GamePage chat flow', () => {
   })
 
   afterEach(() => {
-    useGameStore.getState().resetGame()
-    useAuthStore.setState({ session: null })
+    cleanup()
+    resetTestGameStore()
+    setTestAuthSession(null)
   })
 
   it('라운드 배지는 현재 round 값을 그대로 표시한다', () => {
-    useGameStore.getState().setGameState({
+    setTestGameState({
       round: 7,
     })
 
@@ -317,7 +350,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('라운드 배지는 20을 초과하면 20으로 clamp해서 표시한다', () => {
-    useGameStore.getState().setGameState({
+    setTestGameState({
       round: 21,
     })
 
@@ -329,7 +362,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('우측 패널은 totalAssets를 우선 표시하고 그 기준으로 정렬과 왕관을 표시한다', () => {
-    useGameStore.getState().setGameState({
+    setTestGameState({
       players: [
         createPlayer({
           id: 'user-1',
@@ -360,7 +393,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('게임 종료 시 rankings 기준으로 우측 패널 순서와 자산을 맞춘다', () => {
-    useGameStore.getState().setGameState({
+    setTestGameState({
       phase: 'finished',
       isGameOver: true,
       players: [
@@ -411,7 +444,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('게임 종료 시 winner만 있어도 우측 패널 승자 자산을 winner.assets로 보정한다', () => {
-    useGameStore.getState().setGameState({
+    setTestGameState({
       phase: 'finished',
       isGameOver: true,
       winnerId: 'user-2',
@@ -538,8 +571,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('players가 비어 있어도 finished gameResult가 있으면 로딩 화면 대신 게임 화면을 렌더한다', () => {
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'finished',
@@ -564,8 +596,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('players가 비어 있어도 isGameOver면 로딩 화면 대신 게임 화면을 렌더한다', () => {
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'rolling',
@@ -585,8 +616,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('authoritative gameResult가 있으면 종료 결과 액션을 노출한다', () => {
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'finished',
@@ -615,8 +645,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('종료 상태가 아니고 players가 비어 있으면 기존처럼 로딩 화면을 렌더한다', () => {
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'rolling',
@@ -633,8 +662,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('fatal game error와 roomId가 있으면 해당 대기방으로 fallback 이동한다', async () => {
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'rolling',
@@ -668,8 +696,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('fatal game error와 roomId가 없으면 로비로 fallback 이동한다', async () => {
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: null,
       gameId: 'game-1',
       phase: 'rolling',
@@ -704,7 +731,7 @@ describe('GamePage chat flow', () => {
   it('게임 종료 결과 확인 시 같은 대기방으로 이동하고 game store를 초기화한다', async () => {
     const user = userEvent.setup()
 
-    useGameStore.getState().setGameState({
+    setTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'finished',
@@ -738,8 +765,7 @@ describe('GamePage chat flow', () => {
   it('게임 종료 결과 확인 시 roomId가 없으면 로비로 이동한다', async () => {
     const user = userEvent.setup()
 
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: null,
       gameId: 'game-1',
       phase: 'finished',
@@ -779,8 +805,7 @@ describe('GamePage chat flow', () => {
   it('종료 상태에서는 fatal game error가 있어도 버튼 클릭 전 자동 fallback 이동하지 않는다', async () => {
     const user = userEvent.setup()
 
-    useGameStore.getState().resetGame()
-    useGameStore.getState().setGameState({
+    resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
       phase: 'finished',
@@ -822,7 +847,7 @@ describe('GamePage chat flow', () => {
   })
 
   it('라운드 정보가 뱃지에 올바르게 표시된다', async () => {
-    useGameStore.getState().setGameState({
+    setTestGameState({
       round: 3,
     })
 
