@@ -1413,58 +1413,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       open: false,
     })
 
+    const hasAuthoritativeGameResult = Boolean(
+      gameResult?.winner ||
+      (Array.isArray(gameResult?.rankings) && gameResult.rankings.length > 0)
+    )
+
     useEffect(() => {
-      const shouldOpenGameResultModal = isGameOver || gameResult != null
+      const shouldOpenGameResultModal = hasAuthoritativeGameResult
       if (shouldOpenGameResultModal) {
         setGameResultModal((prev) => (prev.open ? prev : { open: true }))
         return
       }
 
       setGameResultModal({ open: false })
-    }, [gameResult, isGameOver])
-
-    const getPlayerResults = useCallback(() => {
-      const results = players.map((player, index) => {
-        let propertyValue = 0
-        let cityCount = 0
-
-        Object.entries(tileOwners).forEach(([tileId, owner]) => {
-          if (String(owner.ownerId) !== String(player.id)) {
-            return
-          }
-
-          const tile = boardTiles[Number(tileId)]
-          propertyValue += tile?.price ?? 0
-          cityCount++
-        })
-
-        const isBankrupt =
-          player.state === 'bankrupt' || player.money <= 0 || false
-
-        return {
-          id: String(player.id),
-          nickname: player.name || `Player ${index + 1}`,
-          money: player.money,
-          totalAsset: player.money + propertyValue,
-          ownedCityCount: cityCount,
-          isBankrupt,
-        }
-      })
-
-      return results.sort((left, right) => {
-        if (left.isBankrupt && !right.isBankrupt) {
-          return 1
-        }
-        if (!left.isBankrupt && right.isBankrupt) {
-          return -1
-        }
-        return right.totalAsset - left.totalAsset
-      })
-    }, [boardTiles, players, tileOwners])
-    const fallbackPlayerResults = useMemo(
-      () => getPlayerResults(),
-      [getPlayerResults]
-    )
+    }, [hasAuthoritativeGameResult])
     const serverResultRows = useMemo(() => {
       const rankings = gameResult?.rankings
       if (!rankings || rankings.length === 0) {
@@ -1499,13 +1461,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return [winnerResultRow]
       }
 
-      return fallbackPlayerResults.map((result) => ({
-        id: result.id,
-        nickname: result.nickname,
-        totalAssetText: formatWon(result.totalAsset),
-        ownedCityCountText: `${result.ownedCityCount}개`,
-      }))
-    }, [fallbackPlayerResults, serverResultRows, winnerResultRow])
+      return []
+    }, [serverResultRows, winnerResultRow])
     const resultModalWinnerName = useMemo(() => {
       if (gameResult?.winner?.nickname) {
         return gameResult.winner.nickname
@@ -1526,11 +1483,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         )
       }
 
-      return (
-        fallbackPlayerResults.find((result) => !result.isBankrupt)?.nickname ??
-        '승리자'
-      )
-    }, [fallbackPlayerResults, gameResult, serverResultRows, winnerId])
+      return '승리자'
+    }, [gameResult, serverResultRows, winnerId])
 
     function handleBankruptConfirm() {
       const { onDoneCallback } = bankruptModal
