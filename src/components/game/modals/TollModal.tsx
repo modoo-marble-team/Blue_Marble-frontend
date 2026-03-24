@@ -5,6 +5,7 @@ interface TollModalProps {
   cityName?: string
   ownerName?: string
   tollText?: string
+  tollTextColor?: string
   confirmLabel?: string
   isSubmitting?: boolean
   onConfirm?: () => void
@@ -20,6 +21,7 @@ const TollModal: React.FC<TollModalProps> = ({
   cityName = DEFAULT_CITY_NAME,
   ownerName = DEFAULT_OWNER_NAME,
   tollText = DEFAULT_TOLL_TEXT,
+  tollTextColor = '#EF5350',
   confirmLabel = DEFAULT_CONFIRM_LABEL,
   isSubmitting = false,
   onConfirm,
@@ -50,7 +52,7 @@ const TollModal: React.FC<TollModalProps> = ({
         <p className="mb-10 mt-4 text-center text-[24px] font-bold leading-[1.35] text-[#5A6D8A]">
           <span className="text-[#245FE5]">{ownerName}</span>님에게
           <br />
-          <span className="text-[#EF5350]">{tollText}</span> 통행료를
+          <span style={{ color: tollTextColor }}>{tollText}</span> 통행료를
           지불합니다.
         </p>
 

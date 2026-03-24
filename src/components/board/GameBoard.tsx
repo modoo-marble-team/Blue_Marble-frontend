@@ -21,6 +21,8 @@ import DoubleDicePopup from '../game/modals/DoubleDicePopup'
 import GameResultModal from '../game/modals/GameResultModal'
 import GoToIslandModal from '../game/modals/GoToIslandModal'
 import IslandModal from '../game/modals/IslandModal'
+import GlobalEffectOverlay from '../game/GlobalEffectOverlay'
+import { GLOBAL_EFFECT_THEME_BY_TYPE } from '../game/globalEffectTheme'
 import {
   getPromptChoiceLabel,
   getPromptPayloadNumber,
@@ -102,6 +104,7 @@ import '../../styles/board.css'
 import { formatWon } from '../../lib/utils'
 import type {
   GamePhase,
+  GlobalEffectState,
   GamePrompt,
   GameResult,
   PlayerId,
@@ -366,6 +369,7 @@ interface GameBoardProps {
   winnerId?: PlayerId | null
   onGameResultConfirm?: () => void
   onBlockingModalChange?: (blocked: boolean) => void
+  activeGlobalEffect?: GlobalEffectState | null
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -507,6 +511,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       winnerId = null,
       onGameResultConfirm,
       onBlockingModalChange,
+      activeGlobalEffect = null,
     },
     ref
   ) => {
@@ -828,7 +833,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
           }
 
-          const isTravelMove = fromIndex === 20
+          const isTravelMove =
+            normalizedTrigger === 'travel' ||
+            fromIndex === 16 ||
+            fromIndex === 20
+          if (isTravelMove && event.playerId != null) {
+            startTravelTokenFx(event.playerId, 1600)
+          }
 
           const movePromise = movePlayerSequentially(
             event.playerId!,
@@ -849,6 +860,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
             if (playerKey && playerKey !== 'null') {
               lastMovePositionRef.current[playerKey] = tileIndex
+            }
+            if (isTravelMove && event.playerId != null) {
+              clearTravelTokenFx(event.playerId)
             }
             // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
             handleArrivalRef.current(
@@ -1269,6 +1283,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const [travelSelection, setTravelSelection] = useState(
       INITIAL_TRAVEL_SELECTION_STATE
     )
+    const [travelingPlayerIds, setTravelingPlayerIds] = useState<
+      Record<string, boolean>
+    >({})
+    const travelFxTimeoutRef = useRef<Record<string, number>>({})
     const [dismissedTravelPromptId, setDismissedTravelPromptId] = useState<
       string | null
     >(null)
@@ -1748,6 +1766,47 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       submitPromptChoice(promptTravelCancelChoiceValue ?? 'SKIP')
     }
 
+    const clearTravelTokenFx = useCallback((playerId: PlayerId) => {
+      const playerKey = String(playerId)
+      const timeoutId = travelFxTimeoutRef.current[playerKey]
+      if (timeoutId != null) {
+        window.clearTimeout(timeoutId)
+        delete travelFxTimeoutRef.current[playerKey]
+      }
+      setTravelingPlayerIds((prev) => {
+        if (!prev[playerKey]) {
+          return prev
+        }
+        const next = { ...prev }
+        delete next[playerKey]
+        return next
+      })
+    }, [])
+
+    const startTravelTokenFx = useCallback(
+      (playerId: PlayerId, durationMs = 1400) => {
+        const playerKey = String(playerId)
+        const prevTimeout = travelFxTimeoutRef.current[playerKey]
+        if (prevTimeout != null) {
+          window.clearTimeout(prevTimeout)
+        }
+        setTravelingPlayerIds((prev) => ({ ...prev, [playerKey]: true }))
+        travelFxTimeoutRef.current[playerKey] = window.setTimeout(() => {
+          clearTravelTokenFx(playerId)
+        }, durationMs)
+      },
+      [clearTravelTokenFx]
+    )
+
+    useEffect(() => {
+      return () => {
+        Object.values(travelFxTimeoutRef.current).forEach((timeoutId) => {
+          window.clearTimeout(timeoutId)
+        })
+        travelFxTimeoutRef.current = {}
+      }
+    }, [])
+
     function handleTravelDestinationSelect(tileId: number) {
       if (!travelSelection.active) {
         return
@@ -1761,6 +1820,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const { onDoneCallback } = travelSelection
       const hasTravelPromptContext = isTravelPromptOpen && !!activePrompt?.id
+      startTravelTokenFx(currentPlayer.id, hasTravelPromptContext ? 2500 : 1200)
 
       if (hasTravelPromptContext) {
         const submitted = submitPromptChoice('CONFIRM', undefined, {
@@ -1957,6 +2017,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const tollModalOpen = isTollPromptOpen
     const tollOwnerName = promptOwnerName
     const tollAmountText = formatWon(promptAmount ?? 0)
+    const activeEffectTheme = activeGlobalEffect
+      ? GLOBAL_EFFECT_THEME_BY_TYPE[activeGlobalEffect.effect]
+      : null
     const sellTileId = isSellPromptOpen ? promptTileId : citySellModal.tileId
     const sellTile = sellTileId != null ? boardTiles[sellTileId] : null
     const sellOwnerName = isSellPromptOpen
@@ -2235,6 +2298,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
+                      activeEffectTileBorderColor={
+                        activeEffectTheme?.tileBorderColor
+                      }
                     />
                   </div>
                 )
@@ -2269,6 +2335,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
+                      activeEffectTileBorderColor={
+                        activeEffectTheme?.tileBorderColor
+                      }
                     />
                   </div>
                 )
@@ -2302,6 +2371,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
+                      activeEffectTileBorderColor={
+                        activeEffectTheme?.tileBorderColor
+                      }
                     />
                   </div>
                 )
@@ -2335,6 +2407,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       tileOwner={tileOwners[id]}
                       isUrgent={isTimerUrgent}
                       isActivePlayerTile={id === players[curPlayer]?.pos}
+                      activeEffectTileBorderColor={
+                        activeEffectTheme?.tileBorderColor
+                      }
                     />
                   </div>
                 )
@@ -2381,6 +2456,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     player={p}
                     stripOffset={hasStrip ? 7 : 0}
                     offset={offset}
+                    isTraveling={Boolean(travelingPlayerIds[playerKey])}
+                    travelIconSrc="/Travel- airplane.svg"
                     // Grid 직접 컨트롤 (움찔거림 방지 핵심)
                     style={{
                       gridRow: row,
@@ -2463,6 +2540,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               </div>
             </div>
           </div>
+          <GlobalEffectOverlay activeEffect={activeGlobalEffect} />
         </div>
 
         <BuyModal
@@ -2553,6 +2631,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           cityName={promptTileName || tollTile?.name || ''}
           ownerName={tollOwnerName}
           tollText={tollAmountText}
+          tollTextColor={activeEffectTheme?.tollTextColor}
           confirmLabel={getPromptChoiceLabel(
             activePrompt,
             promptTollConfirmChoiceValue,
