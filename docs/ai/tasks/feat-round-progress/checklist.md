@@ -1,0 +1,3 @@
+- [x] `GamePage.tsx`의 채팅창 `notice` 속성을 `round > 1 ? undefined : '게임 시작! 순서를 정했습니다.'` 형태로 복원
+- [x] `GameBoard.tsx` 우측 상단의 `<div className="absolute right-2 top-2 z-10 select-none text-xs font-bold text-slate-800/50">Turn {round ?? 1} / 20</div>` 엘리먼트 제거
+- [x] `GameBoard.tsx` 내 상태 알림 메시지에 붙이던 `roundLabel`(` · ${round}/20턴`) 제거

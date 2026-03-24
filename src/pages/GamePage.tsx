@@ -555,7 +555,9 @@ const GamePage: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
-            notice={`게임 시작! 순서를 정했습니다. (${round ?? 1}/20 턴)`}
+            notice={
+              (round ?? 1) > 1 ? undefined : '게임 시작! 순서를 정했습니다.'
+            }
           />
         </div>
 

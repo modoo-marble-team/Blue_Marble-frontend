@@ -1228,20 +1228,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       setGoToIslandModal({ open: false })
 
       const p = playersRef.current[curPlayer]
-      const roundLabel = round != null ? ` · ${round}/20턴` : ''
       if (p) {
         if (p.state === 'island') {
           setStatus(
-            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)${roundLabel}`
+            `${p.name}님은 무인도에 있습니다 (${p.skipTurns ?? 0}턴 대기)`
           )
         } else if ((p.skipTurns ?? 0) > 0) {
           setStatus(
-            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)${roundLabel}`
+            `${p.name}님은 다음 턴까지 대기 중입니다 (${p.skipTurns}턴)`
           )
         } else if (p.state === 'bankrupt') {
-          setStatus(`${p.name}님은 파산 상태입니다${roundLabel}`)
+          setStatus(`${p.name}님은 파산 상태입니다`)
         } else {
-          setStatus(`${p.name}님의 차례입니다${roundLabel}`)
+          setStatus(`${p.name}님의 차례입니다`)
         }
       }
     }, [curPlayer, round, stopDiceRollAnimation])
