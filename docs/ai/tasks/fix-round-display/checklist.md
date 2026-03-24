@@ -1,0 +1,4 @@
+- [x] `game.store.ts`에서의 턴 데이터 갱신 로직 점검 (필요시 `>=` 등으로 업데이트 방어 완화)
+- [x] `GamePage.tsx` 상단 공지사항의 '(1/20 라운드)' 부분을 서버의 `turn` 데이터 기반 표출로 전환
+- [x] `GameBoard.tsx` 보드 우측상단의 'Round X / 20' 부분을 턴 기반으로 교체
+- [ ] (선택) 상태명 완전 교체가 필요하다면 `domain.ts` 및 사용 위치들(`draft.round` -> `draft.turn`) 전면 수정

@@ -457,7 +457,7 @@ export const useGameStore = create<GameStoreState>()(
           typeof envelope.turn === 'number' && Number.isFinite(envelope.turn)
             ? Math.trunc(envelope.turn)
             : null
-        if (envelopeTurn != null && envelopeTurn > draft.round) {
+        if (envelopeTurn != null) {
           draft.round = envelopeTurn
         }
 

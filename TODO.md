@@ -15,6 +15,8 @@
 
 ## Done
 
+- [x] `fix-round-display` - Fix Round Display (`docs/ai/tasks/fix-round-display/`) - 서버 패치의 turn 값을 라운드 변수에 제약 없이 즉각 반영하고, UI의 '라운드' 문자열을 '턴'으로 교체
+
 - [x] `sell-modal-server-driven` - Sell Modal Server Driven (`docs/ai/tasks/sell-modal-server-driven/`) - 강제호출 매각모달 팝업 제거 및 채팅창 라운드 표출 갱신
 - [x] `git-flow-rebase-safeguards` - Git Flow Rebase Safeguards (`docs/ai/tasks/git-flow-rebase-safeguards/`) - ai:git-flow의 branch 생성 전 / push 전 rebase 정책을 실행 결과와 사용 문서에서 더 명확히 드러내도록 정리
 - [x] `public-readme-project-docs` - Public Readme Project Docs (`docs/ai/tasks/public-readme-project-docs/`) - 루트 README를 대외용 소개 문서로 재구성하고 `docs/project/` 공개 문서 구조를 추가
