@@ -632,12 +632,15 @@ const GamePage: React.FC = () => {
 
       <div className="absolute bottom-10 right-10 z-20 flex flex-col items-center gap-4">
         {/* Round Badge */}
-        <div className="flex items-center gap-3 rounded-2xl bg-white/95 px-7 py-3 shadow-[0_20px_50px_rgba(0,0,0,0.12)] backdrop-blur-sm border border-white/20">
-          <span className="text-4xl font-black tracking-tighter text-[#1e293b]">
-            {round ?? 1}/20
+        <div className="flex items-baseline gap-1.5 rounded-full border-[3px] border-white bg-[#EFF5FF] px-6 py-2.5 shadow-[0_8px_16px_rgba(36,95,229,0.12)]">
+          <span className="text-[28px] font-black leading-none tracking-tighter text-[#245FE5]">
+            {round ?? 1}
           </span>
-          <span className="text-2xl font-black tracking-tight text-[#1e293b]">
-            round
+          <span className="text-xl font-bold leading-none tracking-tight text-[#8BA3CB]">
+            / 20
+          </span>
+          <span className="ml-1 text-base font-black uppercase leading-none tracking-widest text-[#5E708D]">
+            Round
           </span>
         </div>
         <RollButton
