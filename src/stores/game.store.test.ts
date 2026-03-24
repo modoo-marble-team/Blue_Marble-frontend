@@ -403,7 +403,7 @@ describe('game store partial updates', () => {
     store.applyPatchEnvelope({
       revision: 9,
       turn: 9,
-      patch: [],
+      patch: [{ op: 'set', path: 'round', value: 9 }],
       events: [],
     })
 
