@@ -45,7 +45,7 @@ const ALLOW_ALL_MOCK_TURNS =
   import.meta.env.DEV && import.meta.env.VITE_ALLOW_ALL_MOCK_TURNS === 'true'
 
 const GAME_CHAT_TITLE = '실시간 채팅'
-const GAME_START_NOTICE = '게임 시작! 순서를 정했습니다. (1/20 라운드)'
+
 const DEFAULT_MOCK_PLAYER_ID = 'mock-player-1'
 const DEFAULT_MOCK_NICKNAME = '플레이어 1'
 const DEFAULT_GUEST_ID = 'guest-local'
@@ -555,7 +555,7 @@ const GamePage: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
-            notice={round > 1 ? undefined : GAME_START_NOTICE}
+            notice={`게임 시작! 순서를 정했습니다. (${round ?? 1}/20 라운드)`}
           />
         </div>
 

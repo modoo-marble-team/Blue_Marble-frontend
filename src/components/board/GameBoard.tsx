@@ -2080,7 +2080,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       doubleDiceModalVisible ||
       bankruptModal.open ||
       gameResultModal.open
-    const hasBlockingModal = canShowModal && hasBlockingModalOpen
     const isEventQueuePaused =
       hasAnimationBlocking ||
       hasBlockingModalOpen ||
@@ -2113,21 +2112,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       isLocalPlayersTurn && allowAssetActions && isAssetActionPhase
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
-    const isOwnedTileSellClickable = (tileId: number) => {
-      if (travelSelection.active || hasBlockingModal || !canManageOwnAssets) {
-        return false
-      }
-      if (localPlayerId == null) {
-        return false
-      }
-
-      const owner = tileOwners[tileId]
-      if (!owner) {
-        return false
-      }
-
-      return String(owner.ownerId) === String(localPlayerId)
-    }
+    const isOwnedTileSellClickable = () => false
     const handleBoardTileClick = (tileId: number) => {
       if (isGameOver) return
 
@@ -2145,41 +2130,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      // 본인 땅인 경우
-      const owner = tileOwners[tileId]
-      const isOwner =
-        owner &&
-        localPlayerId != null &&
-        String(owner.ownerId) === String(localPlayerId)
-
-      if (isOwner) {
-        // 본인 턴이고 본인 땅이면 매각 모달만 바로 오픈
-        handleTileSellClick(tileId)
-        return
-      }
-    }
-
-    const handleTileSellClick = (tileId: number) => {
-      if (!canManageOwnAssets) {
-        return
-      }
-
-      const owner = tileOwners[tileId]
-      const ownerPlayer = players.find(
-        (p) => String(p.id) === String(owner?.ownerId)
-      )
-      if (!owner || !ownerPlayer) return
-
-      setCitySellModal({
-        open: true,
-        tileId,
-        ownerName: ownerPlayer.name ?? '',
-        currentLevel: owner.level,
-        sellPrice: getBoardSellFallbackRefund(
-          boardTiles[tileId]?.price ?? 0,
-          owner.level
-        ),
-      })
+      // 본인 땅 매각 모달 강제 오픈 로직 제거 (서버 프롬프트 기반으로만 매각 처리)
     }
 
     const handleCityBuildConfirm = (tileId: number) => {
@@ -2195,19 +2146,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         // 서버 계약 변경: 착지 prompt 기반(BUILD_OR_SKIP)만 허용
         return
       }
-
-      // 건설 후 즉시 매각 모달로 연결 (사용자 요청: 건설하기나 취소 누르면 매각 팝업)
-      handleTileSellClick(tileId)
     }
 
     const handleCityBuildCancel = () => {
-      const tileId = cityBuildModal.tileId
       setCityBuildModal(INITIAL_CITY_BUILD_MODAL_STATE)
 
-      if (tileId != null) {
-        // 업그레이드 취소 시 매각 모달로 연결
-        handleTileSellClick(tileId)
-      }
+      // 업그레이드 취소 후 매각 팝업 강제 노출 제거
     }
 
     const displayEventFxKind =
@@ -2256,7 +2200,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -2290,7 +2234,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -2323,7 +2267,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {LEFT_COL.map((id, ri) =>
               (() => {
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
@@ -2356,7 +2300,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {RIGHT_COL.map((id, ri) =>
               (() => {
                 const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable(id)
+                const isOwnedSellClickable = isOwnedTileSellClickable()
                 const isClickable = isTravelSelectable || isOwnedSellClickable
                 return (
                   <div
