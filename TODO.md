@@ -6,6 +6,7 @@
 
 ## In Progress
 
+- [ ] `game-board-result-and-travel-fix` - Game Board Result And Travel Fix (`docs/ai/tasks/game-board-result-and-travel-fix/`) - 결과 모달 보유도시 수를 종료 시점 타일 소유 정보로 복구하고 이벤트칸 오인 travel 애니메이션을 수정
 - [ ] `island-speed-and-exit-modal-style` - Island Speed and Exit Modal Style (`docs/ai/tasks/island-speed-and-exit-modal-style/`) - 무인도 이동 속도 개선 및 게임 종료 모달 스타일 통일
 - [ ] `board-sot-sync` - Board SoT sync + initial full sync (`docs/ai/tasks/board-sot-sync/`) - 보드판 SoT를 백엔드 기준으로 전환하고 최초 sync knownRevision=-1 요청 반영
 - [ ] `chance-move-direction-animation` - Chance Move Direction Animation (`docs/ai/tasks/chance-move-direction-animation/`) - chance 이동 방향 힌트 기반 순차 애니메이션 보정 및 검증
