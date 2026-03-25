@@ -1,5 +1,6 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../../lib/socket'
 import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
+import { normalizeChatMessage } from '../../../constants/chat'
 import {
   mockEnterWaitingRoomSocket,
   mockLeaveWaitingRoomSocket,
@@ -129,19 +130,25 @@ export function sendWaitingRoomChat({
   senderNickname,
   message,
 }: SendWaitingRoomChatParams) {
+  const normalizedMessage = normalizeChatMessage(message)
+
+  if (normalizedMessage.length === 0) {
+    return
+  }
+
   if (USE_WAITING_ROOM_SOCKET_MOCK) {
     mockSendWaitingRoomChat({
       roomId,
       senderId,
       senderNickname,
-      message,
+      message: normalizedMessage,
     })
     return
   }
 
   const payload: SendChatSocketPayload = {
     room_id: roomId,
-    message,
+    message: normalizedMessage,
   }
   socket.emit(WAITING_ROOM_EVENT_NAMES.sendChat, payload)
 }

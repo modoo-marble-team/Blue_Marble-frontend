@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthSession } from '../../auth/session/types'
+import { normalizeChatMessage } from '../../../constants/chat'
 import {
   sendDirectMessage as sendDirectMessageSocket,
   subscribeDirectMessageSocketEvents,
@@ -179,8 +180,10 @@ export function useDirectMessageController({
   // 로컬 DM 목록에 메시지를 추가하고 소켓 전송 실행
   const sendDirectMessage = useCallback(
     (message: string) => {
+      const normalizedMessage = normalizeChatMessage(message)
+
       // 대상 사용자 또는 세션이 없으면 전송 중단
-      if (!dmTargetUser || !session) {
+      if (!dmTargetUser || !session || normalizedMessage.length === 0) {
         return
       }
 
@@ -195,7 +198,7 @@ export function useDirectMessageController({
         id: clientMessageId,
         senderId: session.userId,
         senderNickname: session.nickname,
-        content: message,
+        content: normalizedMessage,
         sentAt: new Date().toISOString(),
       }
 
@@ -210,7 +213,7 @@ export function useDirectMessageController({
 
       sendDirectMessageSocket({
         receiverId: dmTargetUser.id,
-        message,
+        message: normalizedMessage,
         clientMessageId,
       })
     },

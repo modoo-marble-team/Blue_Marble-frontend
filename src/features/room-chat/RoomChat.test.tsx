@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { CHAT_MESSAGE_MAX_LENGTH } from '../../constants/chat'
 import { renderWithProviders } from '../../test/renderWithProviders'
 import RoomChat from './RoomChat'
 
@@ -60,6 +61,31 @@ describe('RoomChat', () => {
     expect(input.value).toBe('')
   })
 
+  it('입력창은 300자까지만 유지하고 전송 값도 같은 길이로 맞춘다', async () => {
+    const user = userEvent.setup()
+    const onSendMessage = vi.fn()
+    const overlongMessage = 'a'.repeat(CHAT_MESSAGE_MAX_LENGTH + 12)
+    const expectedMessage = overlongMessage.slice(0, CHAT_MESSAGE_MAX_LENGTH)
+
+    renderWithProviders(
+      <RoomChat
+        currentUserId="me"
+        onSendMessage={onSendMessage}
+        messages={[]}
+      />
+    )
+
+    const input = screen.getByPlaceholderText('메시지...') as HTMLInputElement
+
+    await user.type(input, overlongMessage)
+    expect(input).toHaveAttribute('maxLength', String(CHAT_MESSAGE_MAX_LENGTH))
+    expect(input.value).toHaveLength(CHAT_MESSAGE_MAX_LENGTH)
+
+    await user.click(screen.getByRole('button', { name: '➤' }))
+
+    expect(onSendMessage).toHaveBeenCalledWith(expectedMessage)
+  })
+
   it('공백 입력은 전송하지 않는다', async () => {
     const user = userEvent.setup()
     const onSendMessage = vi.fn()
@@ -91,5 +117,32 @@ describe('RoomChat', () => {
     expect(
       screen.getByPlaceholderText('메시지를 입력하세요...')
     ).toBeInTheDocument()
+  })
+
+  it('긴 공백 없는 메시지도 말풍선 줄바꿈 클래스로 렌더링한다', () => {
+    const longMessage =
+      'https://example.com/' + 'verylongsegment'.repeat(16) + '/chat-overflow'
+
+    renderWithProviders(
+      <RoomChat
+        currentUserId="me"
+        onSendMessage={vi.fn()}
+        messages={[
+          {
+            id: 'm-long',
+            sender_id: 'user-2',
+            sender_nickname: '상대',
+            content: longMessage,
+            timestamp: '2026-03-03T10:02:00.000Z',
+            type: 'talk',
+          },
+        ]}
+      />
+    )
+
+    const messageBubble = screen.getByText(longMessage)
+    expect(messageBubble.className).toContain('whitespace-pre-wrap')
+    expect(messageBubble.className).toContain('break-words')
+    expect(messageBubble.className).toContain('[overflow-wrap:anywhere]')
   })
 })

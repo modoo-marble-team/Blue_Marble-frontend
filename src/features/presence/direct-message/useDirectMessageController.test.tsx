@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CHAT_MESSAGE_MAX_LENGTH } from '../../../constants/chat'
 import {
   createAuthSessionFixture,
   createOnlineUserFixture,
@@ -125,6 +126,37 @@ describe('useDirectMessageController', () => {
       clientMessageId: expect.any(String),
     })
     expect(result.current.directMessagesByUserId['user-2']).toHaveLength(1)
+  })
+
+  it('300자 초과 DM 전송 시 로컬 메시지와 socket payload를 모두 300자로 맞춘다', () => {
+    const lobbyUser = createOnlineUserFixture({
+      id: 'user-2',
+      nickname: '로비 유저',
+      status: 'lobby',
+    })
+    const overlongMessage = ` ${'가'.repeat(CHAT_MESSAGE_MAX_LENGTH + 8)} `
+    const expectedMessage = '가'.repeat(CHAT_MESSAGE_MAX_LENGTH)
+
+    const { result } = renderDirectMessageControllerHook({
+      users: [lobbyUser],
+    })
+
+    act(() => {
+      result.current.openDirectMessage(lobbyUser)
+    })
+
+    act(() => {
+      result.current.sendDirectMessage(overlongMessage)
+    })
+
+    expect(sendDirectMessageSocketMock).toHaveBeenCalledWith({
+      receiverId: 'user-2',
+      message: expectedMessage,
+      clientMessageId: expect.any(String),
+    })
+    expect(result.current.directMessagesByUserId['user-2'][0]?.content).toBe(
+      expectedMessage
+    )
   })
 
   it('대상 유저가 playing 상태가 되면 DM 창을 닫는다', () => {

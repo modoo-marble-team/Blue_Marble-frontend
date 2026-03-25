@@ -20,6 +20,7 @@ npm run socket:mock
 - `send_chat` 룸 브로드캐스트
 - `dm_send` -> `dm_receive` 전달
 - DM 정책: 송신자/수신자 중 `playing` 상태가 있으면 차단
+- 사용자용 `send_chat`, `dm_send` 메시지는 `trim()` 후 최대 300자까지 허용
 - `toggle_ready` 준비 상태 토글 + `player_ready` 브로드캐스트
 - `start_game` 시작 조건 검증 + `game_start` 브로드캐스트
 - 방장 퇴장 시 `host_changed` 브로드캐스트

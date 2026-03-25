@@ -1,4 +1,5 @@
 import { socket } from '../../../lib/socket'
+import { normalizeChatMessage } from '../../../constants/chat'
 import { ROOM_PASSWORD_PATTERN } from '../../../constants/room'
 import { setMockOnlineUserStatus } from '../../../features/presence/mock/mockData'
 import { mockLobbyRooms } from '../../lobby/mockData'
@@ -670,7 +671,7 @@ export function mockSendWaitingRoomChat({
   senderNickname,
   message,
 }: MockSendChatParams) {
-  const normalizedMessage = message.trim()
+  const normalizedMessage = normalizeChatMessage(message)
 
   // 공백 메시지는 저장/브로드캐스트하지 않음
   if (normalizedMessage.length === 0) {

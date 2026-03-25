@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GamePage from './GamePage'
 import { useGameStore } from '../stores/game.store'
 import { useAuthStore } from '../features/auth/session/store'
+import { CHAT_MESSAGE_MAX_LENGTH } from '../constants/chat'
 import { createAuthSessionFixture } from '../test/fixtures'
 import { renderWithProviders } from '../test/renderWithProviders'
 import type { Player } from '../types/domain'
@@ -543,6 +544,27 @@ describe('GamePage chat flow', () => {
     })
 
     expect(screen.getAllByText('ㅎㅇㅎㅇ')).toHaveLength(1)
+  })
+
+  it('게임 채팅 입력과 낙관적 메시지는 300자로 제한된다', async () => {
+    const user = userEvent.setup()
+    const overlongMessage = 'z'.repeat(CHAT_MESSAGE_MAX_LENGTH + 18)
+    const expectedMessage = overlongMessage.slice(0, CHAT_MESSAGE_MAX_LENGTH)
+
+    renderGamePage()
+
+    await act(async () => {
+      await user.type(screen.getByPlaceholderText('메시지...'), overlongMessage)
+      await user.keyboard('{Enter}')
+    })
+
+    expect(sendWaitingRoomChatMock).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      senderId: 'user-1',
+      senderNickname: '유저1',
+      message: expectedMessage,
+    })
+    expect(await screen.findByText(expectedMessage)).toBeInTheDocument()
   })
 
   it('게임 나가기 성공 시 leave API 호출 후 로비로 이동하고 game store를 초기화한다', async () => {

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CHAT_MESSAGE_MAX_LENGTH } from '../../constants/chat'
 import { SOCKET_EVENTS } from './events'
 
 // 사용자 상태 enum을 계약 스키마로 고정
@@ -28,7 +29,7 @@ export const userStatusChangedEventSchema = z.object({
 
 export const directMessageSendEventSchema = z.object({
   receiver_id: z.string().min(1),
-  message: z.string().trim().min(1),
+  message: z.string().trim().min(1).max(CHAT_MESSAGE_MAX_LENGTH),
   client_message_id: z.string().min(1).optional(),
 })
 
@@ -50,7 +51,7 @@ export const leaveRoomEventSchema = z.object({
 
 export const sendChatEventSchema = z.object({
   room_id: z.string().min(1),
-  message: z.string().trim().min(1),
+  message: z.string().trim().min(1).max(CHAT_MESSAGE_MAX_LENGTH),
 })
 
 export const toggleReadyEventSchema = z.object({

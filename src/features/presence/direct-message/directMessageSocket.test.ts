@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CHAT_MESSAGE_MAX_LENGTH } from '../../../constants/chat'
 import type { DirectMessageReceiveSocketPayload } from '../types'
 
 interface MockSocket {
@@ -96,6 +97,22 @@ describe('directMessageSocket', () => {
     expect(socket.emit).toHaveBeenCalledWith('dm_send', {
       receiver_id: 'user-2',
       message: '안녕하세요',
+    })
+  })
+
+  it('real 모드에서 sendDirectMessage는 300자 초과 메시지를 잘라서 emit한다', async () => {
+    const { module, socket } = await loadDirectMessageSocketModule(false, true)
+    const overlongMessage = ` ${'a'.repeat(CHAT_MESSAGE_MAX_LENGTH + 25)} `
+    const expectedMessage = 'a'.repeat(CHAT_MESSAGE_MAX_LENGTH)
+
+    module.sendDirectMessage({
+      receiverId: 'user-2',
+      message: overlongMessage,
+    })
+
+    expect(socket.emit).toHaveBeenCalledWith('dm_send', {
+      receiver_id: 'user-2',
+      message: expectedMessage,
     })
   })
 
