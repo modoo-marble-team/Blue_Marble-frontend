@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { act, cleanup, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import GamePage from './GamePage'
@@ -565,6 +565,45 @@ describe('GamePage chat flow', () => {
       message: expectedMessage,
     })
     expect(await screen.findByText(expectedMessage)).toBeInTheDocument()
+  })
+
+  it('게임 채팅에서 현재 턴 플레이어 메시지에 TURN badge를 표시한다', () => {
+    resetAndSetTestGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      currentTurn: 'user-2',
+      players: [
+        createPlayer(),
+        createPlayer({
+          id: 'user-2',
+          nickname: '유저2',
+          color: '#0000ff',
+        }),
+      ],
+      tiles: [],
+      messages: [
+        {
+          id: 'chat-turn',
+          sender_id: 'user-2',
+          sender_nickname: '유저2',
+          content: '내 차례입니다.',
+          timestamp: '2026-03-25T10:00:00.000Z',
+          type: 'talk',
+        },
+      ],
+    })
+
+    renderGamePage()
+
+    const chatSection = screen.getByText('실시간 채팅').closest('section')
+
+    expect(chatSection).not.toBeNull()
+    expect(
+      within(chatSection as HTMLElement).getByText('TURN')
+    ).toBeInTheDocument()
+    expect(
+      within(chatSection as HTMLElement).getByText('내 차례입니다.')
+    ).toBeInTheDocument()
   })
 
   it('게임 나가기 성공 시 leave API 호출 후 로비로 이동하고 game store를 초기화한다', async () => {

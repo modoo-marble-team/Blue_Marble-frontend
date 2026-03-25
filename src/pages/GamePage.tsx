@@ -12,7 +12,9 @@ import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/session/store'
 import { requestOnlineUsersSnapshotSync } from '../features/presence/online-users/onlineUsersSocket'
 import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
-import RoomChat from '../features/room-chat/RoomChat'
+import RoomChat, {
+  type RoomChatSenderMeta,
+} from '../features/room-chat/RoomChat'
 import { useDiceRoll } from '../hooks/game/useDiceRoll'
 import { useGameState } from '../hooks/game/useGameState'
 import { useTurn } from '../hooks/game/useTurn'
@@ -504,6 +506,22 @@ const GamePage: React.FC = () => {
     roomChatSenderOptions.find(
       (senderOption) => senderOption.id !== currentUserIdForChat
     )?.id ?? roomChatSenderOptions[0]?.id
+  const roomChatSenderMetaById = useMemo<Record<string, RoomChatSenderMeta>>(
+    () =>
+      Object.fromEntries(
+        panelPlayers.map((player) => [
+          player.id,
+          {
+            avatarColor: player.color,
+            accentColor: player.color,
+            badgeLabel:
+              player.isActive && !player.isBankrupt ? 'TURN' : undefined,
+            displayName: player.nickname,
+          },
+        ])
+      ),
+    [panelPlayers]
+  )
   const handlePromptChoice = (
     choice: string,
     payload?: Record<string, unknown>
@@ -747,6 +765,7 @@ const GamePage: React.FC = () => {
             messages={messages}
             onSendMessage={handleSendMessage}
             currentUserId={currentUserId ?? DEFAULT_GUEST_ID}
+            senderMetaById={roomChatSenderMetaById}
             notice={
               (round ?? 1) > 1 ? undefined : '게임 시작! 순서를 정했습니다.'
             }
