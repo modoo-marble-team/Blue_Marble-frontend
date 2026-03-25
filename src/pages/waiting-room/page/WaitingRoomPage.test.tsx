@@ -213,7 +213,7 @@ describe('WaitingRoomPage interaction', () => {
     expect(screen.getByRole('button', { name: '시작' })).toBeDisabled()
   })
 
-  it('대기방 채팅에서 host 메시지에 HOST badge를 표시한다', () => {
+  it('대기방 채팅에서 host 메시지 닉네임은 보이지만 HOST badge는 표시하지 않는다', () => {
     useAuthStore.setState({
       session: createAuthSessionFixture({
         userId: 'user-2',
@@ -243,8 +243,11 @@ describe('WaitingRoomPage interaction', () => {
 
     expect(chatSection).not.toBeNull()
     expect(
-      within(chatSection as HTMLElement).getByText('HOST')
+      within(chatSection as HTMLElement).getByText('테스터')
     ).toBeInTheDocument()
+    expect(
+      within(chatSection as HTMLElement).queryByText('HOST')
+    ).not.toBeInTheDocument()
     expect(
       within(chatSection as HTMLElement).getByText('방장이 안내합니다.')
     ).toBeInTheDocument()

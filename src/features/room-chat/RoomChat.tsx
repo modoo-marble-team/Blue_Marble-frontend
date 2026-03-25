@@ -10,8 +10,6 @@ import {
 
 export interface RoomChatSenderMeta {
   avatarColor?: string
-  accentColor?: string
-  badgeLabel?: string
   displayName?: string
 }
 
@@ -42,18 +40,6 @@ function getMessageTimestampMs(timestamp: string) {
   const parsedTimestamp = Date.parse(timestamp)
 
   return Number.isNaN(parsedTimestamp) ? null : parsedTimestamp
-}
-
-function withAlpha(color: string | undefined, alphaHex: string) {
-  if (!color) {
-    return undefined
-  }
-
-  if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return `${color}${alphaHex}`
-  }
-
-  return undefined
 }
 
 // 대기방/게임 공용 채팅 UI 렌더링
@@ -153,9 +139,7 @@ export default function RoomChat({
           className="ui-scrollbar min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto bg-ui-surface px-3 py-3"
         >
           {messageGroups.map((group) => {
-            const accentColor = group.meta?.accentColor
             const displayName = group.meta?.displayName ?? group.senderNickname
-            const badgeBackgroundColor = withAlpha(accentColor, '1F')
 
             return (
               <div
@@ -169,7 +153,7 @@ export default function RoomChat({
                   className={cn(
                     'flex min-w-0',
                     group.isMine
-                      ? 'max-w-[85%] flex-col items-end gap-1'
+                      ? 'w-full max-w-[85%] flex-col items-end gap-1'
                       : 'max-w-[90%] items-start gap-2'
                   )}
                 >
@@ -184,33 +168,26 @@ export default function RoomChat({
                     />
                   )}
 
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <div
+                    className={cn(
+                      'flex min-w-0 flex-col gap-1',
+                      group.isMine ? 'w-full items-end' : 'flex-1'
+                    )}
+                  >
                     {group.isMine ? null : (
-                      <div className="flex min-w-0 items-center gap-2 px-0.5">
-                        <span
-                          className="block truncate text-[12px] font-semibold text-ui-text-primary"
-                          style={
-                            accentColor ? { color: accentColor } : undefined
-                          }
-                        >
+                      <div className="flex min-w-0 items-center px-0.5">
+                        <span className="block truncate text-[12px] font-semibold text-ui-text-strong">
                           {displayName}
                         </span>
-                        {group.meta?.badgeLabel ? (
-                          <span
-                            className="inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.12em]"
-                            style={{
-                              color: accentColor,
-                              borderColor: accentColor,
-                              backgroundColor: badgeBackgroundColor,
-                            }}
-                          >
-                            {group.meta.badgeLabel}
-                          </span>
-                        ) : null}
                       </div>
                     )}
 
-                    <div className="flex min-w-0 flex-col gap-1">
+                    <div
+                      className={cn(
+                        'flex min-w-0 flex-col gap-1',
+                        group.isMine ? 'w-full items-end' : undefined
+                      )}
+                    >
                       {group.messages.map((message) => (
                         <div
                           key={message.id}

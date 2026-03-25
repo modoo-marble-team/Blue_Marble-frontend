@@ -24,6 +24,8 @@
 - [x] `group-chat-sender-grouping-ui` - Group Chat Sender Grouping UI (`docs/ai/tasks/group-chat-sender-grouping-ui/`) - 대기방/게임 공용 채팅을 sender grouping, 아바타, 이름 강조, 역할 badge 기반 실무형 그룹 채팅 UI로 정리
 - [x] `chat-message-limit-300` - Chat Message Limit 300 (`docs/ai/tasks/chat-message-limit-300/`) - room chat과 DM에 300자 하드 제한을 입력/송신/contract/mock/test 기준으로 통일
 - [x] `chat-bubble-overflow-fix` - Chat Bubble Overflow Fix (`docs/ai/tasks/chat-bubble-overflow-fix/`) - 긴 메시지가 말풍선을 뚫고 가로 스크롤을 만드는 문제를 RoomChat/DM 공통 스타일로 정리
+- [x] `room-chat-sent-bubble-wrap-fix` - Room Chat Sent Bubble Wrap Fix (`docs/ai/tasks/room-chat-sent-bubble-wrap-fix/`) - 대기방/게임 공용 `RoomChat`에서 내가 보낸 긴 메시지 말풍선이 한 줄로 늘어나는 레이아웃을 sent path 폭 제약으로 정리
+- [x] `chat-nickname-neutralization` - Chat Nickname Neutralization (`docs/ai/tasks/chat-nickname-neutralization/`) - 공용 RoomChat 닉네임 색을 기본 검은색 계열로 통일하고 대기방 HOST / 게임 TURN badge를 제거
 
 - [x] `waiting-room-authoritative-resume-refresh` - Waiting Room Authoritative Resume Refresh (`docs/ai/tasks/waiting-room-authoritative-resume-refresh/`) - game 종료 후 waiting-room 복귀를 background join revalidation으로 교정하고 room create/join presence 반영을 follow-up refresh로 보강
 - [x] `waiting-room-resume-bootstrap-presence-resync` - Waiting Room Resume Bootstrap Presence Resync (`docs/ai/tasks/waiting-room-resume-bootstrap-presence-resync/`) - 게임 종료 후 대기방 복귀 무한 로딩을 bootstrap snapshot으로 해소하고 waiting-room에서도 lobby_updated 기반 presence 재동기화를 수행

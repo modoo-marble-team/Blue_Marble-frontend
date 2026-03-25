@@ -613,7 +613,7 @@ describe('GamePage chat flow', () => {
     expect(await screen.findByText(expectedMessage)).toBeInTheDocument()
   })
 
-  it('게임 채팅에서 현재 턴 플레이어 메시지에 TURN badge를 표시한다', () => {
+  it('게임 채팅에서도 sender 닉네임은 badge 없이 기본 텍스트 색으로 렌더링한다', () => {
     resetAndSetTestGameState({
       roomId: 'room-1',
       gameId: 'game-1',
@@ -642,11 +642,12 @@ describe('GamePage chat flow', () => {
     renderGamePage()
 
     const chatSection = screen.getByText('실시간 채팅').closest('section')
+    const senderName = within(chatSection as HTMLElement).getByText('유저2')
 
     expect(chatSection).not.toBeNull()
-    expect(
-      within(chatSection as HTMLElement).getByText('TURN')
-    ).toBeInTheDocument()
+    expect(senderName.className).toContain('text-ui-text-strong')
+    expect((senderName as HTMLSpanElement).style.color).toBe('')
+    expect(within(chatSection as HTMLElement).queryByText('TURN')).toBeNull()
     expect(
       within(chatSection as HTMLElement).getByText('내 차례입니다.')
     ).toBeInTheDocument()
