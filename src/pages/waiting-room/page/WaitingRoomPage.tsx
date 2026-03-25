@@ -366,6 +366,7 @@ function WaitingRoomPage() {
           <div className="min-h-0 xl:h-full xl:w-85 xl:shrink-0">
             <WaitingRoomSidePanel
               messages={chatMessages}
+              roomPlayers={room?.players ?? []}
               currentUserId={session.userId}
               isHost={isHost}
               canStartGame={canStartGame}

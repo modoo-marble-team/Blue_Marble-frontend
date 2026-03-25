@@ -145,4 +145,76 @@ describe('RoomChat', () => {
     expect(messageBubble.className).toContain('break-words')
     expect(messageBubble.className).toContain('[overflow-wrap:anywhere]')
   })
+
+  it('같은 sender의 연속 메시지는 하나의 sender header로 그룹화한다', () => {
+    renderWithProviders(
+      <RoomChat
+        currentUserId="me"
+        onSendMessage={vi.fn()}
+        senderMetaById={{
+          'user-2': {
+            badgeLabel: 'HOST',
+            displayName: '상대',
+          },
+        }}
+        messages={[
+          {
+            id: 'm1',
+            sender_id: 'user-2',
+            sender_nickname: '상대',
+            content: '첫 번째 메시지',
+            timestamp: '2026-03-03T10:00:00.000Z',
+            type: 'talk',
+          },
+          {
+            id: 'm2',
+            sender_id: 'user-2',
+            sender_nickname: '상대',
+            content: '두 번째 메시지',
+            timestamp: '2026-03-03T10:04:00.000Z',
+            type: 'talk',
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getAllByText('상대')).toHaveLength(1)
+    expect(screen.getAllByText('HOST')).toHaveLength(1)
+    expect(screen.getByText('첫 번째 메시지')).toBeInTheDocument()
+    expect(screen.getByText('두 번째 메시지')).toBeInTheDocument()
+  })
+
+  it('같은 sender라도 5분을 넘기면 새 그룹으로 분리한다', () => {
+    renderWithProviders(
+      <RoomChat
+        currentUserId="me"
+        onSendMessage={vi.fn()}
+        senderMetaById={{
+          'user-2': {
+            displayName: '상대',
+          },
+        }}
+        messages={[
+          {
+            id: 'm1',
+            sender_id: 'user-2',
+            sender_nickname: '상대',
+            content: '이전 메시지',
+            timestamp: '2026-03-03T10:00:00.000Z',
+            type: 'talk',
+          },
+          {
+            id: 'm2',
+            sender_id: 'user-2',
+            sender_nickname: '상대',
+            content: '새 그룹 메시지',
+            timestamp: '2026-03-03T10:06:00.000Z',
+            type: 'talk',
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getAllByText('상대')).toHaveLength(2)
+  })
 })

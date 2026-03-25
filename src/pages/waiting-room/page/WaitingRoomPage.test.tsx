@@ -213,6 +213,43 @@ describe('WaitingRoomPage interaction', () => {
     expect(screen.getByRole('button', { name: '시작' })).toBeDisabled()
   })
 
+  it('대기방 채팅에서 host 메시지에 HOST badge를 표시한다', () => {
+    useAuthStore.setState({
+      session: createAuthSessionFixture({
+        userId: 'user-2',
+        nickname: '상대방',
+      }),
+    })
+
+    waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
+      isHost: false,
+      isReady: true,
+      canToggleReady: true,
+      chatMessages: [
+        {
+          id: 'chat-host',
+          senderId: 'user-1',
+          senderNickname: '테스터',
+          content: '방장이 안내합니다.',
+          timestamp: '2026-03-25T10:00:00.000Z',
+          type: 'talk',
+        },
+      ],
+    })
+
+    renderWaitingRoomPage()
+
+    const chatSection = screen.getByText('실시간 채팅').closest('section')
+
+    expect(chatSection).not.toBeNull()
+    expect(
+      within(chatSection as HTMLElement).getByText('HOST')
+    ).toBeInTheDocument()
+    expect(
+      within(chatSection as HTMLElement).getByText('방장이 안내합니다.')
+    ).toBeInTheDocument()
+  })
+
   it('2명 이상 + non-host 전원 준비 완료 상태면 host 시작 버튼이 활성화된다', () => {
     waitingRoomControllerStateRef.current = createWaitingRoomControllerState({
       isHost: true,

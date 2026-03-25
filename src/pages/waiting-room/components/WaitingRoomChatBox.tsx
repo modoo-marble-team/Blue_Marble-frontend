@@ -1,11 +1,13 @@
 import { useMemo } from 'react'
 import RoomChat from '../../../features/room-chat/RoomChat'
 import type { ChatMessage } from '../../../types/domain'
-import type { WaitingRoomChatMessage } from '../api/types'
+import { getAvatarBackgroundColor } from '../../../components/avatar/avatarModel'
+import type { WaitingRoomChatMessage, WaitingRoomPlayer } from '../api/types'
 
 // 대기방 채팅 박스 렌더링 입력값 타입
 interface WaitingRoomChatBoxProps {
   messages: WaitingRoomChatMessage[]
+  roomPlayers: WaitingRoomPlayer[]
   currentUserId: string
   onSendMessage: (content: string) => void
 }
@@ -13,6 +15,7 @@ interface WaitingRoomChatBoxProps {
 // 대기방 채팅 메시지를 RoomChat 공통 포맷으로 변환해 렌더링
 export function WaitingRoomChatBox({
   messages,
+  roomPlayers,
   currentUserId,
   onSendMessage,
 }: WaitingRoomChatBoxProps) {
@@ -28,6 +31,24 @@ export function WaitingRoomChatBox({
     }))
   }, [messages])
 
+  const senderMetaById = useMemo(() => {
+    return Object.fromEntries(
+      roomPlayers.map((player) => {
+        const accentColor = getAvatarBackgroundColor(player.id)
+
+        return [
+          player.id,
+          {
+            avatarColor: accentColor,
+            accentColor,
+            badgeLabel: player.isHost ? 'HOST' : undefined,
+            displayName: player.nickname,
+          },
+        ]
+      })
+    )
+  }, [roomPlayers])
+
   return (
     <RoomChat
       className="min-h-0 flex-1 w-full"
@@ -36,6 +57,7 @@ export function WaitingRoomChatBox({
       inputPlaceholder="메시지 입력..."
       messages={chatMessages}
       onSendMessage={onSendMessage}
+      senderMetaById={senderMetaById}
     />
   )
 }
