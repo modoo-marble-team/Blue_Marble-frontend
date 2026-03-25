@@ -57,10 +57,12 @@ import {
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
   resolveChanceMoveAnimationHint,
+  shouldApplyTravelMoveAnimation,
   shouldDelayPromptModalByMovement,
   type BoardEventAnimationKind,
   type BoardMoveDirection,
 } from './gameBoardEventQueueUtils'
+import { buildGameResultModalRows } from './gameBoardResultUtils'
 
 import { getBuildCost, getTollCost } from './board.constants'
 
@@ -867,11 +869,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
           }
 
-          const isTravelMove =
-            normalizedTrigger === 'travel' ||
-            fromIndex === 8 ||
-            fromIndex === 16 ||
-            fromIndex === 20
+          const isTravelMove = shouldApplyTravelMoveAnimation({
+            normalizedTrigger,
+            fromIndex,
+            tiles: boardTiles,
+          })
           if (isTravelMove && event.playerId != null) {
             startTravelTokenFx(event.playerId, 1600)
           }
@@ -1467,34 +1469,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       return [...rankings].sort((left, right) => left.rank - right.rank)
     }, [gameResult])
-    const winnerResultRow = useMemo(() => {
-      const winner = gameResult?.winner
-      if (!winner) {
-        return null
-      }
-
-      return {
-        id: String(winner.playerId),
-        nickname: winner.nickname,
-        totalAssetText: formatWon(winner.assets),
-        ownedCityCountText: '-',
-      }
-    }, [gameResult])
     const resultModalRows = useMemo(() => {
-      if (serverResultRows.length > 0) {
-        return serverResultRows.map((result) => ({
-          id: String(result.player_id),
-          nickname: result.nickname,
-          totalAssetText: formatWon(result.final_assets),
-          ownedCityCountText: '-',
-        }))
-      }
-      if (winnerResultRow) {
-        return [winnerResultRow]
-      }
-
-      return []
-    }, [serverResultRows, winnerResultRow])
+      return buildGameResultModalRows({
+        rankings: serverResultRows,
+        winner: gameResult?.winner,
+        tiles,
+      })
+    }, [gameResult?.winner, serverResultRows, tiles])
     const resultModalWinnerName = useMemo(() => {
       if (gameResult?.winner?.nickname) {
         return gameResult.winner.nickname

@@ -10,6 +10,7 @@ import {
   resolveChanceMoveAnimationHint,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventAnimationKind,
+  shouldApplyTravelMoveAnimation,
   shouldDelayPromptModalByMovement,
 } from './gameBoardEventQueueUtils'
 
@@ -389,5 +390,66 @@ describe('gameBoardEventQueueUtils', () => {
     }
 
     expect(resolveChanceMoveAnimationHint(event)).toBeNull()
+  })
+
+  it('applies fast travel animation when trigger is travel', () => {
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: 'travel',
+        fromIndex: 4,
+        tiles,
+      })
+    ).toBe(true)
+  })
+
+  it('applies fast travel animation when departing from travel or island tile', () => {
+    const movementTiles: TileData[] = [
+      { id: 0, name: 'Start', type: 'START' },
+      { id: 1, name: 'Island', type: 'ISLAND' },
+      { id: 2, name: 'Travel', type: 'TRAVEL' },
+      { id: 3, name: 'Event', type: 'EVENT' },
+    ]
+
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: '',
+        fromIndex: 1,
+        tiles: movementTiles,
+      })
+    ).toBe(true)
+
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: '',
+        fromIndex: 2,
+        tiles: movementTiles,
+      })
+    ).toBe(true)
+  })
+
+  it('does not apply fast travel animation when departing from event tile', () => {
+    const movementTiles: TileData[] = [
+      { id: 19, name: '광주', type: 'PROPERTY', color: '#66BB6A', price: 1000 },
+      { id: 20, name: '이벤트', type: 'EVENT' },
+      { id: 21, name: '춘천', type: 'PROPERTY', color: '#7E57C2', price: 1000 },
+    ]
+
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: '',
+        fromIndex: 1,
+        tiles: movementTiles,
+      })
+    ).toBe(false)
+  })
+
+  it('does not apply fast travel animation when source tile is missing', () => {
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: '',
+        fromIndex: 99,
+        tiles,
+      })
+    ).toBe(false)
   })
 })

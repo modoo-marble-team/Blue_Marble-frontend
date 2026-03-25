@@ -26,6 +26,23 @@ export type ChanceMoveAnimationHint = {
   steps: number
 }
 
+export const shouldApplyTravelMoveAnimation = ({
+  normalizedTrigger,
+  fromIndex,
+  tiles,
+}: {
+  normalizedTrigger: string
+  fromIndex: number
+  tiles: TileData[]
+}) => {
+  if (normalizedTrigger === 'travel') {
+    return true
+  }
+
+  const fromTileType = tiles[fromIndex]?.type
+  return fromTileType === 'TRAVEL' || fromTileType === 'ISLAND'
+}
+
 const normalizeEventType = (type: unknown) =>
   typeof type === 'string' ? type.trim().toUpperCase() : ''
 
