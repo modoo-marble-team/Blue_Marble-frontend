@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createAuthSessionFixture } from '../../../test/fixtures'
 import { useWaitingRoomLifecycle } from './lifecycle'
@@ -54,6 +54,8 @@ function createLifecycleParams(overrides: Record<string, unknown> = {}) {
     session,
     fallbackRoomTitle: 'fallback',
     preJoinedSnapshot: null,
+    resumeRoomMembership: false,
+    resumeBootstrapSnapshot: null,
     hasReceivedRoomUpdatedRef: { current: false },
     hasEnteredRoomRef: { current: false },
     hasLeftRoomRef: { current: false },
@@ -142,14 +144,103 @@ describe('useWaitingRoomLifecycle', () => {
     expect(params.setIsRoomLoading).toHaveBeenLastCalledWith(false)
   })
 
-  it('room_updated를 이미 받은 경우에는 뒤늦은 join 응답이 room 상태를 다시 덮지 않는다', async () => {
-    const joinedSnapshot = createPreJoinedSnapshot()
-    joinWaitingRoomMock.mockResolvedValue(joinedSnapshot)
+  it('resume room 경로에서 bootstrap snapshot이 있으면 즉시 상태를 복구하고 background join refresh를 시작한다', async () => {
+    const resumeBootstrapSnapshot = createPreJoinedSnapshot()
+    const refreshedSnapshot = {
+      ...resumeBootstrapSnapshot,
+      players: [
+        { id: 'user-1', nickname: '테스터', isReady: false, isHost: true },
+        { id: 'user-2', nickname: '상대', isReady: false, isHost: false },
+      ],
+    }
+    joinWaitingRoomMock.mockResolvedValue(refreshedSnapshot)
     const params = createLifecycleParams({
-      hasReceivedRoomUpdatedRef: { current: true },
+      resumeRoomMembership: true,
+      resumeBootstrapSnapshot,
     })
 
     renderHook(() => useWaitingRoomLifecycle(params))
+
+    expect(params.setRoom).toHaveBeenCalledWith(resumeBootstrapSnapshot)
+    expect(params.setChatMessages).toHaveBeenCalledWith(
+      resumeBootstrapSnapshot.chatMessages
+    )
+    expect(params.setIsRoomLoading).toHaveBeenCalledWith(false)
+    expect(enterWaitingRoomSocketMock).toHaveBeenCalledWith({
+      roomId: 'room-5',
+    })
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledTimes(1)
+
+    await waitFor(() => {
+      expect(joinWaitingRoomMock).toHaveBeenCalledWith({
+        roomId: 'room-5',
+        userId: 'user-1',
+        nickname: '테스터',
+        fallbackTitle: 'fallback',
+      })
+    })
+
+    expect(params.setRoom).toHaveBeenCalledWith(refreshedSnapshot)
+    expect(params.setChatMessages).toHaveBeenCalledWith(
+      refreshedSnapshot.chatMessages
+    )
+  })
+
+  it('resume room 경로에서 bootstrap snapshot이 없으면 loading을 유지한 채 authoritative join refresh를 기다린다', async () => {
+    const joinedSnapshot = createPreJoinedSnapshot()
+    joinWaitingRoomMock.mockResolvedValue(joinedSnapshot)
+    const params = createLifecycleParams({
+      resumeRoomMembership: true,
+    })
+
+    renderHook(() => useWaitingRoomLifecycle(params))
+
+    expect(params.setRoom).not.toHaveBeenCalled()
+    expect(params.setChatMessages).not.toHaveBeenCalled()
+    expect(params.setIsRoomLoading).toHaveBeenCalledWith(true)
+    expect(enterWaitingRoomSocketMock).toHaveBeenCalledWith({
+      roomId: 'room-5',
+    })
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledTimes(1)
+    expect(params.hasEnteredRoomRef.current).toBe(true)
+    expect(params.hasLeftRoomRef.current).toBe(false)
+
+    await waitFor(() => {
+      expect(joinWaitingRoomMock).toHaveBeenCalledWith({
+        roomId: 'room-5',
+        userId: 'user-1',
+        nickname: '테스터',
+        fallbackTitle: 'fallback',
+      })
+    })
+
+    expect(params.setRoom).toHaveBeenCalledWith(joinedSnapshot)
+    expect(params.setChatMessages).toHaveBeenCalledWith(
+      joinedSnapshot.chatMessages
+    )
+    expect(params.setIsRoomLoading).toHaveBeenLastCalledWith(false)
+  })
+
+  it('room_updated가 join 응답보다 먼저 오면 뒤늦은 join 응답이 room 상태를 다시 덮지 않는다', async () => {
+    const joinedSnapshot = createPreJoinedSnapshot()
+    let resolveJoin: ((snapshot: WaitingRoomSnapshot) => void) | undefined
+    joinWaitingRoomMock.mockReturnValue(
+      new Promise<WaitingRoomSnapshot>((resolve) => {
+        resolveJoin = resolve
+      })
+    )
+    const params = createLifecycleParams({
+      resumeRoomMembership: true,
+    })
+
+    renderHook(() => useWaitingRoomLifecycle(params))
+
+    params.hasReceivedRoomUpdatedRef.current = true
+
+    await act(async () => {
+      resolveJoin?.(joinedSnapshot)
+      await Promise.resolve()
+    })
 
     await waitFor(() => {
       expect(joinWaitingRoomMock).toHaveBeenCalled()

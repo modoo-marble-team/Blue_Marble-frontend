@@ -12,7 +12,12 @@ export const ONLINE_USER_STATUS_CHANGED_EVENT_NAME = 'user_status_changed'
 export const ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME =
   'online-users-refresh-request'
 const SOCKET_MOCK_INTERVAL_MS = 5_000
+const ONLINE_USERS_FOLLOW_UP_REFRESH_DELAY_MS = 400
 const USE_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
+
+interface RequestOnlineUsersSnapshotSyncOptions {
+  includeFollowUpRefresh?: boolean
+}
 
 // 테스트용 리스너 접근을 위한 socket 타입 확장
 interface SocketWithListeners {
@@ -64,11 +69,29 @@ export function ensureOnlineUsersSocketConnection() {
   connectSocketWithAuthIfNeeded()
 }
 
-// 로컬 사용자 상태 변화 직후 접속자 스냅샷 재동기화를 요청
-export function requestOnlineUsersSnapshotSync() {
+function emitOnlineUsersRefreshRequest() {
+  if (USE_SOCKET_MOCK) {
+    emitMockOnlineUsersSnapshot()
+  }
+
   if (typeof window === 'undefined') {
     return
   }
 
   window.dispatchEvent(new Event(ONLINE_USERS_REFRESH_REQUEST_EVENT_NAME))
+}
+
+// 로컬 사용자 상태 변화 직후 접속자 스냅샷 재동기화를 요청
+export function requestOnlineUsersSnapshotSync(
+  options: RequestOnlineUsersSnapshotSyncOptions = {}
+) {
+  emitOnlineUsersRefreshRequest()
+
+  if (!options.includeFollowUpRefresh || typeof window === 'undefined') {
+    return
+  }
+
+  window.setTimeout(() => {
+    emitOnlineUsersRefreshRequest()
+  }, ONLINE_USERS_FOLLOW_UP_REFRESH_DELAY_MS)
 }

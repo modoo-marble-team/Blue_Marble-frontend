@@ -20,6 +20,8 @@ interface UseWaitingRoomControllerParams {
   session: AuthSession | null
   fallbackRoomTitle?: string
   preJoinedSnapshot?: WaitingRoomSnapshot | null
+  resumeRoomMembership?: boolean
+  resumeBootstrapSnapshot?: WaitingRoomSnapshot | null
   onGameStart: (payload: GameStartEventPayload) => void
   onRoomRemoved: () => void
 }
@@ -30,6 +32,8 @@ export function useWaitingRoomController({
   session,
   fallbackRoomTitle,
   preJoinedSnapshot,
+  resumeRoomMembership = false,
+  resumeBootstrapSnapshot,
   onGameStart,
   onRoomRemoved,
 }: UseWaitingRoomControllerParams) {
@@ -88,6 +92,8 @@ export function useWaitingRoomController({
     session,
     fallbackRoomTitle,
     preJoinedSnapshot,
+    resumeRoomMembership,
+    resumeBootstrapSnapshot,
     hasReceivedRoomUpdatedRef,
     hasEnteredRoomRef,
     hasLeftRoomRef,
@@ -109,6 +115,7 @@ export function useWaitingRoomController({
     onRoomRemoved: handleRoomRemoved,
     setRoom,
     setChatMessages,
+    setIsRoomLoading,
   })
 
   // 현재 세션 사용자 정보 조회

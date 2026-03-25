@@ -16,6 +16,10 @@
 
 ## Done
 
+- [x] `waiting-room-authoritative-resume-refresh` - Waiting Room Authoritative Resume Refresh (`docs/ai/tasks/waiting-room-authoritative-resume-refresh/`) - game 종료 후 waiting-room 복귀를 background join revalidation으로 교정하고 room create/join presence 반영을 follow-up refresh로 보강
+- [x] `waiting-room-resume-bootstrap-presence-resync` - Waiting Room Resume Bootstrap Presence Resync (`docs/ai/tasks/waiting-room-resume-bootstrap-presence-resync/`) - 게임 종료 후 대기방 복귀 무한 로딩을 bootstrap snapshot으로 해소하고 waiting-room에서도 lobby_updated 기반 presence 재동기화를 수행
+- [x] `presence-realtime-room-transitions` - Presence Realtime Room Transitions (`docs/ai/tasks/presence-realtime-room-transitions/`) - 로비/대기방 이동 시 접속자 목록 상태가 stale하게 남는 경로를 room membership override와 lobby presence resync로 정리
+- [x] `waiting-room-presence-contract-alignment` - Waiting Room Presence Contract Alignment (`docs/ai/tasks/waiting-room-presence-contract-alignment/`) - game 종료 후 resume room 경로와 로비/대기방 접속자 상태 동기화를 백엔드 계약에 맞게 정렬
 - [x] `game-runtime-warning-cleanup` - Game Runtime Warning Cleanup (`docs/ai/tasks/game-runtime-warning-cleanup/`) - GameBoard deps warning과 GamePage.test act warning을 기능 변경 없이 정리
 - [x] `current-round-badge-style` - Current Round Badge Style (`docs/ai/tasks/current-round-badge-style/`) - 게임 화면 현재 라운드 뱃지를 더 자연스럽게 보이도록 정리
 - [x] `panel-total-assets-authoritative` - Panel Total Assets Authoritative (`docs/ai/tasks/panel-total-assets-authoritative/`) - GAME_OVER 이벤트와 reconnect snapshot을 `gameResult`로 복구해 우측 패널/종료 결과를 서버 권위 기준으로 정렬

@@ -11,6 +11,7 @@ const {
   toggleWaitingReadyMock,
   getWaitingRoomErrorMessageMock,
   leaveWaitingRoomSocketMock,
+  requestOnlineUsersSnapshotSyncMock,
   sendWaitingRoomChatMock,
 } = vi.hoisted(() => ({
   leaveWaitingRoomMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   toggleWaitingReadyMock: vi.fn(),
   getWaitingRoomErrorMessageMock: vi.fn(),
   leaveWaitingRoomSocketMock: vi.fn(),
+  requestOnlineUsersSnapshotSyncMock: vi.fn(),
   sendWaitingRoomChatMock: vi.fn(),
 }))
 
@@ -31,6 +33,10 @@ vi.mock('../api/api', () => ({
 vi.mock('../socket/socket', () => ({
   leaveWaitingRoomSocket: leaveWaitingRoomSocketMock,
   sendWaitingRoomChat: sendWaitingRoomChatMock,
+}))
+
+vi.mock('../../../features/presence/online-users/onlineUsersSocket', () => ({
+  requestOnlineUsersSnapshotSync: requestOnlineUsersSnapshotSyncMock,
 }))
 
 function createRoomSnapshot(): WaitingRoomSnapshot {
@@ -120,6 +126,9 @@ describe('useWaitingRoomActions', () => {
     })
     expect(leaveWaitingRoomSocketMock).toHaveBeenCalledWith({
       roomId: 'room-5',
+    })
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledWith({
+      includeFollowUpRefresh: true,
     })
     expect(params.setIsLeavePending).toHaveBeenLastCalledWith(false)
     expect(params.hasLeftRoomRef.current).toBe(true)

@@ -9,6 +9,7 @@ import { useAuthStore } from '../features/auth/session/store'
 import { createAuthSessionFixture } from '../test/fixtures'
 import { renderWithProviders } from '../test/renderWithProviders'
 import type { Player } from '../types/domain'
+import type { WaitingRoomSnapshot } from './waiting-room/api/types'
 
 vi.mock('../config/env', () => ({
   IS_DEMO_MOCK_ENABLED: false,
@@ -25,6 +26,7 @@ const {
   toastErrorMock,
   leaveRoomFromGameMock,
   getGameLeaveErrorMessageMock,
+  requestOnlineUsersSnapshotSyncMock,
 } = vi.hoisted(() => {
   const handlers = new Map<string, Set<(payload: unknown) => void>>()
 
@@ -49,6 +51,7 @@ const {
     toastErrorMock: vi.fn(),
     leaveRoomFromGameMock: vi.fn(),
     getGameLeaveErrorMessageMock: vi.fn(),
+    requestOnlineUsersSnapshotSyncMock: vi.fn(),
   }
 })
 
@@ -79,6 +82,10 @@ vi.mock('../lib/socket', () => ({
 
 vi.mock('../pages/waiting-room/socket/socket', () => ({
   sendWaitingRoomChat: sendWaitingRoomChatMock,
+}))
+
+vi.mock('../features/presence/online-users/onlineUsersSocket', () => ({
+  requestOnlineUsersSnapshotSync: requestOnlineUsersSnapshotSyncMock,
 }))
 
 vi.mock('../hooks/game/useGameState', () => ({
@@ -219,6 +226,26 @@ const createPlayer = (overrides: Partial<Player> = {}): Player => ({
   is_in_jail: false,
   jail_turn_count: 0,
   is_bankrupt: false,
+  ...overrides,
+})
+
+const createWaitingRoomSnapshot = (
+  overrides: Partial<WaitingRoomSnapshot> = {}
+): WaitingRoomSnapshot => ({
+  roomId: 'room-1',
+  title: '테스트 방',
+  status: 'waiting',
+  maxPlayers: 4,
+  isPrivate: false,
+  players: [
+    {
+      id: 'user-1',
+      nickname: '유저1',
+      isReady: false,
+      isHost: true,
+    },
+  ],
+  chatMessages: [],
   ...overrides,
 })
 
@@ -538,6 +565,10 @@ describe('GamePage chat flow', () => {
       })
     })
 
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledWith({
+      includeFollowUpRefresh: true,
+    })
+
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith('/lobby', { replace: true })
     })
@@ -730,6 +761,7 @@ describe('GamePage chat flow', () => {
 
   it('게임 종료 결과 확인 시 같은 대기방으로 이동하고 game store를 초기화한다', async () => {
     const user = userEvent.setup()
+    const lastRoomSnapshot = createWaitingRoomSnapshot()
 
     setTestGameState({
       roomId: 'room-1',
@@ -747,7 +779,18 @@ describe('GamePage chat flow', () => {
       },
     })
 
-    renderGamePage()
+    renderGamePage({
+      initialEntries: [
+        {
+          pathname: '/game/game-1',
+          state: {
+            gameId: 'game-1',
+            roomId: 'room-1',
+            lastRoomSnapshot,
+          },
+        },
+      ],
+    })
 
     await user.click(
       screen.getByRole('button', { name: '대기방으로 돌아가기' })
@@ -757,6 +800,8 @@ describe('GamePage chat flow', () => {
       replace: true,
       state: {
         roomId: 'room-1',
+        resumeRoomMembership: true,
+        lastRoomSnapshot,
       },
     })
     expect(useGameStore.getState().players).toHaveLength(0)
@@ -804,6 +849,7 @@ describe('GamePage chat flow', () => {
 
   it('종료 상태에서는 fatal game error가 있어도 버튼 클릭 전 자동 fallback 이동하지 않는다', async () => {
     const user = userEvent.setup()
+    const lastRoomSnapshot = createWaitingRoomSnapshot()
 
     resetAndSetTestGameState({
       roomId: 'room-1',
@@ -827,7 +873,18 @@ describe('GamePage chat flow', () => {
       },
     })
 
-    renderGamePage()
+    renderGamePage({
+      initialEntries: [
+        {
+          pathname: '/game/game-1',
+          state: {
+            gameId: 'game-1',
+            roomId: 'room-1',
+            lastRoomSnapshot,
+          },
+        },
+      ],
+    })
 
     expect(
       screen.queryByText('참가 정보를 다시 확인하고 있습니다...')
@@ -842,6 +899,8 @@ describe('GamePage chat flow', () => {
       replace: true,
       state: {
         roomId: 'room-1',
+        resumeRoomMembership: true,
+        lastRoomSnapshot,
       },
     })
   })
