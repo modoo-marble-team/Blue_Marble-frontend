@@ -17,6 +17,9 @@
 
 ## Done
 
+- [x] `chat-message-limit-300` - Chat Message Limit 300 (`docs/ai/tasks/chat-message-limit-300/`) - room chat과 DM에 300자 하드 제한을 입력/송신/contract/mock/test 기준으로 통일
+- [x] `chat-bubble-overflow-fix` - Chat Bubble Overflow Fix (`docs/ai/tasks/chat-bubble-overflow-fix/`) - 긴 메시지가 말풍선을 뚫고 가로 스크롤을 만드는 문제를 RoomChat/DM 공통 스타일로 정리
+
 - [x] `waiting-room-authoritative-resume-refresh` - Waiting Room Authoritative Resume Refresh (`docs/ai/tasks/waiting-room-authoritative-resume-refresh/`) - game 종료 후 waiting-room 복귀를 background join revalidation으로 교정하고 room create/join presence 반영을 follow-up refresh로 보강
 - [x] `waiting-room-resume-bootstrap-presence-resync` - Waiting Room Resume Bootstrap Presence Resync (`docs/ai/tasks/waiting-room-resume-bootstrap-presence-resync/`) - 게임 종료 후 대기방 복귀 무한 로딩을 bootstrap snapshot으로 해소하고 waiting-room에서도 lobby_updated 기반 presence 재동기화를 수행
 - [x] `presence-realtime-room-transitions` - Presence Realtime Room Transitions (`docs/ai/tasks/presence-realtime-room-transitions/`) - 로비/대기방 이동 시 접속자 목록 상태가 stale하게 남는 경로를 room membership override와 lobby presence resync로 정리

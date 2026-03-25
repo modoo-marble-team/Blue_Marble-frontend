@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { MessageSquare } from 'lucide-react'
 import type { ChatMessage } from '../../types/domain'
 import { cn } from '../../lib/utils'
+import {
+  CHAT_MESSAGE_MAX_LENGTH,
+  normalizeChatMessage,
+} from '../../constants/chat'
 
 // 공통 채팅 박스 렌더링 입력값 타입
 interface RoomChatProps {
@@ -41,7 +45,7 @@ export default function RoomChat({
   // 채팅 입력 submit 처리
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const normalizedInput = input.trim()
+    const normalizedInput = normalizeChatMessage(input)
 
     // 공백 입력은 전송하지 않음
     if (!normalizedInput) {
@@ -72,7 +76,7 @@ export default function RoomChat({
 
         <div
           ref={messagesContainerRef}
-          className="ui-scrollbar min-h-0 flex-1 space-y-3 overflow-y-auto bg-ui-surface px-3 py-3"
+          className="ui-scrollbar min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto bg-ui-surface px-3 py-3"
         >
           {messages.map((message) => {
             const isMine = message.sender_id === currentUserId
@@ -81,19 +85,19 @@ export default function RoomChat({
               <div
                 key={message.id}
                 className={cn(
-                  'flex flex-col',
+                  'flex min-w-0 w-full flex-col',
                   isMine ? 'items-end' : 'items-start'
                 )}
               >
-                <div className="mb-0.5 px-0.5">
-                  <span className="text-[11px] font-medium text-ui-text-subtle">
+                <div className="mb-0.5 max-w-[85%] px-0.5">
+                  <span className="block truncate text-[11px] font-medium text-ui-text-subtle">
                     {message.sender_nickname}
                   </span>
                 </div>
 
                 <div
                   className={cn(
-                    'max-w-[85%] px-3 py-2 text-sm leading-snug font-medium shadow-sm',
+                    'min-w-0 w-fit max-w-[85%] whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-3 py-2 text-sm leading-snug font-medium shadow-sm',
                     isMine
                       ? 'rounded-[16px_0_16px_16px] bg-ui-brand text-white'
                       : 'rounded-[0_16px_16px_16px] border border-ui-border bg-ui-surface-soft text-ui-text-primary'
@@ -115,6 +119,7 @@ export default function RoomChat({
               type="text"
               value={input}
               onChange={(event) => setInput(event.target.value)}
+              maxLength={CHAT_MESSAGE_MAX_LENGTH}
               placeholder={inputPlaceholder}
               className="w-full bg-transparent text-sm font-medium text-ui-text-primary placeholder:text-ui-text-subtle outline-none"
             />

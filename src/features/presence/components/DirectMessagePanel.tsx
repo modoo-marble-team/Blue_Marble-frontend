@@ -3,6 +3,10 @@ import { SendHorizontal, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { Avatar } from '../../../components/avatar/Avatar'
 import { cn } from '../../../lib/utils'
+import {
+  CHAT_MESSAGE_MAX_LENGTH,
+  normalizeChatMessage,
+} from '../../../constants/chat'
 import type { DirectMessage, OnlineUser } from '../types'
 
 // 1:1 채팅 패널 렌더링 입력값 타입
@@ -85,7 +89,7 @@ export function DirectMessagePanel({
 
       <div
         ref={messageListRef}
-        className="ui-scrollbar h-[320px] overflow-y-auto bg-ui-surface px-4 py-3"
+        className="ui-scrollbar h-[320px] overflow-x-hidden overflow-y-auto bg-ui-surface px-4 py-3"
       >
         {sortedMessages.length === 0 ? (
           <p className="flex h-full items-center justify-center text-sm font-medium text-ui-text-subtle">
@@ -100,13 +104,13 @@ export function DirectMessagePanel({
                 <div
                   key={message.id}
                   className={cn(
-                    'flex flex-col',
+                    'flex min-w-0 w-full flex-col',
                     isMine ? 'items-end' : 'items-start'
                   )}
                 >
                   <div
                     className={cn(
-                      'max-w-[75%] rounded-2xl px-3 py-2 text-sm font-medium',
+                      'min-w-0 w-fit max-w-[75%] whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-2xl px-3 py-2 text-sm font-medium',
                       isMine
                         ? 'rounded-br-md bg-ui-brand text-white'
                         : 'rounded-bl-md bg-ui-surface-soft text-ui-text-primary'
@@ -129,7 +133,7 @@ export function DirectMessagePanel({
         onSubmit={(event) => {
           event.preventDefault()
 
-          const normalizedMessage = inputMessage.trim()
+          const normalizedMessage = normalizeChatMessage(inputMessage)
 
           // 공백 메시지는 전송하지 않음
           if (!normalizedMessage) {
@@ -144,6 +148,7 @@ export function DirectMessagePanel({
           type="text"
           value={inputMessage}
           onChange={(event) => setInputMessage(event.target.value)}
+          maxLength={CHAT_MESSAGE_MAX_LENGTH}
           placeholder="메시지를 입력하세요..."
           className="h-9 flex-1 rounded-xl border border-ui-border bg-ui-surface-muted px-3 text-sm text-ui-text-primary outline-none placeholder:text-ui-text-subtle focus:border-ui-brand focus:ring-2 focus:ring-ui-brand/20"
           autoComplete="off"

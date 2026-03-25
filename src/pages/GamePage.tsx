@@ -18,6 +18,7 @@ import { useGameState } from '../hooks/game/useGameState'
 import { useTurn } from '../hooks/game/useTurn'
 import { playBgm, stopBgm } from '../lib/bgm'
 import { socket } from '../lib/socket'
+import { normalizeChatMessage } from '../constants/chat'
 import {
   emitGameAction,
   emitPromptResponse,
@@ -328,12 +329,18 @@ const GamePage: React.FC = () => {
       return
     }
 
+    const normalizedContent = normalizeChatMessage(content)
+
+    if (!normalizedContent) {
+      return
+    }
+
     const senderId = currentUserId ?? DEFAULT_GUEST_ID
     const optimisticMessage = createOptimisticGameChatMessage({
       roomId: activeRoomId,
       senderId,
       senderNickname: currentNickname,
-      message: content,
+      message: normalizedContent,
     })
 
     pendingGameChatEchoesRef.current = [
@@ -341,7 +348,7 @@ const GamePage: React.FC = () => {
       {
         id: optimisticMessage.id,
         senderId,
-        content,
+        content: normalizedContent,
         createdAtMs: Date.parse(optimisticMessage.timestamp),
       },
     ]
@@ -352,7 +359,7 @@ const GamePage: React.FC = () => {
       roomId: activeRoomId,
       senderId,
       senderNickname: currentNickname,
-      message: content,
+      message: normalizedContent,
     })
   }
 

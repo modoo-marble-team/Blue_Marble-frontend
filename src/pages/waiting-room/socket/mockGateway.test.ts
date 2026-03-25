@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { CHAT_MESSAGE_MAX_LENGTH } from '../../../constants/chat'
 
 type MockGatewayModule = typeof import('./mockGateway')
 
@@ -6,6 +7,43 @@ type MockGatewayModule = typeof import('./mockGateway')
 async function loadMockGateway(): Promise<MockGatewayModule> {
   vi.resetModules()
   return import('./mockGateway')
+}
+
+interface LoadedMockGatewayWithSocket {
+  gateway: MockGatewayModule
+  registerListener: (
+    eventName: string,
+    listener: (payload: unknown) => void
+  ) => void
+}
+
+async function loadMockGatewayWithSocket(): Promise<LoadedMockGatewayWithSocket> {
+  vi.resetModules()
+
+  const listenersMap = new Map<string, Array<(payload: unknown) => void>>()
+  const registerListener = (
+    eventName: string,
+    listener: (payload: unknown) => void
+  ) => {
+    const listeners = listenersMap.get(eventName) ?? []
+    listeners.push(listener)
+    listenersMap.set(eventName, listeners)
+  }
+
+  vi.doMock('../../../lib/socket', () => ({
+    socket: {
+      listeners: vi.fn(
+        (eventName: string) => listenersMap.get(eventName) ?? []
+      ),
+    },
+  }))
+
+  const gateway = await import('./mockGateway')
+
+  return {
+    gateway,
+    registerListener,
+  }
 }
 
 // 코드 기반 에러 검증 헬퍼
@@ -96,6 +134,35 @@ describe('mockGateway DEV control', () => {
     expect(lobbyRoom).toBeTruthy()
     expect(lobbyRoom?.currentPlayers).toBe(1)
     expect(lobbyRoom?.status).toBe('waiting')
+  })
+
+  it('긴 대기방 채팅도 300자로 정규화해 저장하고 브로드캐스트한다', async () => {
+    const { gateway, registerListener } = await loadMockGatewayWithSocket()
+    const onChat = vi.fn()
+    const overlongMessage = ` ${'x'.repeat(CHAT_MESSAGE_MAX_LENGTH + 14)} `
+    const expectedMessage = 'x'.repeat(CHAT_MESSAGE_MAX_LENGTH)
+
+    registerListener('chat', onChat)
+
+    gateway.mockSendWaitingRoomChat({
+      roomId: 'room-5',
+      senderId: 'room-5-user-1',
+      senderNickname: '플레이어1',
+      message: overlongMessage,
+    })
+
+    const chatMessages =
+      gateway.mockDevGetWaitingRoomSnapshot('room-5').chatMessages
+    const lastChatMessage = chatMessages[chatMessages.length - 1]
+
+    expect(lastChatMessage?.content).toBe(expectedMessage)
+    expect(onChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        room_id: 'room-5',
+        sender_id: 'room-5-user-1',
+        message: expectedMessage,
+      })
+    )
   })
 })
 

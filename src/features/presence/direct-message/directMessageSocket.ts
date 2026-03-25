@@ -1,5 +1,6 @@
 import { connectSocketWithAuthIfNeeded, socket } from '../../../lib/socket'
 import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
+import { normalizeChatMessage } from '../../../constants/chat'
 import type {
   DirectMessageReceiveSocketPayload,
   DirectMessageSendSocketPayload,
@@ -84,7 +85,7 @@ export function sendDirectMessage({
   message,
   clientMessageId,
 }: SendDirectMessageParams) {
-  const normalizedMessage = message.trim()
+  const normalizedMessage = normalizeChatMessage(message)
 
   // 공백 메시지는 전송하지 않음
   if (normalizedMessage.length === 0) {
