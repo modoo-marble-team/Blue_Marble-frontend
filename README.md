@@ -178,6 +178,30 @@ npm run dev
 
 ---
 
+## :clipboard: 문서
+
+### 프로젝트 내부 문서
+
+- [Project Conventions](./docs/project/conventions.md)
+- [README Screenshot Assets](./docs/project/assets/readme/README.md)
+- [Architecture Assets Guide](./docs/project/assets/architecture/README.md)
+- [API Spec Summary](./docs/project/specs/api-spec.md)
+- [ERD Summary](./docs/project/specs/erd.md)
+- [Requirements Summary](./docs/project/specs/requirements.md)
+- [Screen Spec Summary](./docs/project/specs/screen-spec.md)
+- [Table Schema Summary](./docs/project/specs/table-schema.md)
+- [Demo Video Note](./docs/project/presentations/demo-video.md)
+
+### 외부 명세 / 협업 문서
+
+- [API 명세서](https://docs.google.com/spreadsheets/d/191cFJ97qyWzeAJm5DEqTf6SO6p8mqWBE/edit?pli=1&gid=2141226886#gid=2141226886)
+- [요구사항 정의서](https://docs.google.com/spreadsheets/d/15Lu2YYq1VlnJbam9ADfLuEq_uTMY8umN/edit?gid=919594060#gid=919594060)
+- [ERD / 소켓 명세서 Docs Repo](https://github.com/modoo-marble-team/docs/tree/main)
+- [테이블 명세서](https://docs.google.com/spreadsheets/d/1Xq0YsYCvV3xzFYTsfubVfVqsGeOol7Ah/edit?gid=507107377#gid=507107377)
+- [화면 정의서 / 와이어프레임 / 플로우 차트](https://www.figma.com/design/3yixlZLiKnWieKVFpM7n9j/%ED%8C%80%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EC%BA%90%EC%A3%BC%EC%96%BC-%EB%B8%8C%EB%A3%A8%EB%A7%88%EB%B8%94?node-id=0-1&t=ZohHKxxh86rbb8Fq-1)
+
+---
+
 ## 🧰 사용 스택
 
 ### FE
@@ -227,27 +251,3 @@ npm run dev
 - 커밋은 `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build` 접두사를 사용합니다.
 - PR 본문에는 작업 내용, 실행한 검증, 남은 리스크를 남깁니다.
 - 사용자 흐름이나 계약이 바뀌면 관련 문서와 테스트를 함께 갱신합니다.
-
----
-
-## :clipboard: 문서
-
-### 프로젝트 내부 문서
-
-- [Project Conventions](./docs/project/conventions.md)
-- [README Screenshot Assets](./docs/project/assets/readme/README.md)
-- [Architecture Assets Guide](./docs/project/assets/architecture/README.md)
-- [API Spec Summary](./docs/project/specs/api-spec.md)
-- [ERD Summary](./docs/project/specs/erd.md)
-- [Requirements Summary](./docs/project/specs/requirements.md)
-- [Screen Spec Summary](./docs/project/specs/screen-spec.md)
-- [Table Schema Summary](./docs/project/specs/table-schema.md)
-- [Demo Video Note](./docs/project/presentations/demo-video.md)
-
-### 외부 명세 / 협업 문서
-
-- [API 명세서](https://docs.google.com/spreadsheets/d/191cFJ97qyWzeAJm5DEqTf6SO6p8mqWBE/edit?pli=1&gid=2141226886#gid=2141226886)
-- [요구사항 정의서](https://docs.google.com/spreadsheets/d/15Lu2YYq1VlnJbam9ADfLuEq_uTMY8umN/edit?gid=919594060#gid=919594060)
-- [ERD / 소켓 명세서 Docs Repo](https://github.com/modoo-marble-team/docs/tree/main)
-- [테이블 명세서](https://docs.google.com/spreadsheets/d/1Xq0YsYCvV3xzFYTsfubVfVqsGeOol7Ah/edit?gid=507107377#gid=507107377)
-- [화면 정의서 / 와이어프레임 / 플로우 차트](https://www.figma.com/design/3yixlZLiKnWieKVFpM7n9j/%ED%8C%80%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EC%BA%90%EC%A3%BC%EC%96%BC-%EB%B8%8C%EB%A3%A8%EB%A7%88%EB%B8%94?node-id=0-1&t=ZohHKxxh86rbb8Fq-1)
