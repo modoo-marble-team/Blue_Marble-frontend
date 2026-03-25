@@ -17,6 +17,8 @@
 
 ## Done
 
+- [x] `end-turn-after-board-settle` - End Turn After Board Settle (`docs/ai/tasks/end-turn-after-board-settle/`) - 말 이동과 보드 로컬 액션이 모두 해소된 뒤에만 턴 종료 버튼이 보이고 눌리도록 `GamePage`를 `GameBoard` blocking 상태와 다시 연결
+- [x] `game-board-modal-reveal-timing` - Game Board Modal Reveal Timing (`docs/ai/tasks/game-board-modal-reveal-timing/`) - PLAYER_MOVED 직후 보드 액션 모달이 말 이동 전에 한 프레임 보이는 경로를 barrier와 공통 reveal gate로 정리
 - [x] `manual-sell-selection-restore` - Manual Sell Selection Restore (`docs/ai/tasks/manual-sell-selection-restore/`) - 내 턴 자산 액션 구간에서 보유 토지 클릭 수동 매각을 복구하되 서버 sell prompt 경로와 충돌하지 않게 정리
 - [x] `forced-island-fast-move-fix` - Forced Island Fast Move Fix (`docs/ai/tasks/forced-island-fast-move-fix/`) - 무인도 강제 이동만 빠른 애니메이션을 적용하고 일반 무인도 착지/출발은 기본 속도로 유지
 - [x] `group-chat-sender-grouping-ui` - Group Chat Sender Grouping UI (`docs/ai/tasks/group-chat-sender-grouping-ui/`) - 대기방/게임 공용 채팅을 sender grouping, 아바타, 이름 강조, 역할 badge 기반 실무형 그룹 채팅 UI로 정리

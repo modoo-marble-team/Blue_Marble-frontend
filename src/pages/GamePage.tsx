@@ -188,6 +188,8 @@ const GamePage: React.FC = () => {
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
+  const [isBoardBlockingModalOpen, setIsBoardBlockingModalOpen] =
+    useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
   const [isGlobalEffectModalOpen, setIsGlobalEffectModalOpen] = useState(false)
@@ -479,15 +481,16 @@ const GamePage: React.FC = () => {
   const isEndTurnPhase = phase === 'resolving' && !prompt
   const canControlTurn =
     isMyTurn &&
+    !isBoardBlockingModalOpen &&
     !isActionPending &&
     !isPromptVisible &&
     !isCurrentPlayerBankrupt &&
     (isRollPhase || isEndTurnPhase)
-  const rollButtonMode: 'roll' | 'end_turn' = isEndTurnPhase
-    ? 'end_turn'
-    : 'roll'
+  const rollButtonMode: 'roll' | 'end_turn' =
+    isEndTurnPhase && !isBoardBlockingModalOpen ? 'end_turn' : 'roll'
   const canManageAssetsThisTurn =
     isMyTurn &&
+    !isBoardBlockingModalOpen &&
     !isActionPending &&
     !isPromptVisible &&
     !isCurrentPlayerBankrupt &&
@@ -597,6 +600,7 @@ const GamePage: React.FC = () => {
   const handleRollClick = () => {
     if (
       !isMyTurn ||
+      isBoardBlockingModalOpen ||
       isActionPending ||
       isPromptVisible ||
       isCurrentPlayerBankrupt
@@ -621,6 +625,7 @@ const GamePage: React.FC = () => {
   const handleEndTurnClick = () => {
     if (
       !isMyTurn ||
+      isBoardBlockingModalOpen ||
       isActionPending ||
       isPromptVisible ||
       isCurrentPlayerBankrupt
@@ -794,6 +799,7 @@ const GamePage: React.FC = () => {
               localPlayerId={currentUserId}
               gamePhase={phase}
               allowAssetActions={canManageAssetsThisTurn}
+              onBlockingModalChange={setIsBoardBlockingModalOpen}
               gameResult={gameResult}
               isGameOver={isGameOver}
               winnerId={winnerId}

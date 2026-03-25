@@ -534,10 +534,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       Record<string, number>
     >({})
     const [isMoving, setIsMoving] = useState(false)
+    const [boardActionModalBarrier, setBoardActionModalBarrier] =
+      useState(false)
     const [travelingPlayerIds, setTravelingPlayerIds] = useState<
       Record<string, boolean>
     >({})
     const travelFxTimeoutRef = useRef<Record<string, number>>({})
+    const boardActionModalBarrierFrameRef = useRef<number | null>(null)
     const lastMovePositionRef = useRef<Record<string, number>>({})
     const pendingChanceMoveHintRef = useRef<
       Record<string, { direction: BoardMoveDirection; steps: number }>
@@ -572,6 +575,25 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return next
       })
     }, [])
+    const clearBoardActionModalBarrierFrame = useCallback(() => {
+      if (boardActionModalBarrierFrameRef.current != null) {
+        window.cancelAnimationFrame(boardActionModalBarrierFrameRef.current)
+        boardActionModalBarrierFrameRef.current = null
+      }
+    }, [])
+    const lockBoardActionModals = useCallback(() => {
+      clearBoardActionModalBarrierFrame()
+      setBoardActionModalBarrier(true)
+    }, [clearBoardActionModalBarrierFrame])
+    const releaseBoardActionModalsNextFrame = useCallback(() => {
+      clearBoardActionModalBarrierFrame()
+      boardActionModalBarrierFrameRef.current = window.requestAnimationFrame(
+        () => {
+          boardActionModalBarrierFrameRef.current = null
+          setBoardActionModalBarrier(false)
+        }
+      )
+    }, [clearBoardActionModalBarrierFrame])
     const startTravelTokenFx = useCallback(
       (playerId: PlayerId, durationMs = 1400) => {
         const playerKey = String(playerId)
@@ -616,6 +638,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
       setIsDiceRolling(false)
     }, [freezeDiceRollValues])
+    useEffect(() => {
+      return () => {
+        clearBoardActionModalBarrierFrame()
+      }
+    }, [clearBoardActionModalBarrierFrame])
     const flashDiceRollAnimation = useCallback(
       (durationMs = 260) => {
         stopDiceRollAnimation()
@@ -877,6 +904,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             toIndex: tileIndex,
             tiles: boardTiles,
           })
+          lockBoardActionModals()
           if (isTravelMove && event.playerId != null) {
             startTravelTokenFx(event.playerId, 1600)
           }
@@ -892,23 +920,27 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           )
 
           // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
-          movePromise.then(() => {
-            if (isChanceTriggeredMove && playerKey && playerKey !== 'null') {
-              delete pendingChanceMoveHintRef.current[playerKey]
-            }
-            if (playerKey && playerKey !== 'null') {
-              lastMovePositionRef.current[playerKey] = tileIndex
-            }
-            if (isTravelMove && event.playerId != null) {
-              clearTravelTokenFx(event.playerId)
-            }
-            // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
-            handleArrivalRef.current(
-              tileIndex,
-              emitMockEndTurn,
-              event.playerId ?? null
-            )
-          })
+          void movePromise
+            .then(() => {
+              if (isChanceTriggeredMove && playerKey && playerKey !== 'null') {
+                delete pendingChanceMoveHintRef.current[playerKey]
+              }
+              if (playerKey && playerKey !== 'null') {
+                lastMovePositionRef.current[playerKey] = tileIndex
+              }
+              if (isTravelMove && event.playerId != null) {
+                clearTravelTokenFx(event.playerId)
+              }
+              // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
+              handleArrivalRef.current(
+                tileIndex,
+                emitMockEndTurn,
+                event.playerId ?? null
+              )
+            })
+            .finally(() => {
+              releaseBoardActionModalsNextFrame()
+            })
           return
         }
 
@@ -956,8 +988,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         emitMockEndTurn,
         freezeDiceRollValues,
         flashDiceRollAnimation,
+        lockBoardActionModals,
         localPlayerId,
         movePlayerSequentially,
+        releaseBoardActionModalsNextFrame,
         startTravelTokenFx,
       ]
     )
@@ -1345,7 +1379,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         promptPlayerId,
         pendingMovePlayerIdSet,
         animatedPositions,
-        isMoving: isMoving || rolling,
+        isMoving: isMoving || rolling || boardActionModalBarrier,
       })
       if (shouldDelayTravelModalOpen) {
         return
@@ -1381,6 +1415,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       animatedPositions,
       curPlayer,
       dismissedTravelPromptId,
+      boardActionModalBarrier,
       isTravelPromptOpen,
       isMoving,
       pendingMovePlayerIdSet,
@@ -2003,38 +2038,37 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const hasAnimationBlocking = isMoving || rolling
     const canShowModal = !hasAnimationBlocking
+    const boardActionAnimationBlocking =
+      hasAnimationBlocking || boardActionModalBarrier
     const activePromptPlayerId =
       activePrompt?.playerId != null ? String(activePrompt.playerId) : null
     const shouldDelayPromptModal = shouldDelayPromptModalByMovement({
       promptPlayerId: activePromptPlayerId,
       pendingMovePlayerIdSet,
       animatedPositions,
-      isMoving,
+      isMoving: boardActionAnimationBlocking,
     })
+    const canRevealBoardActionModal =
+      canShowModal && !shouldDelayPromptModal && !boardActionModalBarrier
 
     const buyModalVisible =
-      canShowModal &&
+      canRevealBoardActionModal &&
       buyModalOpen &&
-      !shouldDelayPromptModal &&
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canShowModal &&
+      canRevealBoardActionModal &&
       buildModalOpen &&
-      !shouldDelayPromptModal &&
       !isBuildPromptDismissed &&
       !insufficientFundsModal.open
-    const tollModalVisible =
-      canShowModal && tollModalOpen && !shouldDelayPromptModal
+    const tollModalVisible = canRevealBoardActionModal && tollModalOpen
     const acquisitionModalOpen =
-      canShowModal &&
+      canRevealBoardActionModal &&
       acquisitionModalOpenRaw &&
-      !shouldDelayPromptModal &&
       !tollModalOpen &&
       !insufficientFundsModal.open
     const sellModalVisible =
-      canShowModal &&
-      (citySellModal.open || (isSellPromptOpen && !shouldDelayPromptModal))
+      canRevealBoardActionModal && (citySellModal.open || isSellPromptOpen)
 
     const doubleDiceModalVisible = canShowModal && doubleDiceModal.open
 
@@ -2082,20 +2116,21 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const hasBlockingModalOpen =
       buyModalVisible ||
       buildModalVisible ||
-      cardModal.open ||
-      travelModal.open ||
+      (canRevealBoardActionModal && cardModal.open) ||
+      (canRevealBoardActionModal && travelModal.open) ||
       tollModalVisible ||
       acquisitionModalOpen ||
       sellModalVisible ||
       insufficientFundsModal.open ||
       aiModal.open ||
-      goToIslandModal.open ||
-      islandModal.open ||
+      (canRevealBoardActionModal && goToIslandModal.open) ||
+      (canRevealBoardActionModal && islandModal.open) ||
       doubleDiceModalVisible ||
       bankruptModal.open ||
       gameResultModal.open
     const isEventQueuePaused =
       hasAnimationBlocking ||
+      boardActionModalBarrier ||
       hasBlockingModalOpen ||
       travelSelection.active ||
       promptSubmittingChoice !== null
@@ -2648,7 +2683,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <CardModal
-          open={canShowModal && cardModal.open}
+          open={canRevealBoardActionModal && cardModal.open}
           variant={cardModal.variant}
           title={cardModal.title}
           descriptionLine1={cardModal.descriptionLine1}
@@ -2657,7 +2692,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleCardConfirm}
         />
         <TravelModal
-          open={canShowModal && !shouldDelayPromptModal && travelModal.open}
+          open={canRevealBoardActionModal && travelModal.open}
           onConfirm={handleTravelConfirm}
           onCancel={handleTravelCancel}
           showCancel={false}
@@ -2684,13 +2719,17 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         />
         <GoToIslandModal
           open={
-            canShowModal && (isGoToIslandPromptOpen || goToIslandModal.open)
+            canRevealBoardActionModal &&
+            (isGoToIslandPromptOpen || goToIslandModal.open)
           }
           onConfirm={handleGoToIslandConfirm}
         />
         {/* 🏝️ 무인도 (직접 도착) 팝업 */}
         <IslandModal
-          open={canShowModal && (isIslandPromptOpen || islandModal.open)}
+          open={
+            canRevealBoardActionModal &&
+            (isIslandPromptOpen || islandModal.open)
+          }
           restTurns={islandRestTurns}
           onConfirm={handleIslandConfirm}
         />

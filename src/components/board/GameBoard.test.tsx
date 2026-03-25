@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -11,7 +12,7 @@ import {
 } from 'vitest'
 import GameBoard from './GameBoard'
 import type { PlayerState } from './board.constants'
-import type { GamePrompt } from '../../types/domain'
+import type { GamePrompt, ServerEvent } from '../../types/domain'
 import { emitGameAction } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
 
@@ -22,8 +23,13 @@ vi.mock('./BoardTile', () => ({
   PlayerToken: () => null,
 }))
 
+const useBoardEventQueueMock = vi.fn()
+
 vi.mock('./useBoardEventQueue', () => ({
-  useBoardEventQueue: () => undefined,
+  useBoardEventQueue: (params: unknown) => {
+    useBoardEventQueueMock(params)
+    return undefined
+  },
 }))
 
 vi.mock('../../lib/bgm', () => ({
@@ -40,7 +46,13 @@ vi.mock('../game/GlobalEffectOverlay', () => ({
 }))
 
 vi.mock('../game/modals/BuyModal', () => ({
-  default: () => null,
+  default: ({
+    open,
+    cityName,
+  }: {
+    open: boolean
+    cityName?: string
+  }) => (open ? <div>{cityName || '도시'} 구매 모달</div> : null),
 }))
 
 vi.mock('../game/modals/BuildModal', () => ({
@@ -102,7 +114,8 @@ vi.mock('../game/modals/GameResultModal', () => ({
 }))
 
 vi.mock('../game/modals/GoToIslandModal', () => ({
-  default: () => null,
+  default: ({ open }: { open: boolean }) =>
+    open ? <div>무인도 이동 모달</div> : null,
 }))
 
 vi.mock('../game/modals/IslandModal', () => ({
@@ -155,6 +168,18 @@ const tiles = [
     type: 'TRAVEL',
     building: 0,
   },
+  {
+    index: 8,
+    name: '무인도',
+    type: 'ISLAND',
+    building: 0,
+  },
+  {
+    index: 24,
+    name: '섬으로 이동',
+    type: 'MOVE_TO_ISLAND',
+    building: 0,
+  },
 ] as const
 
 const renderGameBoard = (options?: {
@@ -178,6 +203,31 @@ const renderGameBoard = (options?: {
     />
   )
 
+const getBoardQueueCallbacks = () => {
+  const lastCall = useBoardEventQueueMock.mock.lastCall?.[0] as
+    | {
+        onEventConsumed?: (event: ServerEvent) => void
+      }
+    | undefined
+
+  if (!lastCall?.onEventConsumed) {
+    throw new Error('GameBoard queue callbacks were not captured')
+  }
+
+  return lastCall
+}
+
+const consumeQueuedBoardEvent = async () => {
+  await act(async () => {
+    const nextEvent = useGameStore.getState().consumeNextEvent()
+    if (!nextEvent) {
+      throw new Error('No queued board event to consume')
+    }
+    getBoardQueueCallbacks().onEventConsumed?.(nextEvent)
+    await Promise.resolve()
+  })
+}
+
 beforeAll(() => {
   class ResizeObserverMock {
     observe() {}
@@ -193,6 +243,15 @@ beforeAll(() => {
 
   vi.stubGlobal('ResizeObserver', ResizeObserverMock)
   vi.stubGlobal('Audio', AudioMock)
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    ((callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(performance.now()), 16)) as typeof requestAnimationFrame
+  )
+  vi.stubGlobal(
+    'cancelAnimationFrame',
+    ((handle: number) => window.clearTimeout(handle)) as typeof cancelAnimationFrame
+  )
 })
 
 afterAll(() => {
@@ -271,5 +330,95 @@ describe('GameBoard manual sell selection', () => {
     expect(onPromptChoice).toHaveBeenCalledWith('CONFIRM', {
       targetTileId: 1,
     })
+  })
+})
+
+describe('GameBoard modal reveal timing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+    useGameStore.getState().resetGame()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('keeps buy prompt modal hidden until movement fully finishes', async () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+        payload: {
+          fromIndex: 0,
+        },
+      } as ServerEvent,
+    ])
+
+    renderGameBoard({
+      activePrompt: {
+        id: 'buy-1',
+        type: 'BUY_OR_SKIP',
+        payload: {
+          tileId: 1,
+        },
+        choices: [
+          { id: 'buy', label: '구매하기', value: 'BUY' },
+          { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        ],
+      },
+    })
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+
+    await consumeQueuedBoardEvent()
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1580)
+    })
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16)
+    })
+
+    expect(screen.getByText(/구매 모달/)).toBeInTheDocument()
+  })
+
+  it('reveals go-to-island modal only after movement finishes and next frame passes', async () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 24,
+        payload: {
+          fromIndex: 23,
+        },
+      } as ServerEvent,
+    ])
+
+    renderGameBoard()
+
+    expect(screen.queryByText('무인도 이동 모달')).not.toBeInTheDocument()
+
+    await consumeQueuedBoardEvent()
+
+    expect(screen.queryByText('무인도 이동 모달')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1580)
+    })
+
+    expect(screen.queryByText('무인도 이동 모달')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16)
+    })
+
+    expect(screen.getByText('무인도 이동 모달')).toBeInTheDocument()
   })
 })
