@@ -9,8 +9,9 @@
 
 ## Goal
 
-- 저장소의 짧은 개발자용 README를 대외용 프로젝트 소개 문서로 재구성한다
-- 스크린샷, 아키텍처, 명세서, 협업 규칙을 `docs/project/` 아래에 분리해 README에서 안정적으로 링크할 수 있게 만든다
+- 루트 README를 대외 소개와 개발자 온보딩을 함께 담는 하이브리드 문서로 정리한다
+- 스크린샷, 아키텍처, 명세서, 협업 규칙을 `docs/project/` 아래 구조와 연결해 README에서 안정적으로 링크할 수 있게 만든다
+- 백엔드 README처럼 빠른 실행, 환경 변수, 프로젝트 구조, 명령어를 프론트 기준으로 보강한다
 
 ## WAT Workflow
 
@@ -50,8 +51,9 @@
 
 ## Completion Criteria
 
-- 루트 README만 읽어도 MARBLE POP의 핵심 흐름과 문서 링크 구조를 이해할 수 있다
+- 루트 README만 읽어도 MARBLE POP의 핵심 흐름, 프론트 역할, 실행 방법, 문서 링크 구조를 이해할 수 있다
 - 명세서와 README용 자산을 어디에 넣어야 하는지 저장소 내부 문서로 바로 알 수 있다
+- `package.json`, `.env.example`, `src/vite-env.d.ts` 기준과 어긋나는 README 실행/환경 변수 설명이 없다
 - 기존 AI / 개발자 문서는 유지되고 대외용 프로젝트 문서와 섞이지 않는다
 
 ## Role Plan
@@ -63,5 +65,5 @@
 
 ## Test Plan
 
-- `npx prettier --check README.md docs/project docs/ai/tasks/public-readme-project-docs TODO.md`
-- `npm run ai:self-review -- --files README.md docs/project/conventions.md docs/project/assets/readme/README.md docs/project/assets/architecture/README.md docs/project/specs/api-spec.md docs/project/specs/requirements.md docs/project/specs/erd.md docs/project/specs/table-schema.md docs/project/specs/screen-spec.md docs/project/presentations/demo-video.md docs/ai/tasks/public-readme-project-docs/plan.md docs/ai/tasks/public-readme-project-docs/context.md docs/ai/tasks/public-readme-project-docs/checklist.md TODO.md`
+- `npx prettier --check README.md docs/ai/tasks/public-readme-project-docs TODO.md`
+- `npm run ai:self-review -- --files README.md docs/ai/tasks/public-readme-project-docs/plan.md docs/ai/tasks/public-readme-project-docs/context.md docs/ai/tasks/public-readme-project-docs/checklist.md TODO.md`
