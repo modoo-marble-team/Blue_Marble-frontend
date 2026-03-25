@@ -127,6 +127,7 @@ const BOARD_RENDER_BASE_SIZE =
   BOARD_GRID_BASE_SIZE + BOARD_INNER_PADDING + BOARD_INNER_BORDER
 const MIN_BOARD_SCALE = 0.55
 const MAX_BOARD_SCALE = 2.4
+const OWNED_TILE_SELL_BOX_SHADOW = '0 0 0 3px rgba(245,158,11,0.55)'
 
 const INITIAL_CITY_SELL_MODAL_STATE: CitySellModalState = {
   open: false,
@@ -2125,7 +2126,67 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       isLocalPlayersTurn && allowAssetActions && isAssetActionPhase
     const isTravelSelectableTile = (tileId: number) =>
       travelSelection.active && tileId !== players[curPlayer]?.pos
-    const isOwnedTileSellClickable = () => false
+    const openLocalSellModal = (tileId: number) => {
+      const tile = boardTiles[tileId]
+      const owner = tileOwnersRef.current[tileId]
+      const activePlayer = players[curPlayer]
+
+      if (
+        !tile ||
+        tile.type !== 'PROPERTY' ||
+        !owner ||
+        !activePlayer ||
+        String(owner.ownerId) !== String(activePlayer.id)
+      ) {
+        return
+      }
+
+      const ownerName =
+        players.find((player) => String(player.id) === String(owner.ownerId))
+          ?.name ??
+        activePlayer.name ??
+        ''
+
+      setCitySellModal({
+        open: true,
+        tileId,
+        ownerName,
+        currentLevel: owner.level,
+        sellPrice: getBoardSellFallbackRefund(tile.price ?? 0, owner.level),
+        showBuildOnCancel: false,
+      })
+    }
+    const isOwnedTileSellClickable = (tileId: number) => {
+      if (!canManageOwnAssets || travelSelection.active || activePrompt) {
+        return false
+      }
+
+      const tile = boardTiles[tileId]
+      const owner = tileOwnersRef.current[tileId]
+      if (
+        !tile ||
+        tile.type !== 'PROPERTY' ||
+        !owner ||
+        activePlayerId == null
+      ) {
+        return false
+      }
+
+      return String(owner.ownerId) === String(activePlayerId)
+    }
+    const getTileClickState = (tileId: number) => {
+      const isTravelSelectable = isTravelSelectableTile(tileId)
+      const isOwnedSellClickable = isOwnedTileSellClickable(tileId)
+
+      return {
+        isClickable: isTravelSelectable || isOwnedSellClickable,
+        boxShadow: isTravelSelectable
+          ? '0 0 0 3px rgba(43,127,255,0.9)'
+          : isOwnedSellClickable
+            ? OWNED_TILE_SELL_BOX_SHADOW
+            : undefined,
+      }
+    }
     const handleBoardTileClick = (tileId: number) => {
       if (isGameOver) return
 
@@ -2143,7 +2204,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         return
       }
 
-      // 본인 땅 매각 모달 강제 오픈 로직 제거 (서버 프롬프트 기반으로만 매각 처리)
+      if (!isOwnedTileSellClickable(tileId)) {
+        return
+      }
+
+      openLocalSellModal(tileId)
     }
 
     const handleCityBuildConfirm = (tileId: number) => {
@@ -2212,9 +2277,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {TOP_ROW.map((id, ci) =>
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
-                const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
-                const isClickable = isTravelSelectable || isOwnedSellClickable
+                const { isClickable, boxShadow } = getTileClickState(id)
                 return (
                   <div
                     key={id}
@@ -2226,9 +2289,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       gridColumn: ci + 1,
                       cursor: isClickable ? 'pointer' : 'default',
                       borderRadius: isCornerTile ? 18 : 13,
-                      boxShadow: isTravelSelectable
-                        ? '0 0 0 3px rgba(43,127,255,0.9)'
-                        : undefined,
+                      boxShadow,
                       transition: 'box-shadow 0.2s ease',
                     }}
                   >
@@ -2249,9 +2310,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             {BOTTOM_ROW.map((id, ci) =>
               (() => {
                 const isCornerTile = ci === 0 || ci === 8
-                const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
-                const isClickable = isTravelSelectable || isOwnedSellClickable
+                const { isClickable, boxShadow } = getTileClickState(id)
                 return (
                   <div
                     key={id}
@@ -2263,9 +2322,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       gridColumn: 9 - ci,
                       cursor: isClickable ? 'pointer' : 'default',
                       borderRadius: isCornerTile ? 18 : 13,
-                      boxShadow: isTravelSelectable
-                        ? '0 0 0 3px rgba(43,127,255,0.9)'
-                        : undefined,
+                      boxShadow,
                       transition: 'box-shadow 0.2s ease',
                     }}
                   >
@@ -2285,9 +2342,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             )}
             {LEFT_COL.map((id, ri) =>
               (() => {
-                const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
-                const isClickable = isTravelSelectable || isOwnedSellClickable
+                const { isClickable, boxShadow } = getTileClickState(id)
                 return (
                   <div
                     key={id}
@@ -2299,9 +2354,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       gridColumn: 1,
                       cursor: isClickable ? 'pointer' : 'default',
                       borderRadius: 13,
-                      boxShadow: isTravelSelectable
-                        ? '0 0 0 3px rgba(43,127,255,0.9)'
-                        : undefined,
+                      boxShadow,
                       transition: 'box-shadow 0.2s ease',
                     }}
                   >
@@ -2321,9 +2374,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             )}
             {RIGHT_COL.map((id, ri) =>
               (() => {
-                const isTravelSelectable = isTravelSelectableTile(id)
-                const isOwnedSellClickable = isOwnedTileSellClickable()
-                const isClickable = isTravelSelectable || isOwnedSellClickable
+                const { isClickable, boxShadow } = getTileClickState(id)
                 return (
                   <div
                     key={id}
@@ -2335,9 +2386,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                       gridColumn: 9,
                       cursor: isClickable ? 'pointer' : 'default',
                       borderRadius: 13,
-                      boxShadow: isTravelSelectable
-                        ? '0 0 0 3px rgba(43,127,255,0.9)'
-                        : undefined,
+                      boxShadow,
                       transition: 'box-shadow 0.2s ease',
                     }}
                   >
