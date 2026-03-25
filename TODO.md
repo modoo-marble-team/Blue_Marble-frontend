@@ -17,6 +17,7 @@
 
 ## Done
 
+- [x] `forced-island-fast-move-fix` - Forced Island Fast Move Fix (`docs/ai/tasks/forced-island-fast-move-fix/`) - 무인도 강제 이동만 빠른 애니메이션을 적용하고 일반 무인도 착지/출발은 기본 속도로 유지
 - [x] `group-chat-sender-grouping-ui` - Group Chat Sender Grouping UI (`docs/ai/tasks/group-chat-sender-grouping-ui/`) - 대기방/게임 공용 채팅을 sender grouping, 아바타, 이름 강조, 역할 badge 기반 실무형 그룹 채팅 UI로 정리
 - [x] `chat-message-limit-300` - Chat Message Limit 300 (`docs/ai/tasks/chat-message-limit-300/`) - room chat과 DM에 300자 하드 제한을 입력/송신/contract/mock/test 기준으로 통일
 - [x] `chat-bubble-overflow-fix` - Chat Bubble Overflow Fix (`docs/ai/tasks/chat-bubble-overflow-fix/`) - 긴 메시지가 말풍선을 뚫고 가로 스크롤을 만드는 문제를 RoomChat/DM 공통 스타일로 정리
