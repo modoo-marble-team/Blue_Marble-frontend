@@ -516,9 +516,6 @@ const GamePage: React.FC = () => {
           player.id,
           {
             avatarColor: player.color,
-            accentColor: player.color,
-            badgeLabel:
-              player.isActive && !player.isBankrupt ? 'TURN' : undefined,
             displayName: player.nickname,
           },
         ])

@@ -34,14 +34,12 @@ export function WaitingRoomChatBox({
   const senderMetaById = useMemo(() => {
     return Object.fromEntries(
       roomPlayers.map((player) => {
-        const accentColor = getAvatarBackgroundColor(player.id)
+        const avatarColor = getAvatarBackgroundColor(player.id)
 
         return [
           player.id,
           {
-            avatarColor: accentColor,
-            accentColor,
-            badgeLabel: player.isHost ? 'HOST' : undefined,
+            avatarColor,
             displayName: player.nickname,
           },
         ]

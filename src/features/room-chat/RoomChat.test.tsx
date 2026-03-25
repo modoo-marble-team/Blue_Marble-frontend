@@ -119,6 +119,35 @@ describe('RoomChat', () => {
     ).toBeInTheDocument()
   })
 
+  it('상대 닉네임은 기본 텍스트 색으로 렌더링한다', () => {
+    renderWithProviders(
+      <RoomChat
+        currentUserId="me"
+        onSendMessage={vi.fn()}
+        senderMetaById={{
+          'user-2': {
+            displayName: '상대',
+          },
+        }}
+        messages={[
+          {
+            id: 'm-accent',
+            sender_id: 'user-2',
+            sender_nickname: '상대',
+            content: '색상 테스트',
+            timestamp: '2026-03-03T10:02:00.000Z',
+            type: 'talk',
+          },
+        ]}
+      />
+    )
+
+    const senderName = screen.getByText('상대') as HTMLSpanElement
+
+    expect(senderName.className).toContain('text-ui-text-strong')
+    expect(senderName.style.color).toBe('')
+  })
+
   it('긴 공백 없는 메시지도 말풍선 줄바꿈 클래스로 렌더링한다', () => {
     const longMessage =
       'https://example.com/' + 'verylongsegment'.repeat(16) + '/chat-overflow'
@@ -146,6 +175,38 @@ describe('RoomChat', () => {
     expect(messageBubble.className).toContain('[overflow-wrap:anywhere]')
   })
 
+  it('내가 보낸 긴 메시지는 폭 제약 래퍼 안에서 줄바꿈되도록 렌더링한다', () => {
+    const longMessage =
+      'https://example.com/' + 'myownsegment'.repeat(20) + '/sent-overflow'
+
+    renderWithProviders(
+      <RoomChat
+        currentUserId="me"
+        onSendMessage={vi.fn()}
+        messages={[
+          {
+            id: 'm-mine-long',
+            sender_id: 'me',
+            sender_nickname: '나',
+            content: longMessage,
+            timestamp: '2026-03-03T10:02:00.000Z',
+            type: 'talk',
+          },
+        ]}
+      />
+    )
+
+    const messageBubble = screen.getByText(longMessage)
+    const messageGroupColumn = messageBubble.parentElement
+    const contentColumn = messageGroupColumn?.parentElement
+
+    expect(messageBubble.className).toContain('max-w-full')
+    expect(messageGroupColumn?.className).toContain('w-full')
+    expect(messageGroupColumn?.className).toContain('items-end')
+    expect(contentColumn?.className).toContain('w-full')
+    expect(contentColumn?.className).toContain('items-end')
+  })
+
   it('같은 sender의 연속 메시지는 하나의 sender header로 그룹화한다', () => {
     renderWithProviders(
       <RoomChat
@@ -153,7 +214,6 @@ describe('RoomChat', () => {
         onSendMessage={vi.fn()}
         senderMetaById={{
           'user-2': {
-            badgeLabel: 'HOST',
             displayName: '상대',
           },
         }}
@@ -179,7 +239,6 @@ describe('RoomChat', () => {
     )
 
     expect(screen.getAllByText('상대')).toHaveLength(1)
-    expect(screen.getAllByText('HOST')).toHaveLength(1)
     expect(screen.getByText('첫 번째 메시지')).toBeInTheDocument()
     expect(screen.getByText('두 번째 메시지')).toBeInTheDocument()
   })
