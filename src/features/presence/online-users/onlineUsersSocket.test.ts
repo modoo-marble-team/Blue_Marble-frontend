@@ -151,4 +151,65 @@ describe('onlineUsersSocket', () => {
 
     expect(connected.connectSocketWithAuthIfNeededMock).toHaveBeenCalledTimes(1)
   })
+
+  it('requestOnlineUsersSnapshotSync는 즉시 refresh 요청을 보내고 mock 모드에서는 스냅샷도 즉시 브로드캐스트한다', async () => {
+    const addEventListenerSpy = vi.spyOn(window, 'addEventListener')
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
+    const mockListener = vi.fn()
+    window.addEventListener('online-users-refresh-request', mockListener)
+
+    const { module, listenerMock } = await loadOnlineUsersSocketModule(
+      true,
+      false,
+      [
+        {
+          id: 'user-1',
+          nickname: '마블왕',
+          status: 'in_room',
+        },
+      ]
+    )
+
+    module.requestOnlineUsersSnapshotSync()
+
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'online-users-refresh-request',
+      })
+    )
+    expect(listenerMock).toHaveBeenCalledTimes(1)
+
+    window.removeEventListener('online-users-refresh-request', mockListener)
+    addEventListenerSpy.mockRestore()
+    dispatchEventSpy.mockRestore()
+  })
+
+  it('requestOnlineUsersSnapshotSync는 follow-up 옵션이 있으면 짧은 지연 뒤 한 번 더 요청한다', async () => {
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
+    const { module, listenerMock } = await loadOnlineUsersSocketModule(
+      true,
+      false,
+      [
+        {
+          id: 'user-1',
+          nickname: '마블왕',
+          status: 'lobby',
+        },
+      ]
+    )
+
+    module.requestOnlineUsersSnapshotSync({
+      includeFollowUpRefresh: true,
+    })
+
+    expect(dispatchEventSpy).toHaveBeenCalledTimes(1)
+    expect(listenerMock).toHaveBeenCalledTimes(1)
+
+    vi.advanceTimersByTime(400)
+
+    expect(dispatchEventSpy).toHaveBeenCalledTimes(2)
+    expect(listenerMock).toHaveBeenCalledTimes(2)
+
+    dispatchEventSpy.mockRestore()
+  })
 })

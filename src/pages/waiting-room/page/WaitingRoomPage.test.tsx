@@ -253,6 +253,7 @@ describe('WaitingRoomPage interaction', () => {
       state: {
         gameId: 'game-123',
         roomId: 'room-5',
+        lastRoomSnapshot: waitingRoomControllerStateRef.current?.room,
       },
     })
   })
@@ -387,7 +388,7 @@ describe('WaitingRoomPage interaction', () => {
     })
   })
 
-  it('대기방 접속자 목록은 room.players 기준으로 현재 방 참가자를 in_room 상태로 보정한다', async () => {
+  it('대기방 접속자 목록은 room 참가자의 stale online status를 대기방 상태로 보정한다', async () => {
     useOnlineUsersSocketMock.mockReturnValue({
       data: [
         {
@@ -411,12 +412,17 @@ describe('WaitingRoomPage interaction', () => {
 
     renderWaitingRoomPage()
 
+    const userListPanel = screen.getByText('접속자 목록').closest('aside')
+
+    expect(userListPanel).not.toBeNull()
     await waitFor(() => {
-      expect(screen.getAllByText('대기방')).toHaveLength(2)
+      expect(
+        within(userListPanel as HTMLElement).getAllByText('대기방')
+      ).toHaveLength(2)
     })
   })
 
-  it('online snapshot에 없는 room player는 접속자 목록에 다시 추가하지 않는다', async () => {
+  it('online snapshot에 없는 room player도 현재 room 참가자면 접속자 목록에 포함한다', async () => {
     useOnlineUsersSocketMock.mockReturnValue({
       data: [
         {
@@ -436,10 +442,13 @@ describe('WaitingRoomPage interaction', () => {
     const userListPanel = screen.getByText('접속자 목록').closest('aside')
 
     expect(userListPanel).not.toBeNull()
-    expect(within(userListPanel as HTMLElement).getByText('1명')).toBeVisible()
+    expect(within(userListPanel as HTMLElement).getByText('2명')).toBeVisible()
     expect(
-      within(userListPanel as HTMLElement).queryByText('상대방')
-    ).not.toBeInTheDocument()
+      within(userListPanel as HTMLElement).getByText('상대방')
+    ).toBeVisible()
+    expect(
+      within(userListPanel as HTMLElement).getAllByText('대기방')
+    ).toHaveLength(2)
   })
 
   it('초기 진입(POP)에서는 location.state의 preJoinedSnapshot을 재사용하지 않는다', () => {
@@ -514,6 +523,64 @@ describe('WaitingRoomPage interaction', () => {
     expect(useWaitingRoomControllerMock).toHaveBeenCalledWith(
       expect.objectContaining({
         preJoinedSnapshot,
+      })
+    )
+  })
+
+  it('게임 종료 복귀 state가 있으면 preJoinedSnapshot 없이 resumeRoomMembership과 bootstrap snapshot을 전달한다', () => {
+    navigationTypeMock.mockReturnValue('PUSH')
+    const lastRoomSnapshot: WaitingRoomSnapshot = {
+      roomId: 'room-5',
+      title: '테스트 방',
+      status: 'waiting',
+      maxPlayers: 4,
+      isPrivate: false,
+      players: [
+        {
+          id: 'user-1',
+          nickname: '테스터',
+          isReady: false,
+          isHost: true,
+        },
+      ],
+      chatMessages: [],
+    }
+
+    renderWaitingRoomPage({
+      initialEntries: [
+        {
+          pathname: '/rooms/room-5',
+          state: {
+            roomId: 'room-5',
+            roomTitle: '테스트 방',
+            resumeRoomMembership: true,
+            lastRoomSnapshot,
+            preJoinedSnapshot: {
+              roomId: 'room-5',
+              title: '테스트 방',
+              status: 'waiting',
+              maxPlayers: 4,
+              isPrivate: false,
+              players: [
+                {
+                  id: 'user-1',
+                  nickname: '테스터',
+                  isReady: false,
+                  isHost: true,
+                },
+              ],
+              chatMessages: [],
+            },
+          },
+        },
+      ],
+    })
+
+    expect(useWaitingRoomControllerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preJoinedSnapshot: null,
+        resumeRoomMembership: true,
+        resumeBootstrapSnapshot: lastRoomSnapshot,
       })
     )
   })

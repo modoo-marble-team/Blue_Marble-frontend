@@ -79,10 +79,34 @@ describe('mergeOnlineUsersWithCurrentUser', () => {
       })
     )
   })
+
+  it('현재 사용자가 이미 snapshot에 있으면 기존 status를 유지한다', () => {
+    const merged = mergeOnlineUsersWithCurrentUser(
+      [
+        createOnlineUserFixture({
+          id: 'user-1',
+          nickname: '테스터',
+          status: 'in_room',
+        }),
+      ],
+      {
+        id: 'user-1',
+        nickname: '테스터',
+        status: 'lobby',
+      }
+    )
+
+    expect(merged).toContainEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        status: 'in_room',
+      })
+    )
+  })
 })
 
 describe('mergeOnlineUsersWithRoomPlayers', () => {
-  it('room.players 기준으로 참가자 상태와 닉네임을 덮어쓴다', () => {
+  it('기본 옵션에서는 room.players 기준으로 닉네임은 보강하되 기존 online status는 유지한다', () => {
     const merged = mergeOnlineUsersWithRoomPlayers(
       [
         createOnlineUserFixture({
@@ -110,7 +134,7 @@ describe('mergeOnlineUsersWithRoomPlayers', () => {
       expect.objectContaining({
         id: 'user-1',
         nickname: '방장',
-        status: 'in_room',
+        status: 'lobby',
         avatarText: '방',
       })
     )
@@ -123,7 +147,37 @@ describe('mergeOnlineUsersWithRoomPlayers', () => {
     )
   })
 
-  it('online snapshot에 없는 room player는 기본값으로 다시 추가하지 않는다', () => {
+  it('overrideExistingStatus 옵션이 켜지면 existing status를 room status로 덮어쓴다', () => {
+    const merged = mergeOnlineUsersWithRoomPlayers(
+      [
+        createOnlineUserFixture({
+          id: 'user-1',
+          nickname: '이전닉네임',
+          status: 'lobby',
+          avatarText: '이',
+        }),
+      ],
+      [
+        {
+          id: 'user-1',
+          nickname: '방장',
+        },
+      ],
+      'in_room',
+      { overrideExistingStatus: true }
+    )
+
+    expect(merged).toContainEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        nickname: '방장',
+        status: 'in_room',
+        avatarText: '방',
+      })
+    )
+  })
+
+  it('기본 옵션에서는 online snapshot에 없는 room player를 다시 추가하지 않는다', () => {
     const merged = mergeOnlineUsersWithRoomPlayers(
       [
         createOnlineUserFixture({
@@ -145,7 +199,7 @@ describe('mergeOnlineUsersWithRoomPlayers', () => {
     expect(merged.find((user) => user.id === 'user-2')).toBeUndefined()
   })
 
-  it('옵션을 주면 snapshot에 없는 room player도 fallback으로 포함할 수 있다', () => {
+  it('waiting-room 옵션을 주면 snapshot에 없는 room player도 fallback으로 포함할 수 있다', () => {
     const merged = mergeOnlineUsersWithRoomPlayers(
       [],
       [
@@ -155,7 +209,10 @@ describe('mergeOnlineUsersWithRoomPlayers', () => {
         },
       ],
       'in_room',
-      { includeMissingPlayers: true }
+      {
+        includeMissingPlayers: true,
+        overrideExistingStatus: true,
+      }
     )
 
     expect(merged).toContainEqual(

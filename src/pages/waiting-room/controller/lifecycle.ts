@@ -12,6 +12,8 @@ interface UseWaitingRoomLifecycleParams {
   session: AuthSession | null
   fallbackRoomTitle?: string
   preJoinedSnapshot?: WaitingRoomSnapshot | null
+  resumeRoomMembership?: boolean
+  resumeBootstrapSnapshot?: WaitingRoomSnapshot | null
   hasReceivedRoomUpdatedRef: MutableRefObject<boolean>
   hasEnteredRoomRef: MutableRefObject<boolean>
   hasLeftRoomRef: MutableRefObject<boolean>
@@ -28,6 +30,8 @@ export function useWaitingRoomLifecycle({
   session,
   fallbackRoomTitle,
   preJoinedSnapshot,
+  resumeRoomMembership = false,
+  resumeBootstrapSnapshot,
   hasReceivedRoomUpdatedRef,
   hasEnteredRoomRef,
   hasLeftRoomRef,
@@ -66,6 +70,78 @@ export function useWaitingRoomLifecycle({
       return
     }
 
+    const activeSession = session
+    let isMounted = true
+
+    async function syncJoinedRoomSnapshot(options?: {
+      keepCurrentRoomOnError?: boolean
+    }) {
+      try {
+        const joinedRoom = await joinWaitingRoom({
+          roomId,
+          userId: activeSession.userId,
+          nickname: activeSession.nickname,
+          fallbackTitle: fallbackRoomTitle,
+        })
+
+        // 언마운트 이후 또는 더 최신 room_updated 수신 이후 응답은 무시
+        if (!isMounted || hasReceivedRoomUpdatedRef.current) {
+          return
+        }
+
+        setRoom(joinedRoom)
+        setChatMessages(joinedRoom.chatMessages)
+      } catch (error) {
+        if (!isMounted || hasReceivedRoomUpdatedRef.current) {
+          return
+        }
+
+        setRoomErrorMessage(
+          getWaitingRoomErrorMessage(error, '대기방 입장에 실패했습니다.')
+        )
+
+        if (!options?.keepCurrentRoomOnError) {
+          setRoom(null)
+          setChatMessages([])
+        }
+      } finally {
+        // 마운트 중이고 socket 최신 snapshot이 없을 때만 로딩 종료
+        if (isMounted && !hasReceivedRoomUpdatedRef.current) {
+          setIsRoomLoading(false)
+        }
+      }
+    }
+
+    if (resumeRoomMembership) {
+      setRoomErrorMessage(null)
+
+      const hasResumeBootstrapSnapshot =
+        resumeBootstrapSnapshot?.roomId === roomId
+
+      if (hasResumeBootstrapSnapshot) {
+        setRoom(resumeBootstrapSnapshot)
+        setChatMessages(resumeBootstrapSnapshot.chatMessages)
+        setIsRoomLoading(false)
+      } else {
+        setIsRoomLoading(true)
+      }
+
+      if (!hasEnteredRoomRef.current) {
+        enterWaitingRoomSocket({ roomId })
+        requestOnlineUsersSnapshotSync()
+        hasEnteredRoomRef.current = true
+        hasLeftRoomRef.current = false
+      }
+
+      void syncJoinedRoomSnapshot({
+        keepCurrentRoomOnError: hasResumeBootstrapSnapshot,
+      })
+
+      return () => {
+        isMounted = false
+      }
+    }
+
     // 사전 조인 초기화가 끝난 동일 roomId는 재조인 생략
     if (
       hasInitializedPreJoinRef.current &&
@@ -94,49 +170,19 @@ export function useWaitingRoomLifecycle({
       return
     }
 
-    const activeSession = session
-    let isMounted = true
-
     async function joinRoom() {
       setIsRoomLoading(true)
       setRoomErrorMessage(null)
+      await syncJoinedRoomSnapshot()
 
-      try {
-        const joinedRoom = await joinWaitingRoom({
-          roomId,
-          userId: activeSession.userId,
-          nickname: activeSession.nickname,
-          fallbackTitle: fallbackRoomTitle,
-        })
-
-        // 언마운트 이후에는 상태 반영을 건너뜀
-        if (!isMounted) {
-          return
-        }
-
-        if (!hasReceivedRoomUpdatedRef.current) {
-          setRoom(joinedRoom)
-          setChatMessages(joinedRoom.chatMessages)
-        }
-        enterWaitingRoomSocket({ roomId })
-        requestOnlineUsersSnapshotSync()
-        hasEnteredRoomRef.current = true
-        hasLeftRoomRef.current = false
-      } catch (error) {
-        // 언마운트 이후에는 에러 반영을 건너뜀
-        if (!isMounted) {
-          return
-        }
-
-        setRoomErrorMessage(
-          getWaitingRoomErrorMessage(error, '대기방 입장에 실패했습니다.')
-        )
-      } finally {
-        // 마운트된 상태에서만 로딩 종료 반영
-        if (isMounted) {
-          setIsRoomLoading(false)
-        }
+      if (!isMounted) {
+        return
       }
+
+      enterWaitingRoomSocket({ roomId })
+      requestOnlineUsersSnapshotSync()
+      hasEnteredRoomRef.current = true
+      hasLeftRoomRef.current = false
     }
 
     joinRoom()
@@ -152,6 +198,8 @@ export function useWaitingRoomLifecycle({
     hasLeftRoomRef,
     preJoinedRoomId,
     preJoinedSnapshot,
+    resumeRoomMembership,
+    resumeBootstrapSnapshot,
     roomId,
     session,
     setChatMessages,

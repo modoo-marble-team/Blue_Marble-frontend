@@ -23,6 +23,7 @@ interface UseWaitingRoomSocketSyncParams {
   onRoomRemoved: () => void
   setRoom: Dispatch<SetStateAction<WaitingRoomSnapshot | null>>
   setChatMessages: Dispatch<SetStateAction<WaitingRoomChatMessage[]>>
+  setIsRoomLoading: Dispatch<SetStateAction<boolean>>
 }
 
 // 대기방 소켓 이벤트를 구독해 room/chat 상태를 동기화
@@ -35,6 +36,7 @@ export function useWaitingRoomSocketSync({
   onRoomRemoved,
   setRoom,
   setChatMessages,
+  setIsRoomLoading,
 }: UseWaitingRoomSocketSyncParams) {
   useEffect(() => {
     if (!roomId || !session) {
@@ -120,9 +122,14 @@ export function useWaitingRoomSocketSync({
         const latestRoomSnapshot = mapWaitingRoomSnapshotPayload(payload)
         setRoom(latestRoomSnapshot)
         setChatMessages(latestRoomSnapshot.chatMessages)
+        setIsRoomLoading(false)
         requestOnlineUsersSnapshotSync()
       },
       onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => {
+        requestOnlineUsersSnapshotSync({
+          includeFollowUpRefresh: true,
+        })
+
         if (payload.room.id !== targetRoomId) {
           return
         }
@@ -147,6 +154,7 @@ export function useWaitingRoomSocketSync({
     roomId,
     session,
     setChatMessages,
+    setIsRoomLoading,
     setRoom,
   ])
 }

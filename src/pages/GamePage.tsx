@@ -10,6 +10,7 @@ import PlayerPanel from '../components/game/panels/PlayerPanel'
 import GlobalEffectModal from '../components/game/GlobalEffectModal'
 import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/session/store'
+import { requestOnlineUsersSnapshotSync } from '../features/presence/online-users/onlineUsersSocket'
 import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
 import RoomChat from '../features/room-chat/RoomChat'
 import { useDiceRoll } from '../hooks/game/useDiceRoll'
@@ -37,7 +38,10 @@ import {
 } from './game/gameChat'
 import { getGameLeaveErrorMessage, leaveRoomFromGame } from './game/api'
 import { sendWaitingRoomChat } from './waiting-room/socket/socket'
-import type { ChatEventPayload } from './waiting-room/api/types'
+import type {
+  ChatEventPayload,
+  WaitingRoomSnapshot,
+} from './waiting-room/api/types'
 
 const USE_GAME_SOCKET_MOCK = IS_SOCKET_MOCK_ENABLED
 const ALLOW_ALL_MOCK_TURNS =
@@ -141,6 +145,7 @@ const mapRankingToPanelPlayer = (
 interface GamePageLocationState {
   roomId?: string
   gameId?: string
+  lastRoomSnapshot?: WaitingRoomSnapshot
 }
 
 const GamePage: React.FC = () => {
@@ -176,6 +181,7 @@ const GamePage: React.FC = () => {
     gameSession.gameId ??
     null
   const activeRoomId = locationState?.roomId ?? gameSession.roomId ?? null
+  const lastRoomSnapshot = locationState?.lastRoomSnapshot ?? null
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
@@ -530,6 +536,9 @@ const GamePage: React.FC = () => {
         userId: currentUserId ?? undefined,
       })
 
+      requestOnlineUsersSnapshotSync({
+        includeFollowUpRefresh: true,
+      })
       resetGame()
       setIsExitModalOpen(false)
       navigate('/lobby', { replace: true })
@@ -550,6 +559,8 @@ const GamePage: React.FC = () => {
         replace: true,
         state: {
           roomId: activeRoomId,
+          resumeRoomMembership: true,
+          ...(lastRoomSnapshot ? { lastRoomSnapshot } : {}),
         },
       })
       return

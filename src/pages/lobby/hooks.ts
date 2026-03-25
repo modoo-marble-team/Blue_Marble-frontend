@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { requestOnlineUsersSnapshotSync } from '../../features/presence/online-users/onlineUsersSocket'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
 import { getLobbyRooms, type GetLobbyRoomsParams } from './api'
 
@@ -17,6 +18,9 @@ export function useLobbyRoomsQuery(params: GetLobbyRoomsParams) {
     const handleLobbyUpdated = () => {
       queryClient.invalidateQueries({
         queryKey: ['lobby', 'rooms'],
+      })
+      requestOnlineUsersSnapshotSync({
+        includeFollowUpRefresh: true,
       })
     }
 

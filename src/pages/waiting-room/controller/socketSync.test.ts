@@ -93,13 +93,16 @@ interface SocketSyncHookParams {
   onRoomRemoved: () => void
   setRoom: Dispatch<SetStateAction<WaitingRoomSnapshot | null>>
   setChatMessages: Dispatch<SetStateAction<WaitingRoomSnapshot['chatMessages']>>
+  setIsRoomLoading: Dispatch<SetStateAction<boolean>>
   setRoomMock: ReturnType<typeof vi.fn>
   setChatMessagesMock: ReturnType<typeof vi.fn>
+  setIsRoomLoadingMock: ReturnType<typeof vi.fn>
 }
 
 function createBaseParams(): SocketSyncHookParams {
   const setRoomMock = vi.fn()
   const setChatMessagesMock = vi.fn()
+  const setIsRoomLoadingMock = vi.fn()
 
   return {
     roomId: 'room-5',
@@ -117,8 +120,12 @@ function createBaseParams(): SocketSyncHookParams {
     setChatMessages: setChatMessagesMock as unknown as Dispatch<
       SetStateAction<WaitingRoomSnapshot['chatMessages']>
     >,
+    setIsRoomLoading: setIsRoomLoadingMock as unknown as Dispatch<
+      SetStateAction<boolean>
+    >,
     setRoomMock,
     setChatMessagesMock,
+    setIsRoomLoadingMock,
   }
 }
 
@@ -269,7 +276,40 @@ describe('useWaitingRoomSocketSync', () => {
     expect(unsubscribeMock).toHaveBeenCalledTimes(1)
   })
 
-  it('lobby_updated removed는 현재 방 삭제일 때만 상태를 비우고 콜백을 호출한다', () => {
+  it('현재 방이 아닌 lobby_updated도 접속자 snapshot 재동기화를 요청한다', () => {
+    const params = createBaseParams()
+    renderHook(() => useWaitingRoomSocketSync(params))
+
+    const handlers = subscribeWaitingRoomSocketEventsMock.mock
+      .calls[0]?.[0] as {
+      onLobbyUpdated: (payload: LobbyUpdatedEventPayload) => void
+    }
+
+    act(() => {
+      handlers.onLobbyUpdated({
+        action: 'status_changed',
+        room: {
+          id: 'room-other',
+          title: '다른 방',
+          status: 'waiting',
+          is_private: false,
+          current_players: 2,
+          max_players: 4,
+          host_id: 'user-9',
+          host_nickname: '다른방장',
+        },
+      })
+    })
+
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledWith({
+      includeFollowUpRefresh: true,
+    })
+    expect(params.setRoomMock).not.toHaveBeenCalledWith(null)
+    expect(params.setChatMessagesMock).not.toHaveBeenCalledWith([])
+    expect(params.onRoomRemoved).not.toHaveBeenCalled()
+  })
+
+  it('현재 방 removed lobby_updated는 cleanup과 접속자 snapshot 재동기화를 함께 수행한다', () => {
     const params = createBaseParams()
     renderHook(() => useWaitingRoomSocketSync(params))
 
@@ -282,24 +322,14 @@ describe('useWaitingRoomSocketSync', () => {
       handlers.onLobbyUpdated({
         action: 'removed',
         room: {
-          id: 'room-other',
-        },
-      })
-    })
-
-    expect(params.setRoomMock).not.toHaveBeenCalledWith(null)
-    expect(params.setChatMessagesMock).not.toHaveBeenCalledWith([])
-    expect(params.onRoomRemoved).not.toHaveBeenCalled()
-
-    act(() => {
-      handlers.onLobbyUpdated({
-        action: 'removed',
-        room: {
           id: 'room-5',
         },
       })
     })
 
+    expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledWith({
+      includeFollowUpRefresh: true,
+    })
     expect(params.setRoomMock).toHaveBeenCalledWith(null)
     expect(params.setChatMessagesMock).toHaveBeenCalledWith([])
     expect(params.onRoomRemoved).toHaveBeenCalledTimes(1)
@@ -328,6 +358,7 @@ describe('useWaitingRoomSocketSync', () => {
       createJoinedRoomSnapshotPayload()
     )
     expect(params.setChatMessagesMock).toHaveBeenCalledWith([])
+    expect(params.setIsRoomLoadingMock).toHaveBeenCalledWith(false)
     expect(requestOnlineUsersSnapshotSyncMock).toHaveBeenCalledTimes(1)
     expect(params.hasReceivedRoomUpdatedRef.current).toBe(true)
   })

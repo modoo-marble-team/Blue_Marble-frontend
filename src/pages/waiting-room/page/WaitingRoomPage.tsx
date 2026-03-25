@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
@@ -41,6 +41,8 @@ interface WaitingRoomLocationState {
   roomId?: string
   roomTitle?: string
   preJoinedSnapshot?: WaitingRoomSnapshot
+  resumeRoomMembership?: boolean
+  lastRoomSnapshot?: WaitingRoomSnapshot
 }
 
 const DEFAULT_WAITING_ROOM_TITLE = '즐거운 게임 한판!'
@@ -71,18 +73,31 @@ function WaitingRoomPage() {
   const locationState = location.state as WaitingRoomLocationState | null
   const isSameRoomState = locationState?.roomId === currentRoomId
   const shouldUsePreJoinedSnapshot = navigationType !== 'POP'
+  const resumeRoomMembership = Boolean(
+    isSameRoomState && locationState?.resumeRoomMembership
+  )
   const selectedRoomTitle = isSameRoomState ? locationState?.roomTitle : null
   const preJoinedSnapshot =
-    isSameRoomState && shouldUsePreJoinedSnapshot
+    !resumeRoomMembership && isSameRoomState && shouldUsePreJoinedSnapshot
       ? (locationState?.preJoinedSnapshot ?? null)
       : null
+  const resumeBootstrapSnapshot =
+    resumeRoomMembership && isSameRoomState
+      ? (locationState?.lastRoomSnapshot ?? null)
+      : null
+  const latestRoomSnapshotRef = useRef<WaitingRoomSnapshot | null>(
+    preJoinedSnapshot ?? resumeBootstrapSnapshot
+  )
 
   const handleGameStart = useCallback(
     (payload: GameStartEventPayload) => {
+      const lastRoomSnapshot = latestRoomSnapshotRef.current
+
       navigate(`/game/${payload.game_id}`, {
         state: {
           gameId: payload.game_id,
           roomId: payload.room_id,
+          ...(lastRoomSnapshot ? { lastRoomSnapshot } : {}),
         },
       })
     },
@@ -116,9 +131,15 @@ function WaitingRoomPage() {
     session,
     fallbackRoomTitle: selectedRoomTitle ?? undefined,
     preJoinedSnapshot,
+    resumeRoomMembership,
+    resumeBootstrapSnapshot,
     onGameStart: handleGameStart,
     onRoomRemoved: handleRoomRemoved,
   })
+
+  useEffect(() => {
+    latestRoomSnapshotRef.current = room
+  }, [room])
 
   const {
     data: users = [],
@@ -135,7 +156,11 @@ function WaitingRoomPage() {
     const mergedUsers = mergeOnlineUsersWithRoomPlayers(
       users,
       room.players,
-      roomStatus
+      roomStatus,
+      {
+        includeMissingPlayers: true,
+        overrideExistingStatus: true,
+      }
     )
 
     return mergeOnlineUsersWithCurrentUser(mergedUsers, {
@@ -301,12 +326,12 @@ function WaitingRoomPage() {
             Array.from({ length: 4 }).map((_, index) => (
               <div
                 key={`waiting-seat-skeleton-${index}`}
-                className="h-full min-h-[260px] animate-pulse rounded-[34px] bg-ui-surface-soft"
+                className="h-full min-h-65 animate-pulse rounded-[34px] bg-ui-surface-soft"
               />
             ))}
 
           {!isRoomLoading && roomErrorMessage && (
-            <article className="col-span-full flex min-h-[260px] flex-col items-center justify-center rounded-[34px] border border-ui-danger-border bg-ui-danger-bg p-6 text-center">
+            <article className="col-span-full flex min-h-65 flex-col items-center justify-center rounded-[34px] border border-ui-danger-border bg-ui-danger-bg p-6 text-center">
               <p className="text-base font-semibold text-ui-danger">
                 대기방 정보를 불러오지 못했습니다.
               </p>
@@ -335,10 +360,10 @@ function WaitingRoomPage() {
         <div
           className={cn(
             'flex min-h-0 flex-col gap-3 xl:h-full xl:flex-row xl:items-stretch',
-            isUserListOpen ? 'xl:w-[620px]' : 'xl:w-[412px]'
+            isUserListOpen ? 'xl:w-155' : 'xl:w-103'
           )}
         >
-          <div className="min-h-0 xl:h-full xl:w-[340px] xl:shrink-0">
+          <div className="min-h-0 xl:h-full xl:w-85 xl:shrink-0">
             <WaitingRoomSidePanel
               messages={chatMessages}
               currentUserId={session.userId}

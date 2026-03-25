@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { AuthSession } from '../../../features/auth/session/types'
+import { requestOnlineUsersSnapshotSync } from '../../../features/presence/online-users/onlineUsersSocket'
 import {
   getWaitingRoomErrorMessage,
   leaveWaitingRoom,
@@ -119,6 +120,9 @@ export function useWaitingRoomActions({
           // leave API 성공 이후에만 leave_room 소켓 이벤트 전송
           leaveWaitingRoomSocket({
             roomId: targetRoomId,
+          })
+          requestOnlineUsersSnapshotSync({
+            includeFollowUpRefresh: true,
           })
           hasLeftRoomRef.current = true
 

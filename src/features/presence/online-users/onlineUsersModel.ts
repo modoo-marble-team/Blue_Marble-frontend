@@ -24,6 +24,7 @@ function createOnlineUserViewModel(user: OnlineUserPayload): OnlineUser {
 
 interface MergeOnlineUsersWithRoomPlayersOptions {
   includeMissingPlayers?: boolean
+  overrideExistingStatus?: boolean
 }
 
 // 접속자 payload를 UI 전용 접속자 모델로 매핑
@@ -46,12 +47,14 @@ export function mergeOnlineUsersWithCurrentUser(
     users.map((user) => [user.id, user])
   )
 
+  const existingUser = usersById.get(currentUser.id)
+
   usersById.set(
     currentUser.id,
     createOnlineUserViewModel({
       id: currentUser.id,
       nickname: currentUser.nickname,
-      status: currentUser.status,
+      status: existingUser?.status ?? currentUser.status,
     })
   )
 
@@ -59,8 +62,8 @@ export function mergeOnlineUsersWithCurrentUser(
 }
 
 // room.players를 기준으로 현재 방 참가자의 상태를 접속자 목록에 반영한다.
-// source of truth는 여전히 online snapshot이며, 명시적으로 허용한 경우에만
-// snapshot에 없는 room player를 목록에 추가한다.
+// 기본 source of truth는 online snapshot이지만, waiting-room처럼 현재 room membership이
+// 더 강한 local truth인 화면에서는 상태 override와 missing player 보강을 허용한다.
 export function mergeOnlineUsersWithRoomPlayers(
   users: OnlineUser[],
   players: Array<{
@@ -70,7 +73,8 @@ export function mergeOnlineUsersWithRoomPlayers(
   status: Extract<OnlineUserPayload['status'], 'in_room' | 'playing'>,
   options: MergeOnlineUsersWithRoomPlayersOptions = {}
 ) {
-  const { includeMissingPlayers = false } = options
+  const { includeMissingPlayers = false, overrideExistingStatus = false } =
+    options
   const usersById = new Map<string, OnlineUser>(
     users.map((user) => [user.id, user])
   )
@@ -87,7 +91,10 @@ export function mergeOnlineUsersWithRoomPlayers(
       createOnlineUserViewModel({
         id: player.id,
         nickname: player.nickname,
-        status,
+        status:
+          existingUser && !overrideExistingStatus
+            ? existingUser.status
+            : status,
       })
     )
   })
