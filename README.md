@@ -9,6 +9,15 @@
 > 단순히 화면을 연결하는 데서 끝나지 않고, 로비-대기방-게임으로 이어지는 흐름을  
 > 프론트엔드에서 예측 가능하게 유지하도록 상태 관리, 실시간 이벤트 처리, mock/real 환경 분리를 함께 설계했습니다.
 
+`MARBLE POP Frontend`는 로그인 이후의 사용자 흐름을 웹에서 안정적으로 이어주는 클라이언트입니다. REST 조회는 TanStack Query로, 게임과 프레즌스 같은 실시간 상태는 Socket.IO와 Zustand로 정리하고, 개발 단계에서는 MSW와 socket mock server를 병행해 mock/real 경로를 같은 UI에서 검증할 수 있게 구성했습니다.
+
+### 프론트엔드가 맡는 역할
+
+- 로그인 이후 라우팅, 세션 복구, 페이지 진입 제어
+- 로비, 대기방, 게임 화면의 상태 렌더링과 사용자 입력 전달
+- REST 응답과 실시간 socket 이벤트를 하나의 UI 상태로 정렬
+- mock/real 런타임 전환, 테스트, 문서화
+
 ---
 
 ## :link: 배포 링크
@@ -30,6 +39,142 @@
 |                                       마이페이지                                        |
 | :-------------------------------------------------------------------------------------: |
 | <img src="./docs/project/assets/readme/my-page.png" alt="MARBLE POP 마이페이지 화면" /> |
+
+---
+
+## 🏗️ 아키텍처
+
+```mermaid
+flowchart LR
+    B["Browser"] --> APP["React + Vite App"]
+    APP --> QUERY["TanStack Query"]
+    APP --> STORE["Zustand / UI State"]
+    APP --> MOCK["MSW / Socket Mock"]
+
+    QUERY --> REST["REST API"]
+    STORE --> SIO["Socket.IO"]
+
+    REST --> BE["Backend"]
+    SIO --> BE
+    MOCK -. local dev / demo .- APP
+```
+
+- 일반 모드에서는 REST와 Socket.IO로 백엔드와 통신합니다.
+- mock 모드에서는 MSW와 local socket mock server를 사용해 페이지 흐름과 실시간 상호작용을 로컬에서 검증합니다.
+- 페이지는 의도를 드러내고, 상세 흐름은 hook/controller/api 계층으로 분리하는 구조를 유지합니다.
+
+---
+
+## 🗂️ 프로젝트 구조
+
+```text
+.
+├─ src/
+│  ├─ pages/
+│  │  ├─ lobby/                # 로비 페이지 및 방 진입 흐름
+│  │  ├─ waiting-room/         # 대기방 lifecycle, ready/start/leave
+│  │  └─ GamePage.tsx          # 게임 런타임 화면 조합
+│  ├─ features/presence/       # 접속자 목록, DM, unread badge
+│  ├─ services/socket/         # socket contract adapter / emit handler
+│  ├─ stores/                  # zustand store
+│  ├─ mocks/                   # MSW mock handler
+│  └─ contracts/socket/        # socket schema / policy
+├─ mock-socket-server/         # 로컬 socket mock server
+├─ e2e/                        # Playwright 시나리오
+├─ docs/project/               # 공개용 프로젝트 문서 / README 자산
+└─ scripts/ai/                 # repo workflow / validation 도구
+```
+
+---
+
+## 🚀 빠르게 실행하기
+
+### 1. 저장소 클론 및 의존성 설치
+
+```bash
+git clone https://github.com/modoo-marble-team/Blue_Marble-frontend.git
+cd Blue_Marble-frontend
+npm install
+```
+
+### 2. 환경 변수 준비
+
+```bash
+cp .env.example .env.development.local
+```
+
+- `.env.example`는 기본값 예시입니다.
+- `.env.development.local`은 개인 로컬 override 용도로 사용합니다.
+- `npm run env:mock`, `npm run env:real`은 `.env.development`를 각각 mock/real 템플릿으로 바꾸고, 있으면 `.env.development.local`의 mock 관련 플래그도 함께 맞춰줍니다.
+
+### 3. 실행 모드 선택
+
+실백엔드 연결:
+
+```bash
+npm run env:real
+npm run dev
+```
+
+mock 기반 로컬 검증:
+
+```bash
+npm run env:mock
+```
+
+별도 터미널에서 socket mock server 실행:
+
+```bash
+npm run socket:mock
+```
+
+개발 서버 실행:
+
+```bash
+npm run dev
+```
+
+### 4. 확인
+
+| 경로                    | 설명                                        |
+| ----------------------- | ------------------------------------------- |
+| `http://localhost:5173` | Vite 개발 서버                              |
+| `npm run env:show`      | 현재 `.env.development` mock/real 모드 확인 |
+
+---
+
+## 🔧 주요 환경 변수
+
+| 변수                        | 기본값 예시                 | 설명                                                 |
+| --------------------------- | --------------------------- | ---------------------------------------------------- |
+| `VITE_API_URL`              | `http://localhost:3000/api` | REST API base URL                                    |
+| `VITE_SOCKET_URL`           | `http://localhost:3000`     | Socket.IO base URL                                   |
+| `VITE_USE_SOCKET_MOCK`      | `false`                     | 개발 환경에서 MSW + socket mock 경로를 사용할지 결정 |
+| `VITE_ENABLE_DEMO_MOCK`     | `false`                     | 배포/데모 환경에서도 mock 모드를 강제로 켤지 결정    |
+| `VITE_ALLOW_ALL_MOCK_TURNS` | `false`                     | mock 게임에서 턴 제한을 무시할지 결정                |
+
+> mock 모드를 켜면 MSW와 socket mock server 기준으로 화면 흐름을 검증합니다.
+
+---
+
+## 🧪 자주 쓰는 명령어
+
+| 명령어                          | 설명                                       |
+| ------------------------------- | ------------------------------------------ |
+| `npm run dev`                   | Vite 개발 서버 실행                        |
+| `npm run env:mock`              | `.env.development`를 mock 모드로 전환      |
+| `npm run env:real`              | `.env.development`를 real 모드로 전환      |
+| `npm run env:show`              | 현재 mock/real 모드 확인                   |
+| `npm run socket:mock`           | 로컬 socket mock server 실행               |
+| `npm run lint`                  | ESLint 실행                                |
+| `npm run test`                  | Vitest 전체 실행                           |
+| `npm run test:coverage`         | 커버리지 포함 테스트 실행                  |
+| `npm run e2e:ci`                | 기본 Playwright 시나리오 실행              |
+| `npm run build`                 | TypeScript build + Vite production build   |
+| `npm run ai:check:lobby`        | 로비 / presence / room-chat 관련 최소 검증 |
+| `npm run ai:check:waiting-room` | 대기방 관련 최소 검증                      |
+| `npm run ai:check:game`         | 게임 런타임 관련 최소 검증                 |
+| `npm run ai:self-review`        | 변경 파일 기준 self-review 출력            |
 
 ---
 
@@ -66,85 +211,43 @@
 
 ### FE
 
-| 이름   | 역할                                                                                                                                                                                    |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 최진명 | 팀장, 랜딩·로그인·헤더·로비·DM·채팅·채팅방·대기방·마이페이지·게임 내 채팅 구현, 게임 외 프론트 전반 담당, 컨텍스트 정리·협업 워크플로우·테스트/검증 체계 정리, 일부 게임 오류 수정 지원 |
-| 우재민 | 게임 로직                                                                                                                                                                               |
-| 김재윤 | 게임 UI                                                                                                                                                                                 |
+| 이름   | 역할                                                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 최진명 | 팀장, 랜딩·로그인·헤더·로비·접속자목록·DM·채팅·채팅창·대기방·마이페이지·게임 내 채팅 구현, 컨텍스트 정리·협업 워크플로우·테스트/검증 체계 정리, 게임 오류 수정 지원 |
+| 우재민 | 게임 소켓 계약 정규화, 스토어 상태 동기화, 호환 계층 유지 책임                                                                                                      |
+| 김재윤 | 보드 렌더 구조 유지, 이동·모달·이벤트 연출 UX 품질 책임                                                                                                             |
+
+---
 
 ## 📑 프로젝트 규칙
 
-### Branch Strategy
+자세한 협업 규칙과 문서화 기준은 [Project Conventions](./docs/project/conventions.md)를 참고해주세요.
 
-> - `main`, `develop` 보호 브랜치 운영
-> - 기능 작업은 브랜치를 분리한 뒤 PR로 병합
-> - 직접 push보다 review 기반 병합 우선
+- `main`, `develop` 보호 브랜치를 운영하고 PR 기반 병합을 우선합니다.
+- 커밋은 `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build` 접두사를 사용합니다.
+- PR 본문에는 작업 내용, 실행한 검증, 남은 리스크를 남깁니다.
+- 사용자 흐름이나 계약이 바뀌면 관련 문서와 테스트를 함께 갱신합니다.
 
-### Git Convention
+---
 
-> 1. 적절한 커밋 접두사 작성
-> 2. 변경 의도가 드러나는 메시지 작성
-> 3. 필요한 경우 이슈 번호를 함께 연결
+## :clipboard: 문서
 
-> | 접두사   | 설명                     |
-> | -------- | ------------------------ |
-> | Feat     | 새로운 기능 구현         |
-> | Fix      | 버그 수정                |
-> | Docs     | 문서 추가 및 수정        |
-> | Refactor | 동작 변경 없는 구조 개선 |
-> | Test     | 테스트 추가 및 수정      |
-> | Chore    | 기타 작업                |
-> | Build    | 빌드, 환경 설정          |
+### 프로젝트 내부 문서
 
-### Pull Request
+- [Project Conventions](./docs/project/conventions.md)
+- [README Screenshot Assets](./docs/project/assets/readme/README.md)
+- [Architecture Assets Guide](./docs/project/assets/architecture/README.md)
+- [API Spec Summary](./docs/project/specs/api-spec.md)
+- [ERD Summary](./docs/project/specs/erd.md)
+- [Requirements Summary](./docs/project/specs/requirements.md)
+- [Screen Spec Summary](./docs/project/specs/screen-spec.md)
+- [Table Schema Summary](./docs/project/specs/table-schema.md)
+- [Demo Video Note](./docs/project/presentations/demo-video.md)
 
-> ### Title
->
-> - 제목은 변경 의도가 바로 보이도록 작성합니다.
+### 외부 명세 / 협업 문서
 
-> ### PR Type
->
-> - [ ] FEAT: 새로운 기능 구현
-> - [ ] FIX: 버그 수정
-> - [ ] DOCS: 문서 추가 및 수정
-> - [ ] REFACTOR: 코드 리팩토링
-> - [ ] TEST: 테스트 관련
-> - [ ] BUILD: 빌드, 환경 설정
-> - [ ] CHORE: 기타 작업
-
-> ### Description
->
-> - 무엇을 바꿨는지, 왜 바꿨는지, 어떤 검증을 했는지 작성합니다.
-
-> ### Discussion
->
-> - 추후 논의가 필요한 사항이나 남은 리스크를 작성합니다.
-
-### Code Convention
-
-> FE
->
-> - 페이지는 의도를 드러내고 상세 로직은 hook / controller / api 계층으로 분리
-> - 같은 종류의 훅과 반환 형태는 일관성 유지
-> - 이벤트 핸들러는 `handle*` 네이밍 사용
-> - mock 경로와 real 경로가 함께 존재하는 코드는 양쪽 흐름을 함께 검토
-> - 테스트는 구현 세부보다 사용자 행동과 계약을 검증
-
-### Communication Rules
-
-> - 주요 의사결정은 PR, 이슈, 문서에 기록
-> - 사용자 흐름 또는 계약이 바뀌면 관련 문서와 테스트를 함께 갱신
-
-## :clipboard: Documents
-
-> [📜 API 명세서](https://docs.google.com/spreadsheets/d/191cFJ97qyWzeAJm5DEqTf6SO6p8mqWBE/edit?pli=1&gid=2141226886#gid=2141226886)
->
-> [📜 요구사항 정의서](https://docs.google.com/spreadsheets/d/15Lu2YYq1VlnJbam9ADfLuEq_uTMY8umN/edit?gid=919594060#gid=919594060)
->
-> [📜 ERD / 소켓 명세서](https://github.com/modoo-marble-team/docs/tree/main)
->
-> [📜 테이블 명세서](https://docs.google.com/spreadsheets/d/1Xq0YsYCvV3xzFYTsfubVfVqsGeOol7Ah/edit?gid=507107377#gid=507107377)
->
-> [📜 화면 정의서 / 와이어프레임 / 플로우 차트](https://www.figma.com/design/3yixlZLiKnWieKVFpM7n9j/%ED%8C%80%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EC%BA%90%EC%A3%BC%EC%96%BC-%EB%B8%8C%EB%A3%A8%EB%A7%88%EB%B8%94?node-id=0-1&t=ZohHKxxh86rbb8Fq-1)
->
-> [📜 Project Conventions](./docs/project/conventions.md)
+- [API 명세서](https://docs.google.com/spreadsheets/d/191cFJ97qyWzeAJm5DEqTf6SO6p8mqWBE/edit?pli=1&gid=2141226886#gid=2141226886)
+- [요구사항 정의서](https://docs.google.com/spreadsheets/d/15Lu2YYq1VlnJbam9ADfLuEq_uTMY8umN/edit?gid=919594060#gid=919594060)
+- [ERD / 소켓 명세서 Docs Repo](https://github.com/modoo-marble-team/docs/tree/main)
+- [테이블 명세서](https://docs.google.com/spreadsheets/d/1Xq0YsYCvV3xzFYTsfubVfVqsGeOol7Ah/edit?gid=507107377#gid=507107377)
+- [화면 정의서 / 와이어프레임 / 플로우 차트](https://www.figma.com/design/3yixlZLiKnWieKVFpM7n9j/%ED%8C%80%ED%94%84%EB%A1%9C%EC%A0%9D%ED%8A%B8-%EC%BA%90%EC%A3%BC%EC%96%BC-%EB%B8%8C%EB%A3%A8%EB%A7%88%EB%B8%94?node-id=0-1&t=ZohHKxxh86rbb8Fq-1)

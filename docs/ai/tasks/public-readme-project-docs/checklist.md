@@ -8,12 +8,15 @@
 - [x] 최소 범위로 구현했다
 - [x] mock/real 경로를 함께 확인했다
 - [x] 타입/contract 변경이 있으면 관련 코드도 같이 수정했다
+- [x] README에 프론트 역할 / 아키텍처 / 프로젝트 구조 / 빠른 실행 섹션을 추가했다
+- [x] `.env.example`, `package.json`, `src/vite-env.d.ts` 기준으로 환경 변수와 명령어 설명을 맞췄다
+- [x] 프로젝트 규칙 섹션을 축약하고 `docs/project/conventions.md` 링크 중심으로 정리했다
 
 ## Testing
 
 - [x] 최소 검증 명령을 직접 추가했다
-- [x] `npx prettier --check README.md docs/project docs/ai/tasks/public-readme-project-docs TODO.md`
-- [x] `npm run ai:self-review -- --files ...`
+- [x] `npx prettier --check README.md docs/ai/tasks/public-readme-project-docs TODO.md`
+- [x] `npm run ai:self-review -- --files README.md docs/ai/tasks/public-readme-project-docs/plan.md docs/ai/tasks/public-readme-project-docs/context.md docs/ai/tasks/public-readme-project-docs/checklist.md TODO.md`
 
 ## Review
 

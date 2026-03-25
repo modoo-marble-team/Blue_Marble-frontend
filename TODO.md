@@ -30,7 +30,7 @@
 
 - [x] `sell-modal-server-driven` - Sell Modal Server Driven (`docs/ai/tasks/sell-modal-server-driven/`) - 강제호출 매각모달 팝업 제거 및 채팅창 라운드 표출 갱신
 - [x] `git-flow-rebase-safeguards` - Git Flow Rebase Safeguards (`docs/ai/tasks/git-flow-rebase-safeguards/`) - ai:git-flow의 branch 생성 전 / push 전 rebase 정책을 실행 결과와 사용 문서에서 더 명확히 드러내도록 정리
-- [x] `public-readme-project-docs` - Public Readme Project Docs (`docs/ai/tasks/public-readme-project-docs/`) - 루트 README를 대외용 소개 문서로 재구성하고 `docs/project/` 공개 문서 구조를 추가
+- [x] `public-readme-project-docs` - Public Readme Project Docs (`docs/ai/tasks/public-readme-project-docs/`) - 루트 README를 대외 소개와 개발자 온보딩을 함께 담는 하이브리드 문서로 보강하고 `docs/project/` 공개 문서 구조를 유지
 - [x] `game-ux-improvements` - Game UX Improvements (`docs/ai/tasks/game-ux-improvements/`) - 무인도 문구, 20라운드 표기, 여행 애니메이션 단축 등 UX 개선 모음
 
 - [x] `sort-by-total-assets` - Sort By Total Assets (`docs/ai/tasks/sort-by-total-assets/`) - 왕관 및 플레이어 패널 순위를 보유금 대신 총자산 기준으로 변경
