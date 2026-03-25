@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -21,6 +21,7 @@ vi.mock('../config/env', () => ({
 const {
   sendWaitingRoomChatMock,
   emitChatEvent,
+  emitGameActionMock,
   socketOnMock,
   socketOffMock,
   navigateMock,
@@ -28,11 +29,13 @@ const {
   leaveRoomFromGameMock,
   getGameLeaveErrorMessageMock,
   requestOnlineUsersSnapshotSyncMock,
+  useTurnMock,
 } = vi.hoisted(() => {
   const handlers = new Map<string, Set<(payload: unknown) => void>>()
 
   return {
     sendWaitingRoomChatMock: vi.fn(),
+    emitGameActionMock: vi.fn(),
     socketOnMock: vi.fn(
       (event: string, handler: (payload: unknown) => void) => {
         const nextHandlers = handlers.get(event) ?? new Set()
@@ -53,6 +56,7 @@ const {
     leaveRoomFromGameMock: vi.fn(),
     getGameLeaveErrorMessageMock: vi.fn(),
     requestOnlineUsersSnapshotSyncMock: vi.fn(),
+    useTurnMock: vi.fn(),
   }
 })
 
@@ -98,7 +102,7 @@ vi.mock('../hooks/game/useDiceRoll', () => ({
 }))
 
 vi.mock('../hooks/game/useTurn', () => ({
-  useTurn: () => false,
+  useTurn: () => useTurnMock(),
 }))
 
 vi.mock('../lib/bgm', () => ({
@@ -113,7 +117,7 @@ vi.mock('../pages/game/api', () => ({
 
 vi.mock('../services/socket/game.handler', () => ({
   emitPromptResponse: vi.fn(),
-  emitGameAction: vi.fn(),
+  emitGameAction: emitGameActionMock,
 }))
 
 vi.mock('../components/board/GameBoard', () => ({
@@ -122,6 +126,7 @@ vi.mock('../components/board/GameBoard', () => ({
     {
       gameResult?: object | null
       isGameOver?: boolean
+      onBlockingModalChange?: (blocked: boolean) => void
       onGameResultConfirm?: () => void
     }
   >(function MockBoardGame(props, ref) {
@@ -136,10 +141,27 @@ vi.mock('../components/board/GameBoard', () => ({
       gameResult?.winner ||
       (Array.isArray(gameResult?.rankings) && gameResult.rankings.length > 0)
     )
+    const onBlockingModalChange = props.onBlockingModalChange
+
+    useEffect(() => {
+      onBlockingModalChange?.(false)
+    }, [onBlockingModalChange])
 
     return (
       <div ref={ref} data-testid="mock-board-game">
         게임 보드
+        <button
+          type="button"
+          onClick={() => props.onBlockingModalChange?.(true)}
+        >
+          보드 막기
+        </button>
+        <button
+          type="button"
+          onClick={() => props.onBlockingModalChange?.(false)}
+        >
+          보드 해제
+        </button>
         {hasAuthoritativeGameResult && (
           <button type="button" onClick={props.onGameResultConfirm}>
             대기방으로 돌아가기
@@ -151,7 +173,30 @@ vi.mock('../components/board/GameBoard', () => ({
 }))
 
 vi.mock('../components/game/controls/RollButton', () => ({
-  default: () => <button type="button">주사위</button>,
+  default: ({
+    isMyTurn,
+    mode = 'roll',
+    onRoll,
+    onEndTurn,
+  }: {
+    isMyTurn: boolean
+    mode?: 'roll' | 'end_turn'
+    onRoll?: () => void
+    onEndTurn?: () => void
+  }) => {
+    const isEndTurnMode = mode === 'end_turn'
+    const label = isEndTurnMode ? '턴 종료' : '주사위'
+
+    return (
+      <button
+        type="button"
+        disabled={!isMyTurn}
+        onClick={isEndTurnMode ? onEndTurn : onRoll}
+      >
+        {label}
+      </button>
+    )
+  },
 }))
 
 vi.mock('../components/game/modals/ExitGameModal', () => ({
@@ -335,6 +380,7 @@ const getPlayerPanelById = (playerId: string): HTMLElement => {
 describe('GamePage chat flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useTurnMock.mockReturnValue(false)
 
     setTestAuthSession(
       createAuthSessionFixture({
@@ -979,5 +1025,60 @@ describe('GamePage chat flow', () => {
     expect(screen.getByText('/ 20')).toBeInTheDocument()
     // Label
     expect(screen.getByText('Round')).toBeInTheDocument()
+  })
+
+  it('보드가 아직 blocked면 resolving 상태여도 턴 종료 대신 주사위 버튼이 비활성으로 유지된다', async () => {
+    const user = userEvent.setup()
+
+    useTurnMock.mockReturnValue(true)
+    setTestGameState({
+      currentTurn: 'user-1',
+      phase: 'resolving',
+      prompt: null,
+      pendingAction: null,
+    })
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '보드 막기' }))
+
+    const rollButton = screen.getByRole('button', { name: '주사위' })
+    expect(rollButton).toBeDisabled()
+    expect(
+      screen.queryByRole('button', { name: '턴 종료' })
+    ).not.toBeInTheDocument()
+
+    await user.click(rollButton)
+
+    expect(emitGameActionMock).not.toHaveBeenCalled()
+  })
+
+  it('보드가 해제된 뒤에만 턴 종료 버튼으로 바뀌고 END_TURN을 emit한다', async () => {
+    const user = userEvent.setup()
+
+    useTurnMock.mockReturnValue(true)
+    setTestGameState({
+      currentTurn: 'user-1',
+      phase: 'resolving',
+      prompt: null,
+      pendingAction: null,
+    })
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '보드 막기' }))
+    expect(screen.getByRole('button', { name: '주사위' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: '보드 해제' }))
+
+    const endTurnButton = screen.getByRole('button', { name: '턴 종료' })
+    expect(endTurnButton).toBeEnabled()
+
+    await user.click(endTurnButton)
+
+    expect(emitGameActionMock).toHaveBeenCalledWith({
+      type: 'END_TURN',
+      gameId: 'game-1',
+    })
   })
 })
