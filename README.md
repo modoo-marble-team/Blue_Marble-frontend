@@ -32,13 +32,13 @@
 | :-------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------: |
 | <img src="./docs/project/assets/readme/home-main.png" alt="MARBLE POP 홈 화면" /> | <img src="./docs/project/assets/readme/lobby-overview.png" alt="MARBLE POP 로비 화면" /> |
 
-|                                          대기방                                          |                                        게임                                        |
+|                                          대기방                                          |                                        마이페이지                                        |
 | :--------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------: |
-| <img src="./docs/project/assets/readme/waiting-room.png" alt="MARBLE POP 대기방 화면" /> | <img src="./docs/project/assets/readme/gameplay.png" alt="MARBLE POP 게임 화면" /> |
+| <img src="./docs/project/assets/readme/waiting-room.png" alt="MARBLE POP 대기방 화면" /> | <img src="./docs/project/assets/readme/my-page.png" alt="MARBLE POP 마이페이지 화면" /> |
 
-|                                       마이페이지                                        |
+|                                       게임                                        |
 | :-------------------------------------------------------------------------------------: |
-| <img src="./docs/project/assets/readme/my-page.png" alt="MARBLE POP 마이페이지 화면" /> |
+| <img src="./docs/project/assets/readme/gameplay.png" alt="MARBLE POP 게임 화면" /> |
 
 ---
 
