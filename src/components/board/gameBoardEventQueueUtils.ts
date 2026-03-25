@@ -26,21 +26,39 @@ export type ChanceMoveAnimationHint = {
   steps: number
 }
 
+export const FAST_MOVE_ANIMATION_OPTIONS = {
+  initialDelayMs: 200,
+  stepDelayMs: 80,
+  endDelayMs: 100,
+} as const
+
 export const shouldApplyTravelMoveAnimation = ({
   normalizedTrigger,
   fromIndex,
+  toIndex,
   tiles,
 }: {
   normalizedTrigger: string
   fromIndex: number
+  toIndex: number
   tiles: TileData[]
 }) => {
-  if (normalizedTrigger === 'travel') {
+  if (
+    normalizedTrigger === 'travel' ||
+    normalizedTrigger === 'go_to_island' ||
+    normalizedTrigger === 'move_to_island'
+  ) {
     return true
   }
 
   const fromTileType = tiles[fromIndex]?.type
-  return fromTileType === 'TRAVEL' || fromTileType === 'ISLAND'
+  const toTileType = tiles[toIndex]?.type
+
+  if (fromTileType === 'TRAVEL') {
+    return true
+  }
+
+  return fromTileType === 'MOVE_TO_ISLAND' && toTileType === 'ISLAND'
 }
 
 const normalizeEventType = (type: unknown) =>

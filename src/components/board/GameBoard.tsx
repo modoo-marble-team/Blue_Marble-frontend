@@ -52,6 +52,7 @@ import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { syncMockStorePlayers } from './gameBoardStoreBridge'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
+  FAST_MOVE_ANIMATION_OPTIONS,
   getPendingMovePlayerIdsFromEvents,
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
@@ -872,6 +873,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           const isTravelMove = shouldApplyTravelMoveAnimation({
             normalizedTrigger,
             fromIndex,
+            toIndex: tileIndex,
             tiles: boardTiles,
           })
           if (isTravelMove && event.playerId != null) {
@@ -884,9 +886,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             tileIndex,
             {
               direction: moveDirection,
-              stepDelayMs: isTravelMove ? 80 : undefined,
-              initialDelayMs: isTravelMove ? 200 : undefined,
-              endDelayMs: isTravelMove ? 100 : undefined,
+              ...(isTravelMove ? FAST_MOVE_ANIMATION_OPTIONS : {}),
             }
           )
 
@@ -1547,11 +1547,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           player.id,
           player.pos === islandTile.id ? 24 : player.pos,
           islandTile.id,
-          {
-            stepDelayMs: 80,
-            initialDelayMs: 200,
-            endDelayMs: 100,
-          }
+          FAST_MOVE_ANIMATION_OPTIONS
         )
 
         const updatedPlayers = [...playersRef.current]
@@ -1693,9 +1689,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
 
         if (player && islandTile) {
-          await movePlayerSequentially(player.id, player.pos, islandTile.id, {
-            initialDelayMs: 0,
-          })
+          await movePlayerSequentially(
+            player.id,
+            player.pos,
+            islandTile.id,
+            FAST_MOVE_ANIMATION_OPTIONS
+          )
 
           const updatedPlayers = [...playersRef.current]
           updatedPlayers[playerIdx] = {

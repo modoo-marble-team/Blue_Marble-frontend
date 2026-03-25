@@ -4,6 +4,7 @@ import type { PlayerState, TileData } from './board.constants'
 import {
   createBoardStatusFromEvent,
   extractEventDice,
+  FAST_MOVE_ANIMATION_OPTIONS,
   getBoardEventAnimationHoldMs,
   getBoardEventConsumeDelayMs,
   getPendingMovePlayerIdsFromEvents,
@@ -397,12 +398,62 @@ describe('gameBoardEventQueueUtils', () => {
       shouldApplyTravelMoveAnimation({
         normalizedTrigger: 'travel',
         fromIndex: 4,
+        toIndex: 1,
         tiles,
       })
     ).toBe(true)
   })
 
-  it('applies fast travel animation when departing from travel or island tile', () => {
+  it('applies fast travel animation when trigger is go_to_island', () => {
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: 'go_to_island',
+        fromIndex: 4,
+        toIndex: 1,
+        tiles,
+      })
+    ).toBe(true)
+  })
+
+  it('applies fast travel animation when departing from travel tile', () => {
+    const movementTiles: TileData[] = [
+      { id: 0, name: 'Start', type: 'START' },
+      { id: 1, name: 'Island', type: 'ISLAND' },
+      { id: 2, name: 'Travel', type: 'TRAVEL' },
+      { id: 3, name: 'Go To Island', type: 'MOVE_TO_ISLAND' },
+      { id: 4, name: 'Event', type: 'EVENT' },
+    ]
+
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: '',
+        fromIndex: 2,
+        toIndex: 4,
+        tiles: movementTiles,
+      })
+    ).toBe(true)
+  })
+
+  it('applies fast travel animation when moving from go to island tile to island', () => {
+    const movementTiles: TileData[] = [
+      { id: 0, name: 'Start', type: 'START' },
+      { id: 1, name: 'Island', type: 'ISLAND' },
+      { id: 2, name: 'Travel', type: 'TRAVEL' },
+      { id: 3, name: 'Go To Island', type: 'MOVE_TO_ISLAND' },
+      { id: 4, name: 'Event', type: 'EVENT' },
+    ]
+
+    expect(
+      shouldApplyTravelMoveAnimation({
+        normalizedTrigger: '',
+        fromIndex: 3,
+        toIndex: 1,
+        tiles: movementTiles,
+      })
+    ).toBe(true)
+  })
+
+  it('does not apply fast travel animation when departing from island tile', () => {
     const movementTiles: TileData[] = [
       { id: 0, name: 'Start', type: 'START' },
       { id: 1, name: 'Island', type: 'ISLAND' },
@@ -414,30 +465,31 @@ describe('gameBoardEventQueueUtils', () => {
       shouldApplyTravelMoveAnimation({
         normalizedTrigger: '',
         fromIndex: 1,
+        toIndex: 3,
         tiles: movementTiles,
       })
-    ).toBe(true)
-
-    expect(
-      shouldApplyTravelMoveAnimation({
-        normalizedTrigger: '',
-        fromIndex: 2,
-        tiles: movementTiles,
-      })
-    ).toBe(true)
+    ).toBe(false)
   })
 
-  it('does not apply fast travel animation when departing from event tile', () => {
+  it('does not apply fast travel animation when arriving at island by dice move', () => {
     const movementTiles: TileData[] = [
-      { id: 19, name: '광주', type: 'PROPERTY', color: '#66BB6A', price: 1000 },
-      { id: 20, name: '이벤트', type: 'EVENT' },
-      { id: 21, name: '춘천', type: 'PROPERTY', color: '#7E57C2', price: 1000 },
+      { id: 0, name: 'Start', type: 'START' },
+      { id: 1, name: 'Island', type: 'ISLAND' },
+      {
+        id: 2,
+        name: 'Property',
+        type: 'PROPERTY',
+        color: '#66BB6A',
+        price: 1000,
+      },
+      { id: 3, name: 'Event', type: 'EVENT' },
     ]
 
     expect(
       shouldApplyTravelMoveAnimation({
         normalizedTrigger: '',
-        fromIndex: 1,
+        fromIndex: 2,
+        toIndex: 1,
         tiles: movementTiles,
       })
     ).toBe(false)
@@ -448,8 +500,17 @@ describe('gameBoardEventQueueUtils', () => {
       shouldApplyTravelMoveAnimation({
         normalizedTrigger: '',
         fromIndex: 99,
+        toIndex: 1,
         tiles,
       })
     ).toBe(false)
+  })
+
+  it('keeps fast move animation timing constants aligned', () => {
+    expect(FAST_MOVE_ANIMATION_OPTIONS).toEqual({
+      initialDelayMs: 200,
+      stepDelayMs: 80,
+      endDelayMs: 100,
+    })
   })
 })
