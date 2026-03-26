@@ -17,6 +17,7 @@
 
 ## Done
 
+- [x] `game-board-modal-reveal-policy-split` - Game Board Modal Reveal Policy Split (`docs/ai/tasks/game-board-modal-reveal-policy-split/`) - pre-move / post-move reveal policy를 분리해 travel, go-to-island, chance chain move modal ordering을 정리
 - [x] `game-acquisition-prompt-contract-alignment` - Game Acquisition Prompt Contract Alignment (`docs/ai/tasks/game-acquisition-prompt-contract-alignment/`) - acquisition prompt 분류를 `ACQUISITION_OR_SKIP` canonical 계약으로 축소하고 malformed choice fallback 전송을 방어
 - [x] `end-turn-after-board-settle` - End Turn After Board Settle (`docs/ai/tasks/end-turn-after-board-settle/`) - 말 이동과 보드 로컬 액션이 모두 해소된 뒤에만 턴 종료 버튼이 보이고 눌리도록 `GamePage`를 `GameBoard` blocking 상태와 다시 연결
 - [x] `game-board-modal-reveal-timing` - Game Board Modal Reveal Timing (`docs/ai/tasks/game-board-modal-reveal-timing/`) - PLAYER_MOVED 직후 보드 액션 모달이 말 이동 전에 한 프레임 보이는 경로를 barrier와 공통 reveal gate로 정리

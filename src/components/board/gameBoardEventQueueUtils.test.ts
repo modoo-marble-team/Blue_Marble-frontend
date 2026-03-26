@@ -13,6 +13,8 @@ import {
   resolveBoardEventAnimationKind,
   shouldApplyTravelMoveAnimation,
   shouldDelayPromptModalByMovement,
+  shouldRevealPostMoveSurface,
+  shouldRevealPreMoveSurface,
 } from './gameBoardEventQueueUtils'
 
 const players: PlayerState[] = [
@@ -334,6 +336,48 @@ describe('gameBoardEventQueueUtils', () => {
       shouldDelayPromptModalByMovement({
         promptPlayerId: '1',
         pendingMovePlayerIdSet: new Set(['2']),
+        animatedPositions: {},
+        isMoving: false,
+      })
+    ).toBe(false)
+  })
+
+  it('reveals pre-move surface even when a future move is already queued', () => {
+    expect(
+      shouldRevealPreMoveSurface({
+        surfacePlayerId: '1',
+        animatedPositions: {},
+        isMoving: false,
+      })
+    ).toBe(true)
+  })
+
+  it('blocks pre-move surface while board movement or barrier is active', () => {
+    expect(
+      shouldRevealPreMoveSurface({
+        surfacePlayerId: '1',
+        animatedPositions: {},
+        isMoving: true,
+      })
+    ).toBe(false)
+  })
+
+  it('reveals post-move surface only after move settles for prompt owner', () => {
+    expect(
+      shouldRevealPostMoveSurface({
+        surfacePlayerId: '1',
+        pendingMovePlayerIdSet: new Set(),
+        animatedPositions: {},
+        isMoving: false,
+      })
+    ).toBe(true)
+  })
+
+  it('blocks post-move surface while a pending move still exists', () => {
+    expect(
+      shouldRevealPostMoveSurface({
+        surfacePlayerId: '1',
+        pendingMovePlayerIdSet: new Set(['1']),
         animatedPositions: {},
         isMoving: false,
       })
