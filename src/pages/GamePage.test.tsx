@@ -12,9 +12,16 @@ import { renderWithProviders } from '../test/renderWithProviders'
 import type { Player } from '../types/domain'
 import type { WaitingRoomSnapshot } from './waiting-room/api/types'
 
+const envFlags = vi.hoisted(() => ({
+  showGameDebugOverlay: false,
+}))
+
 vi.mock('../config/env', () => ({
   IS_DEMO_MOCK_ENABLED: false,
   IS_SOCKET_MOCK_ENABLED: false,
+  get SHOW_GAME_DEBUG_OVERLAY() {
+    return envFlags.showGameDebugOverlay
+  },
   SHOULD_ENABLE_MSW: true,
 }))
 
@@ -328,6 +335,10 @@ const resetAndSetTestGameState = (state: GameStatePatch) => {
   setTestGameState(state)
 }
 
+const setTestGameDebugOverlayVisible = (visible: boolean) => {
+  envFlags.showGameDebugOverlay = visible
+}
+
 function renderGamePage(options?: {
   initialEntries?: Array<{
     pathname: string
@@ -381,6 +392,7 @@ describe('GamePage chat flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useTurnMock.mockReturnValue(false)
+    setTestGameDebugOverlayVisible(false)
 
     setTestAuthSession(
       createAuthSessionFixture({
@@ -1026,6 +1038,72 @@ describe('GamePage chat flow', () => {
     expect(screen.getByText('/ 20')).toBeInTheDocument()
     // Label
     expect(screen.getByText('Round')).toBeInTheDocument()
+  })
+
+  it('디버그 오버레이 플래그가 켜져 있으면 pending/ack/error 상태 박스를 렌더한다', () => {
+    setTestGameDebugOverlayVisible(true)
+    setTestGameState({
+      pendingAction: {
+        actionId: 'action-1',
+        type: 'END_TURN',
+        requestedAt: Date.now(),
+      },
+      lastAck: {
+        actionId: 'action-1',
+        type: 'END_TURN',
+        ok: true,
+      },
+      lastError: {
+        code: 'RETRY_LATER',
+        message: '잠시 후 다시 시도해주세요.',
+      },
+    })
+
+    renderGamePage()
+
+    expect(screen.getByText('Pending action: END_TURN')).toBeInTheDocument()
+    expect(
+      screen.getByText('Action acknowledged (END_TURN)')
+    ).toBeInTheDocument()
+    expect(screen.getByText('RETRY_LATER')).toBeInTheDocument()
+    expect(screen.getByText('잠시 후 다시 시도해주세요.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument()
+  })
+
+  it('디버그 오버레이 플래그가 꺼져 있으면 pending/ack/error 상태 박스를 숨긴다', () => {
+    setTestGameDebugOverlayVisible(false)
+    setTestGameState({
+      pendingAction: {
+        actionId: 'action-1',
+        type: 'END_TURN',
+        requestedAt: Date.now(),
+      },
+      lastAck: {
+        actionId: 'action-1',
+        type: 'END_TURN',
+        ok: true,
+      },
+      lastError: {
+        code: 'RETRY_LATER',
+        message: '잠시 후 다시 시도해주세요.',
+      },
+    })
+
+    renderGamePage()
+
+    expect(
+      screen.queryByText('Pending action: END_TURN')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Action acknowledged (END_TURN)')
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('RETRY_LATER')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('잠시 후 다시 시도해주세요.')
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Dismiss' })
+    ).not.toBeInTheDocument()
   })
 
   it('보드가 아직 blocked면 resolving 상태여도 턴 종료 대신 주사위 버튼이 비활성으로 유지된다', async () => {

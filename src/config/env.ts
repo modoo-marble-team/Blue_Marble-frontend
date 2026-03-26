@@ -13,5 +13,8 @@ export const IS_SOCKET_MOCK_ENABLED =
   (import.meta.env.DEV && import.meta.env.VITE_USE_SOCKET_MOCK !== 'false') ||
   IS_DEMO_MOCK_ENABLED
 
+// 게임 화면 우측 상단 디버그 오버레이는 개발 환경에서만 노출
+export const SHOW_GAME_DEBUG_OVERLAY = import.meta.env.DEV
+
 // MSW는 실제로 목 데이터를 사용할 때만 활성화
 export const SHOULD_ENABLE_MSW = IS_SOCKET_MOCK_ENABLED
