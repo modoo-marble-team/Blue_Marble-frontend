@@ -1,21 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import type {
-  OnlineUser,
-  OnlineUserStatus,
-} from '../../../features/presence/types'
+import { type KeyboardEvent, useEffect, useMemo, useState } from 'react'
+import type { OnlineUser } from '../../../features/presence/types'
 import { emitDirectMessageReceiveMockForDev } from '../../../features/presence/direct-message/directMessageSocket'
-import { setMockOnlineUserStatus } from '../../../features/presence/mock/mockData'
-import { emitMockOnlineUsersSnapshot } from '../../../features/presence/online-users/onlineUsersSocket'
 import { cn } from '../../../lib/utils'
 import { getWaitingRoomErrorMessage } from '../api/api'
 import {
   mockDevAddWaitingRoomParticipant,
-  mockDevGetWaitingRoomSnapshot,
+  mockDevMakeCurrentUserHost,
   mockDevRemoveWaitingRoomParticipant,
-  mockDevResetWaitingRoom,
   mockDevSeedStartCondition,
   mockDevSetAllNonHostReady,
-  mockDevTransferWaitingRoomHost,
 } from '../socket/mockGateway'
 import { sendWaitingRoomChat } from '../socket/socket'
 import type { WaitingRoomPlayer, WaitingRoomSnapshot } from '../api/types'
@@ -23,7 +16,7 @@ import { IS_SOCKET_MOCK_ENABLED } from '../../../config/env'
 
 const IS_DEV_CONTROL_ENABLED = IS_SOCKET_MOCK_ENABLED
 
-type DevControlMode = 'room' | 'presence' | 'chat'
+type DevControlMode = 'room' | 'room_chat' | 'dm'
 
 interface RoomChatSenderOption {
   id: string
@@ -34,18 +27,16 @@ interface RoomChatSenderOption {
 interface DevControlPanelProps {
   roomId: string
   currentUserId: string
-  currentNickname: string
   users: OnlineUser[]
   roomPlayers: WaitingRoomPlayer[]
   onApplySnapshot: (snapshot: WaitingRoomSnapshot) => void
   onError: (message: string) => void
 }
 
-// 대기방 DEV 제어(룸/접속자/채팅)를 단일 패널에서 탭 전환으로 제공
+// 대기방 DEV 제어(룸/채팅/DM)를 단일 패널에서 탭 전환으로 제공
 export function DevControlPanel({
   roomId,
   currentUserId,
-  currentNickname,
   users,
   roomPlayers,
   onApplySnapshot,
@@ -88,6 +79,12 @@ export function DevControlPanel({
   const selectedRoomChatSender = roomChatSenderOptions.find(
     (senderOption) => senderOption.id === selectedChatSenderId
   )
+  const nonHostPlayers = useMemo(() => {
+    return roomPlayers.filter((player) => !player.isHost)
+  }, [roomPlayers])
+  const areAllNonHostReady =
+    nonHostPlayers.length > 0 &&
+    nonHostPlayers.every((player) => player.isReady)
 
   // 접속자 제어 대상 목록이 바뀌면 선택 유저를 안전하게 보정
   useEffect(() => {
@@ -139,7 +136,7 @@ export function DevControlPanel({
         onClick={() => setIsPanelOpen(true)}
         className="fixed bottom-4 left-4 z-50 h-9 rounded-xl border border-ui-border bg-white/95 px-3 text-xs font-bold text-ui-text-main shadow-xl"
       >
-        DEV CONTROL 열기
+        대기방 테스트용 패널 열기
       </button>
     )
   }
@@ -159,16 +156,6 @@ export function DevControlPanel({
     } finally {
       setPendingAction(null)
     }
-  }
-
-  // 접속자 상태 변경 후 online_users 스냅샷을 즉시 갱신
-  function handleChangePresenceStatus(status: OnlineUserStatus) {
-    if (!selectedPresenceUser) {
-      return
-    }
-
-    setMockOnlineUserStatus(selectedPresenceUser.id, status)
-    emitMockOnlineUsersSnapshot()
   }
 
   // 선택 유저가 현재 사용자에게 DM을 보낸 이벤트를 수동 주입
@@ -191,6 +178,21 @@ export function DevControlPanel({
     })
 
     setIncomingDirectMessage('')
+  }
+
+  function handleIncomingDirectMessageKeyDown(
+    event: KeyboardEvent<HTMLInputElement>
+  ) {
+    const nativeEvent = event.nativeEvent
+    const isImeComposing =
+      nativeEvent.isComposing || nativeEvent.keyCode === 229
+
+    if (isImeComposing || event.key !== 'Enter') {
+      return
+    }
+
+    event.preventDefault()
+    handleEmitIncomingDirectMessage()
   }
 
   // 선택 발신자를 기준으로 room chat 이벤트를 수동 전송
@@ -221,12 +223,14 @@ export function DevControlPanel({
     !canControlPresence || !selectedPresenceUser
   const shouldDisableRoomChatActions =
     !canControlRoomChat || !selectedRoomChatSender
+  const shouldDisableToggleAllReadyActions =
+    isRoomActionDisabled || nonHostPlayers.length === 0
 
   return (
-    <aside className="fixed bottom-4 left-4 z-50 w-[280px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl">
+    <aside className="fixed bottom-4 left-4 z-50 w-[300px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
-          DEV CONTROL
+          대기방 테스트용 패널
         </h3>
         <button
           type="button"
@@ -249,47 +253,36 @@ export function DevControlPanel({
               : 'text-ui-text-sub hover:bg-white/70'
           )}
         >
-          Room
+          방 관리
         </button>
         <button
           type="button"
-          onClick={() => setSelectedMode('presence')}
+          onClick={() => setSelectedMode('room_chat')}
           className={cn(
             'h-7 rounded-md text-[11px] font-bold transition-colors',
-            selectedMode === 'presence'
+            selectedMode === 'room_chat'
               ? 'bg-white text-ui-text-main shadow-sm'
               : 'text-ui-text-sub hover:bg-white/70'
           )}
         >
-          Presence
+          대기방 채팅
         </button>
         <button
           type="button"
-          onClick={() => setSelectedMode('chat')}
+          onClick={() => setSelectedMode('dm')}
           className={cn(
             'h-7 rounded-md text-[11px] font-bold transition-colors',
-            selectedMode === 'chat'
+            selectedMode === 'dm'
               ? 'bg-white text-ui-text-main shadow-sm'
               : 'text-ui-text-sub hover:bg-white/70'
           )}
         >
-          Chat
+          DM
         </button>
       </div>
 
       {selectedMode === 'room' && (
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            disabled={isRoomActionDisabled}
-            onClick={() => {
-              runRoomAction('sync', () => mockDevGetWaitingRoomSnapshot(roomId))
-            }}
-            className="rounded-lg border border-ui-border bg-white px-2 py-1.5 text-xs font-semibold text-ui-text-main disabled:opacity-50"
-          >
-            동기화
-          </button>
-
           <button
             type="button"
             disabled={isRoomActionDisabled}
@@ -320,68 +313,45 @@ export function DevControlPanel({
             type="button"
             disabled={isRoomActionDisabled}
             onClick={() => {
-              runRoomAction('seed', () => mockDevSeedStartCondition(roomId))
+              runRoomAction('seed', () =>
+                mockDevSeedStartCondition(roomId, currentUserId)
+              )
             }}
-            className="rounded-lg bg-ui-brand px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+            className="col-span-2 rounded-lg bg-ui-brand px-2 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
           >
             시작조건
           </button>
 
           <button
             type="button"
-            disabled={isRoomActionDisabled}
+            disabled={shouldDisableToggleAllReadyActions}
             onClick={() => {
-              runRoomAction('ready-all', () =>
-                mockDevSetAllNonHostReady(roomId, true)
+              runRoomAction(
+                areAllNonHostReady ? 'ready-none' : 'ready-all',
+                () => mockDevSetAllNonHostReady(roomId, !areAllNonHostReady)
               )
             }}
             className="col-span-2 rounded-lg border border-ui-border bg-white px-2 py-1.5 text-xs font-semibold text-ui-text-main disabled:opacity-50"
           >
-            non-host 전원 준비
+            {areAllNonHostReady ? '전원 준비 해제' : '전원 준비'}
           </button>
 
           <button
             type="button"
             disabled={isRoomActionDisabled}
             onClick={() => {
-              runRoomAction('ready-none', () =>
-                mockDevSetAllNonHostReady(roomId, false)
+              runRoomAction('become-host', () =>
+                mockDevMakeCurrentUserHost(roomId, currentUserId)
               )
             }}
             className="col-span-2 rounded-lg border border-ui-border bg-white px-2 py-1.5 text-xs font-semibold text-ui-text-main disabled:opacity-50"
           >
-            non-host 준비 해제
-          </button>
-
-          <button
-            type="button"
-            disabled={isRoomActionDisabled}
-            onClick={() => {
-              runRoomAction('transfer-host', () =>
-                mockDevTransferWaitingRoomHost(roomId)
-              )
-            }}
-            className="col-span-2 rounded-lg border border-ui-border bg-white px-2 py-1.5 text-xs font-semibold text-ui-text-main disabled:opacity-50"
-          >
-            방장 넘기기
-          </button>
-
-          <button
-            type="button"
-            disabled={isRoomActionDisabled}
-            onClick={() => {
-              runRoomAction('reset-room', () =>
-                mockDevResetWaitingRoom(roomId, currentUserId, currentNickname)
-              )
-            }}
-            className="col-span-2 rounded-lg border border-ui-danger-border bg-ui-danger-bg px-2 py-1.5 text-xs font-semibold text-ui-danger disabled:opacity-50"
-          >
-            방 초기화
+            방장하기
           </button>
         </div>
       )}
 
-      {selectedMode === 'presence' && (
+      {selectedMode === 'dm' && (
         <div className="mt-3">
           <label
             htmlFor="dev-control-presence-user-select"
@@ -403,48 +373,6 @@ export function DevControlPanel({
             ))}
           </select>
 
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              disabled={shouldDisablePresenceActions}
-              onClick={() => handleChangePresenceStatus('lobby')}
-              className={cn(
-                'rounded-lg border px-2 py-1.5 text-[11px] font-semibold disabled:opacity-50',
-                selectedPresenceUser?.status === 'lobby'
-                  ? 'border-ui-presence-waiting bg-ui-presence-waiting/10 text-ui-presence-waiting'
-                  : 'border-ui-border bg-white text-ui-text-main'
-              )}
-            >
-              로비
-            </button>
-            <button
-              type="button"
-              disabled={shouldDisablePresenceActions}
-              onClick={() => handleChangePresenceStatus('in_room')}
-              className={cn(
-                'rounded-lg border px-2 py-1.5 text-[11px] font-semibold disabled:opacity-50',
-                selectedPresenceUser?.status === 'in_room'
-                  ? 'border-ui-presence-in-room bg-ui-presence-in-room/10 text-ui-presence-in-room'
-                  : 'border-ui-border bg-white text-ui-text-main'
-              )}
-            >
-              대기방
-            </button>
-            <button
-              type="button"
-              disabled={shouldDisablePresenceActions}
-              onClick={() => handleChangePresenceStatus('playing')}
-              className={cn(
-                'rounded-lg border px-2 py-1.5 text-[11px] font-semibold disabled:opacity-50',
-                selectedPresenceUser?.status === 'playing'
-                  ? 'border-ui-presence-playing bg-ui-presence-playing/10 text-ui-presence-playing'
-                  : 'border-ui-border bg-white text-ui-text-main'
-              )}
-            >
-              게임중
-            </button>
-          </div>
-
           <label
             htmlFor="dev-control-presence-incoming-message"
             className="mt-3 block text-[11px] font-semibold text-ui-text-sub"
@@ -456,6 +384,7 @@ export function DevControlPanel({
             type="text"
             value={incomingDirectMessage}
             onChange={(event) => setIncomingDirectMessage(event.target.value)}
+            onKeyDown={handleIncomingDirectMessageKeyDown}
             placeholder="상대가 보낼 메시지"
             disabled={shouldDisablePresenceActions}
             className="mt-1 h-8 w-full rounded-lg border border-ui-border bg-white px-2 text-xs font-medium text-ui-text-main disabled:cursor-not-allowed disabled:opacity-50"
@@ -472,7 +401,7 @@ export function DevControlPanel({
         </div>
       )}
 
-      {selectedMode === 'chat' && (
+      {selectedMode === 'room_chat' && (
         <div className="mt-3">
           <label
             htmlFor="dev-control-room-chat-sender-select"

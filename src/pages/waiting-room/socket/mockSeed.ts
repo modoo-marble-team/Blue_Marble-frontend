@@ -38,6 +38,19 @@ const NICKNAME_SUFFIXES = [
   '챔프',
 ]
 
+const SEEDED_LOBBY_ONLINE_USERS: OnlineUserPayload[] = [
+  {
+    id: 'lobby-user-1',
+    nickname: '로비손님61',
+    status: 'lobby',
+  },
+  {
+    id: 'lobby-user-2',
+    nickname: '로비손님62',
+    status: 'lobby',
+  },
+]
+
 // roomId/index 조합을 숫자 시드로 변환
 function createNicknameSeed(roomId: string, index: number) {
   return `${roomId}-${index + 1}`.split('').reduce((hash, char) => {
@@ -98,5 +111,8 @@ export function createSeededOnlineUsersFromLobbyRooms(
 
 // 프로젝트 기본 로비 시드를 기준으로 접속자 초기 스냅샷 생성
 export function createInitialSeededOnlineUsers() {
-  return createSeededOnlineUsersFromLobbyRooms(mockLobbyRooms)
+  return [
+    ...createSeededOnlineUsersFromLobbyRooms(mockLobbyRooms),
+    ...SEEDED_LOBBY_ONLINE_USERS,
+  ]
 }

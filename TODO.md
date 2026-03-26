@@ -17,6 +17,7 @@
 
 ## Done
 
+- [x] `game-chat-panel-solo-play-toggle` - Game Chat Panel Solo Play Toggle (`docs/ai/tasks/game-chat-panel-solo-play-toggle/`) - 게임방 채팅 테스트 패널 문구를 정리하고 mock 혼자 플레이 토글로 상대 턴 주사위/턴 종료/prompt 응답을 가능하게 정리
 - [x] `game-debug-overlay-production-hide` - Game Debug Overlay 배포 숨김 (`docs/ai/tasks/game-debug-overlay-production-hide/`) - `GamePage` 오른쪽 상단 debug/status overlay를 production에서 숨기고 dev에서만 유지
 - [x] `game-board-modal-reveal-policy-split` - Game Board Modal Reveal Policy Split (`docs/ai/tasks/game-board-modal-reveal-policy-split/`) - pre-move / post-move reveal policy를 분리해 travel, go-to-island, chance chain move modal ordering을 정리
 - [x] `game-acquisition-prompt-contract-alignment` - Game Acquisition Prompt Contract Alignment (`docs/ai/tasks/game-acquisition-prompt-contract-alignment/`) - acquisition prompt 분류를 `ACQUISITION_OR_SKIP` canonical 계약으로 축소하고 malformed choice fallback 전송을 방어

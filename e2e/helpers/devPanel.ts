@@ -15,10 +15,10 @@ async function openDevPanelIfCollapsed(page: Page, openButtonName: string) {
 
 // 대기방 통합 DEV 컨트롤 패널을 사용 가능한 상태로 보장
 export async function ensureDevControlPanelOpen(page: Page) {
-  await openDevPanelIfCollapsed(page, 'DEV CONTROL 열기')
+  await openDevPanelIfCollapsed(page, '대기방 테스트용 패널 열기')
 }
 
 // 로비 접속자 DEV 패널을 사용 가능한 상태로 보장
 export async function ensureDevPresencePanelOpen(page: Page) {
-  await openDevPanelIfCollapsed(page, 'DEV PRESENCE 열기')
+  await openDevPanelIfCollapsed(page, 'DM 테스트용 패널 열기')
 }

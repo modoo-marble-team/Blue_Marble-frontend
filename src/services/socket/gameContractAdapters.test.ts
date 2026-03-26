@@ -230,6 +230,25 @@ describe('gameContractAdapters', () => {
     })
   })
 
+  it('accepts already-normalized phase strings from mock snapshots', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-mock-phase',
+        revision: 3,
+        phase: 'rolling',
+        currentPlayerId: 'player-1',
+        players: [],
+        tiles: [],
+      },
+      {
+        envelopeRevision: 3,
+      }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized?.phase).toBe('rolling')
+  })
+
   it('normalizes active global effect from snapshot aliases', () => {
     const normalized = normalizeSnapshotPayload(
       {

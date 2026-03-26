@@ -62,9 +62,12 @@ const MONEY_KEYS = new Set([
 ])
 
 const PHASE_TO_INTERNAL_MAP: Record<string, GameSnapshot['phase']> = {
+  WAITING: 'waiting',
   WAIT_ROLL: 'rolling',
+  ROLLING: 'rolling',
   MOVING: 'moving',
   RESOLVING: 'resolving',
+  PROMPT: 'prompt',
   WAIT_PROMPT: 'prompt',
   TURN_END: 'resolving',
   GAME_OVER: 'finished',

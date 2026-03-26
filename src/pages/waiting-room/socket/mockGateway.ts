@@ -23,7 +23,6 @@ const DEFAULT_ROOM_PASSWORD = '1234'
 const DEV_BOT_NICKNAME_PREFIX = '테스터봇'
 const ROOM_PRIVATE_PASSWORDS: Record<string, string> = {
   'room-2': DEFAULT_ROOM_PASSWORD,
-  'room-7': DEFAULT_ROOM_PASSWORD,
 }
 let devBotSequence = 1
 
@@ -701,20 +700,14 @@ export function mockSendWaitingRoomChat({
 
 // 내부 roomsStore를 로비 카드용 모델 배열로 변환
 export function getMockLobbyRooms(): LobbyRoom[] {
-  return Array.from(roomsStore.values())
-    .sort((firstRoom, secondRoom) => {
-      return (
-        getRoomIdSortValue(firstRoom.id) - getRoomIdSortValue(secondRoom.id)
-      )
-    })
-    .map((room) => ({
-      id: room.id,
-      title: room.title,
-      status: room.status,
-      currentPlayers: room.players.length,
-      maxPlayers: room.max_players,
-      isPrivate: room.is_private,
-    }))
+  return Array.from(roomsStore.values()).map((room) => ({
+    id: room.id,
+    title: room.title,
+    status: room.status,
+    currentPlayers: room.players.length,
+    maxPlayers: room.max_players,
+    isPrivate: room.is_private,
+  }))
 }
 
 // mock 로그인/시나리오 재시작 시 방 저장소를 초기 시드로 되돌린다.
@@ -723,10 +716,15 @@ export function resetMockWaitingRooms() {
   devBotSequence = 1
 }
 
-// DEV 목 제어: 방 현재 스냅샷을 그대로 반환
-export function mockDevGetWaitingRoomSnapshot(roomId: string) {
+// 방 현재 스냅샷을 그대로 반환
+export function getMockWaitingRoomSnapshot(roomId: string) {
   const room = findRoomOrThrow(roomId)
   return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어에서도 동일 스냅샷 헬퍼를 재사용
+export function mockDevGetWaitingRoomSnapshot(roomId: string) {
+  return getMockWaitingRoomSnapshot(roomId)
 }
 
 // DEV 목 제어: non-host 가짜 참가자 1명을 추가
@@ -840,9 +838,56 @@ export function mockDevSetAllNonHostReady(roomId: string, isReady: boolean) {
   return toWaitingRoomSnapshot(room)
 }
 
-// DEV 목 제어: 게임 시작 조건(최소 2명 + non-host 전원 준비)을 즉시 만족
-export function mockDevSeedStartCondition(roomId: string) {
+// DEV 목 제어: 현재 사용자를 즉시 방장으로 만든다.
+export function mockDevMakeCurrentUserHost(
+  roomId: string,
+  currentUserId: string
+) {
   const room = findRoomOrThrow(roomId)
+
+  if (room.status === 'playing') {
+    throw new WaitingRoomMockError(
+      409,
+      '게임 중에는 방장을 변경할 수 없습니다.',
+      {
+        code: 'ROOM_ALREADY_PLAYING',
+        detail: '게임 중에는 방장을 변경할 수 없습니다.',
+      }
+    )
+  }
+
+  const currentPlayer = room.players.find(
+    (player) => player.id === currentUserId
+  )
+
+  if (!currentPlayer) {
+    throw new WaitingRoomMockError(404, '현재 사용자를 찾을 수 없습니다.', {
+      code: 'PLAYER_NOT_IN_ROOM',
+      detail: '현재 사용자를 찾을 수 없습니다.',
+    })
+  }
+
+  if (currentPlayer.is_host) {
+    return toWaitingRoomSnapshot(room)
+  }
+
+  applyHostTransfer(room, currentUserId)
+  emitLobbyUpdated(room, 'status_changed')
+  emitRoomUpdated(room)
+
+  return toWaitingRoomSnapshot(room)
+}
+
+// DEV 목 제어: 현재 사용자를 방장으로 만들고 게임 시작 조건을 즉시 만족
+export function mockDevSeedStartCondition(
+  roomId: string,
+  currentUserId: string
+) {
+  const room = findRoomOrThrow(roomId)
+
+  if (room.players.some((player) => player.id === currentUserId)) {
+    mockDevMakeCurrentUserHost(roomId, currentUserId)
+  }
 
   // 플레이어가 1명뿐이면 bot을 1명 추가해 시작 최소 인원을 만족
   while (room.players.length < 2 && room.players.length < room.max_players) {

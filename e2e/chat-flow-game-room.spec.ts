@@ -3,7 +3,7 @@ import { ensureDevControlPanelOpen } from './helpers/devPanel'
 import { loginAsGuest, resetSessionAndOpenHome } from './helpers/session'
 
 test.describe('@game 게임 채팅 플로우', () => {
-  test('게임 진입 후 채팅 1건을 전송해 메시지 목록에 표시한다', async ({
+  test('게임 진입 후 채팅 1건을 전송하고 혼자 플레이 토글을 켤 수 있다', async ({
     page,
   }) => {
     await resetSessionAndOpenHome(page)
@@ -21,9 +21,20 @@ test.describe('@game 게임 채팅 플로우', () => {
 
     await expect(page).toHaveURL(/\/game\/game-room-\d+-\d+$/)
 
+    await page
+      .getByRole('button', { name: '게임방 채팅 테스트 패널 열기' })
+      .click()
+    await expect(page.getByText('게임방 채팅 테스트 패널')).toBeVisible()
+
+    const soloPlaySwitch = page.getByRole('switch', { name: '혼자 플레이' })
+
+    await soloPlaySwitch.click()
+    await expect(soloPlaySwitch).toHaveAttribute('aria-checked', 'true')
+
     await page.getByPlaceholder('메시지...').fill('게임 채팅 e2e')
     await page.getByPlaceholder('메시지...').press('Enter')
 
     await expect(page.getByText('게임 채팅 e2e')).toBeVisible()
+    await expect(page.getByRole('button', { name: /ROLL/ })).toBeVisible()
   })
 })

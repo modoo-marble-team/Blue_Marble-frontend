@@ -1040,38 +1040,8 @@ describe('GamePage chat flow', () => {
     expect(screen.getByText('Round')).toBeInTheDocument()
   })
 
-  it('디버그 오버레이 플래그가 켜져 있으면 pending/ack/error 상태 박스를 렌더한다', () => {
+  it('pending/ack/error 상태가 있어도 우상단 디버그 오버레이를 렌더하지 않는다', () => {
     setTestGameDebugOverlayVisible(true)
-    setTestGameState({
-      pendingAction: {
-        actionId: 'action-1',
-        type: 'END_TURN',
-        requestedAt: Date.now(),
-      },
-      lastAck: {
-        actionId: 'action-1',
-        type: 'END_TURN',
-        ok: true,
-      },
-      lastError: {
-        code: 'RETRY_LATER',
-        message: '잠시 후 다시 시도해주세요.',
-      },
-    })
-
-    renderGamePage()
-
-    expect(screen.getByText('Pending action: END_TURN')).toBeInTheDocument()
-    expect(
-      screen.getByText('Action acknowledged (END_TURN)')
-    ).toBeInTheDocument()
-    expect(screen.getByText('RETRY_LATER')).toBeInTheDocument()
-    expect(screen.getByText('잠시 후 다시 시도해주세요.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument()
-  })
-
-  it('디버그 오버레이 플래그가 꺼져 있으면 pending/ack/error 상태 박스를 숨긴다', () => {
-    setTestGameDebugOverlayVisible(false)
     setTestGameState({
       pendingAction: {
         actionId: 'action-1',
