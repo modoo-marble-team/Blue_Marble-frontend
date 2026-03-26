@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
   afterAll,
@@ -55,7 +55,8 @@ vi.mock('../game/modals/BuildModal', () => ({
 }))
 
 vi.mock('../game/modals/CardModal', () => ({
-  default: () => null,
+  default: ({ open, onConfirm }: { open: boolean; onConfirm?: () => void }) =>
+    open ? <button onClick={onConfirm}>카드 확인</button> : null,
 }))
 
 vi.mock('../game/modals/TravelModal', () => ({
@@ -126,12 +127,23 @@ vi.mock('../game/modals/GameResultModal', () => ({
 }))
 
 vi.mock('../game/modals/GoToIslandModal', () => ({
-  default: ({ open }: { open: boolean }) =>
-    open ? <div>무인도 이동 모달</div> : null,
+  default: ({ open, onConfirm }: { open: boolean; onConfirm?: () => void }) =>
+    open ? (
+      <div>
+        <div>무인도 이동 모달</div>
+        <button onClick={onConfirm}>무인도 이동 확인</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../game/modals/IslandModal', () => ({
-  default: () => null,
+  default: ({ open, onConfirm }: { open: boolean; onConfirm?: () => void }) =>
+    open ? (
+      <div>
+        <div>무인도 결과 모달</div>
+        <button onClick={onConfirm}>무인도 확인</button>
+      </div>
+    ) : null,
 }))
 
 const players: PlayerState[] = [
@@ -430,6 +442,163 @@ describe('GameBoard modal reveal timing', () => {
     })
 
     expect(screen.getByText('무인도 이동 모달')).toBeInTheDocument()
+  })
+
+  it('reveals travel modal only after arrival move finishes and next frame passes', async () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 16,
+        payload: {
+          fromIndex: 15,
+        },
+      } as ServerEvent,
+    ])
+
+    renderGameBoard()
+
+    expect(
+      screen.queryByRole('button', { name: '여행 확인' })
+    ).not.toBeInTheDocument()
+
+    await consumeQueuedBoardEvent()
+
+    expect(
+      screen.queryByRole('button', { name: '여행 확인' })
+    ).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1580)
+    })
+
+    expect(
+      screen.queryByRole('button', { name: '여행 확인' })
+    ).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16)
+    })
+
+    expect(
+      screen.getByRole('button', { name: '여행 확인' })
+    ).toBeInTheDocument()
+  })
+
+  it('keeps card modal visible before queued chance move consumes, then reveals post-move modal after confirm', async () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'CHANCE_RESOLVED',
+        playerId: 1,
+        tileId: 3,
+        chance: {
+          description: '앞으로 1칸 이동합니다.',
+          type: 'MOVE_FORWARD',
+          power: 1,
+        },
+      } as ServerEvent,
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+        payload: {
+          fromIndex: 0,
+          trigger: 'chance',
+        },
+      } as ServerEvent,
+    ])
+
+    renderGameBoard({
+      activePrompt: {
+        id: 'buy-1',
+        type: 'BUY_OR_SKIP',
+        payload: {
+          tileId: 1,
+        },
+        choices: [
+          { id: 'buy', label: '구매하기', value: 'BUY' },
+          { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        ],
+      },
+    })
+
+    await consumeQueuedBoardEvent()
+
+    expect(
+      screen.getByRole('button', { name: '카드 확인' })
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(
+      screen.getByRole('button', { name: '카드 확인' })
+    ).toBeInTheDocument()
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: '카드 확인' }))
+
+    expect(
+      screen.queryByRole('button', { name: '카드 확인' })
+    ).not.toBeInTheDocument()
+
+    await consumeQueuedBoardEvent()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1580)
+    })
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16)
+    })
+
+    expect(screen.getByText(/구매 모달/)).toBeInTheDocument()
+  })
+
+  it('opens island modal only after go-to-island confirm triggers the chain move', async () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 24,
+        payload: {
+          fromIndex: 23,
+        },
+      } as ServerEvent,
+    ])
+
+    renderGameBoard()
+
+    await consumeQueuedBoardEvent()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1580)
+      await vi.advanceTimersByTimeAsync(16)
+    })
+
+    expect(screen.getByText('무인도 이동 모달')).toBeInTheDocument()
+    expect(screen.queryByText('무인도 결과 모달')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '무인도 이동 확인' }))
+
+    expect(screen.queryByText('무인도 결과 모달')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(900)
+    })
+
+    expect(screen.queryByText('무인도 결과 모달')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+
+    expect(screen.getByText('무인도 결과 모달')).toBeInTheDocument()
   })
 })
 

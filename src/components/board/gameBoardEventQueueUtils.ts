@@ -131,6 +131,38 @@ export const shouldDelayPromptModalByMovement = ({
   )
 }
 
+export const shouldRevealPreMoveSurface = ({
+  isMoving,
+}: {
+  surfacePlayerId: string | null
+  animatedPositions: Record<string, number>
+  isMoving: boolean
+}) => {
+  if (isMoving) {
+    return false
+  }
+
+  return true
+}
+
+export const shouldRevealPostMoveSurface = ({
+  surfacePlayerId,
+  pendingMovePlayerIdSet,
+  animatedPositions,
+  isMoving,
+}: {
+  surfacePlayerId: string | null
+  pendingMovePlayerIdSet: ReadonlySet<string>
+  animatedPositions: Record<string, number>
+  isMoving: boolean
+}) =>
+  !shouldDelayPromptModalByMovement({
+    promptPlayerId: surfacePlayerId,
+    pendingMovePlayerIdSet,
+    animatedPositions,
+    isMoving,
+  })
+
 export const getBoardEventConsumeDelayMs = (event: ServerEvent): number => {
   const kind = resolveBoardEventAnimationKind(event)
   if (kind === 'dice') return 420

@@ -59,7 +59,8 @@ import {
   resolveBoardEventTileIndex,
   resolveChanceMoveAnimationHint,
   shouldApplyTravelMoveAnimation,
-  shouldDelayPromptModalByMovement,
+  shouldRevealPostMoveSurface,
+  shouldRevealPreMoveSurface,
   type BoardEventAnimationKind,
   type BoardMoveDirection,
 } from './gameBoardEventQueueUtils'
@@ -1375,13 +1376,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const promptPlayerId =
         activePrompt?.playerId != null ? String(activePrompt.playerId) : null
-      const shouldDelayTravelModalOpen = shouldDelayPromptModalByMovement({
-        promptPlayerId,
+      const canOpenTravelPromptSurface = shouldRevealPostMoveSurface({
+        surfacePlayerId: promptPlayerId,
         pendingMovePlayerIdSet,
         animatedPositions,
         isMoving: isMoving || rolling || boardActionModalBarrier,
       })
-      if (shouldDelayTravelModalOpen) {
+      if (!canOpenTravelPromptSurface) {
         return
       }
 
@@ -1578,23 +1579,28 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
       const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
       if (islandTile) {
+        lockBoardActionModals()
         // 무인도 이동도 한 칸씩 전진 애니메이션 적용
-        await movePlayerSequentially(
-          player.id,
-          player.pos === islandTile.id ? 24 : player.pos,
-          islandTile.id,
-          FAST_MOVE_ANIMATION_OPTIONS
-        )
+        try {
+          await movePlayerSequentially(
+            player.id,
+            player.pos === islandTile.id ? 24 : player.pos,
+            islandTile.id,
+            FAST_MOVE_ANIMATION_OPTIONS
+          )
 
-        const updatedPlayers = [...playersRef.current]
-        updatedPlayers[playerIdx] = {
-          ...updatedPlayers[playerIdx],
-          pos: islandTile.id,
-          skipTurns: 3,
-        }
-        playersRef.current = updatedPlayers
-        if (isMockMode) {
-          syncMockStorePlayers(updatedPlayers)
+          const updatedPlayers = [...playersRef.current]
+          updatedPlayers[playerIdx] = {
+            ...updatedPlayers[playerIdx],
+            pos: islandTile.id,
+            skipTurns: 3,
+          }
+          playersRef.current = updatedPlayers
+          if (isMockMode) {
+            syncMockStorePlayers(updatedPlayers)
+          }
+        } finally {
+          releaseBoardActionModalsNextFrame()
         }
       }
 
@@ -1725,22 +1731,27 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
 
         if (player && islandTile) {
-          await movePlayerSequentially(
-            player.id,
-            player.pos,
-            islandTile.id,
-            FAST_MOVE_ANIMATION_OPTIONS
-          )
+          lockBoardActionModals()
+          try {
+            await movePlayerSequentially(
+              player.id,
+              player.pos,
+              islandTile.id,
+              FAST_MOVE_ANIMATION_OPTIONS
+            )
 
-          const updatedPlayers = [...playersRef.current]
-          updatedPlayers[playerIdx] = {
-            ...updatedPlayers[playerIdx],
-            pos: islandTile.id,
-            skipTurns: 3,
-          }
-          playersRef.current = updatedPlayers
-          if (isMockMode) {
-            syncMockStorePlayers(updatedPlayers)
+            const updatedPlayers = [...playersRef.current]
+            updatedPlayers[playerIdx] = {
+              ...updatedPlayers[playerIdx],
+              pos: islandTile.id,
+              skipTurns: 3,
+            }
+            playersRef.current = updatedPlayers
+            if (isMockMode) {
+              syncMockStorePlayers(updatedPlayers)
+            }
+          } finally {
+            releaseBoardActionModalsNextFrame()
           }
 
           setIslandModal({
@@ -2042,33 +2053,45 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       hasAnimationBlocking || boardActionModalBarrier
     const activePromptPlayerId =
       activePrompt?.playerId != null ? String(activePrompt.playerId) : null
-    const shouldDelayPromptModal = shouldDelayPromptModalByMovement({
-      promptPlayerId: activePromptPlayerId,
+    const localSurfacePlayerId =
+      localPlayerId != null ? String(localPlayerId) : null
+    const canRevealPreMoveSurface = shouldRevealPreMoveSurface({
+      surfacePlayerId: activePromptPlayerId ?? localSurfacePlayerId,
+      animatedPositions,
+      isMoving: boardActionAnimationBlocking,
+    })
+    const canRevealPostMoveSurface = shouldRevealPostMoveSurface({
+      surfacePlayerId: activePromptPlayerId,
       pendingMovePlayerIdSet,
       animatedPositions,
       isMoving: boardActionAnimationBlocking,
     })
-    const canRevealBoardActionModal =
-      canShowModal && !shouldDelayPromptModal && !boardActionModalBarrier
+    const cardModalVisible = canRevealPreMoveSurface && cardModal.open
+    const travelModalVisible = canRevealPreMoveSurface && travelModal.open
+    const goToIslandModalVisible =
+      (canRevealPostMoveSurface && isGoToIslandPromptOpen) ||
+      (canRevealPreMoveSurface && goToIslandModal.open)
+    const islandModalVisible =
+      canRevealPostMoveSurface && (isIslandPromptOpen || islandModal.open)
 
     const buyModalVisible =
-      canRevealBoardActionModal &&
+      canRevealPostMoveSurface &&
       buyModalOpen &&
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canRevealBoardActionModal &&
+      canRevealPostMoveSurface &&
       buildModalOpen &&
       !isBuildPromptDismissed &&
       !insufficientFundsModal.open
-    const tollModalVisible = canRevealBoardActionModal && tollModalOpen
+    const tollModalVisible = canRevealPostMoveSurface && tollModalOpen
     const acquisitionModalOpen =
-      canRevealBoardActionModal &&
+      canRevealPostMoveSurface &&
       acquisitionModalOpenRaw &&
       !tollModalOpen &&
       !insufficientFundsModal.open
     const sellModalVisible =
-      canRevealBoardActionModal && (citySellModal.open || isSellPromptOpen)
+      canRevealPostMoveSurface && (citySellModal.open || isSellPromptOpen)
 
     const doubleDiceModalVisible = canShowModal && doubleDiceModal.open
 
@@ -2116,15 +2139,15 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const hasBlockingModalOpen =
       buyModalVisible ||
       buildModalVisible ||
-      (canRevealBoardActionModal && cardModal.open) ||
-      (canRevealBoardActionModal && travelModal.open) ||
+      cardModalVisible ||
+      travelModalVisible ||
       tollModalVisible ||
       acquisitionModalOpen ||
       sellModalVisible ||
       insufficientFundsModal.open ||
       aiModal.open ||
-      (canRevealBoardActionModal && goToIslandModal.open) ||
-      (canRevealBoardActionModal && islandModal.open) ||
+      goToIslandModalVisible ||
+      islandModalVisible ||
       doubleDiceModalVisible ||
       bankruptModal.open ||
       gameResultModal.open
@@ -2683,7 +2706,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <CardModal
-          open={canRevealBoardActionModal && cardModal.open}
+          open={cardModalVisible}
           variant={cardModal.variant}
           title={cardModal.title}
           descriptionLine1={cardModal.descriptionLine1}
@@ -2692,7 +2715,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           onConfirm={handleCardConfirm}
         />
         <TravelModal
-          open={canRevealBoardActionModal && travelModal.open}
+          open={travelModalVisible}
           onConfirm={handleTravelConfirm}
           onCancel={handleTravelCancel}
           showCancel={false}
@@ -2718,18 +2741,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }}
         />
         <GoToIslandModal
-          open={
-            canRevealBoardActionModal &&
-            (isGoToIslandPromptOpen || goToIslandModal.open)
-          }
+          open={goToIslandModalVisible}
           onConfirm={handleGoToIslandConfirm}
         />
         {/* 🏝️ 무인도 (직접 도착) 팝업 */}
         <IslandModal
-          open={
-            canRevealBoardActionModal &&
-            (isIslandPromptOpen || islandModal.open)
-          }
+          open={islandModalVisible}
           restTurns={islandRestTurns}
           onConfirm={handleIslandConfirm}
         />
