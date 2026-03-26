@@ -1,7 +1,9 @@
 import { delay, http, HttpResponse } from 'msw'
 import { socket } from '../../lib/socket'
+import { getMockWaitingRoomSnapshot } from '../../pages/waiting-room/socket/mockGateway'
 import type {
   BuildingLevel,
+  ChatMessage,
   GameAck,
   GameError,
   GamePatchEnvelope,
@@ -17,12 +19,15 @@ import type {
 import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
 const MOCK_PLAYER_ID = 'mock-player-1'
+const ROOM_ID_FROM_GAME_ID_PATTERN = /^game-(room-\d+)-/
 const MOCK_BUILD_COST = 30
 const MOCK_PASS_GO_SALARY = 200
 const MOCK_TURN_TIMEOUT_SEC = 30
 const SYNC_SNAPSHOT_GAP_THRESHOLD = 200
 const PROMPT_RESPONSE_ACK_TYPE = 'PROMPT_RESPONSE'
 const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
+const MOCK_PLAYER_START_BALANCE = 5000000000
+const DEFAULT_MOCK_CHAT_MESSAGES = ['즐겜해요~', '모두의 마블 한판!'] as const
 
 const PROMPT_CHOICE_CANONICAL_MAP: Record<string, readonly string[]> = {
   BUY_OR_SKIP: ['BUY', 'SKIP'],
@@ -57,6 +62,11 @@ type GameStateResponse = {
   activeGlobalEffect: GlobalEffectState | null
 }
 
+type MockGameRuntimeContext = {
+  gameId: string | null
+  roomId: string | null
+}
+
 type MockGameActionPayload = {
   actionId?: string
   type: string
@@ -88,24 +98,114 @@ type MockPromptResponsePayload = GamePromptResponse & {
 const clonePlayers = () => structuredClone(mockPlayers)
 const cloneTiles = () => structuredClone(mockTiles)
 const cloneMessages = () => structuredClone(mockMessages)
+const mockGameContext: MockGameRuntimeContext = {
+  gameId: null,
+  roomId: null,
+}
 
-const createInitialGameState = (): GameStateResponse => ({
-  players: clonePlayers(),
-  tiles: cloneTiles(),
-  messages: cloneMessages(),
-  currentTurn: MOCK_PLAYER_ID,
-  round: 1,
-  revision: 1,
-  phase: 'waiting',
-  prompt: null,
-  promptIssuedAtMs: null,
-  activeGlobalEffect: null,
-})
+const resolveRoomIdFromGameId = (gameId: string) => {
+  return gameId.match(ROOM_ID_FROM_GAME_ID_PATTERN)?.[1] ?? null
+}
+
+const getMockWaitingRoomSnapshotSafely = (roomId: string) => {
+  try {
+    return getMockWaitingRoomSnapshot(roomId)
+  } catch {
+    return null
+  }
+}
+
+const createPlayersFromWaitingRoom = (roomId: string): Player[] => {
+  const waitingRoomSnapshot = getMockWaitingRoomSnapshotSafely(roomId)
+
+  if (!waitingRoomSnapshot || waitingRoomSnapshot.players.length === 0) {
+    return clonePlayers()
+  }
+
+  return waitingRoomSnapshot.players.map((player, index) => {
+    const template =
+      mockPlayers[index] ?? mockPlayers[index % mockPlayers.length]
+
+    return {
+      id: player.id,
+      nickname: player.nickname,
+      balance: MOCK_PLAYER_START_BALANCE,
+      position: 0,
+      owned_tiles: [],
+      is_in_jail: false,
+      jail_turn_count: 0,
+      is_bankrupt: false,
+      color: template?.color ?? '#94A3B8',
+      avatar: template?.avatar,
+    }
+  })
+}
+
+const createMessagesFromPlayers = (players: Player[]): ChatMessage[] => {
+  if (players.length === 0) {
+    return cloneMessages()
+  }
+
+  if (players.length === 1) {
+    return [
+      {
+        id: '2',
+        sender_id: String(players[0].id),
+        sender_nickname: players[0].nickname,
+        content: DEFAULT_MOCK_CHAT_MESSAGES[1],
+        timestamp: new Date().toISOString(),
+        type: 'talk',
+      },
+    ]
+  }
+
+  return [
+    {
+      id: '1',
+      sender_id: String(players[1].id),
+      sender_nickname: players[1].nickname,
+      content: DEFAULT_MOCK_CHAT_MESSAGES[0],
+      timestamp: new Date().toISOString(),
+      type: 'talk',
+    },
+    {
+      id: '2',
+      sender_id: String(players[0].id),
+      sender_nickname: players[0].nickname,
+      content: DEFAULT_MOCK_CHAT_MESSAGES[1],
+      timestamp: new Date().toISOString(),
+      type: 'talk',
+    },
+  ]
+}
+
+const createInitialGameState = (
+  roomId: string | null = null
+): GameStateResponse => {
+  const players = roomId ? createPlayersFromWaitingRoom(roomId) : clonePlayers()
+
+  return {
+    players,
+    tiles: cloneTiles(),
+    messages: createMessagesFromPlayers(players),
+    currentTurn: players[0]?.id ?? MOCK_PLAYER_ID,
+    round: 1,
+    revision: 1,
+    phase: 'rolling',
+    prompt: null,
+    promptIssuedAtMs: null,
+    activeGlobalEffect: null,
+  }
+}
 
 const mockGameState: GameStateResponse = createInitialGameState()
 
-const resetMockGameState = () => {
-  const initialState = createInitialGameState()
+const resetMockGameState = (options?: {
+  gameId?: string | null
+  roomId?: string | null
+}) => {
+  const roomId = options?.roomId ?? null
+  const initialState = createInitialGameState(roomId)
   mockGameState.players = initialState.players
   mockGameState.tiles = initialState.tiles
   mockGameState.messages = initialState.messages
@@ -116,6 +216,8 @@ const resetMockGameState = () => {
   mockGameState.prompt = initialState.prompt
   mockGameState.promptIssuedAtMs = initialState.promptIssuedAtMs
   mockGameState.activeGlobalEffect = initialState.activeGlobalEffect
+  mockGameContext.gameId = options?.gameId ?? null
+  mockGameContext.roomId = roomId
 }
 
 const buildStateResponse = () => ({
@@ -129,7 +231,7 @@ const buildStateResponse = () => ({
 })
 
 const buildSnapshot = (gameId: string): GameSnapshot => ({
-  roomId: null,
+  roomId: mockGameContext.roomId,
   gameId,
   revision: mockGameState.revision,
   phase: mockGameState.phase,
@@ -229,7 +331,7 @@ const resolveRequiredGameId = (options: {
 }
 
 const buildStatePatch = (gameId: string): GamePatchEnvelope['patch'] => [
-  { op: 'set', path: 'roomId', value: null },
+  { op: 'set', path: 'roomId', value: mockGameContext.roomId },
   { op: 'set', path: 'gameId', value: gameId },
   { op: 'set', path: 'phase', value: mockGameState.phase },
   { op: 'set', path: 'players', value: structuredClone(mockGameState.players) },
@@ -251,7 +353,7 @@ const buildStatePatch = (gameId: string): GamePatchEnvelope['patch'] => [
     op: 'set',
     path: 'session',
     value: {
-      roomId: null,
+      roomId: mockGameContext.roomId,
       gameId,
       transport: 'event-socket',
       syncedAt: new Date().toISOString(),
@@ -907,16 +1009,23 @@ export const mockEmitGameSync = ({
     return
   }
 
-  if (knownRevision === 0) {
-    resetMockGameState()
+  const resolvedRoomId = resolveRoomIdFromGameId(resolvedGameId)
+  const normalizedKnownRevision =
+    typeof knownRevision === 'number' && Number.isFinite(knownRevision)
+      ? Math.trunc(knownRevision)
+      : null
+  const shouldResetForGame =
+    mockGameContext.gameId !== resolvedGameId || normalizedKnownRevision === 0
+
+  if (shouldResetForGame) {
+    resetMockGameState({
+      gameId: resolvedGameId,
+      roomId: resolvedRoomId,
+    })
   }
 
   setTimeout(() => {
     const serverRevision = mockGameState.revision
-    const normalizedKnownRevision =
-      typeof knownRevision === 'number' && Number.isFinite(knownRevision)
-        ? Math.trunc(knownRevision)
-        : null
 
     if (normalizedKnownRevision == null || normalizedKnownRevision <= 0) {
       emitSnapshotPatch(resolvedGameId)

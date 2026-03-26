@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { socket } from '../../lib/socket'
+import {
+  getMockWaitingRoomSnapshot,
+  mockDevAddWaitingRoomParticipant,
+  resetMockWaitingRooms,
+} from '../../pages/waiting-room/socket/mockGateway'
 import type {
   GameAck,
   GameError,
@@ -57,6 +62,7 @@ describe('mock game socket handlers contract', () => {
   beforeEach(async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-10T00:00:00.000Z'))
+    resetMockWaitingRooms()
     mockEmitGameSync({ gameId: 'game-reset', knownRevision: 0 })
     await flushMockTimers()
     mockDevSetPhaseForTest('waiting')
@@ -69,6 +75,39 @@ describe('mock game socket handlers contract', () => {
     socket.removeAllListeners('game:error')
     socket.removeAllListeners('game:patch')
     vi.useRealTimers()
+  })
+
+  it('roomId가 포함된 game sync는 대기방 참가자 목록을 그대로 플레이어로 사용한다', async () => {
+    const { patches, teardown } = captureGameSocketEvents()
+
+    mockDevAddWaitingRoomParticipant('room-5')
+    const waitingRoomSnapshot = getMockWaitingRoomSnapshot('room-5')
+
+    mockEmitGameSync({
+      gameId: 'game-room-5-123456',
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+
+    expect(patches).toHaveLength(1)
+    expect(patches[0].snapshot?.roomId).toBe('room-5')
+    expect(patches[0].snapshot?.phase).toBe('rolling')
+    expect(patches[0].snapshot?.players).toHaveLength(
+      waitingRoomSnapshot.players.length
+    )
+    expect(
+      patches[0].snapshot?.players.map((player) => ({
+        id: String(player.id),
+        nickname: player.nickname,
+      }))
+    ).toEqual(
+      waitingRoomSnapshot.players.map((player) => ({
+        id: player.id,
+        nickname: player.nickname,
+      }))
+    )
+
+    teardown()
   })
 
   it('rejects game action when gameId is missing', async () => {
@@ -122,6 +161,13 @@ describe('mock game socket handlers contract', () => {
   it('returns empty synced patch when knownRevision matches server revision', async () => {
     const { patches, teardown } = captureGameSocketEvents()
 
+    mockEmitGameSync({
+      gameId: 'game-sync',
+      knownRevision: 0,
+    })
+    await flushMockTimers()
+    patches.length = 0
+
     mockDevSetRevisionForTest(25)
     mockEmitGameSync({
       gameId: 'game-sync',
@@ -142,6 +188,13 @@ describe('mock game socket handlers contract', () => {
 
   it('forces snapshot when revision gap is greater than 200', async () => {
     const { patches, teardown } = captureGameSocketEvents()
+
+    mockEmitGameSync({
+      gameId: 'game-gap',
+      knownRevision: 0,
+    })
+    await flushMockTimers()
+    patches.length = 0
 
     mockDevSetRevisionForTest(250)
     mockEmitGameSync({
