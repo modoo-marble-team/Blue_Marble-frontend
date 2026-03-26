@@ -31,6 +31,11 @@ describe('presence mockData SSOT', () => {
     const users = presence.getMockOnlineUsersSnapshot()
     const rooms = gateway.getMockLobbyRooms()
     const uniqueNicknames = new Set(users.map((user) => user.nickname))
+    const lobbyUsers = users.filter((user) => user.status === 'lobby')
+
+    // 방 참가자 9명 + 로비 접속자 2명 + 현재 로그인 사용자 1명으로 공개 데모에서 총 12명을 맞춘다
+    expect(users).toHaveLength(11)
+    expect(lobbyUsers).toHaveLength(2)
 
     // 접속자 목록 시드 닉네임은 모두 서로 다른 값이어야 한다
     expect(uniqueNicknames.size).toBe(users.length)

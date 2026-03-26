@@ -114,7 +114,9 @@ describe('Waiting room start flow E2E', () => {
     expect(await screen.findByText('테스트 대화')).toBeInTheDocument()
 
     // DEV 패널을 열고 시작조건(2명+non-host ready) 구성
-    await user.click(screen.getByRole('button', { name: 'DEV CONTROL 열기' }))
+    await user.click(
+      screen.getByRole('button', { name: '대기방 테스트용 패널 열기' })
+    )
     await user.click(screen.getByRole('button', { name: '시작조건' }))
 
     await waitFor(() => {

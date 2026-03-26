@@ -414,7 +414,6 @@ function WaitingRoomPage() {
       <DevControlPanel
         roomId={currentRoomId}
         currentUserId={session.userId}
-        currentNickname={session.nickname}
         users={users}
         roomPlayers={room?.players ?? []}
         onApplySnapshot={applyRoomSnapshot}

@@ -54,6 +54,60 @@ function expectGatewayErrorCode(error: unknown, expectedCode: string) {
 }
 
 describe('mockGateway DEV control', () => {
+  it('공개 데모 로비 방 목록은 시드 순서를 그대로 유지한다', async () => {
+    const gateway = await loadMockGateway()
+
+    expect(gateway.getMockLobbyRooms().map((room) => room.title)).toEqual([
+      '일반방',
+      '비밀방 비밀번호 1234',
+      '게임 중 방',
+      '정원초과 방',
+    ])
+  })
+
+  it('내가 바로 방장은 현재 사용자를 즉시 host로 만든다', async () => {
+    const gateway = await loadMockGateway()
+
+    const snapshot = gateway.mockDevMakeCurrentUserHost(
+      'room-5',
+      'room-5-user-2'
+    )
+    const currentHost = snapshot.players.find((player) => player.isHost)
+
+    expect(currentHost?.id).toBe('room-5-user-2')
+  })
+
+  it('시작조건은 현재 사용자를 방장으로 만들고 상대를 모두 준비 상태로 맞춘다', async () => {
+    const gateway = await loadMockGateway()
+
+    const snapshot = gateway.mockDevSeedStartCondition(
+      'room-5',
+      'room-5-user-2'
+    )
+    const currentHost = snapshot.players.find((player) => player.isHost)
+    const nonHostPlayers = snapshot.players.filter((player) => !player.isHost)
+
+    expect(currentHost?.id).toBe('room-5-user-2')
+    expect(nonHostPlayers.length).toBeGreaterThan(0)
+    expect(nonHostPlayers.every((player) => player.isReady)).toBe(true)
+  })
+
+  it('시작조건은 1인 방에서도 상대를 추가해 바로 시작 가능한 상태를 만든다', async () => {
+    const gateway = await loadMockGateway()
+
+    const snapshot = gateway.mockDevSeedStartCondition(
+      'room-2',
+      'room-2-user-1'
+    )
+    const hostPlayer = snapshot.players.find((player) => player.isHost)
+    const nonHostPlayers = snapshot.players.filter((player) => !player.isHost)
+
+    expect(snapshot.players).toHaveLength(2)
+    expect(hostPlayer?.id).toBe('room-2-user-1')
+    expect(nonHostPlayers).toHaveLength(1)
+    expect(nonHostPlayers[0]?.isReady).toBe(true)
+  })
+
   it('방장 넘기기는 참가자 순서대로 순환 이관된다', async () => {
     const gateway = await loadMockGateway()
 
@@ -72,7 +126,7 @@ describe('mockGateway DEV control', () => {
     const gateway = await loadMockGateway()
 
     try {
-      gateway.mockDevTransferWaitingRoomHost('room-4')
+      gateway.mockDevTransferWaitingRoomHost('room-2')
       throw new Error('expected error')
     } catch (error) {
       expectGatewayErrorCode(error, 'PLAYER_NOT_IN_ROOM')
@@ -83,7 +137,7 @@ describe('mockGateway DEV control', () => {
     const gateway = await loadMockGateway()
 
     try {
-      gateway.mockDevTransferWaitingRoomHost('room-3')
+      gateway.mockDevTransferWaitingRoomHost('room-4')
       throw new Error('expected error')
     } catch (error) {
       expectGatewayErrorCode(error, 'ROOM_ALREADY_PLAYING')
@@ -248,13 +302,13 @@ describe('mockGateway waiting-room action sequence', () => {
     const gateway = await loadMockGateway()
 
     await gateway.mockLeaveWaitingRoom({
-      roomId: 'room-4',
-      userId: 'room-4-user-1',
+      roomId: 'room-2',
+      userId: 'room-2-user-1',
     })
 
     const removedRoom = gateway
       .getMockLobbyRooms()
-      .find((room) => room.id === 'room-4')
+      .find((room) => room.id === 'room-2')
 
     expect(removedRoom).toBeUndefined()
   })
