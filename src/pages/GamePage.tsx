@@ -8,7 +8,7 @@ import ExitGameModal from '../components/game/modals/ExitGameModal'
 import { isPromptHandledByBoardModal } from '../components/game/modals/promptModalMapping'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import GlobalEffectModal from '../components/game/GlobalEffectModal'
-import { IS_SOCKET_MOCK_ENABLED, SHOW_GAME_DEBUG_OVERLAY } from '../config/env'
+import { IS_SOCKET_MOCK_ENABLED } from '../config/env'
 import { useAuthStore } from '../features/auth/session/store'
 import { requestOnlineUsersSnapshotSync } from '../features/presence/online-users/onlineUsersSocket'
 import { DevRoomChatControlPanel } from '../features/room-chat/DevRoomChatControlPanel'
@@ -174,7 +174,6 @@ const GamePage: React.FC = () => {
   const gameSession = useGameStore((s) => s.session)
   const storeGameId = useGameStore((s) => s.gameId)
   const clearPrompt = useGameStore((s) => s.clearPrompt)
-  const setLastError = useGameStore((s) => s.setLastError)
   const activeGlobalEffect = useGameStore((s) => s.activeGlobalEffect)
   const resetGame = useGameStore((s) => s.resetGame)
   const activeGameId =
@@ -193,6 +192,7 @@ const GamePage: React.FC = () => {
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
   const [isGlobalEffectModalOpen, setIsGlobalEffectModalOpen] = useState(false)
+  const [isSoloPlayEnabled, setIsSoloPlayEnabled] = useState(false)
   const previousGlobalEffectRef = useRef(activeGlobalEffect)
   const [isRecoveringFromFatalGameRoute, setIsRecoveringFromFatalGameRoute] =
     useState(false)
@@ -240,6 +240,13 @@ const GamePage: React.FC = () => {
     MAX_ROUND_BADGE_VALUE
   )
   const activePlayerId = toComparablePlayerId(normalizedCurrentTurn)
+  const canControlActiveMockTurn =
+    USE_GAME_SOCKET_MOCK && (ALLOW_ALL_MOCK_TURNS || isSoloPlayEnabled)
+  const controlledPlayerId = canControlActiveMockTurn
+    ? (activePlayerId ?? currentUserId)
+    : currentUserId
+  const shouldShowSoloPlayControl =
+    USE_GAME_SOCKET_MOCK && !ALLOW_ALL_MOCK_TURNS
 
   const boardPlayers = useMemo(
     () => mapStorePlayersToBoardPlayers(storePlayers),
@@ -255,12 +262,13 @@ const GamePage: React.FC = () => {
   )
   const isMyTurnFromStore = useTurn(normalizedCurrentTurn, currentUserId)
   const isMyTurn = USE_GAME_SOCKET_MOCK
-    ? ALLOW_ALL_MOCK_TURNS || boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
+    ? canControlActiveMockTurn || boardCurPlayer === MOCK_LOCAL_PLAYER_INDEX
     : isMyTurnFromStore
-  const isPromptTargetedToCurrentUser =
+  const isPromptTargetedToControlledPlayer =
     prompt?.playerId == null ||
-    (currentUserId != null && String(prompt.playerId) === String(currentUserId))
-  const isPromptVisible = Boolean(prompt && isPromptTargetedToCurrentUser)
+    (controlledPlayerId != null &&
+      String(prompt.playerId) === String(controlledPlayerId))
+  const isPromptVisible = Boolean(prompt && isPromptTargetedToControlledPlayer)
   const isBoardHandledPrompt = isPromptHandledByBoardModal(prompt)
   const activeBoardPrompt =
     isPromptVisible && isBoardHandledPrompt ? prompt : null
@@ -538,9 +546,6 @@ const GamePage: React.FC = () => {
       payload,
     })
   }
-  const dismissLastError = () => {
-    setLastError(null)
-  }
   const handleExitConfirm = async () => {
     if (isLeavePending) {
       return
@@ -684,8 +689,6 @@ const GamePage: React.FC = () => {
     !isFatalGameRouteError &&
     !isRecoveringFromFatalGameRoute &&
     storePlayers.length === 0
-  const shouldShowGameDebugOverlay =
-    SHOW_GAME_DEBUG_OVERLAY && (isActionPending || lastAck || lastError)
 
   if (
     (isFatalGameRouteError || isRecoveringFromFatalGameRoute) &&
@@ -729,40 +732,6 @@ const GamePage: React.FC = () => {
           <ArrowLeft size={20} />
         </button>
       </div>
-      {shouldShowGameDebugOverlay ? (
-        <div className="absolute right-6 top-6 z-20 flex w-85 flex-col gap-2">
-          {isActionPending && (
-            <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs font-semibold text-[#1D4ED8]">
-              Pending action: {pendingAction.type}
-            </div>
-          )}
-          {lastAck && (
-            <div
-              className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
-                lastAck.ok
-                  ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]'
-                  : 'border-[#FECACA] bg-[#FEF2F2] text-[#B91C1C]'
-              }`}
-            >
-              {lastAck.ok ? 'Action acknowledged' : 'Action rejected'} (
-              {lastAck.type ?? 'UNKNOWN'})
-            </div>
-          )}
-          {lastError && (
-            <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-3 py-2 text-xs text-[#991B1B]">
-              <div className="font-semibold">{lastError.code}</div>
-              <div className="mt-1">{lastError.message}</div>
-              <button
-                type="button"
-                onClick={dismissLastError}
-                className="mt-2 rounded-lg border border-[#FCA5A5] bg-white px-2 py-1 text-[11px] font-semibold text-[#B91C1C] transition-colors hover:bg-[#FEE2E2]"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
-        </div>
-      ) : null}
 
       <div className="relative z-10 mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4">
         <div className="flex h-[80%] min-h-0 w-[320px] shrink-0 flex-col">
@@ -797,7 +766,7 @@ const GamePage: React.FC = () => {
               activePrompt={activeBoardPrompt}
               promptSubmittingChoice={promptSubmittingChoice}
               onPromptChoice={handlePromptChoice}
-              localPlayerId={currentUserId}
+              localPlayerId={controlledPlayerId}
               gamePhase={phase}
               allowAssetActions={canManageAssetsThisTurn}
               onBlockingModalChange={setIsBoardBlockingModalOpen}
@@ -830,6 +799,39 @@ const GamePage: React.FC = () => {
       </div>
 
       <div className="absolute bottom-10 right-10 z-20 flex flex-col items-center gap-4">
+        {shouldShowSoloPlayControl ? (
+          <div className="flex w-[232px] items-center justify-between rounded-[28px] border border-white/80 bg-white/90 px-4 py-3 shadow-[0_18px_36px_rgba(36,95,229,0.16)] backdrop-blur-sm">
+            <div className="min-w-0 text-left">
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#8BA3CB]">
+                Mock Play
+              </p>
+              <p className="mt-1 text-sm font-black text-[#1F2A44]">
+                혼자 플레이
+              </p>
+              <p className="mt-0.5 text-[11px] font-medium text-[#6A7A92]">
+                상대 턴도 내가 이어서 진행
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isSoloPlayEnabled}
+              aria-label="혼자 플레이"
+              onClick={() => setIsSoloPlayEnabled((prev) => !prev)}
+              className={`relative inline-flex h-7 w-[52px] shrink-0 rounded-full border border-white/70 transition-colors ${
+                isSoloPlayEnabled ? 'bg-[#245FE5]' : 'bg-[#C8D4E6]'
+              }`}
+            >
+              <span
+                className={`absolute left-0.5 top-0.5 flex size-6 items-center justify-center rounded-full bg-white text-[10px] font-black text-[#245FE5] shadow-[0_6px_14px_rgba(36,95,229,0.22)] transition-transform ${
+                  isSoloPlayEnabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              >
+                {isSoloPlayEnabled ? 'ON' : 'OFF'}
+              </span>
+            </button>
+          </div>
+        ) : null}
         {/* Round Badge */}
         <div
           aria-label="현재 라운드 배지"

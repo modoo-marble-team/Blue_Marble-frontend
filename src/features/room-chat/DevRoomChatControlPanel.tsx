@@ -5,13 +5,13 @@ import { sendWaitingRoomChat } from '../../pages/waiting-room/socket/socket'
 
 const IS_DEV_ROOM_CHAT_CONTROL_ENABLED = IS_SOCKET_MOCK_ENABLED
 
-// DEV 채팅 제어 패널에서 사용할 발신자 정보 타입
+// 게임방 채팅 테스트 패널에서 사용할 발신자 정보 타입
 interface RoomChatSenderOption {
   id: string
   nickname: string
 }
 
-// DEV 채팅 제어 패널 입력값 타입
+// 게임방 채팅 테스트 패널 입력값 타입
 interface DevRoomChatControlPanelProps {
   roomId: string
   senderOptions: RoomChatSenderOption[]
@@ -19,7 +19,7 @@ interface DevRoomChatControlPanelProps {
   className?: string
 }
 
-// 대기방/게임 공통 채팅 수신 이벤트를 수동 주입하는 DEV 패널
+// 대기방/게임 공통 채팅 수신 이벤트를 수동 주입하는 테스트 패널
 export function DevRoomChatControlPanel({
   roomId,
   senderOptions,
@@ -90,7 +90,7 @@ export function DevRoomChatControlPanel({
           className
         )}
       >
-        DEV CHAT 열기
+        게임방 채팅 테스트 패널 열기
       </button>
     )
   }
@@ -120,13 +120,13 @@ export function DevRoomChatControlPanel({
   return (
     <aside
       className={cn(
-        'fixed bottom-4 left-4 z-50 w-[260px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl',
+        'fixed bottom-4 left-4 z-50 w-[288px] rounded-2xl border border-ui-border bg-white/95 p-3 shadow-xl',
         className
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-extrabold tracking-wide text-ui-text-main">
-          DEV ROOM CHAT CONTROL
+          게임방 채팅 테스트 패널
         </h3>
         <button
           type="button"
