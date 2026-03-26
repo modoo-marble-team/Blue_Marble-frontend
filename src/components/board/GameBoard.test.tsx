@@ -46,13 +46,8 @@ vi.mock('../game/GlobalEffectOverlay', () => ({
 }))
 
 vi.mock('../game/modals/BuyModal', () => ({
-  default: ({
-    open,
-    cityName,
-  }: {
-    open: boolean
-    cityName?: string
-  }) => (open ? <div>{cityName || '도시'} 구매 모달</div> : null),
+  default: ({ open, cityName }: { open: boolean; cityName?: string }) =>
+    open ? <div>{cityName || '도시'} 구매 모달</div> : null,
 }))
 
 vi.mock('../game/modals/BuildModal', () => ({
@@ -69,7 +64,24 @@ vi.mock('../game/modals/TravelModal', () => ({
 }))
 
 vi.mock('../game/modals/CityAcquisitionModals', () => ({
-  default: () => null,
+  default: ({
+    open,
+    ownerName,
+    onCancel,
+    onAcquire,
+  }: {
+    open: boolean
+    ownerName?: string
+    onCancel?: () => void
+    onAcquire?: () => void
+  }) =>
+    open ? (
+      <div>
+        <div>{ownerName} 인수 모달</div>
+        <button onClick={onCancel}>인수 취소</button>
+        <button onClick={onAcquire}>인수하기</button>
+      </div>
+    ) : null,
 }))
 
 vi.mock('../game/modals/CitySellModal', () => ({
@@ -243,15 +255,13 @@ beforeAll(() => {
 
   vi.stubGlobal('ResizeObserver', ResizeObserverMock)
   vi.stubGlobal('Audio', AudioMock)
-  vi.stubGlobal(
-    'requestAnimationFrame',
-    ((callback: FrameRequestCallback) =>
-      window.setTimeout(() => callback(performance.now()), 16)) as typeof requestAnimationFrame
-  )
-  vi.stubGlobal(
-    'cancelAnimationFrame',
-    ((handle: number) => window.clearTimeout(handle)) as typeof cancelAnimationFrame
-  )
+  vi.stubGlobal('requestAnimationFrame', ((callback: FrameRequestCallback) =>
+    window.setTimeout(
+      () => callback(performance.now()),
+      16
+    )) as typeof requestAnimationFrame)
+  vi.stubGlobal('cancelAnimationFrame', ((handle: number) =>
+    window.clearTimeout(handle)) as typeof cancelAnimationFrame)
 })
 
 afterAll(() => {
@@ -420,5 +430,81 @@ describe('GameBoard modal reveal timing', () => {
     })
 
     expect(screen.getByText('무인도 이동 모달')).toBeInTheDocument()
+  })
+})
+
+describe('GameBoard acquisition prompt handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useGameStore.getState().resetGame()
+  })
+
+  it('opens acquisition modal only for canonical acquisition prompt type', () => {
+    renderGameBoard({
+      activePrompt: {
+        id: 'acquire-1',
+        type: 'ACQUISITION_OR_SKIP',
+        payload: {
+          tileId: 2,
+          ownerName: '플레이어2',
+          buildingLevel: 2,
+          acquisitionCost: 1800,
+        },
+        choices: [
+          { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
+          { id: 'skip', label: '넘기기', value: 'SKIP' },
+        ],
+      },
+    })
+
+    expect(screen.getByText('플레이어2 인수 모달')).toBeInTheDocument()
+  })
+
+  it('does not open acquisition modal for non-acquisition prompt with acquisition-like payload', () => {
+    renderGameBoard({
+      activePrompt: {
+        id: 'build-1',
+        type: 'BUILD_OR_SKIP',
+        payload: {
+          tileId: 2,
+          ownerName: '플레이어2',
+          buildingLevel: 2,
+          acquisitionCost: 1800,
+        },
+        choices: [
+          { id: 'build', label: '건설', value: 'BUILD' },
+          { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        ],
+      },
+    })
+
+    expect(screen.queryByText(/인수 모달/)).not.toBeInTheDocument()
+  })
+
+  it('does not send a fallback acquisition choice when canonical confirm choice is missing', async () => {
+    const user = userEvent.setup()
+    const onPromptChoice = vi.fn()
+
+    renderGameBoard({
+      activePrompt: {
+        id: 'acquire-2',
+        type: 'ACQUISITION_OR_SKIP',
+        payload: {
+          tileId: 2,
+          ownerName: '플레이어2',
+          buildingLevel: 2,
+          acquisitionCost: 1800,
+        },
+        choices: [
+          { id: 'skip', label: '넘기기', value: 'SKIP' },
+          { id: 'wait', label: '대기', value: 'WAIT' },
+        ],
+      },
+      onPromptChoice,
+    })
+
+    await user.click(screen.getByRole('button', { name: '인수하기' }))
+
+    expect(onPromptChoice).not.toHaveBeenCalled()
   })
 })

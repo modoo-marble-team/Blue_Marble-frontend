@@ -34,7 +34,7 @@ describe('promptModalMapping', () => {
 
   it('resolves acquisition modal by prompt type token', () => {
     const prompt = createPrompt({
-      type: 'CITY_ACQUISITION',
+      type: 'ACQUISITION_OR_SKIP',
       choices: [
         { id: 'skip', label: '건너뛰기', value: 'SKIP' },
         { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
@@ -42,6 +42,30 @@ describe('promptModalMapping', () => {
     })
 
     expect(resolvePromptModalKind(prompt)).toBe('acquisition')
+  })
+
+  it('does not resolve acquisition modal for legacy acquisition alias', () => {
+    const prompt = createPrompt({
+      type: 'CITY_ACQUISITION',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
+      ],
+    })
+
+    expect(resolvePromptModalKind(prompt)).toBe('unknown')
+  })
+
+  it('does not resolve acquisition modal from choice tokens alone', () => {
+    const prompt = createPrompt({
+      type: 'SERVER_PROMPT',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
+      ],
+    })
+
+    expect(resolvePromptModalKind(prompt)).toBe('unknown')
   })
 
   it('resolves sell modal by prompt type token', () => {
@@ -82,7 +106,7 @@ describe('promptModalMapping', () => {
 
   it('resolves acquisition confirm/cancel choices', () => {
     const prompt = createPrompt({
-      type: 'CITY_ACQUISITION',
+      type: 'ACQUISITION_OR_SKIP',
       choices: [
         { id: 'skip', label: '건너뛰기', value: 'SKIP' },
         { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
@@ -93,6 +117,31 @@ describe('promptModalMapping', () => {
       'ACQUIRE'
     )
     expect(resolvePromptChoiceValue(prompt, 'acquisitionCancel')).toBe('SKIP')
+  })
+
+  it('returns null when acquisition confirm choice is missing', () => {
+    const prompt = createPrompt({
+      type: 'ACQUISITION_OR_SKIP',
+      choices: [
+        { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        { id: 'wait', label: '대기', value: 'WAIT' },
+      ],
+    })
+
+    expect(resolvePromptChoiceValue(prompt, 'acquisitionConfirm')).toBeNull()
+    expect(resolvePromptChoiceValue(prompt, 'acquisitionCancel')).toBe('SKIP')
+  })
+
+  it('returns null when acquisition cancel choice is missing', () => {
+    const prompt = createPrompt({
+      type: 'ACQUISITION_OR_SKIP',
+      choices: [{ id: 'acquire', label: '인수하기', value: 'ACQUIRE' }],
+    })
+
+    expect(resolvePromptChoiceValue(prompt, 'acquisitionConfirm')).toBe(
+      'ACQUIRE'
+    )
+    expect(resolvePromptChoiceValue(prompt, 'acquisitionCancel')).toBeNull()
   })
 
   it('resolves sell confirm/cancel choices', () => {
