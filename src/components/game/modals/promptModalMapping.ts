@@ -29,22 +29,13 @@ export type PromptChoiceRuleKey =
 const BUY_TYPE_TOKENS = ['BUY_OR_SKIP', 'BUY_PROPERTY', 'BUY_PROMPT']
 const BUILD_TYPE_TOKENS = ['BUILD_OR_SKIP', 'UPGRADE_OR_SKIP', 'BUILD_PROMPT']
 const TOLL_TYPE_TOKENS = ['PAY_TOLL', 'TOLL_CONFIRM', 'PAY_TOLL_CONFIRM']
+const ACQUISITION_PROMPT_TYPE = 'ACQUISITION_OR_SKIP'
 const SELL_TYPE_TOKENS = [
   'SELL_PROPERTY',
   'SELL_OR_SKIP',
   'SELL_PROMPT',
   'CITY_SELL',
   'FORCED_SELL',
-]
-const ACQUISITION_TYPE_TOKENS = [
-  'CITY_ACQUISITION',
-  'CITY_ACQUIRE',
-  'ACQUISITION',
-  'TAKEOVER',
-  'BUYOUT',
-  'ACQUIRE_CITY',
-  'PURCHASE_CITY',
-  'TAKEOVER_CITY',
 ]
 const TRAVEL_TYPE_TOKENS = [
   'TRAVEL',
@@ -70,6 +61,7 @@ const PROMPT_CHOICE_RULES: Record<
   {
     preferredTokens: string[]
     fallbackIndex?: number
+    allowFirstChoiceFallback?: boolean
   }
 > = {
   buyConfirm: {
@@ -101,12 +93,12 @@ const PROMPT_CHOICE_RULES: Record<
     fallbackIndex: 1,
   },
   acquisitionConfirm: {
-    preferredTokens: ['ACQUIRE', 'ACQUISITION', 'TAKEOVER', 'BUYOUT', 'BUY'],
-    fallbackIndex: 0,
+    preferredTokens: ['ACQUIRE'],
+    allowFirstChoiceFallback: false,
   },
   acquisitionCancel: {
-    preferredTokens: ['SKIP', 'PASS', 'CANCEL', 'NO'],
-    fallbackIndex: 1,
+    preferredTokens: ['SKIP'],
+    allowFirstChoiceFallback: false,
   },
   travelConfirm: {
     preferredTokens: ['TRAVEL', 'DESTINATION', 'SELECT', 'CONFIRM', 'YES'],
@@ -137,6 +129,9 @@ const hasTypeToken = (prompt: GamePrompt, tokens: string[]) => {
   const promptType = normalize(prompt.type)
   return tokens.some((token) => promptType.includes(token))
 }
+
+const hasExactType = (prompt: GamePrompt, expectedType: string) =>
+  normalize(prompt.type) === normalize(expectedType)
 
 const getPromptChoices = (prompt: GamePrompt) => prompt.choices ?? []
 
@@ -199,11 +194,7 @@ export const resolvePromptModalKind = (
     return 'sell'
   }
 
-  if (
-    hasTypeToken(prompt, ACQUISITION_TYPE_TOKENS) ||
-    (hasChoiceToken(prompt, ['ACQUIRE', 'TAKEOVER', 'BUYOUT']) &&
-      hasChoiceToken(prompt, ['SKIP', 'PASS', 'CANCEL']))
-  ) {
+  if (hasExactType(prompt, ACQUISITION_PROMPT_TYPE)) {
     return 'acquisition'
   }
 
@@ -240,7 +231,10 @@ export const isPromptHandledByBoardModal = (
 export const findPromptChoiceValue = (
   prompt: GamePrompt | null | undefined,
   preferredTokens: string[],
-  fallbackIndex?: number
+  options?: {
+    fallbackIndex?: number
+    allowFirstChoiceFallback?: boolean
+  }
 ): string | null => {
   if (!prompt) {
     return null
@@ -250,6 +244,9 @@ export const findPromptChoiceValue = (
   if (choices.length === 0) {
     return null
   }
+
+  const fallbackIndex = options?.fallbackIndex
+  const allowFirstChoiceFallback = options?.allowFirstChoiceFallback ?? true
 
   for (const token of preferredTokens) {
     const matchedChoiceByToken = choices.find((choice) =>
@@ -268,7 +265,11 @@ export const findPromptChoiceValue = (
     return choices[fallbackIndex].value
   }
 
-  return choices[0].value
+  if (allowFirstChoiceFallback) {
+    return choices[0].value
+  }
+
+  return null
 }
 
 export const resolvePromptChoiceValue = (
@@ -277,7 +278,10 @@ export const resolvePromptChoiceValue = (
 ): string | null => {
   const rule = PROMPT_CHOICE_RULES[ruleKey]
 
-  return findPromptChoiceValue(prompt, rule.preferredTokens, rule.fallbackIndex)
+  return findPromptChoiceValue(prompt, rule.preferredTokens, {
+    fallbackIndex: rule.fallbackIndex,
+    allowFirstChoiceFallback: rule.allowFirstChoiceFallback,
+  })
 }
 
 export const getPromptChoiceLabel = (
