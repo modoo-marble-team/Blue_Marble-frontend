@@ -49,16 +49,13 @@ import {
 } from './board.constants'
 
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
-import { syncMockStorePlayers } from './gameBoardStoreBridge'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
-  FAST_MOVE_ANIMATION_OPTIONS,
   getPendingMovePlayerIdsFromEvents,
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
   resolveChanceMoveAnimationHint,
-  shouldApplyTravelMoveAnimation,
   shouldRevealPostMoveSurface,
   shouldRevealPreMoveSurface,
   type BoardEventAnimationKind,
@@ -114,8 +111,7 @@ import type {
   PlayerId,
   ServerEvent,
 } from '../../types/domain'
-import { playLongSfx, stopLongSfx } from '../../lib/bgm'
-import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
+import { stopLongSfx } from '../../lib/bgm'
 import { emitGameAction } from '../../services/socket/game.handler'
 import { useGameStore } from '../../stores/game.store'
 
@@ -615,7 +611,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     curPlayerRef.current = curPlayer
     playersRef.current = players
 
-    const isMockMode = IS_SOCKET_MOCK_ENABLED
     const handleArrivalRef = useRef<
       (
         tileId: number,
@@ -736,16 +731,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       },
       [boardTiles.length]
     )
-    const emitMockEndTurn = useCallback(() => {
-      if (!isMockMode || !gameId) {
-        return
-      }
-
-      emitGameAction({
-        type: 'END_TURN',
-        gameId,
-      })
-    }, [isMockMode, gameId])
     const handleBoardEventConsumed = useCallback(
       (event: ServerEvent) => {
         const normalizedType =
@@ -899,12 +884,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             }
           }
 
-          const isTravelMove = shouldApplyTravelMoveAnimation({
-            normalizedTrigger,
-            fromIndex,
-            toIndex: tileIndex,
-            tiles: boardTiles,
-          })
+          const isTravelMove = [
+            'travel',
+            'move_to_island',
+            'go_to_island',
+          ].includes(normalizedTrigger)
           lockBoardActionModals()
           if (isTravelMove && event.playerId != null) {
             startTravelTokenFx(event.playerId, 1600)
@@ -916,7 +900,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             tileIndex,
             {
               direction: moveDirection,
-              ...(isTravelMove ? FAST_MOVE_ANIMATION_OPTIONS : {}),
             }
           )
 
@@ -935,7 +918,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               // 애니메이션 종료 후 도착 처리 (모달 띄우기 등)
               handleArrivalRef.current(
                 tileIndex,
-                emitMockEndTurn,
+                undefined,
                 event.playerId ?? null
               )
             })
@@ -986,7 +969,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       [
         boardTiles,
         clearTravelTokenFx,
-        emitMockEndTurn,
         freezeDiceRollValues,
         flashDiceRollAnimation,
         lockBoardActionModals,
@@ -998,17 +980,13 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     )
     const handleEventAnimation = useCallback(
       (kind: BoardEventAnimationKind) => {
-        if (isMockMode && kind !== 'dice') {
-          return
-        }
-
         if (kind === 'dice') {
           freezeDiceRollValues()
         }
 
         setEventFxKind(kind)
       },
-      [isMockMode, freezeDiceRollValues]
+      [freezeDiceRollValues]
     )
 
     useEffect(() => {
@@ -1566,48 +1544,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       const { onDoneCallback } = goToIslandModal
       setGoToIslandModal({ open: false })
 
-      if (!isMockMode) {
-        // Real server mode: authoritative movement/state update comes from
-        // subsequent PLAYER_MOVED / PLAYER_STATE_CHANGED events.
-        onDoneCallback?.()
-        return
-      }
-
-      const playerIdx = curPlayerRef.current
-      const player = playersRef.current[playerIdx]
-      if (!player) return
-
-      const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
-      if (islandTile) {
-        lockBoardActionModals()
-        // 무인도 이동도 한 칸씩 전진 애니메이션 적용
-        try {
-          await movePlayerSequentially(
-            player.id,
-            player.pos === islandTile.id ? 24 : player.pos,
-            islandTile.id,
-            FAST_MOVE_ANIMATION_OPTIONS
-          )
-
-          const updatedPlayers = [...playersRef.current]
-          updatedPlayers[playerIdx] = {
-            ...updatedPlayers[playerIdx],
-            pos: islandTile.id,
-            skipTurns: 3,
-          }
-          playersRef.current = updatedPlayers
-          if (isMockMode) {
-            syncMockStorePlayers(updatedPlayers)
-          }
-        } finally {
-          releaseBoardActionModalsNextFrame()
-        }
-      }
-
-      setIslandModal({
-        open: true,
-        onDoneCallback,
-      })
+      onDoneCallback?.()
     }
 
     function handleIslandConfirm() {
@@ -1715,53 +1652,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       stopLongSfx()
       const { onDoneCallback } = cardModal
       setCardModal((prev) => ({ ...prev, open: false }))
-
-      const hasIslandKeyword =
-        cardModal.title?.includes('무인도') ||
-        cardModal.descriptionLine1?.includes('무인도') ||
-        cardModal.descriptionLine2?.includes('무인도')
-      const isFallbackIslandEventCard =
-        cardModal.variant === 'EVENT' &&
-        !cardModal.descriptionLine1 &&
-        !cardModal.descriptionLine2
-
-      if (isMockMode && (hasIslandKeyword || isFallbackIslandEventCard)) {
-        const playerIdx = curPlayerRef.current
-        const player = playersRef.current[playerIdx]
-        const islandTile = boardTiles.find((t) => t.type === 'ISLAND')
-
-        if (player && islandTile) {
-          lockBoardActionModals()
-          try {
-            await movePlayerSequentially(
-              player.id,
-              player.pos,
-              islandTile.id,
-              FAST_MOVE_ANIMATION_OPTIONS
-            )
-
-            const updatedPlayers = [...playersRef.current]
-            updatedPlayers[playerIdx] = {
-              ...updatedPlayers[playerIdx],
-              pos: islandTile.id,
-              skipTurns: 3,
-            }
-            playersRef.current = updatedPlayers
-            if (isMockMode) {
-              syncMockStorePlayers(updatedPlayers)
-            }
-          } finally {
-            releaseBoardActionModalsNextFrame()
-          }
-
-          setIslandModal({
-            open: true,
-            onDoneCallback,
-          })
-          return
-        }
-      }
-
       onDoneCallback?.()
     }
 
@@ -1826,34 +1716,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         setStatus('선택을 전송했습니다. 서버 응답을 기다리는 중...')
         return
       }
-      const updatedPlayers = [...playersRef.current]
-      updatedPlayers[playerIdx] = {
-        ...currentPlayer,
-        pos: tileId,
-      }
-      playersRef.current = updatedPlayers
-      if (isMockMode) {
-        syncMockStorePlayers(updatedPlayers)
-      }
+
       setTravelSelection(INITIAL_TRAVEL_SELECTION_STATE)
-
-      if (!isMockMode) {
-        setStatus('서버 선택 요청을 처리할 수 없는 상태입니다.')
-        return
-      }
-
-      const destinationName =
-        boardTiles[tileId]?.name.replace('\n', ' ') || '선택 칸'
-      setStatus(
-        `${currentPlayer.name}님이 ${destinationName} 칸으로 이동합니다.`
-      )
-
-      // ✈️ 여행 이동 소리 재생
-      playLongSfx('/audio/plane-fly.mp3')
-
-      window.setTimeout(() => {
-        handleArrival(tileId, onDoneCallback)
-      }, 300)
+      onDoneCallback?.()
+      setStatus('여행 프롬프트가 없어 선택을 로컬에서 종료했습니다.')
+      return
     }
 
     function handleArrival(
@@ -1921,41 +1788,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       }
 
       if (tile.type === 'TRAVEL' && tile.id === 16) {
-        if (!isMockMode) {
-          onDone?.()
-          return
-        }
-
-        if (isLocalPlayerTurn) {
-          setTravelModal({
-            open: true,
-            onDoneCallback: onDone,
-          })
-        } else {
-          onDone?.()
-        }
+        onDone?.()
         return
       }
       if (tile.type === 'CHANCE' || tile.type === 'EVENT') {
-        if (!isMockMode) {
-          onDone?.()
-          return
-        }
-
-        if (isLocalPlayerTurn) {
-          setCardModal({
-            open: true,
-            variant: tile.type === 'CHANCE' ? 'CHANCE' : 'EVENT',
-            onDoneCallback: onDone,
-          })
-          if (tile.type === 'CHANCE') {
-            new Audio('/audio/chance.mp3').play().catch(() => {})
-          } else {
-            new Audio('/audio/event.mp3').play().catch(() => {})
-          }
-        } else {
-          onDone?.()
-        }
+        onDone?.()
         return
       }
 
@@ -2290,8 +2127,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       // 업그레이드 취소 후 매각 팝업 강제 노출 제거
     }
 
-    const displayEventFxKind =
-      isMockMode || eventFxKind === 'dice' ? 'none' : eventFxKind
+    const displayEventFxKind = eventFxKind === 'dice' ? 'none' : eventFxKind
 
     return (
       <div

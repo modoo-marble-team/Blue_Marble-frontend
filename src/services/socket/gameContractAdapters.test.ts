@@ -492,7 +492,7 @@ describe('gameContractAdapters', () => {
 
     expect(normalized?.players[0]).toMatchObject({
       id: 1,
-      balance: 5000000000,
+      balance: 10000000000,
     })
   })
 
@@ -540,7 +540,7 @@ describe('gameContractAdapters', () => {
 
     expect(normalized?.players[0]).toMatchObject({
       id: 'player-bad',
-      balance: 5000000000,
+      balance: 10000000000,
     })
   })
 

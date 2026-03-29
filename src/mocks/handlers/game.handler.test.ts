@@ -398,7 +398,7 @@ describe('mock game socket handlers contract', () => {
     const gameId = 'game-turn-flow'
     mockEmitGameSync({
       gameId,
-      knownRevision: 0,
+      knownRevision: -1,
     })
     await flushMockTimers()
 
