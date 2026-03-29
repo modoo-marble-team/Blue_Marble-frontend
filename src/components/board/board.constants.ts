@@ -10,9 +10,9 @@ export type TileType =
 export type TileDir = 'top' | 'bottom' | 'left' | 'right' | 'corner'
 
 /**
- * BuildingLevel 규격:
- * 0: 토지만 보유
- * 1: 주택
+ * BuildingLevel:
+ * 0: 토지
+ * 1: 별장
  * 2: 호텔
  * 3: 랜드마크
  */
@@ -20,7 +20,7 @@ export type BuildingLevel = 0 | 1 | 2 | 3
 
 export const LEVEL_LABELS: Record<number, string> = {
   0: '토지',
-  1: '주택',
+  1: '별장',
   2: '호텔',
   3: '랜드마크',
 }
@@ -59,64 +59,116 @@ export interface PlayerState {
   stateDuration?: number
 }
 
+type TierRuleWon = {
+  tolls: [number, number, number, number]
+  buildCosts: [number, number, number]
+}
+
+const PROPERTY_TIER_BY_PRICE_WON: Record<number, TierRuleWon> = {
+  300_000_000: {
+    tolls: [100_000_000, 150_000_000, 300_000_000, 800_000_000],
+    buildCosts: [200_000_000, 300_000_000, 400_000_000],
+  },
+  500_000_000: {
+    tolls: [150_000_000, 250_000_000, 650_000_000, 1_200_000_000],
+    buildCosts: [250_000_000, 500_000_000, 700_000_000],
+  },
+  700_000_000: {
+    tolls: [200_000_000, 400_000_000, 900_000_000, 1_800_000_000],
+    buildCosts: [500_000_000, 900_000_000, 1_400_000_000],
+  },
+  1_100_000_000: {
+    tolls: [350_000_000, 700_000_000, 1_300_000_000, 2_500_000_000],
+    buildCosts: [800_000_000, 1_700_000_000, 3_000_000_000],
+  },
+  1_500_000_000: {
+    tolls: [450_000_000, 900_000_000, 1_800_000_000, 3_200_000_000],
+    buildCosts: [1_000_000_000, 1_800_000_000, 3_200_000_000],
+  },
+}
+
 export const TILES: TileData[] = [
   { id: 0, name: '출발', type: 'START', emoji: '🚩' },
-  { id: 1, name: '수원', type: 'PROPERTY', color: '#EF5350', price: 100000000 },
-  { id: 2, name: '용인', type: 'PROPERTY', color: '#FFD15B', price: 120000000 },
+  {
+    id: 1,
+    name: '수원',
+    type: 'PROPERTY',
+    color: '#EF5350',
+    price: 300_000_000,
+  },
+  {
+    id: 2,
+    name: '용인',
+    type: 'PROPERTY',
+    color: '#FFD15B',
+    price: 300_000_000,
+  },
   { id: 3, name: '찬스', type: 'CHANCE', svgIcon: '/event-question.svg' },
-  { id: 4, name: '군산', type: 'PROPERTY', color: '#66BB6A', price: 140000000 },
+  {
+    id: 4,
+    name: '군산',
+    type: 'PROPERTY',
+    color: '#66BB6A',
+    price: 300_000_000,
+  },
   {
     id: 5,
     name: '태백',
     type: 'PROPERTY',
     color: '#42A5F5',
-    price: 160000000,
+    price: 300_000_000,
   },
   {
     id: 6,
     name: '울산',
     type: 'PROPERTY',
     color: '#42A5F5',
-    price: 180000000,
+    price: 300_000_000,
   },
   { id: 7, name: '이벤트', type: 'EVENT', svgIcon: '/chance-box.svg' },
   { id: 8, name: '무인도', type: 'ISLAND', emoji: '🏝️' },
-  { id: 9, name: '경주', type: 'PROPERTY', color: '#FF7043', price: 200000000 },
+  {
+    id: 9,
+    name: '경주',
+    type: 'PROPERTY',
+    color: '#FF7043',
+    price: 300_000_000,
+  },
   { id: 10, name: '찬스', type: 'CHANCE', svgIcon: '/event-question.svg' },
   {
     id: 11,
     name: '포항',
     type: 'PROPERTY',
     color: '#26A69A',
-    price: 240000000,
+    price: 500_000_000,
   },
   {
     id: 12,
     name: '대구',
     type: 'PROPERTY',
     color: '#66BB6A',
-    price: 280000000,
+    price: 700_000_000,
   },
   {
     id: 13,
     name: '창원',
     type: 'PROPERTY',
     color: '#7E57C2',
-    price: 320000000,
+    price: 500_000_000,
   },
   {
     id: 14,
     name: '익산',
     type: 'PROPERTY',
     color: '#EF5350',
-    price: 360000000,
+    price: 700_000_000,
   },
   {
     id: 15,
     name: '부산',
     type: 'PROPERTY',
     color: '#EF5350',
-    price: 400000000,
+    price: 1_500_000_000,
   },
   { id: 16, name: '여행', type: 'TRAVEL', emoji: '✈️' },
   {
@@ -124,63 +176,58 @@ export const TILES: TileData[] = [
     name: '제주',
     type: 'PROPERTY',
     color: '#42A5F5',
-    price: 500000000,
+    price: 1_500_000_000,
   },
   {
     id: 18,
     name: '여수',
     type: 'PROPERTY',
     color: '#26A69A',
-    price: 550000000,
+    price: 700_000_000,
   },
   {
     id: 19,
     name: '광주',
     type: 'PROPERTY',
     color: '#66BB6A',
-    price: 600000000,
+    price: 700_000_000,
   },
-  {
-    id: 20,
-    name: '이벤트',
-    type: 'EVENT',
-    svgIcon: '/chance-box.svg',
-  },
+  { id: 20, name: '이벤트', type: 'EVENT', svgIcon: '/chance-box.svg' },
   {
     id: 21,
     name: '춘천',
     type: 'PROPERTY',
     color: '#7E57C2',
-    price: 650000000,
+    price: 500_000_000,
   },
   {
     id: 22,
     name: '강릉',
     type: 'PROPERTY',
     color: '#7E57C2',
-    price: 700000000,
+    price: 1_100_000_000,
   },
   {
     id: 23,
     name: '전주',
     type: 'PROPERTY',
     color: '#FF7043',
-    price: 750000000,
+    price: 500_000_000,
   },
-  { id: 24, name: '섬으로 이동', type: 'MOVE_TO_ISLAND', emoji: '👮' },
+  { id: 24, name: '무인도로 이동', type: 'MOVE_TO_ISLAND', emoji: '🚓' },
   {
     id: 25,
     name: '청주',
     type: 'PROPERTY',
     color: '#42A5F5',
-    price: 800000000,
+    price: 500_000_000,
   },
   {
     id: 26,
     name: '천안',
     type: 'PROPERTY',
     color: '#42A5F5',
-    price: 900000000,
+    price: 700_000_000,
   },
   { id: 27, name: '찬스', type: 'CHANCE', svgIcon: '/event-question.svg' },
   {
@@ -188,14 +235,14 @@ export const TILES: TileData[] = [
     name: '대전',
     type: 'PROPERTY',
     color: '#66BB6A',
-    price: 1000000000,
+    price: 1_100_000_000,
   },
   {
     id: 29,
     name: '인천',
     type: 'PROPERTY',
     color: '#7E57C2',
-    price: 1100000000,
+    price: 1_100_000_000,
   },
   { id: 30, name: '이벤트', type: 'EVENT', svgIcon: '/chance-box.svg' },
   {
@@ -203,7 +250,7 @@ export const TILES: TileData[] = [
     name: '서울',
     type: 'PROPERTY',
     color: '#FF7043',
-    price: 1200000000,
+    price: 1_500_000_000,
   },
 ]
 
@@ -225,7 +272,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'GoormEE',
     color: PLAYER_COLORS[0],
     pos: 0,
-    money: 5000000000,
+    money: 10_000_000_000,
     skipTurns: 0,
   },
   {
@@ -233,7 +280,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'MarbleKing',
     color: PLAYER_COLORS[1],
     pos: 0,
-    money: 5000000000,
+    money: 10_000_000_000,
     skipTurns: 0,
   },
   {
@@ -241,7 +288,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'Player 3',
     color: PLAYER_COLORS[2],
     pos: 0,
-    money: 5000000000,
+    money: 10_000_000_000,
     skipTurns: 0,
   },
   {
@@ -249,7 +296,7 @@ export const INIT_PLAYERS: PlayerState[] = [
     name: 'Player 4',
     color: PLAYER_COLORS[3],
     pos: 0,
-    money: 5000000000,
+    money: 10_000_000_000,
     skipTurns: 0,
   },
 ]
@@ -265,9 +312,17 @@ export function getBuildCost(
   basePrice: number,
   currentLevel: BuildingLevel
 ): number {
-  if (currentLevel === 0) return basePrice * 0.5 // 토지 -> 주택
-  if (currentLevel === 1) return basePrice * 1.0 // 주택 -> 호텔
-  if (currentLevel === 2) return basePrice * 2.0 // 호텔 -> 랜드마크
+  const tierRule = PROPERTY_TIER_BY_PRICE_WON[basePrice]
+  if (tierRule) {
+    if (currentLevel === 0) return tierRule.buildCosts[0]
+    if (currentLevel === 1) return tierRule.buildCosts[1]
+    if (currentLevel === 2) return tierRule.buildCosts[2]
+    return 0
+  }
+
+  if (currentLevel === 0) return basePrice * 0.5
+  if (currentLevel === 1) return basePrice * 1
+  if (currentLevel === 2) return basePrice * 2
   return 0
 }
 
@@ -275,10 +330,18 @@ export function getTollCost(
   basePrice: number,
   currentLevel: BuildingLevel
 ): number {
-  // 기본 통행료 = basePrice (토지)
+  const tierRule = PROPERTY_TIER_BY_PRICE_WON[basePrice]
+  if (tierRule) {
+    const clampedLevel = Math.max(
+      0,
+      Math.min(currentLevel, tierRule.tolls.length - 1)
+    ) as BuildingLevel
+    return tierRule.tolls[clampedLevel]
+  }
+
   if (currentLevel === 0) return basePrice
-  if (currentLevel === 1) return basePrice * 2 // 주택
-  if (currentLevel === 2) return basePrice * 7 // 호텔
-  if (currentLevel === 3) return basePrice * 15 // 랜드마크
+  if (currentLevel === 1) return basePrice * 2
+  if (currentLevel === 2) return basePrice * 7
+  if (currentLevel === 3) return basePrice * 15
   return basePrice
 }

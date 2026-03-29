@@ -1,4 +1,7 @@
-import { type BuildingLevel } from './board.constants'
+import { getBuildCost, type BuildingLevel } from './board.constants'
+
+const SELL_PURCHASE_PRICE_REFUND_RATIO = 0.9
+const SELL_BUILD_COST_REFUND_RATIO = 0.75
 
 export function toBoardActionErrorMessage(statusCode: number) {
   if (statusCode === 401) return '로그인이 필요합니다.'
@@ -12,18 +15,25 @@ export function getBoardSellFallbackRefund(
   basePrice: number,
   level: BuildingLevel
 ) {
-  if (level < 0 || basePrice === 0) return 0
+  if (level < 0 || basePrice <= 0) return 0
 
-  let refund = basePrice
+  const normalizedLevel = Math.max(0, Math.min(level, 3))
+  const purchaseRefund = Math.trunc(
+    basePrice * SELL_PURCHASE_PRICE_REFUND_RATIO
+  )
 
-  for (let currentLevel = 1; currentLevel < level; currentLevel += 1) {
-    if (currentLevel === 1) refund += basePrice * 0.5
-    else if (currentLevel === 2) refund += basePrice * 0.5
-    else if (currentLevel === 3) refund += basePrice * 0.5
-    else if (currentLevel === 4) refund += basePrice * 1.0
-    else if (currentLevel === 5) refund += basePrice * 1.0
-    else if (currentLevel === 6) refund += basePrice * 2.0
+  let investedBuildCost = 0
+  for (
+    let currentLevel = 0;
+    currentLevel < normalizedLevel;
+    currentLevel += 1
+  ) {
+    investedBuildCost += getBuildCost(basePrice, currentLevel as BuildingLevel)
   }
 
-  return refund
+  const buildRefund = Math.trunc(
+    investedBuildCost * SELL_BUILD_COST_REFUND_RATIO
+  )
+
+  return purchaseRefund + buildRefund
 }

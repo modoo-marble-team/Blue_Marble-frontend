@@ -27,7 +27,7 @@ type SnapshotNormalizeOptions = {
 
 const DEFAULT_TURN_TIMEOUT_SEC = 30
 const DEFAULT_PLAYER_COLOR = '#94A3B8'
-const DEFAULT_INITIAL_BALANCE = 5_000_000_000
+const DEFAULT_INITIAL_BALANCE = 10_000_000_000
 const MONEY_UNIT_SCALE = 10_000
 const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
 const MONEY_KEYS = new Set([
@@ -368,7 +368,13 @@ const resolveDefaultGlobalEffectMode = (
 
 const resolveDefaultGlobalEffectMultiplier = (
   effect: GlobalEffectState['effect']
-) => (effect === 'PANDEMIC' || effect === 'DEFLATION' ? 0.5 : 2)
+) => {
+  if (effect === 'PANDEMIC') return 0.5
+  if (effect === 'FESTIVAL') return 2
+  if (effect === 'INFLATION') return 1.5
+  if (effect === 'DEFLATION') return 0.7
+  return 1
+}
 
 const normalizeGlobalEffectPayload = (
   effectPayload: unknown

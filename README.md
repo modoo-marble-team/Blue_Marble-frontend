@@ -150,10 +150,11 @@ npm run dev
 | `VITE_API_URL`              | `http://localhost:3000/api` | REST API base URL                                    |
 | `VITE_SOCKET_URL`           | `http://localhost:3000`     | Socket.IO base URL                                   |
 | `VITE_USE_SOCKET_MOCK`      | `false`                     | 개발 환경에서 MSW + socket mock 경로를 사용할지 결정 |
-| `VITE_ENABLE_DEMO_MOCK`     | `false`                     | 배포/데모 환경에서도 mock 모드를 강제로 켤지 결정    |
+| `VITE_ENABLE_DEMO_MOCK`     | `true`(배포 기본)           | 배포/데모 환경 mock 모드 강제 여부(`false`로 해제)   |
 | `VITE_ALLOW_ALL_MOCK_TURNS` | `false`                     | mock 게임에서 턴 제한을 무시할지 결정                |
 
-> mock 모드를 켜면 MSW와 socket mock server 기준으로 화면 흐름을 검증합니다.
+> mock 모드를 켜면 MSW와 socket mock server 기준으로 화면 흐름을 검증합니다.  
+> 프로덕션 빌드는 기본적으로 mock 데모 모드이며, 실제 서버를 쓰려면 `VITE_ENABLE_DEMO_MOCK=false`를 명시해야 합니다.
 
 ---
 

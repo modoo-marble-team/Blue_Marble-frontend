@@ -444,7 +444,7 @@ describe('GameBoard modal reveal timing', () => {
     expect(screen.getByText('무인도 이동 모달')).toBeInTheDocument()
   })
 
-  it('reveals travel modal only after arrival move finishes and next frame passes', async () => {
+  it('does not open local travel modal from movement event alone', async () => {
     useGameStore.getState().enqueueEvents([
       {
         type: 'PLAYER_MOVED',
@@ -481,8 +481,8 @@ describe('GameBoard modal reveal timing', () => {
     })
 
     expect(
-      screen.getByRole('button', { name: '여행 확인' })
-    ).toBeInTheDocument()
+      screen.queryByRole('button', { name: '여행 확인' })
+    ).not.toBeInTheDocument()
   })
 
   it('keeps card modal visible before queued chance move consumes, then reveals post-move modal after confirm', async () => {
@@ -560,7 +560,7 @@ describe('GameBoard modal reveal timing', () => {
     expect(screen.getByText(/구매 모달/)).toBeInTheDocument()
   })
 
-  it('opens island modal only after go-to-island confirm triggers the chain move', async () => {
+  it('closes go-to-island modal after confirm without opening local island result modal', async () => {
     useGameStore.getState().enqueueEvents([
       {
         type: 'PLAYER_MOVED',
@@ -586,19 +586,8 @@ describe('GameBoard modal reveal timing', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '무인도 이동 확인' }))
 
+    expect(screen.queryByText('무인도 이동 모달')).not.toBeInTheDocument()
     expect(screen.queryByText('무인도 결과 모달')).not.toBeInTheDocument()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(900)
-    })
-
-    expect(screen.queryByText('무인도 결과 모달')).not.toBeInTheDocument()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(100)
-    })
-
-    expect(screen.getByText('무인도 결과 모달')).toBeInTheDocument()
   })
 })
 
