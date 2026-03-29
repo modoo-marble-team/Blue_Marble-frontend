@@ -33,7 +33,7 @@ export const LEVEL_MODAL_ICONS: Record<number, string> = {
 }
 
 export interface TileOwner {
-  ownerId: number
+  ownerId: string | number
   ownerColor: string
   level: BuildingLevel
 }
@@ -49,7 +49,7 @@ export interface TileData {
 }
 
 export interface PlayerState {
-  id: number
+  id: string | number
   name: string
   color: string
   pos: number
@@ -66,24 +66,24 @@ type TierRuleWon = {
 
 const PROPERTY_TIER_BY_PRICE_WON: Record<number, TierRuleWon> = {
   300_000_000: {
-    tolls: [100_000_000, 150_000_000, 300_000_000, 800_000_000],
-    buildCosts: [200_000_000, 300_000_000, 400_000_000],
+    tolls: [50_000_000, 100_000_000, 300_000_000, 650_000_000],
+    buildCosts: [400_000_000, 850_000_000, 1_400_000_000],
   },
   500_000_000: {
-    tolls: [150_000_000, 250_000_000, 650_000_000, 1_200_000_000],
-    buildCosts: [250_000_000, 500_000_000, 700_000_000],
+    tolls: [100_000_000, 200_000_000, 900_000_000, 1_550_000_000],
+    buildCosts: [600_000_000, 1_550_000_000, 1_800_000_000],
   },
   700_000_000: {
-    tolls: [200_000_000, 400_000_000, 900_000_000, 1_800_000_000],
-    buildCosts: [500_000_000, 900_000_000, 1_400_000_000],
+    tolls: [150_000_000, 300_000_000, 950_000_000, 1_750_000_000],
+    buildCosts: [800_000_000, 1_900_000_000, 2_500_000_000],
   },
   1_100_000_000: {
-    tolls: [350_000_000, 700_000_000, 1_300_000_000, 2_500_000_000],
-    buildCosts: [800_000_000, 1_700_000_000, 3_000_000_000],
+    tolls: [180_000_000, 350_000_000, 950_000_000, 1_550_000_000],
+    buildCosts: [1_600_000_000, 3_400_000_000, 3_900_000_000],
   },
-  1_500_000_000: {
-    tolls: [450_000_000, 900_000_000, 1_800_000_000, 3_200_000_000],
-    buildCosts: [1_000_000_000, 1_800_000_000, 3_200_000_000],
+  1_700_000_000: {
+    tolls: [200_000_000, 400_000_000, 900_000_000, 1_300_000_000],
+    buildCosts: [2_800_000_000, 5_300_000_000, 5_600_000_000],
   },
 }
 
@@ -113,14 +113,14 @@ export const TILES: TileData[] = [
   },
   {
     id: 5,
-    name: '태백',
+    name: '평택',
     type: 'PROPERTY',
     color: '#42A5F5',
     price: 300_000_000,
   },
   {
     id: 6,
-    name: '울산',
+    name: '익산',
     type: 'PROPERTY',
     color: '#42A5F5',
     price: 300_000_000,
@@ -151,14 +151,14 @@ export const TILES: TileData[] = [
   },
   {
     id: 13,
-    name: '창원',
+    name: '청원',
     type: 'PROPERTY',
     color: '#7E57C2',
     price: 500_000_000,
   },
   {
     id: 14,
-    name: '익산',
+    name: '울산',
     type: 'PROPERTY',
     color: '#EF5350',
     price: 700_000_000,
@@ -168,7 +168,7 @@ export const TILES: TileData[] = [
     name: '부산',
     type: 'PROPERTY',
     color: '#EF5350',
-    price: 1_500_000_000,
+    price: 1_700_000_000,
   },
   { id: 16, name: '여행', type: 'TRAVEL', emoji: '✈️' },
   {
@@ -176,7 +176,7 @@ export const TILES: TileData[] = [
     name: '제주',
     type: 'PROPERTY',
     color: '#42A5F5',
-    price: 1_500_000_000,
+    price: 1_700_000_000,
   },
   {
     id: 18,
@@ -209,12 +209,12 @@ export const TILES: TileData[] = [
   },
   {
     id: 23,
-    name: '전주',
+    name: '원주',
     type: 'PROPERTY',
     color: '#FF7043',
     price: 500_000_000,
   },
-  { id: 24, name: '무인도로 이동', type: 'MOVE_TO_ISLAND', emoji: '🚓' },
+  { id: 24, name: '섬으로 이동', type: 'MOVE_TO_ISLAND', emoji: '🚓' },
   {
     id: 25,
     name: '청주',
@@ -250,7 +250,7 @@ export const TILES: TileData[] = [
     name: '서울',
     type: 'PROPERTY',
     color: '#FF7043',
-    price: 1_500_000_000,
+    price: 1_700_000_000,
   },
 ]
 

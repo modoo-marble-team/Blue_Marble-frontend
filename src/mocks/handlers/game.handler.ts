@@ -20,20 +20,48 @@ import { mockMessages, mockPlayers, mockTiles } from '../gameMockData'
 
 const MOCK_PLAYER_ID = 'mock-player-1'
 const ROOM_ID_FROM_GAME_ID_PATTERN = /^game-(room-\d+)-/
-const MOCK_BUILD_COST = 30
-const MOCK_PASS_GO_SALARY = 200
+const MOCK_PASS_GO_SALARY = 100_000
 const MOCK_TURN_TIMEOUT_SEC = 30
 const SYNC_SNAPSHOT_GAP_THRESHOLD = 200
 const PROMPT_RESPONSE_ACK_TYPE = 'PROMPT_RESPONSE'
 const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
-const MOCK_PLAYER_START_BALANCE = 5000000000
+const MOCK_PLAYER_START_BALANCE = 1_000_000
 const DEFAULT_MOCK_CHAT_MESSAGES = ['즐겜해요~', '모두의 마블 한판!'] as const
 
 const PROMPT_CHOICE_CANONICAL_MAP: Record<string, readonly string[]> = {
   BUY_OR_SKIP: ['BUY', 'SKIP'],
+  BUILD_OR_SKIP: ['BUILD', 'SKIP'],
   CONFIRM_ONLY: ['CONFIRM'],
   PAY_TOLL: ['PAY_TOLL'],
   TRAVEL_SELECT: ['CONFIRM', 'SKIP'],
+}
+
+type TierRuleMan = {
+  tolls: [number, number, number, number]
+  buildCosts: [number, number, number]
+}
+
+const PROPERTY_TIER_BY_PRICE_MAN: Record<number, TierRuleMan> = {
+  30_000: {
+    tolls: [5_000, 10_000, 30_000, 65_000],
+    buildCosts: [40_000, 85_000, 140_000],
+  },
+  50_000: {
+    tolls: [10_000, 20_000, 90_000, 155_000],
+    buildCosts: [60_000, 155_000, 180_000],
+  },
+  70_000: {
+    tolls: [15_000, 30_000, 95_000, 175_000],
+    buildCosts: [80_000, 190_000, 250_000],
+  },
+  110_000: {
+    tolls: [18_000, 35_000, 95_000, 155_000],
+    buildCosts: [160_000, 340_000, 390_000],
+  },
+  170_000: {
+    tolls: [20_000, 40_000, 90_000, 130_000],
+    buildCosts: [280_000, 530_000, 560_000],
+  },
 }
 
 type DiceRequestBody = {
@@ -372,6 +400,49 @@ const getTileByIndex = (tileIndex: number) =>
 const isOwnableTile = (tile: Tile | undefined): tile is Tile =>
   !!tile && (tile.type === 'city' || tile.type === 'property')
 
+const getTierRuleByTile = (tile: Tile | undefined): TierRuleMan | null => {
+  if (!tile) {
+    return null
+  }
+  const price = typeof tile.price === 'number' ? Math.trunc(tile.price) : 0
+  if (price <= 0) {
+    return null
+  }
+  return PROPERTY_TIER_BY_PRICE_MAN[price] ?? null
+}
+
+const getTileBuildCost = (tile: Tile | undefined): number => {
+  if (!tile || !isOwnableTile(tile)) {
+    return 0
+  }
+
+  const currentLevel = Math.max(0, Math.min(tile.building ?? 0, 3))
+  if (currentLevel >= 3) {
+    return 0
+  }
+
+  const tierRule = getTierRuleByTile(tile)
+  if (!tierRule) {
+    return 0
+  }
+
+  return tierRule.buildCosts[currentLevel] ?? 0
+}
+
+const getTileTollAmount = (tile: Tile | undefined): number => {
+  if (!tile || !isOwnableTile(tile)) {
+    return 0
+  }
+
+  const tierRule = getTierRuleByTile(tile)
+  if (!tierRule) {
+    return tile.price ?? 0
+  }
+
+  const level = Math.max(0, Math.min(tile.building ?? 0, 3))
+  return tierRule.tolls[level] ?? tile.price ?? 0
+}
+
 const ensureOwnedTiles = (player: Player, tileIndex: number) => {
   if (!player.owned_tiles.includes(tileIndex)) {
     player.owned_tiles.push(tileIndex)
@@ -392,10 +463,11 @@ const isModalLandingTile = (tile: Tile | undefined) =>
 
 const getSellRefund = (tile: Tile, requestedLevel?: number) => {
   const sellLevel = requestedLevel ?? tile.building
+  const buildCost = getTileBuildCost(tile)
 
   if (sellLevel > 0) {
     return {
-      refund: MOCK_BUILD_COST,
+      refund: buildCost > 0 ? buildCost : 0,
       nextBuilding: Math.max(0, sellLevel - 1) as BuildingLevel,
       releaseOwnership: false,
     }
@@ -432,7 +504,24 @@ const getNextActivePlayerId = (currentPlayerId: PlayerId) => {
 }
 
 const advanceMockTurn = () => {
-  mockGameState.currentTurn = getNextActivePlayerId(mockGameState.currentTurn)
+  const currentIndex = mockGameState.players.findIndex(
+    (player) => String(player.id) === String(mockGameState.currentTurn)
+  )
+  const nextPlayerId = getNextActivePlayerId(mockGameState.currentTurn)
+  const nextIndex = mockGameState.players.findIndex(
+    (player) => String(player.id) === String(nextPlayerId)
+  )
+
+  if (
+    currentIndex >= 0 &&
+    nextIndex >= 0 &&
+    nextPlayerId !== mockGameState.currentTurn &&
+    nextIndex <= currentIndex
+  ) {
+    mockGameState.round += 1
+  }
+
+  mockGameState.currentTurn = nextPlayerId
 }
 
 const nextRevision = () => {
@@ -552,6 +641,25 @@ const buildBuyPrompt = (_player: Player, tile: Tile): GamePrompt => ({
   },
 })
 
+const buildBuildPrompt = (_player: Player, tile: Tile): GamePrompt => ({
+  id: createPromptId('prompt-build'),
+  type: 'BUILD_OR_SKIP',
+  playerId: null,
+  title: `${tile.name} 건설`,
+  message: `${tile.name}에 건설하시겠습니까?`,
+  timeoutSec: MOCK_TURN_TIMEOUT_SEC,
+  choices: [
+    { id: 'build', label: '건설하기', value: 'BUILD' },
+    { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+  ],
+  payload: {
+    tileId: tile.index,
+    tileName: tile.name,
+    buildCost: getTileBuildCost(tile),
+    buildingLevel: tile.building ?? 0,
+  },
+})
+
 const buildTollPrompt = (
   _player: Player,
   owner: Player,
@@ -633,6 +741,19 @@ export const mockDevSetRevisionForTest = (revision: number) => {
 }
 
 const handleRollDiceAction = (action: MockResolvedGameAction) => {
+  if (mockGameState.phase !== 'rolling') {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'INVALID_PHASE',
+        message: '주사위는 턴 시작 phase에서만 굴릴 수 있습니다.',
+      },
+    })
+    return
+  }
+
   const currentPlayer = getCurrentPlayer()
 
   if (!currentPlayer) {
@@ -652,6 +773,75 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
   const dice2 = Math.floor(Math.random() * 6) + 1
   const isDouble = dice1 === dice2
   const total = dice1 + dice2
+  const isLockedState =
+    currentPlayer.is_in_jail ||
+    currentPlayer.state === 'locked' ||
+    currentPlayer.state === 'island'
+
+  if (isLockedState && !isDouble) {
+    const currentDuration = Math.max(
+      currentPlayer.stateDuration ?? currentPlayer.jail_turn_count ?? 3,
+      0
+    )
+    const nextDuration = Math.max(currentDuration - 1, 0)
+    currentPlayer.stateDuration = nextDuration
+    currentPlayer.jail_turn_count = nextDuration
+    currentPlayer.is_in_jail = nextDuration > 0
+    currentPlayer.state = nextDuration > 0 ? 'locked' : 'normal'
+
+    const previousPlayerId = currentPlayer.id
+    const previousTurn = mockGameState.round
+    advanceMockTurn()
+    mockGameState.phase = 'rolling'
+    const revision = nextRevision()
+
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: true,
+      revision,
+    })
+
+    emitSnapshotPatch(action.gameId, [
+      {
+        type: 'DICE_ROLLED',
+        playerId: currentPlayer.id,
+        payload: {
+          dice: [dice1, dice2],
+          total,
+          is_double: isDouble,
+          double_count: 0,
+        },
+      },
+      {
+        type: 'PLAYER_STATE_CHANGED',
+        playerId: currentPlayer.id,
+        payload: {
+          playerState: currentPlayer.state,
+          stateDuration: nextDuration,
+          reason: nextDuration > 0 ? 'island_wait' : 'island_timeout',
+        },
+      },
+      {
+        type: 'TURN_ENDED',
+        playerId: previousPlayerId,
+        nextPlayerId: mockGameState.currentTurn,
+        turn: previousTurn + 1,
+        round: mockGameState.round,
+        reason: 'island_wait',
+        bonusTurn: false,
+      },
+    ])
+    return
+  }
+
+  if (isLockedState && isDouble) {
+    currentPlayer.state = 'normal'
+    currentPlayer.stateDuration = 0
+    currentPlayer.jail_turn_count = 0
+    currentPlayer.is_in_jail = false
+  }
+
   const fromIndex = currentPlayer.position
   const toIndex = (fromIndex + total) % mockGameState.tiles.length
   const passGo = fromIndex + total >= mockGameState.tiles.length
@@ -662,32 +852,126 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
   }
 
   const landedTile = getTileByIndex(toIndex)
-  const isOwnableLanding = !!landedTile && isOwnableTile(landedTile)
+  const isMoveToIslandTile =
+    landedTile?.type === 'go_to_island' ||
+    landedTile?.transportType === 'MOVE_TO_ISLAND'
+  const isIslandTile =
+    landedTile?.type === 'island' || landedTile?.transportType === 'ISLAND'
+  const islandTileIndex =
+    mockGameState.tiles.find(
+      (tile) => tile.type === 'island' || tile.transportType === 'ISLAND'
+    )?.index ?? 8
+  let resolvedTileIndex = toIndex
+  let resolvedLandedTile = landedTile
+
+  if (isMoveToIslandTile) {
+    currentPlayer.position = islandTileIndex
+    resolvedTileIndex = islandTileIndex
+    resolvedLandedTile = getTileByIndex(islandTileIndex)
+    currentPlayer.state = 'locked'
+    currentPlayer.stateDuration = 3
+    currentPlayer.jail_turn_count = 3
+    currentPlayer.is_in_jail = true
+  } else if (isIslandTile) {
+    currentPlayer.state = 'locked'
+    currentPlayer.stateDuration = 3
+    currentPlayer.jail_turn_count = 3
+    currentPlayer.is_in_jail = true
+  }
+  const isOwnableLanding =
+    !!resolvedLandedTile && isOwnableTile(resolvedLandedTile)
   const landingOwner = isOwnableLanding
     ? mockGameState.players.find(
-        (player) => String(player.id) === String(landedTile?.owner_id)
+        (player) => String(player.id) === String(resolvedLandedTile?.owner_id)
       )
     : null
-  const shouldPromptBuy = isOwnableLanding && !landedTile?.owner_id
+  const shouldPromptBuy = isOwnableLanding && !resolvedLandedTile?.owner_id
+  const shouldPromptBuild =
+    isOwnableLanding &&
+    Boolean(resolvedLandedTile?.owner_id) &&
+    landingOwner != null &&
+    String(landingOwner.id) === String(currentPlayer.id) &&
+    (resolvedLandedTile?.building ?? 0) < 3
   const shouldPromptToll =
     isOwnableLanding &&
-    landedTile?.owner_id &&
+    resolvedLandedTile?.owner_id &&
     landingOwner &&
     String(landingOwner.id) !== String(currentPlayer.id)
 
   const shouldHoldTurnForModal =
-    !shouldPromptBuy && !shouldPromptToll && isModalLandingTile(landedTile)
+    !shouldPromptBuy &&
+    !shouldPromptBuild &&
+    !shouldPromptToll &&
+    isModalLandingTile(resolvedLandedTile)
+  const nextEvents: GamePatchEnvelope['events'] = [
+    {
+      type: 'DICE_ROLLED',
+      playerId: currentPlayer.id,
+      payload: {
+        dice: [dice1, dice2],
+        total,
+        is_double: isDouble,
+        double_count: isDouble ? 1 : 0,
+      },
+    },
+    {
+      type: 'PLAYER_MOVED',
+      playerId: currentPlayer.id,
+      tileIndex: resolvedTileIndex,
+      amount: passGo ? MOCK_PASS_GO_SALARY : undefined,
+      payload: {
+        fromIndex,
+        fromTileId: fromIndex,
+        toIndex: resolvedTileIndex,
+        toTileId: resolvedTileIndex,
+        passGo,
+        trigger: isMoveToIslandTile ? 'move_to_island' : 'normal',
+      },
+    },
+    {
+      type: 'LANDED',
+      playerId: currentPlayer.id,
+      tileIndex: resolvedTileIndex,
+      payload: {
+        tileId: resolvedTileIndex,
+        tile: resolvedLandedTile
+          ? {
+              tileId: resolvedLandedTile.index,
+              name: resolvedLandedTile.name,
+              tileType:
+                resolvedLandedTile.transportType ?? resolvedLandedTile.type,
+              price: resolvedLandedTile.price ?? 0,
+            }
+          : undefined,
+      },
+    },
+  ]
 
-  if (shouldPromptBuy && landedTile) {
-    mockGameState.prompt = buildBuyPrompt(currentPlayer, landedTile)
+  if (passGo) {
+    nextEvents.push({
+      type: 'PASSED_START',
+      playerId: currentPlayer.id,
+      amount: MOCK_PASS_GO_SALARY,
+      payload: {
+        salary: MOCK_PASS_GO_SALARY,
+      },
+    })
+  }
+
+  if (shouldPromptBuy && resolvedLandedTile) {
+    mockGameState.prompt = buildBuyPrompt(currentPlayer, resolvedLandedTile)
     mockGameState.promptIssuedAtMs = Date.now()
     mockGameState.phase = 'prompt'
-  } else if (shouldPromptToll && landedTile && landingOwner) {
-    const tollAmount = landedTile.price ?? 0
+  } else if (shouldPromptBuild && resolvedLandedTile) {
+    mockGameState.prompt = buildBuildPrompt(currentPlayer, resolvedLandedTile)
+    mockGameState.promptIssuedAtMs = Date.now()
+    mockGameState.phase = 'prompt'
+  } else if (shouldPromptToll && resolvedLandedTile && landingOwner) {
+    const tollAmount = getTileTollAmount(resolvedLandedTile)
     mockGameState.prompt = buildTollPrompt(
       currentPlayer,
       landingOwner,
-      landedTile,
+      resolvedLandedTile,
       tollAmount
     )
     mockGameState.promptIssuedAtMs = Date.now()
@@ -695,7 +979,12 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
   } else if (shouldHoldTurnForModal) {
     mockGameState.phase = 'resolving'
   } else {
-    advanceMockTurn()
+    const previousPlayerId = currentPlayer.id
+    const previousTurn = mockGameState.round
+
+    if (!isDouble) {
+      advanceMockTurn()
+    }
     mockGameState.phase = 'rolling'
 
     // Mock Global Effect logic
@@ -727,6 +1016,24 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
         description: `테스트 글로벌 효과: ${randomEffect}`,
       }
     }
+
+    nextEvents.push({
+      type: 'TURN_ENDED',
+      playerId: previousPlayerId,
+      nextPlayerId: mockGameState.currentTurn,
+      turn: previousTurn + 1,
+      round: mockGameState.round,
+      reason: isDouble ? 'double_roll' : 'normal',
+      bonusTurn: isDouble,
+      payload: {
+        playerId: previousPlayerId,
+        nextPlayerId: mockGameState.currentTurn,
+        turn: previousTurn + 1,
+        round: mockGameState.round,
+        reason: isDouble ? 'double_roll' : 'normal',
+        bonusTurn: isDouble,
+      },
+    })
   }
   const revision = nextRevision()
 
@@ -737,29 +1044,7 @@ const handleRollDiceAction = (action: MockResolvedGameAction) => {
     revision,
   })
 
-  emitSnapshotPatch(action.gameId, [
-    {
-      type: 'DICE_ROLLED',
-      playerId: currentPlayer.id,
-      payload: {
-        dice: [dice1, dice2],
-        total,
-        is_double: isDouble,
-        double_count: isDouble ? 1 : 0,
-      },
-    },
-    {
-      type: 'PLAYER_MOVED',
-      playerId: currentPlayer.id,
-      tileIndex: toIndex,
-      amount: passGo ? MOCK_PASS_GO_SALARY : undefined,
-      payload: {
-        fromIndex,
-        toIndex,
-        passGo,
-      },
-    },
-  ])
+  emitSnapshotPatch(action.gameId, nextEvents)
 }
 
 const handleBuyPropertyAction = (action: MockResolvedGameAction) => {
@@ -930,7 +1215,7 @@ const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
     return
   }
 
-  if (tile.building >= 7) {
+  if (tile.building >= 3) {
     emitGameAck({
       actionId: action.actionId,
       type: action.type,
@@ -943,7 +1228,21 @@ const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
     return
   }
 
-  if (player.balance < MOCK_BUILD_COST) {
+  const buildCost = getTileBuildCost(tile)
+  if (buildCost <= 0) {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'INVALID_BUILD_LEVEL',
+        message: '더 이상 건설할 수 없는 단계입니다.',
+      },
+    })
+    return
+  }
+
+  if (player.balance < buildCost) {
     emitGameAck({
       actionId: action.actionId,
       type: action.type,
@@ -956,7 +1255,7 @@ const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
     return
   }
 
-  player.balance -= MOCK_BUILD_COST
+  player.balance -= buildCost
   tile.building = (tile.building + 1) as BuildingLevel
   const revision = nextRevision()
 
@@ -972,7 +1271,7 @@ const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
       type: 'BOUGHT_BUILDING', // 또는 UPGRADED_PROPERTY
       playerId: player.id,
       tileIndex,
-      amount: MOCK_BUILD_COST,
+      amount: buildCost,
       payload: {
         buildingLevel: tile.building,
       },
@@ -981,6 +1280,21 @@ const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
 }
 
 const handleEndTurnAction = (action: MockResolvedGameAction) => {
+  if (mockGameState.phase !== 'resolving') {
+    emitGameAck({
+      actionId: action.actionId,
+      type: action.type,
+      ok: false,
+      error: {
+        code: 'INVALID_PHASE',
+        message: '턴 종료가 가능한 phase가 아닙니다.',
+      },
+    })
+    return
+  }
+
+  const previousPlayerId = mockGameState.currentTurn
+  const previousTurn = mockGameState.round
   advanceMockTurn()
   mockGameState.phase = 'rolling'
   const revision = nextRevision()
@@ -995,7 +1309,20 @@ const handleEndTurnAction = (action: MockResolvedGameAction) => {
   emitSnapshotPatch(action.gameId, [
     {
       type: 'TURN_ENDED',
-      playerId: mockGameState.currentTurn,
+      playerId: previousPlayerId,
+      nextPlayerId: mockGameState.currentTurn,
+      turn: previousTurn + 1,
+      round: mockGameState.round,
+      reason: 'manual_end_turn',
+      bonusTurn: false,
+      payload: {
+        playerId: previousPlayerId,
+        nextPlayerId: mockGameState.currentTurn,
+        turn: previousTurn + 1,
+        round: mockGameState.round,
+        reason: 'manual_end_turn',
+        bonusTurn: false,
+      },
     },
   ])
 }
@@ -1014,8 +1341,10 @@ export const mockEmitGameSync = ({
     typeof knownRevision === 'number' && Number.isFinite(knownRevision)
       ? Math.trunc(knownRevision)
       : null
+  const shouldForceFullSnapshot =
+    normalizedKnownRevision == null || normalizedKnownRevision < 0
   const shouldResetForGame =
-    mockGameContext.gameId !== resolvedGameId || normalizedKnownRevision === 0
+    mockGameContext.gameId !== resolvedGameId || shouldForceFullSnapshot
 
   if (shouldResetForGame) {
     resetMockGameState({
@@ -1027,7 +1356,7 @@ export const mockEmitGameSync = ({
   setTimeout(() => {
     const serverRevision = mockGameState.revision
 
-    if (normalizedKnownRevision == null || normalizedKnownRevision <= 0) {
+    if (shouldForceFullSnapshot) {
       emitSnapshotPatch(resolvedGameId)
       return
     }
@@ -1266,9 +1595,48 @@ export const mockEmitPromptResponse = ({
         targetTile.ownerId = respondingPlayer.id
         targetTile.building = 0
         ensureOwnedTiles(respondingPlayer, targetTile.index)
+        nextEvents.push({
+          type: 'BOUGHT_PROPERTY',
+          playerId: respondingPlayer.id,
+          tileIndex: targetTile.index,
+          amount: price,
+          payload: {
+            tileId: targetTile.index,
+            amount: price,
+          },
+        })
       }
     }
-    advanceMockTurn()
+  }
+
+  if (promptType === 'BUILD_OR_SKIP') {
+    if (
+      normalizedChoice === 'BUILD' &&
+      respondingPlayer &&
+      targetTile &&
+      isOwnableTile(targetTile) &&
+      String(targetTile.owner_id) === String(respondingPlayer.id)
+    ) {
+      const buildCost = getTileBuildCost(targetTile)
+      if (buildCost > 0 && respondingPlayer.balance >= buildCost) {
+        respondingPlayer.balance -= buildCost
+        targetTile.building = Math.min(
+          (targetTile.building ?? 0) + 1,
+          3
+        ) as BuildingLevel
+        nextEvents.push({
+          type: 'BOUGHT_BUILDING',
+          playerId: respondingPlayer.id,
+          tileIndex: targetTile.index,
+          amount: buildCost,
+          payload: {
+            tileId: targetTile.index,
+            buildCost,
+            buildingLevel: targetTile.building,
+          },
+        })
+      }
+    }
   }
 
   if (promptType === 'PAY_TOLL') {
@@ -1298,7 +1666,6 @@ export const mockEmitPromptResponse = ({
         amount: promptAmount,
       },
     })
-    advanceMockTurn()
   }
 
   if (promptType === 'TRAVEL_SELECT') {
@@ -1328,7 +1695,7 @@ export const mockEmitPromptResponse = ({
             payload: {
               fromTileId,
               toTileId: targetTileId,
-              trigger: 'travel',
+              trigger: 'travel_select',
             },
           },
           {
@@ -1339,11 +1706,9 @@ export const mockEmitPromptResponse = ({
         )
       }
     }
-
-    advanceMockTurn()
   }
 
-  mockGameState.phase = 'rolling'
+  mockGameState.phase = 'resolving'
   clearMockPrompt()
   const revision = nextRevision()
 
@@ -1490,21 +1855,22 @@ export const gameHandlers = [
       )
     }
 
-    if (tile.building >= 7) {
+    if (tile.building >= 3) {
       return buildErrorResponse(
         '\uCD5C\uB300 \uB2E8\uACC4\uAE4C\uC9C0 \uAC74\uC124\uD588\uC2B5\uB2C8\uB2E4.',
         409
       )
     }
 
-    if (player.balance < MOCK_BUILD_COST) {
+    const buildCost = getTileBuildCost(tile)
+    if (buildCost <= 0 || player.balance < buildCost) {
       return buildErrorResponse(
         '\uAC74\uC124 \uBE44\uC6A9\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4.',
         409
       )
     }
 
-    player.balance -= MOCK_BUILD_COST
+    player.balance -= buildCost
     tile.building = (tile.building + 1) as BuildingLevel
     advanceMockTurn()
 

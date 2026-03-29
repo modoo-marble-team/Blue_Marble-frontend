@@ -182,8 +182,16 @@ export interface ServerEvent {
   id?: string
   type: string
   playerId?: PlayerId | null
+  nextPlayerId?: PlayerId | null
   tileIndex?: number | null
+  fromTileId?: number | null
+  toTileId?: number | null
+  trigger?: string
   amount?: Money
+  turn?: number
+  round?: number
+  reason?: string
+  bonusTurn?: boolean
   payload?: Record<string, unknown>
 }
 

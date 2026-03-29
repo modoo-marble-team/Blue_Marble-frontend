@@ -22,7 +22,7 @@ type UpdateTileOwners = (
 
 interface TollResolvedPayload {
   tileId: number
-  ownerId: number
+  ownerId: string | number
   ownerLevel: BuildingLevel
   ownerName: string
   onDoneCallback?: () => void
@@ -40,7 +40,7 @@ interface CreateGameBoardActionHandlersParams {
   tileOwnersRef: MutableRefObject<Record<number, TileOwner>>
   getPlayerIdByIndex: (playerIdx: number) => number
   getPlayerColorByIndex: (playerIdx: number) => string
-  getPlayerIndexById: (playerId: number) => number
+  getPlayerIndexById: (playerId: string | number) => number
   getPurchaseCost: (tileId: number) => number
   getUpgradeCost: (price: number, currentLevel: BuildingLevel) => number
   calcToll: (price: number, level: BuildingLevel) => number
