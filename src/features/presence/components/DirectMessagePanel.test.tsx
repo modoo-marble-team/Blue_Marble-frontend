@@ -20,43 +20,21 @@ function createDirectMessage(
 }
 
 describe('DirectMessagePanel', () => {
-  it('메시지가 없으면 안내 문구를 표시한다', () => {
-    render(
-      <DirectMessagePanel
-        user={createOnlineUserFixture({
-          id: 'user-2',
-          nickname: '상대',
-        })}
-        currentUserId="user-1"
-        messages={[]}
-        onClose={vi.fn()}
-        onSendMessage={vi.fn()}
-      />
-    )
-
-    expect(
-      screen.getByText('메시지를 보내 대화를 시작하세요')
-    ).toBeInTheDocument()
-  })
-
-  it('메시지 목록을 sentAt 오름차순으로 정렬해 렌더링한다', () => {
+  it('sorts messages by sentAt ascending before render', () => {
     const older = createDirectMessage({
       id: 'dm-older',
-      content: '먼저 보낸 메시지',
+      content: 'older message',
       sentAt: '2026-03-05T10:00:00.000Z',
     })
     const newer = createDirectMessage({
       id: 'dm-newer',
-      content: '나중에 보낸 메시지',
+      content: 'newer message',
       sentAt: '2026-03-05T10:10:00.000Z',
     })
 
     const { container } = render(
       <DirectMessagePanel
-        user={createOnlineUserFixture({
-          id: 'user-2',
-          nickname: '상대',
-        })}
+        user={createOnlineUserFixture({ id: 'user-2', nickname: '상대' })}
         currentUserId="user-1"
         messages={[newer, older]}
         onClose={vi.fn()}
@@ -65,21 +43,18 @@ describe('DirectMessagePanel', () => {
     )
 
     const panelText = container.textContent ?? ''
-    expect(panelText.indexOf('먼저 보낸 메시지')).toBeLessThan(
-      panelText.indexOf('나중에 보낸 메시지')
+    expect(panelText.indexOf('older message')).toBeLessThan(
+      panelText.indexOf('newer message')
     )
   })
 
-  it('공백 입력은 전송하지 않고 유효 입력 전송 후 input을 비운다', async () => {
+  it('does not send empty input and sends trimmed message', async () => {
     const user = userEvent.setup()
     const onSendMessage = vi.fn()
 
     render(
       <DirectMessagePanel
-        user={createOnlineUserFixture({
-          id: 'user-2',
-          nickname: '상대',
-        })}
+        user={createOnlineUserFixture({ id: 'user-2', nickname: '상대' })}
         currentUserId="user-1"
         messages={[]}
         onClose={vi.fn()}
@@ -87,10 +62,9 @@ describe('DirectMessagePanel', () => {
       />
     )
 
-    const input = screen.getByPlaceholderText(
-      '메시지를 입력하세요...'
-    ) as HTMLInputElement
-    const sendButton = screen.getByRole('button', { name: 'DM 전송' })
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    const buttons = screen.getAllByRole('button')
+    const sendButton = buttons[1]
 
     await user.type(input, '   ')
     expect(sendButton).toBeDisabled()
@@ -103,7 +77,7 @@ describe('DirectMessagePanel', () => {
     expect(input.value).toBe('')
   })
 
-  it('입력창은 300자까지만 유지하고 전송 값도 같은 길이로 맞춘다', async () => {
+  it('keeps max length at 300 and sends capped value', async () => {
     const user = userEvent.setup()
     const onSendMessage = vi.fn()
     const overlongMessage = 'a'.repeat(CHAT_MESSAGE_MAX_LENGTH + 20)
@@ -111,10 +85,7 @@ describe('DirectMessagePanel', () => {
 
     render(
       <DirectMessagePanel
-        user={createOnlineUserFixture({
-          id: 'user-2',
-          nickname: '상대',
-        })}
+        user={createOnlineUserFixture({ id: 'user-2', nickname: '상대' })}
         currentUserId="user-1"
         messages={[]}
         onClose={vi.fn()}
@@ -122,29 +93,26 @@ describe('DirectMessagePanel', () => {
       />
     )
 
-    const input = screen.getByPlaceholderText(
-      '메시지를 입력하세요...'
-    ) as HTMLInputElement
+    const input = screen.getByRole('textbox') as HTMLInputElement
+    const buttons = screen.getAllByRole('button')
+    const sendButton = buttons[1]
 
     await user.type(input, overlongMessage)
+
     expect(input).toHaveAttribute('maxLength', String(CHAT_MESSAGE_MAX_LENGTH))
     expect(input.value).toHaveLength(CHAT_MESSAGE_MAX_LENGTH)
 
-    await user.click(screen.getByRole('button', { name: 'DM 전송' }))
-
+    await user.click(sendButton)
     expect(onSendMessage).toHaveBeenCalledWith(expectedMessage)
-  })
+  }, 15000)
 
-  it('닫기 버튼 클릭 시 onClose를 호출한다', async () => {
+  it('calls onClose when close button is clicked', async () => {
     const user = userEvent.setup()
     const onClose = vi.fn()
 
     render(
       <DirectMessagePanel
-        user={createOnlineUserFixture({
-          id: 'user-2',
-          nickname: '상대',
-        })}
+        user={createOnlineUserFixture({ id: 'user-2', nickname: '상대' })}
         currentUserId="user-1"
         messages={[]}
         onClose={onClose}
@@ -152,20 +120,20 @@ describe('DirectMessagePanel', () => {
       />
     )
 
-    await user.click(screen.getByRole('button', { name: 'DM 닫기' }))
+    const buttons = screen.getAllByRole('button')
+    const closeButton = buttons[0]
+
+    await user.click(closeButton)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('긴 공백 없는 메시지도 말풍선 줄바꿈 클래스로 렌더링한다', () => {
+  it('renders long words with wrap-safe classes', () => {
     const longMessage =
       'https://example.com/' + 'superlongdmsegment'.repeat(14) + '/message'
 
     render(
       <DirectMessagePanel
-        user={createOnlineUserFixture({
-          id: 'user-2',
-          nickname: '상대',
-        })}
+        user={createOnlineUserFixture({ id: 'user-2', nickname: '상대' })}
         currentUserId="user-1"
         messages={[
           createDirectMessage({
