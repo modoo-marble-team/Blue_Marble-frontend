@@ -2,25 +2,31 @@
 
 ## Implementation
 
-- [x] 관련 manual과 기존 문서를 읽었다
-- [x] 영향 범위를 정리했다
-- [x] WAT 단계와 역할 분담을 문서에 반영했다
-- [x] 최소 범위로 구현했다
-- [x] mock/real 경로를 함께 확인했다
-- [x] 타입/contract 변경이 있으면 관련 코드도 같이 수정했다
+- [x] Read related manuals and existing docs.
+- [x] Summarized impact scope before changes.
+- [x] Reflected WAT steps in task docs.
+- [x] Kept implementation scope minimal.
+- [x] Checked mock/real paths together.
+- [x] Updated related contract paths when needed.
 
 ## Testing
 
-- [x] 대상 Vitest를 실행했다
-- [ ] 필요 시 `npm run lint`를 실행했다
-- [ ] 필요 시 `npm run build`를 실행했다
-- [ ] 필요 시 Playwright 시나리오를 실행했다
+- [x] Ran targeted Vitest suites.
+- [ ] Run `npm run lint` if required by change scope.
+- [ ] Run `npm run build` if required by change scope.
+- [ ] Run Playwright scenario when user flow risk is high.
 
 ## Review
 
-- [x] `docs/rules.md` 기준으로 셀프 리뷰했다
-- [x] 리다이렉트, cleanup, 중복 구독, 에러 처리 경계를 확인했다
-- [x] `TODO.md` task 한 줄을 최신 상태로 유지했다
-- [ ] session handoff notes를 최신 상태로 갱신했다
-- [ ] `npm run ai:session:brief -- <task-slug>` 출력이 현재 상태와 맞는다
-- [x] 변경 파일 / 실행한 검증 / 남은 리스크를 정리했다
+- [x] Self-reviewed with `docs/rules.md` guidance.
+- [x] Checked boundary cases (redirect, cleanup, duplicate subscribe, errors).
+- [x] Synced TODO task status with current work.
+- [ ] Updated session handoff notes.
+- [ ] Verified `npm run ai:session:brief -- board-sot-sync` output.
+- [x] Reported changed files, validations, and remaining risks.
+
+## 2026-03-30 Gate Recovery
+
+- [x] Updated task triplet files in this PR cycle.
+- [x] PR body uses exact heading `## 🧠 Task 문서 (큰 작업이면 필수)`.
+- [ ] Re-run workflow-gate after PR body update and confirm green.
