@@ -25,7 +25,7 @@ describe('game view model mapper', () => {
     ])
 
     expect(boardPlayers[0]).toMatchObject({
-      id: 0,
+      id: 'player-1',
       name: 'Player 1',
       pos: 4,
       money: 900,

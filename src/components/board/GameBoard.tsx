@@ -51,11 +51,13 @@ import {
 import { getBoardSellFallbackRefund } from './gameBoardActionUtils'
 import { useBoardEventQueue } from './useBoardEventQueue'
 import {
+  FAST_MOVE_ANIMATION_OPTIONS,
   getPendingMovePlayerIdsFromEvents,
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
   resolveChanceMoveAnimationHint,
+  shouldApplyTravelMoveAnimation,
   shouldRevealPostMoveSurface,
   shouldRevealPreMoveSurface,
   type BoardEventAnimationKind,
@@ -889,6 +891,12 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             'move_to_island',
             'go_to_island',
           ].includes(normalizedTrigger)
+          const shouldUseFastMoveAnimation = shouldApplyTravelMoveAnimation({
+            normalizedTrigger,
+            fromIndex,
+            toIndex: tileIndex,
+            tiles: boardTiles,
+          })
           lockBoardActionModals()
           if (isTravelMove && event.playerId != null) {
             startTravelTokenFx(event.playerId, 1600)
@@ -898,9 +906,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             event.playerId!,
             fromIndex,
             tileIndex,
-            {
-              direction: moveDirection,
-            }
+            shouldUseFastMoveAnimation
+              ? { ...FAST_MOVE_ANIMATION_OPTIONS, direction: moveDirection }
+              : { direction: moveDirection }
           )
 
           // 애니메이션 시작 (비동기로 실행하여 이벤트 큐의 지연과 맞춤)
@@ -1075,7 +1083,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const promptOwnerName =
       promptOwnerNameFromPayload ??
       (promptOwnerId != null
-        ? players.find((player) => Number(player.id) === promptOwnerId)?.name
+        ? players.find((player) => String(player.id) === String(promptOwnerId))
+            ?.name
         : null) ??
       DEFAULT_OPPONENT_NAME
     const promptSellerName =

@@ -29,7 +29,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 5,
-    name: '\uD0DC\uBC31',
+    name: '\uD3C9\uD0DD',
     type: 'property',
     building: 0,
     price: 30000,
@@ -37,7 +37,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 6,
-    name: '\uC6B8\uC0B0',
+    name: '\uC775\uC0B0',
     type: 'property',
     building: 0,
     price: 30000,
@@ -72,7 +72,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 13,
-    name: '\uCC3D\uC6D0',
+    name: '\uCCAD\uC6D0',
     type: 'property',
     building: 0,
     price: 50000,
@@ -80,7 +80,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 14,
-    name: '\uC775\uC0B0',
+    name: '\uC6B8\uC0B0',
     type: 'property',
     building: 0,
     price: 70000,
@@ -91,7 +91,7 @@ export const mockTiles: Tile[] = [
     name: '\uBD80\uC0B0',
     type: 'property',
     building: 0,
-    price: 150000,
+    price: 170000,
     color: '#EF5350',
   },
   { index: 16, name: '\uC5EC\uD589', type: 'travel', building: 0 },
@@ -100,7 +100,7 @@ export const mockTiles: Tile[] = [
     name: '\uC81C\uC8FC',
     type: 'property',
     building: 0,
-    price: 150000,
+    price: 170000,
     color: '#42A5F5',
   },
   {
@@ -138,7 +138,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 23,
-    name: '\uC804\uC8FC',
+    name: '\uC6D0\uC8FC',
     type: 'property',
     building: 0,
     price: 50000,
@@ -146,7 +146,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 24,
-    name: '\uBB34\uC778\uB3C4\uB85C \uC774\uB3D9',
+    name: '\uC12C\uC73C\uB85C \uC774\uB3D9',
     type: 'go_to_island',
     building: 0,
   },
@@ -189,7 +189,7 @@ export const mockTiles: Tile[] = [
     name: '\uC11C\uC6B8',
     type: 'property',
     building: 0,
-    price: 150000,
+    price: 170000,
     color: '#FF7043',
   },
 ]

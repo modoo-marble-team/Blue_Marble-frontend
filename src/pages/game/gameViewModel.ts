@@ -7,15 +7,6 @@ import {
 } from '../../components/board/board.constants'
 import type { Player, PlayerId, Tile } from '../../types/domain'
 
-const toBoardPlayerId = (playerId: PlayerId, fallbackIndex: number) => {
-  if (typeof playerId === 'number') {
-    return playerId
-  }
-
-  const parsedPlayerId = Number.parseInt(String(playerId), 10)
-  return Number.isNaN(parsedPlayerId) ? fallbackIndex : parsedPlayerId
-}
-
 export const mapStorePlayersToBoardPlayers = (storePlayers: Player[]) =>
   (storePlayers.length > 0 ? storePlayers : INIT_PLAYERS).map(
     (storePlayerOrFallback, index) => {
@@ -29,7 +20,7 @@ export const mapStorePlayersToBoardPlayers = (storePlayers: Player[]) =>
 
       return {
         ...initialPlayer,
-        id: toBoardPlayerId(storePlayer.id, initialPlayer.id),
+        id: storePlayer.id ?? initialPlayer.id,
         name: storePlayer.nickname || initialPlayer.name,
         color: storePlayer.color || initialPlayer.color,
         pos: storePlayer.position,
