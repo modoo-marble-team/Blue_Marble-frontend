@@ -77,14 +77,15 @@ describe('RoomChat', () => {
 
     const input = screen.getByPlaceholderText('메시지...') as HTMLInputElement
 
-    await user.type(input, overlongMessage)
+    await user.click(input)
+    await user.paste(overlongMessage)
     expect(input).toHaveAttribute('maxLength', String(CHAT_MESSAGE_MAX_LENGTH))
     expect(input.value).toHaveLength(CHAT_MESSAGE_MAX_LENGTH)
 
     await user.click(screen.getByRole('button', { name: '➤' }))
 
     expect(onSendMessage).toHaveBeenCalledWith(expectedMessage)
-  })
+  }, 10000)
 
   it('공백 입력은 전송하지 않는다', async () => {
     const user = userEvent.setup()

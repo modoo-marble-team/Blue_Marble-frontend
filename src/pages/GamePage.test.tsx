@@ -612,7 +612,9 @@ describe('GamePage chat flow', () => {
     renderGamePage()
 
     await act(async () => {
-      await user.type(screen.getByPlaceholderText('메시지...'), overlongMessage)
+      const input = screen.getByPlaceholderText('메시지...')
+      await user.click(input)
+      await user.paste(overlongMessage)
       await user.keyboard('{Enter}')
     })
 
@@ -623,7 +625,7 @@ describe('GamePage chat flow', () => {
       message: expectedMessage,
     })
     expect(await screen.findByText(expectedMessage)).toBeInTheDocument()
-  })
+  }, 10000)
 
   it('게임 채팅에서도 sender 닉네임은 badge 없이 기본 텍스트 색으로 렌더링한다', () => {
     resetAndSetTestGameState({

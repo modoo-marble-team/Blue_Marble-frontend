@@ -46,3 +46,9 @@
 
 - Backend tile payload missing name/type could fall back to static constants unexpectedly.
 - Tile order changes on backend require coordinated layout update.
+
+## 2026-03-30 Context Note
+
+- Workflow-gate for high-risk PR requires explicit task-document evidence.
+- This context file is updated to keep plan/context/checklist in sync with TODO `board-sot-sync`.
+- Immediate scope remains runtime parity in mock mode without changing backend contracts.

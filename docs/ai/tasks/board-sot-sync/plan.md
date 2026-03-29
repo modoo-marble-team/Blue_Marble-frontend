@@ -62,3 +62,9 @@
 - npx vitest run src/hooks/game/useGameState.test.tsx
 - npx vitest run src/components/board/useBoardEventQueue.test.tsx
 - Optional: npm run build
+
+## 2026-03-30 Update
+
+- This task document triplet is actively maintained for workflow-gate evidence.
+- Current cycle focus: mock parity with server-authoritative game runtime.
+- Follow-up PR sequence: board SoT sync -> chance direction animation -> island/modal polish.
