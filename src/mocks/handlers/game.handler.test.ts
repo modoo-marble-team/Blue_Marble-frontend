@@ -587,4 +587,61 @@ describe('mock game socket handlers contract', () => {
 
     teardown()
   })
+
+  it('does not mark player bankrupt when toll payment consumes balance down to exactly zero', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-pay-toll-zero-balance'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+
+    const baselinePatch = patches[patches.length - 1]
+    const currentPlayerId = String(baselinePatch?.snapshot?.currentTurn ?? '1')
+    const currentPlayer = baselinePatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+    expect(currentPlayer).toBeDefined()
+
+    const prompt: GamePrompt = {
+      id: 'prompt-pay-toll-zero-balance',
+      type: 'PAY_TOLL',
+      playerId: currentPlayerId,
+      timeoutSec: 30,
+      payload: {
+        tileId: 1,
+        amount: currentPlayer?.balance ?? 0,
+      },
+    }
+    mockDevSetPromptForTest(prompt)
+    patches.length = 0
+
+    mockEmitPromptResponse({
+      gameId,
+      promptId: prompt.id,
+      choice: 'PAY_TOLL',
+    })
+    await flushMockTimers()
+
+    const promptAck = acks.find(
+      (ack) => ack.type === 'PROMPT_RESPONSE' && ack.promptId === prompt.id
+    )
+    expect(promptAck?.ok).toBe(true)
+
+    const promptPatch = patches.find(
+      (patch) => patch.revision === promptAck?.revision
+    )
+    expect(promptPatch).toBeDefined()
+
+    const settledPlayer = promptPatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+    expect(settledPlayer?.balance).toBe(0)
+    expect(settledPlayer?.is_bankrupt).toBe(false)
+    expect(settledPlayer?.state).not.toBe('bankrupt')
+
+    teardown()
+  })
 })

@@ -824,12 +824,12 @@ const syncPlayerStatus = (player: Player) => {
     player.stateDuration ?? player.jail_turn_count ?? 0,
     0
   )
+  player.balance = Math.max(0, player.balance)
   player.stateDuration = stateDuration
   player.jail_turn_count = stateDuration
   player.is_in_jail = stateDuration > 0 || player.state === 'locked'
 
-  if (player.is_bankrupt || player.balance <= 0) {
-    player.balance = Math.max(0, player.balance)
+  if (player.is_bankrupt) {
     player.is_bankrupt = true
     player.state = 'bankrupt'
     player.is_in_jail = false
@@ -1024,8 +1024,9 @@ const resolveLanding = ({
     }
 
     if (chanceEffect.type === 'LOSE_MONEY') {
+      const hadEnoughBalance = player.balance >= chanceEffect.power
       player.balance = Math.max(0, player.balance - chanceEffect.power)
-      if (player.balance <= 0) {
+      if (!hadEnoughBalance) {
         player.is_bankrupt = true
       }
       return { events, prompt: null, phase: 'resolving' }
@@ -2132,7 +2133,7 @@ export const mockEmitPromptResponse = ({
         owner.balance += paidAmount
       }
 
-      if (paidAmount < promptAmount || respondingPlayer.balance <= 0) {
+      if (paidAmount < promptAmount) {
         respondingPlayer.is_bankrupt = true
         respondingPlayer.state = 'bankrupt'
         respondingPlayer.stateDuration = 0

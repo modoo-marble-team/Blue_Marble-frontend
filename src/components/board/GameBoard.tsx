@@ -1381,10 +1381,25 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         'toTileId',
         'to_tile_id',
       ])
-      const promptPlayerPosition =
+      const promptPlayerAnimatedPosition =
+        promptPlayerId != null ? animatedPositions[promptPlayerId] : undefined
+      const promptPlayerPendingPosition =
+        promptPlayerId != null && pendingMovePlayerIdSet.has(promptPlayerId)
+          ? lastMovePositionRef.current[promptPlayerId]
+          : undefined
+      const promptPlayerSettledPosition =
         promptPlayerId != null
           ? players.find((player) => String(player.id) === promptPlayerId)?.pos
           : players[curPlayer]?.pos
+      const promptPlayerRecentMovePosition =
+        promptPlayerId != null
+          ? lastMovePositionRef.current[promptPlayerId]
+          : undefined
+      const promptPlayerPosition =
+        promptPlayerAnimatedPosition ??
+        promptPlayerPendingPosition ??
+        promptPlayerRecentMovePosition ??
+        promptPlayerSettledPosition
       if (
         travelPromptTileId != null &&
         promptPlayerPosition != null &&
@@ -1912,32 +1927,62 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       animatedPositions,
       isMoving: boardActionAnimationBlocking,
     })
+    const promptPlayerAnimatedPosition =
+      activePromptPlayerId != null
+        ? animatedPositions[activePromptPlayerId]
+        : undefined
+    const promptPlayerPendingPosition =
+      activePromptPlayerId != null &&
+      pendingMovePlayerIdSet.has(activePromptPlayerId)
+        ? lastMovePositionRef.current[activePromptPlayerId]
+        : undefined
+    const promptPlayerSettledPosition =
+      activePromptPlayerId != null
+        ? players.find((player) => String(player.id) === activePromptPlayerId)
+            ?.pos
+        : undefined
+    const promptPlayerRecentMovePosition =
+      activePromptPlayerId != null
+        ? lastMovePositionRef.current[activePromptPlayerId]
+        : undefined
+    const promptPlayerRenderedPosition =
+      promptPlayerAnimatedPosition ??
+      promptPlayerPendingPosition ??
+      promptPlayerRecentMovePosition ??
+      promptPlayerSettledPosition
+    const hasPromptTilePositionMismatch =
+      activePromptPlayerId != null &&
+      promptTileId != null &&
+      promptPlayerRenderedPosition != null &&
+      promptPlayerRenderedPosition !== promptTileId
+    const canRevealPostMovePromptSurface =
+      canRevealPostMoveSurface && !hasPromptTilePositionMismatch
     const cardModalVisible = canRevealPreMoveSurface && cardModal.open
     const travelModalVisible = canRevealPreMoveSurface && travelModal.open
     const goToIslandModalVisible =
-      (canRevealPostMoveSurface && isGoToIslandPromptOpen) ||
+      (canRevealPostMovePromptSurface && isGoToIslandPromptOpen) ||
       (canRevealPreMoveSurface && goToIslandModal.open)
     const islandModalVisible =
-      canRevealPostMoveSurface && (isIslandPromptOpen || islandModal.open)
+      canRevealPostMovePromptSurface && (isIslandPromptOpen || islandModal.open)
 
     const buyModalVisible =
-      canRevealPostMoveSurface &&
+      canRevealPostMovePromptSurface &&
       buyModalOpen &&
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
-      canRevealPostMoveSurface &&
+      canRevealPostMovePromptSurface &&
       buildModalOpen &&
       !isBuildPromptDismissed &&
       !insufficientFundsModal.open
-    const tollModalVisible = canRevealPostMoveSurface && tollModalOpen
+    const tollModalVisible = canRevealPostMovePromptSurface && tollModalOpen
     const acquisitionModalOpen =
-      canRevealPostMoveSurface &&
+      canRevealPostMovePromptSurface &&
       acquisitionModalOpenRaw &&
       !tollModalOpen &&
       !insufficientFundsModal.open
     const sellModalVisible =
-      canRevealPostMoveSurface && (citySellModal.open || isSellPromptOpen)
+      canRevealPostMovePromptSurface && (citySellModal.open || isSellPromptOpen)
 
     const doubleDiceModalVisible = canShowModal && doubleDiceModal.open
 
@@ -2310,7 +2355,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
             {/* ─── 플레이어 토큰 레이어 (절대 좌표 대신 Grid 활용 정점 방식) ──────────────── */}
             {players
-              .filter((p) => p.state !== 'bankrupt' && p.money > 0)
+              .filter((p) => p.state !== 'bankrupt')
               .map((p) => {
                 const playerKey = String(p.id)
                 const animatedPos = animatedPositions[playerKey]
@@ -2320,7 +2365,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 const pos = animatedPos ?? pendingPos ?? p.pos
                 const { row, col } = getTileGridPos(pos)
                 const tokensAtThisPos = players.filter((pl) => {
-                  if (pl.state === 'bankrupt' || pl.money <= 0) {
+                  if (pl.state === 'bankrupt') {
                     return false
                   }
                   const key = String(pl.id)
