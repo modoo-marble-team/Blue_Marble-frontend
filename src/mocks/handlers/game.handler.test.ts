@@ -472,4 +472,119 @@ describe('mock game socket handlers contract', () => {
 
     teardown()
   })
+
+  it('does not auto-emit TURN_ENDED on ROLL_DICE', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-roll-no-auto-end'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+    patches.length = 0
+
+    mockEmitGameAction({
+      actionId: 'action-roll-no-auto-end',
+      type: 'ROLL_DICE',
+      gameId,
+    })
+    await flushMockTimers()
+
+    const rollAck = acks.find(
+      (ack) => ack.actionId === 'action-roll-no-auto-end'
+    )
+    expect(rollAck?.ok).toBe(true)
+
+    const rollPatch = patches.find(
+      (patch) => patch.revision === rollAck?.revision
+    )
+    expect(rollPatch).toBeDefined()
+    expect(
+      rollPatch?.events?.some((event) => event.type === 'TURN_ENDED')
+    ).toBe(false)
+    expect(['prompt', 'resolving']).toContain(rollPatch?.snapshot?.phase)
+
+    teardown()
+  })
+
+  it('keeps turn on END_TURN when player has double-roll bonus turn', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-end-turn-double-bonus'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+    patches.length = 0
+
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0)
+      .mockReturnValueOnce(0)
+
+    mockEmitGameAction({
+      actionId: 'action-roll-double',
+      type: 'ROLL_DICE',
+      gameId,
+    })
+    await flushMockTimers()
+
+    randomSpy.mockRestore()
+
+    const rollAck = acks.find((ack) => ack.actionId === 'action-roll-double')
+    const rollPatch = patches.find(
+      (patch) => patch.revision === rollAck?.revision
+    )
+    expect(rollPatch?.snapshot?.prompt).toBeTruthy()
+
+    const activePrompt = rollPatch?.snapshot?.prompt
+    expect(activePrompt?.id).toBeTruthy()
+
+    mockEmitPromptResponse({
+      gameId,
+      promptId: activePrompt?.id ?? '',
+      choice: 'SKIP',
+    })
+    await flushMockTimers()
+
+    const promptAck = acks.find(
+      (ack) =>
+        ack.type === 'PROMPT_RESPONSE' && ack.promptId === activePrompt?.id
+    )
+    expect(promptAck?.ok).toBe(true)
+
+    const resolvingPatch = patches.find(
+      (patch) => patch.revision === promptAck?.revision
+    )
+    const currentTurnBeforeEndTurn = resolvingPatch?.snapshot?.currentTurn
+    expect(currentTurnBeforeEndTurn).toBeDefined()
+
+    mockEmitGameAction({
+      actionId: 'action-end-turn-double',
+      type: 'END_TURN',
+      gameId,
+    })
+    await flushMockTimers()
+
+    const endTurnAck = acks.find(
+      (ack) => ack.actionId === 'action-end-turn-double'
+    )
+    expect(endTurnAck?.ok).toBe(true)
+
+    const endTurnPatch = patches.find(
+      (patch) => patch.revision === endTurnAck?.revision
+    )
+    const turnEndedEvent = endTurnPatch?.events?.find(
+      (event) => event.type === 'TURN_ENDED'
+    )
+
+    expect(turnEndedEvent).toBeDefined()
+    expect(turnEndedEvent?.payload?.bonusTurn).toBe(true)
+    expect(turnEndedEvent?.nextPlayerId).toBe(currentTurnBeforeEndTurn)
+    expect(endTurnPatch?.snapshot?.currentTurn).toBe(currentTurnBeforeEndTurn)
+
+    teardown()
+  })
 })
