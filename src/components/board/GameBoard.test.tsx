@@ -411,6 +411,48 @@ describe('GameBoard modal reveal timing', () => {
     expect(screen.getByText(/구매 모달/)).toBeInTheDocument()
   })
 
+  it('keeps buy prompt modal hidden when prompt arrives before movement event', async () => {
+    renderGameBoard({
+      activePrompt: {
+        id: 'buy-pre-move',
+        type: 'BUY_OR_SKIP',
+        playerId: '1',
+        payload: {
+          tileId: 1,
+        },
+        choices: [
+          { id: 'buy', label: '구매하기', value: 'BUY' },
+          { id: 'skip', label: '건너뛰기', value: 'SKIP' },
+        ],
+      },
+    })
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      useGameStore.getState().enqueueEvents([
+        {
+          type: 'PLAYER_MOVED',
+          playerId: 1,
+          tileIndex: 1,
+          payload: {
+            fromIndex: 0,
+          },
+        } as ServerEvent,
+      ])
+    })
+
+    await consumeQueuedBoardEvent()
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    expect(screen.queryByText(/구매 모달/)).not.toBeInTheDocument()
+  })
+
   it('reveals go-to-island modal only after movement finishes and next frame passes', async () => {
     useGameStore.getState().enqueueEvents([
       {

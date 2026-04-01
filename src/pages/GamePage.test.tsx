@@ -447,6 +447,49 @@ describe('GamePage chat flow', () => {
     expect(getRoundBadge()).not.toHaveTextContent('21')
   })
 
+  it('clears previous prompt submitting state when server replaces prompt id', async () => {
+    const user = userEvent.setup()
+
+    setTestGameState({
+      prompt: {
+        id: 'prompt-1',
+        type: 'BUY_OR_SKIP',
+        playerId: 'user-1',
+        title: 'First prompt',
+        choices: [
+          { id: 'c1', label: 'Choice A', value: 'A' },
+          { id: 'c2', label: 'Choice B', value: 'B' },
+        ],
+      },
+    })
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: 'Choice A' }))
+
+    expect(screen.getByText('Sending response...')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Choice A' })).toBeDisabled()
+
+    setTestGameState({
+      prompt: {
+        id: 'prompt-2',
+        type: 'BUILD_OR_SKIP',
+        playerId: 'user-1',
+        title: 'Second prompt',
+        choices: [
+          { id: 'c3', label: 'Choice C', value: 'C' },
+          { id: 'c4', label: 'Choice D', value: 'D' },
+        ],
+      },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText('Sending response...')).not.toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('button', { name: 'Choice C' })).toBeEnabled()
+  })
+
   it('우측 패널은 totalAssets를 우선 표시하고 그 기준으로 정렬과 왕관을 표시한다', () => {
     setTestGameState({
       players: [
@@ -1131,5 +1174,34 @@ describe('GamePage chat flow', () => {
       type: 'END_TURN',
       gameId: 'game-1',
     })
+  })
+
+  it('treats zero balance as non-bankrupt unless server marks player bankrupt', () => {
+    useTurnMock.mockReturnValue(true)
+    setTestGameState({
+      currentTurn: 'user-1',
+      phase: 'rolling',
+      prompt: null,
+      pendingAction: null,
+      players: [
+        createPlayer({
+          id: 'user-1',
+          balance: 0,
+          is_bankrupt: false,
+          state: 'normal',
+        }),
+        createPlayer({
+          id: 'user-2',
+          balance: 1000,
+          is_bankrupt: false,
+          state: 'normal',
+        }),
+      ],
+    })
+
+    renderGamePage()
+
+    expect(screen.getByRole('button', { name: /주사위/i })).toBeEnabled()
+    expect(getPlayerPanelById('user-1').dataset.isBankrupt).toBe('false')
   })
 })

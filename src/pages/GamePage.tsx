@@ -187,6 +187,9 @@ const GamePage: React.FC = () => {
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
   >(null)
+  const [promptSubmittingPromptId, setPromptSubmittingPromptId] = useState<
+    string | null
+  >(null)
   const [isBoardBlockingModalOpen, setIsBoardBlockingModalOpen] =
     useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
@@ -284,14 +287,25 @@ const GamePage: React.FC = () => {
   useEffect(() => {
     if (!prompt) {
       setPromptSubmittingChoice(null)
+      setPromptSubmittingPromptId(null)
+      return
+    }
+
+    if (
+      promptSubmittingPromptId != null &&
+      promptSubmittingPromptId !== prompt.id
+    ) {
+      setPromptSubmittingChoice(null)
+      setPromptSubmittingPromptId(null)
       return
     }
 
     if (lastAck?.promptId === prompt.id) {
       clearPrompt(prompt.id)
       setPromptSubmittingChoice(null)
+      setPromptSubmittingPromptId(null)
     }
-  }, [clearPrompt, lastAck?.promptId, prompt])
+  }, [clearPrompt, lastAck?.promptId, prompt, promptSubmittingPromptId])
 
   useEffect(() => {
     if (!lastError) {
@@ -299,6 +313,7 @@ const GamePage: React.FC = () => {
     }
 
     setPromptSubmittingChoice(null)
+    setPromptSubmittingPromptId(null)
   }, [lastError])
 
   useEffect(() => {
@@ -396,7 +411,7 @@ const GamePage: React.FC = () => {
           isBankrupt:
             Boolean(storePlayer.is_bankrupt) ||
             storePlayer.state === 'bankrupt' ||
-            money <= 0,
+            boardPlayer?.state === 'bankrupt',
           isRichest: false,
         }
       }
@@ -483,8 +498,7 @@ const GamePage: React.FC = () => {
     return applyRichestFlag(sortedPlayers, richestPlayerId)
   }, [activePlayerId, boardPlayers, gameResult, storePlayers])
   const currentPlayerState = boardPlayers[boardCurPlayer]
-  const isCurrentPlayerBankrupt =
-    currentPlayerState?.money <= 0 || currentPlayerState?.state === 'bankrupt'
+  const isCurrentPlayerBankrupt = currentPlayerState?.state === 'bankrupt'
   const isRollPhase = phase === 'rolling'
   const isEndTurnPhase = phase === 'resolving' && !prompt
   const canControlTurn =
@@ -539,6 +553,7 @@ const GamePage: React.FC = () => {
     }
 
     setPromptSubmittingChoice(choice)
+    setPromptSubmittingPromptId(prompt.id)
     emitPromptResponse({
       gameId: activeGameId,
       promptId: prompt.id,
