@@ -52,3 +52,13 @@
 - Workflow-gate for high-risk PR requires explicit task-document evidence.
 - This context file is updated to keep plan/context/checklist in sync with TODO `board-sot-sync`.
 - Immediate scope remains runtime parity in mock mode without changing backend contracts.
+
+## 2026-04-01 Context Update
+
+- High-risk runtime files in this PR:
+  - src/pages/GamePage.tsx
+  - src/components/board/GameBoard.tsx
+  - src/mocks/handlers/game.handler.ts
+- Validation focus in this cycle:
+  - remove zero-balance bankrupt false positives
+  - preserve server-authoritative totalAssets rendering path

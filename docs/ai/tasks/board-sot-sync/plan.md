@@ -68,3 +68,9 @@
 - This task document triplet is actively maintained for workflow-gate evidence.
 - Current cycle focus: mock parity with server-authoritative game runtime.
 - Follow-up PR sequence: board SoT sync -> chance direction animation -> island/modal polish.
+
+## 2026-04-01 Gate Evidence Update
+
+- This plan file is intentionally updated in the same branch as high-risk runtime changes.
+- Workflow-gate evidence target: docs/ai/tasks/board-sot-sync/{plan,context,checklist}.md
+- Current PR scope: bankrupt guard alignment + totalAssets authoritative display stabilization.
