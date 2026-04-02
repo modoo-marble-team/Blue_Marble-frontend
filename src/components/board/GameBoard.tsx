@@ -1451,14 +1451,20 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       string | null
     >(null)
     useEffect(() => {
+      if (!activePrompt?.id) {
+        if (dismissedBuildPromptId != null) {
+          setDismissedBuildPromptId(null)
+        }
+        return
+      }
+
       if (
-        promptSubmittingChoice === null &&
         dismissedBuildPromptId != null &&
-        activePrompt?.id === dismissedBuildPromptId
+        activePrompt.id !== dismissedBuildPromptId
       ) {
         setDismissedBuildPromptId(null)
       }
-    }, [activePrompt?.id, dismissedBuildPromptId, promptSubmittingChoice])
+    }, [activePrompt?.id, dismissedBuildPromptId])
 
     const [aiModal, setAiModal] = useState<AIPenaltyModalState>({
       open: false,
