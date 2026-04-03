@@ -249,6 +249,48 @@ describe('gameContractAdapters', () => {
     expect(normalized?.phase).toBe('rolling')
   })
 
+  it('preserves transportType for travel and event tiles from tile_type', () => {
+    const normalized = normalizeSnapshotPayload(
+      {
+        gameId: 'game-travel-transport',
+        revision: 5,
+        phase: 'ROLLING',
+        players: [],
+        tiles: [
+          {
+            tile_id: 16,
+            name: '여행',
+            tile_type: 'TRAVEL',
+          },
+          {
+            tile_id: 20,
+            name: '이벤트',
+            tile_type: 'EVENT',
+          },
+        ],
+      },
+      {
+        envelopeRevision: 5,
+      }
+    )
+
+    expect(normalized).not.toBeNull()
+    expect(normalized?.tiles).toEqual([
+      expect.objectContaining({
+        index: 16,
+        name: '여행',
+        type: 'travel',
+        transportType: 'TRAVEL',
+      }),
+      expect.objectContaining({
+        index: 20,
+        name: '이벤트',
+        type: 'event',
+        transportType: 'EVENT',
+      }),
+    ])
+  })
+
   it('normalizes active global effect from snapshot aliases', () => {
     const normalized = normalizeSnapshotPayload(
       {

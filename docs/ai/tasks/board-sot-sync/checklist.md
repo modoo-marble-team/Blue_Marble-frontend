@@ -22,11 +22,17 @@
 - [x] Checked boundary cases (redirect, cleanup, duplicate subscribe, errors).
 - [x] Synced TODO task status with current work.
 - [x] Reported changed files, validations, and remaining risks.
-- [ ] Updated session handoff notes.
-- [ ] Verified `npm run ai:session:brief -- board-sot-sync` output.
+- [x] Updated session handoff notes.
+- [x] Verified `npm run ai:session:brief -- board-sot-sync` output.
 
 ## 2026-04-01 Gate Evidence Checklist
 
 - [x] Updated task triplet files in current high-risk runtime branch.
 - [x] Confirmed TODO slug linkage for `board-sot-sync`.
 - [ ] Re-run workflow-gate after pushing this doc update.
+
+## 2026-04-03 Parity Checklist
+
+- [x] Backend ruleset board-name diff check (tile 24) and fallback/mock rename synced.
+- [x] Adapter normalization preserves `transportType` for `TRAVEL`/`EVENT`.
+- [x] Added adapter regression test for travel/event `tile_type` transport metadata.

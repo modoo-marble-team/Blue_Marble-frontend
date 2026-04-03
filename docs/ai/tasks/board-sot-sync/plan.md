@@ -74,3 +74,10 @@
 - This plan file is intentionally updated in the same branch as high-risk runtime changes.
 - Workflow-gate evidence target: docs/ai/tasks/board-sot-sync/{plan,context,checklist}.md
 - Current PR scope: bankrupt guard alignment + totalAssets authoritative display stabilization.
+
+## 2026-04-03 Parity Follow-up
+
+- Backend ruleset(`default.v1.json`) board name parity audit found one remaining mismatch:
+  - tile 24 name `섬으로 이동` -> `무인도로 이동` (frontend fallback/mock)
+- Snapshot tile metadata parity follow-up:
+  - preserve `transportType: TRAVEL/EVENT` in adapter normalization so mock/real runtime keep tile meta semantics.

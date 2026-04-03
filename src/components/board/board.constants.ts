@@ -214,7 +214,7 @@ export const TILES: TileData[] = [
     color: '#FF7043',
     price: 500_000_000,
   },
-  { id: 24, name: '섬으로 이동', type: 'MOVE_TO_ISLAND', emoji: '🚓' },
+  { id: 24, name: '무인도로 이동', type: 'MOVE_TO_ISLAND', emoji: '🚓' },
   {
     id: 25,
     name: '청주',

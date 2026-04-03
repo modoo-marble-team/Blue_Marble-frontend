@@ -26,6 +26,8 @@ export type TransportTileType =
   | 'START'
   | 'PROPERTY'
   | 'CHANCE'
+  | 'EVENT'
+  | 'TRAVEL'
   | 'MOVE_TO_ISLAND'
   | 'ISLAND'
 

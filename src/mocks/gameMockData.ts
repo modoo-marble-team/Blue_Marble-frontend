@@ -146,7 +146,7 @@ export const mockTiles: Tile[] = [
   },
   {
     index: 24,
-    name: '\uC12C\uC73C\uB85C \uC774\uB3D9',
+    name: '\uBB34\uC778\uB3C4\uB85C \uC774\uB3D9',
     type: 'go_to_island',
     building: 0,
   },
