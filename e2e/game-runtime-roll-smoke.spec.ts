@@ -46,11 +46,21 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
     await expect(rollButton).toBeVisible()
 
     const consumePromptIfVisible = async () => {
+      const modalActionButtons = page.locator(
+        'div.fixed.inset-0.z-50 button:enabled'
+      )
+
+      if ((await modalActionButtons.count()) > 0) {
+        await modalActionButtons.first().click()
+        await page.waitForTimeout(350)
+        return true
+      }
+
       for (const promptPattern of PROMPT_BUTTONS) {
         const button = page.getByRole('button', { name: promptPattern }).first()
         if ((await button.count()) > 0 && (await button.isVisible())) {
           await button.click()
-          await page.waitForTimeout(400)
+          await page.waitForTimeout(350)
           return true
         }
       }
@@ -63,6 +73,17 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
       for (let consumeTry = 0; consumeTry < 3; consumeTry += 1) {
         const consumed = await consumePromptIfVisible()
         if (!consumed) break
+      }
+
+      for (let retry = 0; retry < 20; retry += 1) {
+        if (await rollButton.isEnabled()) {
+          break
+        }
+
+        const consumed = await consumePromptIfVisible()
+        if (!consumed) {
+          await page.waitForTimeout(200)
+        }
       }
 
       await expect(rollButton).toBeEnabled()
