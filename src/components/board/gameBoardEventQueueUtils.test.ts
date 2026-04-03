@@ -8,6 +8,8 @@ import {
   getBoardEventAnimationHoldMs,
   getBoardEventConsumeDelayMs,
   getPendingMovePlayerIdsFromEvents,
+  getPendingMoveStartIndexByPlayerIdFromEvents,
+  resolveChanceMoneyEffectFromEvent,
   resolveChanceMoveAnimationHint,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventAnimationKind,
@@ -87,6 +89,66 @@ describe('gameBoardEventQueueUtils', () => {
       'guest-2',
       '3',
     ])
+  })
+
+  it('collects pending move start index by player id from move events', () => {
+    const events: ServerEvent[] = [
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        payload: {
+          fromIndex: 7,
+          toIndex: 9,
+        },
+      },
+      {
+        type: 'PLAYER_MOVE',
+        playerId: 'guest-2',
+        fromTileId: 4,
+        toTileId: 6,
+      } as ServerEvent,
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        payload: {
+          fromIndex: 9,
+          toIndex: 12,
+        },
+      },
+      {
+        type: 'TURN_ENDED',
+        playerId: 3,
+      },
+    ]
+
+    expect(getPendingMoveStartIndexByPlayerIdFromEvents(events)).toEqual({
+      '1': 7,
+      'guest-2': 4,
+    })
+  })
+
+  it('collects pending move start index from snake_case and fallback aliases', () => {
+    const events = [
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        payload: {
+          from_index: 10,
+          to_index: 12,
+        },
+      },
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 'guest-3',
+        from_tile: '6',
+        to_tile: '4',
+      },
+    ] as ServerEvent[]
+
+    expect(getPendingMoveStartIndexByPlayerIdFromEvents(events)).toEqual({
+      '1': 10,
+      'guest-3': 6,
+    })
   })
 
   it('extracts dice values from alias payload keys', () => {
@@ -435,6 +497,59 @@ describe('gameBoardEventQueueUtils', () => {
     }
 
     expect(resolveChanceMoveAnimationHint(event)).toBeNull()
+  })
+
+  it('extracts chance money effect for gain card', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 1,
+      chance: {
+        type: 'GAIN_MONEY',
+        power: 20000,
+      },
+    } as ServerEvent & {
+      chance: { type: string; power: number }
+    }
+
+    expect(resolveChanceMoneyEffectFromEvent(event)).toEqual({
+      playerId: '1',
+      chanceType: 'GAIN_MONEY',
+      amount: 20000,
+    })
+  })
+
+  it('extracts chance money effect for lose card from payload aliases', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 'guest-2',
+      payload: {
+        chance: {
+          type: 'LOSE_MONEY',
+          amount: '15000',
+        },
+      },
+    } as ServerEvent
+
+    expect(resolveChanceMoneyEffectFromEvent(event)).toEqual({
+      playerId: 'guest-2',
+      chanceType: 'LOSE_MONEY',
+      amount: 15000,
+    })
+  })
+
+  it('returns null chance money effect for non-money card', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 1,
+      chance: {
+        type: 'MOVE_FORWARD',
+        power: 3,
+      },
+    } as ServerEvent & {
+      chance: { type: string; power: number }
+    }
+
+    expect(resolveChanceMoneyEffectFromEvent(event)).toBeNull()
   })
 
   it('applies fast travel animation when trigger is travel', () => {

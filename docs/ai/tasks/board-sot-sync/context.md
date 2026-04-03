@@ -69,3 +69,18 @@
   - tile 24 expected `무인도로 이동`, frontend fallback/mock still had `섬으로 이동`.
 - Tile metadata normalization gap:
   - adapter did not preserve `transportType` for `TRAVEL`, causing mock/real payload semantics to be weaker than server payload.
+
+## 2026-04-03 Runtime Parity Recheck
+
+- `src/mocks/handlers/game.handler.ts` parity updates:
+  - event/chance card pool separation (`EVENT` uses event pool)
+  - strict spend rules (`balance > cost`) for buy/build/acquire
+  - toll settlement parity (`balance <= toll` -> bankrupt) with ownership cleanup
+  - travel prompt response move trigger aligned to `travel`
+  - chance forward move now applies pass-go salary semantics
+  - island lock duration aligned to 3 turns
+  - global effect / extra-turn effect state now affects turn progression
+- TODO sync:
+  - `chance-move-direction-animation`, `game-board-result-and-travel-fix`,
+    `island-speed-and-exit-modal-style` moved to `Done`
+  - `board-sot-sync` remains `In Progress` until workflow-gate follow-up item closes

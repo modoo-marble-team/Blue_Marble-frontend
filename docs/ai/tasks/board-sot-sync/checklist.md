@@ -14,7 +14,7 @@
 - [x] Ran targeted Vitest suites.
 - [x] Ran `npm run lint` for this high-risk runtime change.
 - [x] Ran `npm run build` for this high-risk runtime change.
-- [ ] Run Playwright scenario when user flow risk is high.
+- [x] Run Playwright scenario when user flow risk is high.
 
 ## Review
 

@@ -18,6 +18,7 @@ interface TokenProps {
   style?: React.CSSProperties
   isTraveling?: boolean
   travelIconSrc?: string
+  hideStateBadge?: boolean
 }
 
 export const PlayerToken = React.memo<TokenProps>(
@@ -28,9 +29,12 @@ export const PlayerToken = React.memo<TokenProps>(
     style,
     isTraveling = false,
     travelIconSrc = '/Travel- airplane.svg',
+    hideStateBadge = false,
   }) => {
     const { x, y } = offset
-    const isIsland = player.state === 'island' || (player.skipTurns ?? 0) > 0
+    const isIsland =
+      !hideStateBadge &&
+      (player.state === 'island' || (player.skipTurns ?? 0) > 0)
 
     return (
       <motion.div
@@ -87,7 +91,7 @@ export const PlayerToken = React.memo<TokenProps>(
           />
         )}
         {isIsland && !isTraveling && <span style={{ fontSize: 10 }}>🏝️</span>}
-        {(player.skipTurns ?? 0) > 0 && (
+        {!hideStateBadge && (player.skipTurns ?? 0) > 0 && (
           <div
             style={{
               position: 'absolute',
@@ -119,6 +123,7 @@ export const PlayerToken = React.memo<TokenProps>(
       prev.offset?.y === next.offset?.y &&
       prev.stripOffset === next.stripOffset &&
       prev.isTraveling === next.isTraveling &&
+      prev.hideStateBadge === next.hideStateBadge &&
       prev.travelIconSrc === next.travelIconSrc &&
       prev.style?.gridRow === next.style?.gridRow &&
       prev.style?.gridColumn === next.style?.gridColumn

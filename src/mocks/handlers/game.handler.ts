@@ -27,6 +27,8 @@ const SYNC_SNAPSHOT_GAP_THRESHOLD = 200
 const PROMPT_RESPONSE_ACK_TYPE = 'PROMPT_RESPONSE'
 const PROMPT_RESPONSE_ACTION_PREFIX = 'prompt-response'
 const MOCK_PLAYER_START_BALANCE = 1_000_000
+const SELL_PURCHASE_PRICE_REFUND_RATIO = 0.9
+const SELL_BUILD_COST_REFUND_RATIO = 0.75
 const DEFAULT_MOCK_CHAT_MESSAGES = ['즐겜해요~', '모두의 마블 한판!'] as const
 
 const PROMPT_CHOICE_CANONICAL_MAP: Record<string, readonly string[]> = {
@@ -43,16 +45,35 @@ type MockChanceType =
   | 'LOSE_MONEY'
   | 'MOVE_FORWARD'
   | 'MOVE_BACKWARD'
-  | 'MOVE_TO_ISLAND'
+  | 'STEAL_PROPERTY'
+  | 'GIVE_PROPERTY'
+  | 'TOLL_MULTIPLIER'
+  | 'PRICE_MULTIPLIER'
+  | 'EXTRA_TURN'
 
 type MockChanceEffect = {
   type: MockChanceType
   power: number
-  effect: 'GOOD' | 'BAD' | 'MOVE'
+  effect: string
   description: string
+  failedDescription?: string
+  duration?: number
+  multiplier?: number
 }
 
 const MOCK_CHANCE_EFFECTS: readonly MockChanceEffect[] = [
+  {
+    type: 'GAIN_MONEY',
+    power: 30_000,
+    effect: 'GOOD',
+    description: '복권 당첨! 3억원을 획득합니다.',
+  },
+  {
+    type: 'GAIN_MONEY',
+    power: 20_000,
+    effect: 'GOOD',
+    description: '주식 상승! 2억원을 획득합니다.',
+  },
   {
     type: 'GAIN_MONEY',
     power: 10_000,
@@ -61,27 +82,132 @@ const MOCK_CHANCE_EFFECTS: readonly MockChanceEffect[] = [
   },
   {
     type: 'LOSE_MONEY',
-    power: 10_000,
+    power: 15_000,
     effect: 'BAD',
-    description: '벌금 납부! 1억원을 지불합니다.',
+    description: '병원비 지출! 1억 5천만원을 지불합니다.',
+  },
+  {
+    type: 'LOSE_MONEY',
+    power: 20_000,
+    effect: 'BAD',
+    description: '벌금 지출! 2억원을 지불합니다.',
+  },
+  {
+    type: 'LOSE_MONEY',
+    power: 30_000,
+    effect: 'BAD',
+    description: '세금 지출! 3억원을 지불합니다.',
+  },
+  {
+    type: 'MOVE_FORWARD',
+    power: 3,
+    effect: 'COMMON',
+    description: '앞으로 3칸 이동합니다.',
   },
   {
     type: 'MOVE_FORWARD',
     power: 5,
-    effect: 'MOVE',
+    effect: 'COMMON',
     description: '앞으로 5칸 이동합니다.',
   },
   {
     type: 'MOVE_BACKWARD',
+    power: 2,
+    effect: 'COMMON',
+    description: '뒤로 2칸 이동합니다.',
+  },
+  {
+    type: 'MOVE_BACKWARD',
     power: 3,
-    effect: 'MOVE',
+    effect: 'COMMON',
     description: '뒤로 3칸 이동합니다.',
   },
   {
-    type: 'MOVE_TO_ISLAND',
+    type: 'STEAL_PROPERTY',
     power: 0,
-    effect: 'MOVE',
-    description: '무인도로 이동합니다.',
+    effect: 'GOOD',
+    description: '$player$의 $property$$suffix$ 점유했습니다.',
+    failedDescription: '땅 훔치기! 훔칠 땅이 없어서 실패했습니다...',
+  },
+  {
+    type: 'GIVE_PROPERTY',
+    power: 0,
+    effect: 'BAD',
+    description: '$player$ 에게 $property$$suffix$ 넘겨줬습니다.',
+    failedDescription: '땅 넘기기! 넘겨줄 땅이 없어서 실패했습니다...',
+  },
+  {
+    type: 'TOLL_MULTIPLIER',
+    power: 0,
+    effect: 'FESTIVAL',
+    duration: 3,
+    multiplier: 2,
+    description: '올림픽 개최! 3턴 동안 모든 통행료가 2배가 됩니다.',
+  },
+  {
+    type: 'TOLL_MULTIPLIER',
+    power: 0,
+    effect: 'PANDEMIC',
+    duration: 3,
+    multiplier: 0.5,
+    description: '전염병 확산! 3턴 동안 모든 통행료가 절반이 됩니다.',
+  },
+  {
+    type: 'PRICE_MULTIPLIER',
+    power: 0,
+    effect: 'INFLATION',
+    duration: 3,
+    multiplier: 1.5,
+    description: '인플레이션 발생! 3턴 동안 토지/건설 비용이 50% 증가 됩니다.',
+  },
+  {
+    type: 'PRICE_MULTIPLIER',
+    power: 0,
+    effect: 'DEFLATION',
+    duration: 3,
+    multiplier: 0.7,
+    description: '디플레이션 발생! 3턴 동안 토지/건설 비용이 30% 감소 됩니다.',
+  },
+  {
+    type: 'EXTRA_TURN',
+    power: 0,
+    effect: 'TRANSIT_CARD',
+    duration: 2,
+    description: '교통카드 획득! 추가턴 2회를 획득합니다.',
+  },
+  {
+    type: 'EXTRA_TURN',
+    power: 0,
+    effect: 'CAR',
+    duration: 3,
+    description: '자동차를 얻었습니다. 추가턴 3회를 획득합니다.',
+  },
+]
+
+const MOCK_EVENT_EFFECTS: readonly MockChanceEffect[] = [
+  {
+    type: 'GAIN_MONEY',
+    power: 30_000,
+    effect: 'GOOD',
+    description: '복권에 당첨되어 3억원을 획득합니다.',
+  },
+  {
+    type: 'GAIN_MONEY',
+    power: 20_000,
+    effect: 'GOOD',
+    description: '보유 주식이 올라 2억원을 획득합니다.',
+  },
+  {
+    type: 'GAIN_MONEY',
+    power: 10_000,
+    effect: 'GOOD',
+    description: '지원금 1억원을 획득합니다.',
+  },
+  {
+    type: 'LOSE_MONEY',
+    power: 15_000,
+    effect: 'BAD',
+    description: '병원비로 1억 5천만원을 지불합니다.',
   },
 ]
 
@@ -141,6 +267,8 @@ type GameStateResponse = {
   isGameOver: boolean
   winnerId: PlayerId | null
   pendingBonusTurnPlayerId: PlayerId | null
+  extraTurnEffectTurnsRemainingByPlayer: Record<string, number>
+  extraTurnEffectActiveByPlayer: Record<string, boolean>
 }
 
 type GameEvents = NonNullable<GamePatchEnvelope['events']>
@@ -284,6 +412,8 @@ const createInitialGameState = (
     isGameOver: false,
     winnerId: null,
     pendingBonusTurnPlayerId: null,
+    extraTurnEffectTurnsRemainingByPlayer: {},
+    extraTurnEffectActiveByPlayer: {},
   }
 
   initialState.players.forEach((player) => {
@@ -317,6 +447,10 @@ const resetMockGameState = (options?: {
   mockGameState.isGameOver = initialState.isGameOver
   mockGameState.winnerId = initialState.winnerId
   mockGameState.pendingBonusTurnPlayerId = initialState.pendingBonusTurnPlayerId
+  mockGameState.extraTurnEffectTurnsRemainingByPlayer =
+    initialState.extraTurnEffectTurnsRemainingByPlayer
+  mockGameState.extraTurnEffectActiveByPlayer =
+    initialState.extraTurnEffectActiveByPlayer
   mockGameContext.gameId = options?.gameId ?? null
   mockGameContext.roomId = roomId
 
@@ -492,7 +626,32 @@ const getTierRuleByTile = (tile: Tile | undefined): TierRuleMan | null => {
   return PROPERTY_TIER_BY_PRICE_MAN[price] ?? null
 }
 
-const getTileBuildCost = (tile: Tile | undefined): number => {
+const roundHalfUp = (value: number) => Math.round(value)
+
+const applyMultiplier = (amount: number, multiplier: number) =>
+  roundHalfUp(amount * multiplier)
+
+const getActivePriceMultiplier = () =>
+  mockGameState.activeGlobalEffect?.type === 'PRICE_MULTIPLIER' &&
+  typeof mockGameState.activeGlobalEffect.multiplier === 'number'
+    ? mockGameState.activeGlobalEffect.multiplier
+    : 1
+
+const getActiveTollMultiplier = () =>
+  mockGameState.activeGlobalEffect?.type === 'TOLL_MULTIPLIER' &&
+  typeof mockGameState.activeGlobalEffect.multiplier === 'number'
+    ? mockGameState.activeGlobalEffect.multiplier
+    : 1
+
+const getTilePurchaseCost = (tile: Tile | undefined): number => {
+  if (!tile || !isOwnableTile(tile)) {
+    return 0
+  }
+  const basePrice = tile.price ?? 0
+  return applyMultiplier(basePrice, getActivePriceMultiplier())
+}
+
+const getBaseTileBuildCost = (tile: Tile | undefined): number => {
   if (!tile || !isOwnableTile(tile)) {
     return 0
   }
@@ -510,6 +669,14 @@ const getTileBuildCost = (tile: Tile | undefined): number => {
   return tierRule.buildCosts[currentLevel] ?? 0
 }
 
+const getTileBuildCost = (tile: Tile | undefined): number => {
+  const baseBuildCost = getBaseTileBuildCost(tile)
+  if (baseBuildCost <= 0) {
+    return 0
+  }
+  return applyMultiplier(baseBuildCost, getActivePriceMultiplier())
+}
+
 const getTileTollAmount = (tile: Tile | undefined): number => {
   if (!tile || !isOwnableTile(tile)) {
     return 0
@@ -517,11 +684,12 @@ const getTileTollAmount = (tile: Tile | undefined): number => {
 
   const tierRule = getTierRuleByTile(tile)
   if (!tierRule) {
-    return tile.price ?? 0
+    return applyMultiplier(tile.price ?? 0, getActiveTollMultiplier())
   }
 
   const level = Math.max(0, Math.min(tile.building ?? 0, 3))
-  return tierRule.tolls[level] ?? tile.price ?? 0
+  const baseToll = tierRule.tolls[level] ?? tile.price ?? 0
+  return applyMultiplier(baseToll, getActiveTollMultiplier())
 }
 
 const ensureOwnedTiles = (player: Player, tileIndex: number) => {
@@ -537,21 +705,28 @@ const removeOwnedTile = (player: Player, tileIndex: number) => {
 }
 
 const getSellRefund = (tile: Tile, requestedLevel?: number) => {
-  const sellLevel = requestedLevel ?? tile.building
-  const buildCost = getTileBuildCost(tile)
+  const normalizedSellLevel = Math.max(
+    0,
+    Math.min(requestedLevel ?? tile.building, tile.building ?? 0)
+  )
+  const basePrice = tile.price ?? 0
 
-  if (sellLevel > 0) {
-    return {
-      refund: buildCost > 0 ? buildCost : 0,
-      nextBuilding: Math.max(0, sellLevel - 1) as BuildingLevel,
-      releaseOwnership: false,
+  let refund = Math.trunc(basePrice * SELL_PURCHASE_PRICE_REFUND_RATIO)
+  const tierRule = getTierRuleByTile(tile)
+
+  if (tierRule) {
+    for (let level = 1; level <= normalizedSellLevel; level += 1) {
+      refund += Math.trunc(
+        (tierRule.buildCosts[level - 1] ?? 0) * SELL_BUILD_COST_REFUND_RATIO
+      )
     }
   }
 
+  const nextBuilding = Math.max(0, normalizedSellLevel - 1) as BuildingLevel
   return {
-    refund: tile.price ?? 0,
-    nextBuilding: 0 as BuildingLevel,
-    releaseOwnership: true,
+    refund: Math.max(0, refund),
+    nextBuilding,
+    releaseOwnership: nextBuilding <= 0,
   }
 }
 
@@ -709,7 +884,7 @@ const buildBuyPrompt = (_player: Player, tile: Tile): GamePrompt => ({
   payload: {
     tileId: tile.index,
     tileName: tile.name,
-    price: tile.price ?? 0,
+    price: getTilePurchaseCost(tile),
   },
 })
 
@@ -781,7 +956,7 @@ const buildAcquisitionPrompt = (
   type: 'ACQUISITION_OR_SKIP',
   playerId: player.id,
   title: `${tile.name} 인수`,
-  message: `${owner.nickname}의 ${tile.name}을(를) ${tile.price ?? 0}에 인수하시겠습니까?`,
+  message: `${owner.nickname}의 ${tile.name}을(를) ${getTileAcquisitionCost(tile)}에 인수하시겠습니까?`,
   timeoutSec: MOCK_TURN_TIMEOUT_SEC,
   choices: [
     { id: 'acquire', label: '인수하기', value: 'ACQUIRE' },
@@ -792,7 +967,8 @@ const buildAcquisitionPrompt = (
     tileName: tile.name,
     ownerId: owner.id,
     ownerName: owner.nickname,
-    amount: tile.price ?? 0,
+    amount: getTileAcquisitionCost(tile),
+    acquisitionCost: getTileAcquisitionCost(tile),
   },
 })
 
@@ -817,6 +993,13 @@ const getAccumulatedBuildCost = (tile: Tile): number => {
     total += tierRule.buildCosts[index] ?? 0
   }
   return total
+}
+
+const getTileAssetValue = (tile: Tile): number =>
+  Math.max(0, tile.price ?? 0) + getAccumulatedBuildCost(tile)
+
+const getTileAcquisitionCost = (tile: Tile): number => {
+  return applyMultiplier(getTileAssetValue(tile), 1.5)
 }
 
 const syncPlayerStatus = (player: Player) => {
@@ -922,10 +1105,197 @@ const createLandedEvent = (
   }
 }
 
-const pickMockChanceEffect = (): MockChanceEffect => {
-  const randomIndex = Math.floor(Math.random() * MOCK_CHANCE_EFFECTS.length)
-  return MOCK_CHANCE_EFFECTS[randomIndex] ?? MOCK_CHANCE_EFFECTS[0]
+const getRandomItem = <T>(items: readonly T[]): T | null => {
+  if (items.length === 0) {
+    return null
+  }
+  const randomIndex = Math.floor(Math.random() * items.length)
+  return items[randomIndex] ?? null
 }
+
+const getObjectParticle = (word: string) => {
+  if (!word) {
+    return '를'
+  }
+
+  const lastChar = word[word.length - 1] ?? ''
+  const code = lastChar.codePointAt(0) ?? 0
+  if (code >= 0xac00 && code <= 0xd7a3) {
+    const hasBatchim = (code - 0xac00) % 28 !== 0
+    return hasBatchim ? '을' : '를'
+  }
+
+  return '를'
+}
+
+const replaceCardDescriptionVariables = (
+  template: string,
+  variables: Record<string, string>
+) => {
+  let result = template
+  for (const [key, value] of Object.entries(variables)) {
+    result = result.split(`$${key}$`).join(value)
+  }
+  return result
+}
+
+const isGlobalEffectType = (
+  effect: string
+): effect is GlobalEffectState['effect'] =>
+  effect === 'PANDEMIC' ||
+  effect === 'FESTIVAL' ||
+  effect === 'INFLATION' ||
+  effect === 'DEFLATION'
+
+const releasePlayerProperties = (player: Player) => {
+  for (const tileIndex of [...player.owned_tiles]) {
+    const ownedTile = getTileByIndex(tileIndex)
+    if (!ownedTile || !isOwnableTile(ownedTile)) {
+      continue
+    }
+    ownedTile.owner_id = null
+    ownedTile.ownerId = null
+    ownedTile.building = 0
+  }
+  player.owned_tiles = []
+}
+
+const markPlayerBankrupt = ({
+  player,
+  reason = 'insufficient_funds',
+  events,
+}: {
+  player: Player
+  reason?: string
+  events: GameEvents
+}) => {
+  player.balance = 0
+  player.is_bankrupt = true
+  player.state = 'bankrupt'
+  player.stateDuration = 0
+  player.jail_turn_count = 0
+  player.is_in_jail = false
+  const effectKey = String(player.id)
+  mockGameState.extraTurnEffectTurnsRemainingByPlayer[effectKey] = 0
+  mockGameState.extraTurnEffectActiveByPlayer[effectKey] = false
+  if (
+    mockGameState.pendingBonusTurnPlayerId != null &&
+    String(mockGameState.pendingBonusTurnPlayerId) === String(player.id)
+  ) {
+    mockGameState.pendingBonusTurnPlayerId = null
+  }
+  releasePlayerProperties(player)
+  events.push({
+    type: 'PLAYER_STATE_CHANGED',
+    playerId: player.id,
+    payload: {
+      playerState: 'bankrupt',
+      reason,
+    },
+  })
+}
+
+const getPlayerEffectKey = (playerId: PlayerId) => String(playerId)
+
+const getExtraTurnEffectTurnsRemaining = (playerId: PlayerId) => {
+  const key = getPlayerEffectKey(playerId)
+  return mockGameState.extraTurnEffectTurnsRemainingByPlayer[key] ?? 0
+}
+
+const setExtraTurnEffectTurnsRemaining = (
+  playerId: PlayerId,
+  value: number
+) => {
+  const key = getPlayerEffectKey(playerId)
+  mockGameState.extraTurnEffectTurnsRemainingByPlayer[key] = Math.max(
+    0,
+    Math.trunc(value)
+  )
+}
+
+const isExtraTurnEffectActive = (playerId: PlayerId) => {
+  const key = getPlayerEffectKey(playerId)
+  return Boolean(mockGameState.extraTurnEffectActiveByPlayer[key])
+}
+
+const setExtraTurnEffectActive = (playerId: PlayerId, active: boolean) => {
+  const key = getPlayerEffectKey(playerId)
+  mockGameState.extraTurnEffectActiveByPlayer[key] = active
+}
+
+const applyGlobalEffectCard = (card: MockChanceEffect) => {
+  if (
+    (card.type !== 'TOLL_MULTIPLIER' && card.type !== 'PRICE_MULTIPLIER') ||
+    !isGlobalEffectType(card.effect) ||
+    typeof card.multiplier !== 'number'
+  ) {
+    return
+  }
+
+  const duration =
+    typeof card.duration === 'number' && Number.isFinite(card.duration)
+      ? Math.max(0, Math.trunc(card.duration))
+      : 0
+
+  mockGameState.activeGlobalEffect = {
+    type: card.type,
+    effect: card.effect,
+    duration,
+    multiplier: card.multiplier,
+    description: card.description,
+  }
+}
+
+const tickGlobalEffectDuration = () => {
+  const activeEffect = mockGameState.activeGlobalEffect
+  if (!activeEffect) {
+    return
+  }
+
+  if (activeEffect.duration <= 1) {
+    mockGameState.activeGlobalEffect = null
+    return
+  }
+
+  mockGameState.activeGlobalEffect = {
+    ...activeEffect,
+    duration: activeEffect.duration - 1,
+  }
+}
+
+const collectTransferableTiles = (owner: Player) =>
+  owner.owned_tiles.filter((tileIndex) => {
+    const tile = getTileByIndex(tileIndex)
+    return (
+      tile != null &&
+      isOwnableTile(tile) &&
+      String(tile.owner_id) === String(owner.id) &&
+      (tile.building ?? 0) < 3
+    )
+  })
+
+const transferPropertyOwnership = ({
+  fromPlayer,
+  toPlayer,
+  tile,
+}: {
+  fromPlayer: Player
+  toPlayer: Player
+  tile: Tile
+}) => {
+  removeOwnedTile(fromPlayer, tile.index)
+  tile.owner_id = toPlayer.id
+  tile.ownerId = toPlayer.id
+  tile.building = 0
+  ensureOwnedTiles(toPlayer, tile.index)
+}
+
+const pickMockChanceEffect = (): MockChanceEffect => {
+  return getRandomItem(MOCK_CHANCE_EFFECTS) ?? MOCK_CHANCE_EFFECTS[0]
+}
+
+const pickMockEventEffect = (): MockChanceEffect =>
+  getRandomItem(MOCK_EVENT_EFFECTS) ?? MOCK_EVENT_EFFECTS[0]
 
 type LandingResolution = {
   events: GameEvents
@@ -1006,7 +1376,21 @@ const resolveLanding = ({
   }
 
   if ((tile.type === 'chance' || tile.type === 'event') && allowCardEffect) {
-    const chanceEffect = pickMockChanceEffect()
+    const chanceEffect =
+      tile.type === 'event' ? pickMockEventEffect() : pickMockChanceEffect()
+    const chancePayload: Record<string, unknown> = {
+      type: chanceEffect.type,
+      power: chanceEffect.power,
+      description: chanceEffect.description,
+      effect: chanceEffect.effect,
+    }
+    if (typeof chanceEffect.duration === 'number') {
+      chancePayload.duration = chanceEffect.duration
+    }
+    if (typeof chanceEffect.multiplier === 'number') {
+      chancePayload.multiplier = chanceEffect.multiplier
+    }
+
     events.push({
       type: 'CHANCE_RESOLVED',
       playerId: player.id,
@@ -1014,7 +1398,7 @@ const resolveLanding = ({
       payload: {
         tileId: tile.index,
         tileType: tile.type.toUpperCase(),
-        chance: chanceEffect,
+        chance: chancePayload,
       },
     })
 
@@ -1024,10 +1408,15 @@ const resolveLanding = ({
     }
 
     if (chanceEffect.type === 'LOSE_MONEY') {
-      const hadEnoughBalance = player.balance >= chanceEffect.power
-      player.balance = Math.max(0, player.balance - chanceEffect.power)
-      if (!hadEnoughBalance) {
-        player.is_bankrupt = true
+      const nextBalance = player.balance - chanceEffect.power
+      if (nextBalance > 0) {
+        player.balance = nextBalance
+      } else {
+        markPlayerBankrupt({
+          player,
+          reason: 'insufficient_funds',
+          events,
+        })
       }
       return { events, prompt: null, phase: 'resolving' }
     }
@@ -1043,7 +1432,14 @@ const resolveLanding = ({
           ? fromTileId - chanceEffect.power
           : fromTileId + chanceEffect.power
       const toTileId = ((rawTargetIndex % totalTiles) + totalTiles) % totalTiles
+      const passGo =
+        chanceEffect.type === 'MOVE_FORWARD' &&
+        fromTileId + chanceEffect.power >= totalTiles
+
       player.position = toTileId
+      if (passGo) {
+        player.balance += MOCK_PASS_GO_SALARY
+      }
 
       events.push(
         createPlayerMovedEvent({
@@ -1051,13 +1447,13 @@ const resolveLanding = ({
           fromTileId,
           toTileId,
           trigger: 'chance',
+          passGo,
         })
       )
 
       const chained = resolveLanding({
         player,
         tileIndex: toTileId,
-        allowCardEffect: false,
       })
       events.push(...chained.events)
       return chained.prompt
@@ -1065,27 +1461,106 @@ const resolveLanding = ({
         : { events, prompt: null, phase: 'resolving' }
     }
 
-    if (chanceEffect.type === 'MOVE_TO_ISLAND') {
-      const islandTileIndex = getIslandTileIndex()
-      const fromTileId = player.position
-      player.position = islandTileIndex
+    if (chanceEffect.type === 'STEAL_PROPERTY') {
+      const stealTargets = mockGameState.players
+        .filter(
+          (candidate) =>
+            String(candidate.id) !== String(player.id) && !candidate.is_bankrupt
+        )
+        .flatMap((candidate) =>
+          collectTransferableTiles(candidate).map((tileId) => ({
+            owner: candidate,
+            tile: getTileByIndex(tileId),
+          }))
+        )
+        .filter(
+          (candidate): candidate is { owner: Player; tile: Tile } =>
+            candidate.tile != null
+        )
 
-      events.push(
-        createPlayerMovedEvent({
-          playerId: player.id,
-          fromTileId,
-          toTileId: islandTileIndex,
-          trigger: 'chance',
-        })
-      )
+      const selectedTarget = getRandomItem(stealTargets)
+      if (!selectedTarget) {
+        chancePayload.description =
+          chanceEffect.failedDescription ?? chanceEffect.description
+        return { events, prompt: null, phase: 'resolving' }
+      }
 
-      const chained = resolveLanding({
-        player,
-        tileIndex: islandTileIndex,
-        allowCardEffect: false,
+      transferPropertyOwnership({
+        fromPlayer: selectedTarget.owner,
+        toPlayer: player,
+        tile: selectedTarget.tile,
       })
-      events.push(...chained.events)
-      return { events, prompt: null, phase: chained.phase }
+      chancePayload.description = replaceCardDescriptionVariables(
+        chanceEffect.description,
+        {
+          player: selectedTarget.owner.nickname,
+          property: selectedTarget.tile.name,
+          suffix: getObjectParticle(selectedTarget.tile.name),
+        }
+      )
+      chancePayload.fromPlayerId = selectedTarget.owner.id
+      chancePayload.tileId = selectedTarget.tile.index
+      chancePayload.property = selectedTarget.tile.name
+      return { events, prompt: null, phase: 'resolving' }
+    }
+
+    if (chanceEffect.type === 'GIVE_PROPERTY') {
+      const giveableTiles = collectTransferableTiles(player)
+      const receiverCandidates = mockGameState.players.filter(
+        (candidate) =>
+          String(candidate.id) !== String(player.id) && !candidate.is_bankrupt
+      )
+      const givenTileId = getRandomItem(giveableTiles)
+      const receiver = getRandomItem(receiverCandidates)
+      const givenTile = givenTileId == null ? null : getTileByIndex(givenTileId)
+      if (!receiver || !givenTile) {
+        chancePayload.description =
+          chanceEffect.failedDescription ?? chanceEffect.description
+        return { events, prompt: null, phase: 'resolving' }
+      }
+
+      transferPropertyOwnership({
+        fromPlayer: player,
+        toPlayer: receiver,
+        tile: givenTile,
+      })
+      chancePayload.description = replaceCardDescriptionVariables(
+        chanceEffect.description,
+        {
+          player: receiver.nickname,
+          property: givenTile.name,
+          suffix: getObjectParticle(givenTile.name),
+        }
+      )
+      chancePayload.toPlayerId = receiver.id
+      chancePayload.tileId = givenTile.index
+      chancePayload.property = givenTile.name
+      return { events, prompt: null, phase: 'resolving' }
+    }
+
+    if (
+      chanceEffect.type === 'TOLL_MULTIPLIER' ||
+      chanceEffect.type === 'PRICE_MULTIPLIER'
+    ) {
+      applyGlobalEffectCard(chanceEffect)
+      return { events, prompt: null, phase: 'resolving' }
+    }
+
+    if (chanceEffect.type === 'EXTRA_TURN') {
+      const extraTurnDuration =
+        typeof chanceEffect.duration === 'number'
+          ? Math.max(0, Math.trunc(chanceEffect.duration))
+          : 0
+      if (extraTurnDuration > 0) {
+        setExtraTurnEffectTurnsRemaining(
+          player.id,
+          getExtraTurnEffectTurnsRemaining(player.id) + extraTurnDuration
+        )
+      }
+      if (!isExtraTurnEffectActive(player.id)) {
+        setExtraTurnEffectActive(player.id, false)
+      }
+      return { events, prompt: null, phase: 'resolving' }
     }
   }
 
@@ -1486,8 +1961,8 @@ const handleBuyPropertyAction = (action: MockResolvedGameAction) => {
     return
   }
 
-  const price = tile.price ?? 0
-  if (player.balance < price) {
+  const price = getTilePurchaseCost(tile)
+  if (player.balance <= price) {
     emitGameAck({
       actionId: action.actionId,
       type: action.type,
@@ -1653,7 +2128,7 @@ const handleBuildPropertyAction = (action: MockResolvedGameAction) => {
     return
   }
 
-  if (player.balance < buildCost) {
+  if (player.balance <= buildCost) {
     emitGameAck({
       actionId: action.actionId,
       type: action.type,
@@ -1705,15 +2180,31 @@ const handleEndTurnAction = (action: MockResolvedGameAction) => {
   }
 
   const previousPlayerId = mockGameState.currentTurn
-  const previousRound = mockGameState.round
-  const hadBonusTurn =
+  const hadDoubleBonusTurn =
     mockGameState.pendingBonusTurnPlayerId != null &&
     String(mockGameState.pendingBonusTurnPlayerId) === String(previousPlayerId)
+  const hasExtraTurnBonus =
+    !hadDoubleBonusTurn &&
+    getExtraTurnEffectTurnsRemaining(previousPlayerId) > 0 &&
+    !isExtraTurnEffectActive(previousPlayerId)
+  const shouldKeepTurn = hadDoubleBonusTurn || hasExtraTurnBonus
 
-  if (!hadBonusTurn) {
+  if (shouldKeepTurn) {
+    mockGameState.currentTurn = previousPlayerId
+  } else {
     advanceMockTurn()
+    setExtraTurnEffectActive(previousPlayerId, false)
   }
 
+  if (hasExtraTurnBonus) {
+    setExtraTurnEffectTurnsRemaining(
+      previousPlayerId,
+      getExtraTurnEffectTurnsRemaining(previousPlayerId) - 1
+    )
+    setExtraTurnEffectActive(previousPlayerId, true)
+  }
+
+  tickGlobalEffectDuration()
   mockGameState.pendingBonusTurnPlayerId = null
   clearMockPrompt()
   mockGameState.phase = 'rolling'
@@ -1721,13 +2212,18 @@ const handleEndTurnAction = (action: MockResolvedGameAction) => {
   recalculatePlayerAssets()
 
   let gameResult: NonNullable<GameSnapshot['gameResult']> | null = null
-  if (!hadBonusTurn && mockGameState.round > MOCK_MAX_ROUNDS) {
+  if (!shouldKeepTurn && mockGameState.round > MOCK_MAX_ROUNDS) {
     gameResult = markGameOver('max_rounds')
   } else {
     gameResult = maybeMarkGameOverByStanding()
   }
 
   const turnNumber = mockGameState.revision + 1
+  const turnEndReason = hadDoubleBonusTurn
+    ? 'double_roll'
+    : hasExtraTurnBonus
+      ? 'extra_turn_effect'
+      : null
   const nextEvents: GameEvents = [
     {
       type: 'TURN_ENDED',
@@ -1735,17 +2231,23 @@ const handleEndTurnAction = (action: MockResolvedGameAction) => {
       nextPlayerId: mockGameState.currentTurn,
       turn: turnNumber,
       round: mockGameState.round,
-      reason: hadBonusTurn ? 'double_roll' : 'manual_end_turn',
-      bonusTurn: hadBonusTurn,
-      payload: {
-        playerId: previousPlayerId,
-        nextPlayerId: mockGameState.currentTurn,
-        turn: turnNumber,
-        round: mockGameState.round,
-        reason: hadBonusTurn ? 'double_roll' : 'manual_end_turn',
-        bonusTurn: hadBonusTurn,
-        previousRound,
-      },
+      reason: turnEndReason ?? undefined,
+      bonusTurn: shouldKeepTurn || undefined,
+      payload: turnEndReason
+        ? {
+            playerId: previousPlayerId,
+            nextPlayerId: mockGameState.currentTurn,
+            turn: turnNumber,
+            round: mockGameState.round,
+            reason: turnEndReason,
+            bonusTurn: true,
+          }
+        : {
+            playerId: previousPlayerId,
+            nextPlayerId: mockGameState.currentTurn,
+            turn: turnNumber,
+            round: mockGameState.round,
+          },
     },
   ]
 
@@ -2029,8 +2531,11 @@ export const mockEmitPromptResponse = ({
       isOwnableTile(targetTile) &&
       !targetTile.owner_id
     ) {
-      const price = targetTile.price ?? 0
-      if (respondingPlayer.balance >= price) {
+      const price =
+        promptAmount > 0
+          ? Math.trunc(promptAmount)
+          : getTilePurchaseCost(targetTile)
+      if (respondingPlayer.balance > price) {
         respondingPlayer.balance -= price
         targetTile.owner_id = respondingPlayer.id
         targetTile.ownerId = respondingPlayer.id
@@ -2076,7 +2581,7 @@ export const mockEmitPromptResponse = ({
       String(targetTile.owner_id) === String(respondingPlayer.id)
     ) {
       const buildCost = getTileBuildCost(targetTile)
-      if (buildCost > 0 && respondingPlayer.balance >= buildCost) {
+      if (buildCost > 0 && respondingPlayer.balance > buildCost) {
         respondingPlayer.balance -= buildCost
         targetTile.building = Math.min(
           (targetTile.building ?? 0) + 1,
@@ -2121,33 +2626,28 @@ export const mockEmitPromptResponse = ({
           : (mockGameState.players.find(
               (player) => String(player.id) === String(targetTile.owner_id)
             ) ?? null)
-      const paidAmount = Math.min(
-        promptAmount,
-        Math.max(respondingPlayer.balance, 0)
-      )
-      respondingPlayer.balance = Math.max(
-        0,
-        respondingPlayer.balance - paidAmount
-      )
+      const originalBalance = Math.max(0, respondingPlayer.balance)
+      const paidAmount = Math.min(promptAmount, originalBalance)
+
       if (owner) {
         owner.balance += paidAmount
       }
 
-      if (paidAmount < promptAmount) {
-        respondingPlayer.is_bankrupt = true
-        respondingPlayer.state = 'bankrupt'
-        respondingPlayer.stateDuration = 0
-        respondingPlayer.jail_turn_count = 0
-        respondingPlayer.is_in_jail = false
-        nextEvents.push({
-          type: 'PLAYER_STATE_CHANGED',
-          playerId: respondingPlayer.id,
-          payload: {
-            playerState: 'bankrupt',
-            reason: 'toll_bankrupt',
-          },
+      if (originalBalance > promptAmount) {
+        respondingPlayer.balance = Math.max(0, originalBalance - promptAmount)
+      } else {
+        markPlayerBankrupt({
+          player: respondingPlayer,
+          reason: 'insufficient_funds',
+          events: nextEvents,
         })
-      } else if (owner && String(owner.id) !== String(respondingPlayer.id)) {
+      }
+
+      if (
+        originalBalance >= promptAmount &&
+        owner &&
+        String(owner.id) !== String(respondingPlayer.id)
+      ) {
         nextPrompt = buildAcquisitionPrompt(respondingPlayer, owner, targetTile)
         nextPhase = 'prompt'
       }
@@ -2161,6 +2661,9 @@ export const mockEmitPromptResponse = ({
           amount: paidAmount,
           expectedAmount: promptAmount,
           ownerId: owner?.id ?? null,
+          fromPlayerId: respondingPlayer.id,
+          toPlayerId: owner?.id ?? null,
+          tileId: targetTile.index,
         },
       })
     }
@@ -2179,9 +2682,11 @@ export const mockEmitPromptResponse = ({
         (player) => String(player.id) === String(targetTile.owner_id)
       )
       const acquisitionCost =
-        promptAmount > 0 ? promptAmount : (targetTile.price ?? 0)
+        promptAmount > 0
+          ? Math.trunc(promptAmount)
+          : getTileAcquisitionCost(targetTile)
 
-      if (owner && respondingPlayer.balance >= acquisitionCost) {
+      if (owner && respondingPlayer.balance > acquisitionCost) {
         respondingPlayer.balance -= acquisitionCost
         owner.balance += acquisitionCost
         removeOwnedTile(owner, targetTile.index)
@@ -2240,7 +2745,7 @@ export const mockEmitPromptResponse = ({
             playerId: respondingPlayer.id,
             fromTileId,
             toTileId: targetTileId,
-            trigger: 'travel_select',
+            trigger: 'travel',
           })
         )
 

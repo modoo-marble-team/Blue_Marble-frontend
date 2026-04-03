@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -80,6 +80,17 @@ type PlayerPanelViewModel = {
   isActive: boolean
   isBankrupt: boolean
   isRichest: boolean
+}
+
+type DeferredPlayerFinancialSnapshot = {
+  money: number
+  totalAssets: number
+}
+
+type ChanceMoneyEffectPayload = {
+  playerId: string
+  chanceType: 'GAIN_MONEY' | 'LOSE_MONEY'
+  amount: number
 }
 
 const toComparablePlayerId = (playerId: PlayerId | null | undefined) =>
@@ -192,6 +203,8 @@ const GamePage: React.FC = () => {
   >(null)
   const [isBoardBlockingModalOpen, setIsBoardBlockingModalOpen] =
     useState(false)
+  const [deferredPlayerFinancialById, setDeferredPlayerFinancialById] =
+    useState<Record<string, DeferredPlayerFinancialSnapshot>>({})
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
   const [isGlobalEffectModalOpen, setIsGlobalEffectModalOpen] = useState(false)
@@ -392,12 +405,72 @@ const GamePage: React.FC = () => {
 
   const diceRoll = useDiceRoll()
 
+  const handleChanceMoneyEffect = useCallback(
+    (effect: ChanceMoneyEffectPayload) => {
+      const targetPlayer = storePlayers.find(
+        (player) => String(player.id) === String(effect.playerId)
+      )
+      if (!targetPlayer) {
+        return
+      }
+
+      if (targetPlayer.is_bankrupt || targetPlayer.state === 'bankrupt') {
+        return
+      }
+
+      const amount = Math.max(0, Math.trunc(effect.amount))
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return
+      }
+
+      const currentMoney = targetPlayer.balance ?? 0
+      const currentTotalAssets = targetPlayer.totalAssets ?? currentMoney
+      const previousMoney =
+        effect.chanceType === 'GAIN_MONEY'
+          ? currentMoney - amount
+          : currentMoney + amount
+      const previousTotalAssets =
+        effect.chanceType === 'GAIN_MONEY'
+          ? currentTotalAssets - amount
+          : currentTotalAssets + amount
+      const playerId = String(targetPlayer.id)
+
+      setDeferredPlayerFinancialById((previous) => ({
+        ...previous,
+        [playerId]: {
+          money: Math.max(0, previousMoney),
+          totalAssets: Math.max(0, previousTotalAssets),
+        },
+      }))
+    },
+    [storePlayers]
+  )
+
+  useEffect(() => {
+    if (isBoardBlockingModalOpen) {
+      return
+    }
+
+    if (Object.keys(deferredPlayerFinancialById).length === 0) {
+      return
+    }
+
+    setDeferredPlayerFinancialById({})
+  }, [deferredPlayerFinancialById, isBoardBlockingModalOpen])
+
   const panelPlayers = useMemo(() => {
     const basePanelPlayers: PlayerPanelViewModel[] = storePlayers.map(
       (storePlayer, index) => {
         const boardPlayer = boardPlayers[index]
         const playerId = String(storePlayer.id)
-        const money = storePlayer.balance ?? boardPlayer?.money ?? 0
+        const deferredFinancial = deferredPlayerFinancialById[playerId]
+        const money =
+          deferredFinancial?.money ??
+          storePlayer.balance ??
+          boardPlayer?.money ??
+          0
+        const totalAssets =
+          deferredFinancial?.totalAssets ?? storePlayer.totalAssets ?? money
 
         return {
           id: playerId,
@@ -405,7 +478,7 @@ const GamePage: React.FC = () => {
             storePlayer.nickname || boardPlayer?.name || `Player ${index + 1}`,
           color: storePlayer.color || boardPlayer?.color,
           money,
-          totalAssets: storePlayer.totalAssets ?? money,
+          totalAssets,
           originalIndex: index,
           isActive: activePlayerId === playerId,
           isBankrupt:
@@ -496,7 +569,13 @@ const GamePage: React.FC = () => {
       sortedPlayers.find((player) => !player.isBankrupt)?.id ?? null
 
     return applyRichestFlag(sortedPlayers, richestPlayerId)
-  }, [activePlayerId, boardPlayers, gameResult, storePlayers])
+  }, [
+    activePlayerId,
+    boardPlayers,
+    deferredPlayerFinancialById,
+    gameResult,
+    storePlayers,
+  ])
   const currentPlayerState = boardPlayers[boardCurPlayer]
   const isCurrentPlayerBankrupt = currentPlayerState?.state === 'bankrupt'
   const isRollPhase = phase === 'rolling'
@@ -785,6 +864,7 @@ const GamePage: React.FC = () => {
               gamePhase={phase}
               allowAssetActions={canManageAssetsThisTurn}
               onBlockingModalChange={setIsBoardBlockingModalOpen}
+              onChanceMoneyEffect={handleChanceMoneyEffect}
               gameResult={gameResult}
               isGameOver={isGameOver}
               winnerId={winnerId}
