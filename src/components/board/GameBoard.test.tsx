@@ -200,7 +200,7 @@ const tiles = [
   },
   {
     index: 24,
-    name: '섬으로 이동',
+    name: '무인도로 이동',
     type: 'MOVE_TO_ISLAND',
     building: 0,
   },

@@ -62,3 +62,10 @@
 - Validation focus in this cycle:
   - remove zero-balance bankrupt false positives
   - preserve server-authoritative totalAssets rendering path
+
+## 2026-04-03 Context Update
+
+- Backend SoT diff check against `default.v1.json` confirmed a single board-name drift:
+  - tile 24 expected `무인도로 이동`, frontend fallback/mock still had `섬으로 이동`.
+- Tile metadata normalization gap:
+  - adapter did not preserve `transportType` for `TRAVEL`, causing mock/real payload semantics to be weaker than server payload.

@@ -79,6 +79,7 @@ const TILE_TYPE_TO_INTERNAL_MAP: Record<string, Tile['type']> = {
   PROPERTY: 'property',
   EVENT: 'event',
   CHANCE: 'chance',
+  TRAVEL: 'travel',
   MOVE_TO_ISLAND: 'go_to_island',
   ISLAND: 'island',
 }
