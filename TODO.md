@@ -6,10 +6,7 @@
 
 ## In Progress
 
-- [ ] `game-board-result-and-travel-fix` - Game Board Result And Travel Fix (`docs/ai/tasks/game-board-result-and-travel-fix/`) - 결과 모달 보유도시 수를 종료 시점 타일 소유 정보로 복구하고 이벤트칸 오인 travel 애니메이션을 수정
-- [ ] `island-speed-and-exit-modal-style` - Island Speed and Exit Modal Style (`docs/ai/tasks/island-speed-and-exit-modal-style/`) - 무인도 이동 속도 개선 및 게임 종료 모달 스타일 통일
 - [ ] `board-sot-sync` - Board SoT sync + initial full sync (`docs/ai/tasks/board-sot-sync/`) - 보드판 SoT를 백엔드 기준으로 전환하고 최초 sync knownRevision=-1 요청 반영
-- [ ] `chance-move-direction-animation` - Chance Move Direction Animation (`docs/ai/tasks/chance-move-direction-animation/`) - chance 이동 방향 힌트 기반 순차 애니메이션 보정 및 검증
 - [ ] `mypage-nickname-change` - MyPage Nickname Change (`docs/ai/tasks/mypage-nickname-change/`) - 게스트 제한은 유지하고 카카오 사용자는 마이페이지에서 닉네임을 반복 변경할 수 있게 정리
 - [ ] `git-flow-template-source-of-truth` - Git Flow Template Source Of Truth (`docs/ai/tasks/git-flow-template-source-of-truth/`) - ai:git-flow가 .github 템플릿을 직접 읽어 issue/PR 제목, labels, 본문을 생성하도록 정렬
 
@@ -17,6 +14,9 @@
 
 ## Done
 
+- [x] `game-board-result-and-travel-fix` - Game Board Result And Travel Fix (`docs/ai/tasks/game-board-result-and-travel-fix/`) - 결과 모달 보유도시 수를 종료 시점 타일 소유 정보로 복구하고 이벤트칸 오인 travel 애니메이션을 수정
+- [x] `island-speed-and-exit-modal-style` - Island Speed and Exit Modal Style (`docs/ai/tasks/island-speed-and-exit-modal-style/`) - 무인도 이동 속도 개선 및 게임 종료 모달 스타일 통일
+- [x] `chance-move-direction-animation` - Chance Move Direction Animation (`docs/ai/tasks/chance-move-direction-animation/`) - chance 이동 방향 힌트 기반 순차 애니메이션 보정 및 검증
 - [x] `game-chat-panel-solo-play-toggle` - Game Chat Panel Solo Play Toggle (`docs/ai/tasks/game-chat-panel-solo-play-toggle/`) - 게임방 채팅 테스트 패널 문구를 정리하고 mock 혼자 플레이 토글로 상대 턴 주사위/턴 종료/prompt 응답을 가능하게 정리
 - [x] `game-debug-overlay-production-hide` - Game Debug Overlay 배포 숨김 (`docs/ai/tasks/game-debug-overlay-production-hide/`) - `GamePage` 오른쪽 상단 debug/status overlay를 production에서 숨기고 dev에서만 유지
 - [x] `game-board-modal-reveal-policy-split` - Game Board Modal Reveal Policy Split (`docs/ai/tasks/game-board-modal-reveal-policy-split/`) - pre-move / post-move reveal policy를 분리해 travel, go-to-island, chance chain move modal ordering을 정리

@@ -53,14 +53,17 @@ import { useBoardEventQueue } from './useBoardEventQueue'
 import {
   FAST_MOVE_ANIMATION_OPTIONS,
   getPendingMovePlayerIdsFromEvents,
+  getPendingMoveStartIndexByPlayerIdFromEvents,
   getBoardEventAnimationHoldMs,
   resolveBoardCardModalContentFromEvent,
   resolveBoardEventTileIndex,
+  resolveChanceMoneyEffectFromEvent,
   resolveChanceMoveAnimationHint,
   shouldApplyTravelMoveAnimation,
   shouldRevealPostMoveSurface,
   shouldRevealPreMoveSurface,
   type BoardEventAnimationKind,
+  type ChanceMoneyEffect,
   type BoardMoveDirection,
 } from './gameBoardEventQueueUtils'
 import { buildGameResultModalRows } from './gameBoardResultUtils'
@@ -372,6 +375,7 @@ interface GameBoardProps {
   winnerId?: PlayerId | null
   onGameResultConfirm?: () => void
   onBlockingModalChange?: (blocked: boolean) => void
+  onChanceMoneyEffect?: (effect: ChanceMoneyEffect) => void
   activeGlobalEffect?: GlobalEffectState | null
 }
 
@@ -514,6 +518,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       winnerId = null,
       onGameResultConfirm,
       onBlockingModalChange,
+      onChanceMoneyEffect,
       activeGlobalEffect = null,
     },
     ref
@@ -551,6 +556,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const eventQueue = useGameStore((state) => state.eventQueue)
     const pendingMovePlayerIds = useMemo(
       () => getPendingMovePlayerIdsFromEvents(eventQueue),
+      [eventQueue]
+    )
+    const pendingMoveStartIndexByPlayerId = useMemo(
+      () => getPendingMoveStartIndexByPlayerIdFromEvents(eventQueue),
       [eventQueue]
     )
     const pendingMovePlayerIdSet = useMemo(
@@ -822,6 +831,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             playerKey && playerKey !== 'null'
               ? pendingChanceMoveHintRef.current[playerKey]
               : undefined
+          const pendingFromIndexForPlayer =
+            playerKey && playerKey !== 'null'
+              ? pendingMoveStartIndexByPlayerId[playerKey]
+              : undefined
           const lastKnownFrom =
             playerKey && playerKey !== 'null'
               ? lastMovePositionRef.current[playerKey]
@@ -830,6 +843,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
             (Number.isFinite(parsedFromIndex ?? Number.NaN)
               ? Number(parsedFromIndex)
               : null) ??
+            pendingFromIndexForPlayer ??
             lastKnownFrom ??
             playersRef.current.find(
               (p) => String(p.id) === String(event.playerId)
@@ -938,6 +952,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
         if (normalizedType === 'CHANCE_RESOLVED') {
           const chanceMoveHint = resolveChanceMoveAnimationHint(event)
+          const chanceMoneyEffect = resolveChanceMoneyEffectFromEvent(event)
           if (chanceMoveHint) {
             pendingChanceMoveHintRef.current[chanceMoveHint.playerId] = {
               direction: chanceMoveHint.direction,
@@ -947,6 +962,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
           if (!isLocalPlayerEvent) {
             return
+          }
+
+          if (chanceMoneyEffect) {
+            onChanceMoneyEffect?.(chanceMoneyEffect)
           }
 
           const cardModalContent = resolveBoardCardModalContentFromEvent(
@@ -982,6 +1001,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         lockBoardActionModals,
         localPlayerId,
         movePlayerSequentially,
+        onChanceMoneyEffect,
+        pendingMoveStartIndexByPlayerId,
         releaseBoardActionModalsNextFrame,
         startTravelTokenFx,
       ]
@@ -2365,9 +2386,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               .map((p) => {
                 const playerKey = String(p.id)
                 const animatedPos = animatedPositions[playerKey]
-                const pendingPos = pendingMovePlayerIdSet.has(playerKey)
-                  ? lastMovePositionRef.current[playerKey]
-                  : undefined
+                const pendingPos = pendingMoveStartIndexByPlayerId[playerKey]
                 const pos = animatedPos ?? pendingPos ?? p.pos
                 const { row, col } = getTileGridPos(pos)
                 const tokensAtThisPos = players.filter((pl) => {
@@ -2376,9 +2395,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   }
                   const key = String(pl.id)
                   const plAnimatedPos = animatedPositions[key]
-                  const plPendingPos = pendingMovePlayerIdSet.has(key)
-                    ? lastMovePositionRef.current[key]
-                    : undefined
+                  const plPendingPos = pendingMoveStartIndexByPlayerId[key]
                   const renderPos = plAnimatedPos ?? plPendingPos ?? pl.pos
                   return renderPos === pos
                 })
@@ -2400,6 +2417,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                     stripOffset={hasStrip ? 7 : 0}
                     offset={offset}
                     isTraveling={Boolean(travelingPlayerIds[playerKey])}
+                    hideStateBadge={animatedPos != null || pendingPos != null}
                     travelIconSrc="/Travel- airplane.svg"
                     // Grid 직접 컨트롤 (움찔거림 방지 핵심)
                     style={{

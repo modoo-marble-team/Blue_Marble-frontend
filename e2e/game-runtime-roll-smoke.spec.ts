@@ -46,20 +46,34 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
     await expect(rollButton).toBeVisible()
 
     const consumePromptIfVisible = async () => {
-      const modalActionButtons = page.locator(
-        'div.fixed.inset-0.z-50 button:enabled'
-      )
+      const topModalOverlay = page
+        .locator('div.fixed.inset-0:has(button:enabled)')
+        .last()
 
-      if ((await modalActionButtons.count()) > 0) {
-        await modalActionButtons.first().click()
-        await page.waitForTimeout(350)
-        return true
+      if ((await topModalOverlay.count()) > 0) {
+        const modalActionButtons = topModalOverlay.locator('button:enabled')
+        const buttonCount = await modalActionButtons.count()
+
+        for (let index = buttonCount - 1; index >= 0; index -= 1) {
+          const button = modalActionButtons.nth(index)
+          if (!(await button.isVisible()) || !(await button.isEnabled())) {
+            continue
+          }
+
+          try {
+            await button.click({ timeout: 1200 })
+            await page.waitForTimeout(350)
+            return true
+          } catch {
+            await page.waitForTimeout(80)
+          }
+        }
       }
 
       for (const promptPattern of PROMPT_BUTTONS) {
         const button = page.getByRole('button', { name: promptPattern }).first()
         if ((await button.count()) > 0 && (await button.isVisible())) {
-          await button.click()
+          await button.click({ timeout: 1200 })
           await page.waitForTimeout(350)
           return true
         }

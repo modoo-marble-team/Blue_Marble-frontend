@@ -588,7 +588,7 @@ describe('mock game socket handlers contract', () => {
     teardown()
   })
 
-  it('does not mark player bankrupt when toll payment consumes balance down to exactly zero', async () => {
+  it('marks player bankrupt when toll payment consumes balance down to exactly zero', async () => {
     const { acks, patches, teardown } = captureGameSocketEvents()
     const gameId = 'game-pay-toll-zero-balance'
 
@@ -639,8 +639,245 @@ describe('mock game socket handlers contract', () => {
       (player) => String(player.id) === currentPlayerId
     )
     expect(settledPlayer?.balance).toBe(0)
-    expect(settledPlayer?.is_bankrupt).toBe(false)
-    expect(settledPlayer?.state).not.toBe('bankrupt')
+    expect(settledPlayer?.is_bankrupt).toBe(true)
+    expect(settledPlayer?.state).toBe('bankrupt')
+
+    teardown()
+  })
+
+  it('uses travel trigger for TRAVEL_SELECT confirm', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-travel-trigger'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+
+    const baselinePatch = patches[patches.length - 1]
+    const currentPlayerId = String(baselinePatch?.snapshot?.currentTurn ?? '1')
+    const prompt: GamePrompt = {
+      id: 'prompt-travel-trigger',
+      type: 'TRAVEL_SELECT',
+      playerId: currentPlayerId,
+      timeoutSec: 30,
+      payload: {
+        tileId: 16,
+      },
+    }
+    mockDevSetPromptForTest(prompt)
+    patches.length = 0
+
+    mockEmitPromptResponse({
+      gameId,
+      promptId: prompt.id,
+      choice: 'CONFIRM',
+      payload: {
+        targetTileId: 7,
+      },
+    })
+    await flushMockTimers()
+
+    const promptAck = acks.find(
+      (ack) => ack.type === 'PROMPT_RESPONSE' && ack.promptId === prompt.id
+    )
+    expect(promptAck?.ok).toBe(true)
+
+    const promptPatch = patches.find(
+      (patch) => patch.revision === promptAck?.revision
+    )
+    const movedEvent = promptPatch?.events?.find(
+      (event) => event.type === 'PLAYER_MOVED'
+    )
+
+    expect(movedEvent?.payload?.trigger).toBe('travel')
+
+    teardown()
+  })
+
+  it('rejects BUY when prompt price equals player balance', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-buy-strict-balance'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+
+    const baselinePatch = patches[patches.length - 1]
+    const currentPlayerId = String(baselinePatch?.snapshot?.currentTurn ?? '1')
+    const currentPlayer = baselinePatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+    expect(currentPlayer).toBeDefined()
+
+    const prompt: GamePrompt = {
+      id: 'prompt-buy-strict-balance',
+      type: 'BUY_OR_SKIP',
+      playerId: currentPlayerId,
+      timeoutSec: 30,
+      payload: {
+        tileId: 1,
+        price: currentPlayer?.balance ?? 0,
+      },
+    }
+    mockDevSetPromptForTest(prompt)
+    patches.length = 0
+
+    mockEmitPromptResponse({
+      gameId,
+      promptId: prompt.id,
+      choice: 'BUY',
+    })
+    await flushMockTimers()
+
+    const promptAck = acks.find(
+      (ack) => ack.type === 'PROMPT_RESPONSE' && ack.promptId === prompt.id
+    )
+    expect(promptAck?.ok).toBe(true)
+
+    const promptPatch = patches.find(
+      (patch) => patch.revision === promptAck?.revision
+    )
+    const insufficientEvent = promptPatch?.events?.find(
+      (event) => event.type === 'INSUFFICIENT_FUNDS'
+    )
+    const settledPlayer = promptPatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+
+    expect(insufficientEvent).toBeDefined()
+    expect(settledPlayer?.balance).toBe(currentPlayer?.balance ?? 0)
+
+    teardown()
+  })
+
+  it('applies chance GAIN_MONEY amount to player balance after landing on chance tile', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-chance-gain-money'
+    const actionId = 'action-roll-chance-gain-money'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+
+    const baselinePatch = patches[patches.length - 1]
+    const currentPlayerId = String(baselinePatch?.snapshot?.currentTurn ?? '')
+    const currentPlayerBeforeRoll = baselinePatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+    expect(currentPlayerBeforeRoll).toBeDefined()
+
+    patches.length = 0
+
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0) // dice1 => 1
+      .mockReturnValueOnce(0.2) // dice2 => 2 (total 3, lands on chance tile)
+      .mockReturnValueOnce(0) // chance effect index 0 => GAIN_MONEY (3억원)
+
+    mockEmitGameAction({
+      actionId,
+      type: 'ROLL_DICE',
+      gameId,
+    })
+    await flushMockTimers()
+    randomSpy.mockRestore()
+
+    const rollAck = acks.find((ack) => ack.actionId === actionId)
+    expect(rollAck?.ok).toBe(true)
+
+    const rollPatch = patches.find(
+      (patch) => patch.revision === rollAck?.revision
+    )
+    expect(rollPatch).toBeDefined()
+
+    const chanceResolvedEvent = rollPatch?.events?.find(
+      (event) => event.type === 'CHANCE_RESOLVED'
+    )
+    expect(chanceResolvedEvent).toBeDefined()
+
+    const chancePayloadRecord = chanceResolvedEvent?.payload as
+      | Record<string, unknown>
+      | undefined
+    const chanceRecord = chancePayloadRecord?.chance as
+      | Record<string, unknown>
+      | undefined
+    const chanceType =
+      typeof chanceRecord?.type === 'string' ? chanceRecord.type : null
+    const chancePower =
+      typeof chanceRecord?.power === 'number' ? chanceRecord.power : null
+    expect(chanceType).toBe('GAIN_MONEY')
+    expect(chancePower).toBeGreaterThan(0)
+
+    const currentPlayerAfterRoll = rollPatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+    expect(currentPlayerAfterRoll).toBeDefined()
+    expect(currentPlayerAfterRoll?.position).toBe(3)
+    expect(currentPlayerAfterRoll?.balance).toBe(
+      (currentPlayerBeforeRoll?.balance ?? 0) + (chancePower ?? 0)
+    )
+
+    teardown()
+  })
+
+  it('locks player on island for exactly 3 turns when landing on island tile', async () => {
+    const { acks, patches, teardown } = captureGameSocketEvents()
+    const gameId = 'game-island-lock-3-turns'
+    const actionId = 'action-roll-island-lock'
+
+    mockEmitGameSync({
+      gameId,
+      knownRevision: -1,
+    })
+    await flushMockTimers()
+    patches.length = 0
+
+    const randomSpy = vi
+      .spyOn(Math, 'random')
+      .mockReturnValueOnce(0.34) // dice1 => 3
+      .mockReturnValueOnce(0.67) // dice2 => 5 (total 8, lands on island tile)
+
+    mockEmitGameAction({
+      actionId,
+      type: 'ROLL_DICE',
+      gameId,
+    })
+    await flushMockTimers()
+    randomSpy.mockRestore()
+
+    const rollAck = acks.find((ack) => ack.actionId === actionId)
+    expect(rollAck?.ok).toBe(true)
+
+    const rollPatch = patches.find(
+      (patch) => patch.revision === rollAck?.revision
+    )
+    expect(rollPatch).toBeDefined()
+
+    const currentPlayerId = String(rollPatch?.snapshot?.currentTurn ?? '')
+    const settledPlayer = rollPatch?.snapshot?.players.find(
+      (player) => String(player.id) === currentPlayerId
+    )
+    expect(settledPlayer).toBeDefined()
+    expect(settledPlayer?.position).toBe(8)
+    expect(settledPlayer?.state).toBe('locked')
+    expect(settledPlayer?.stateDuration).toBe(3)
+    expect(settledPlayer?.jail_turn_count).toBe(3)
+
+    const stateChangedEvent = rollPatch?.events?.find(
+      (event) =>
+        event.type === 'PLAYER_STATE_CHANGED' &&
+        String(event.playerId) === currentPlayerId
+    )
+    const statePayload = stateChangedEvent?.payload as
+      | Record<string, unknown>
+      | undefined
+    expect(statePayload?.stateDuration).toBe(3)
 
     teardown()
   })

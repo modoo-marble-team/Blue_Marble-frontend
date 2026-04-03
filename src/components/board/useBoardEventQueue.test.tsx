@@ -33,9 +33,11 @@ const tiles: TileData[] = [
 const setupHook = ({
   enabled = true,
   paused = false,
+  onEventConsumed,
 }: {
   enabled?: boolean
   paused?: boolean
+  onEventConsumed?: (event: { type: string }) => void
 } = {}) => {
   const setStatus = vi.fn()
   const setDice1 = vi.fn()
@@ -53,6 +55,7 @@ const setupHook = ({
         setDice1,
         setDice2,
         onEventAnimation,
+        onEventConsumed,
       }),
     {
       initialProps: {
@@ -199,6 +202,30 @@ describe('useBoardEventQueue', () => {
 
     expect(setStatus).toHaveBeenCalledTimes(1)
     expect(onEventAnimation).toHaveBeenCalledWith('move')
+    expect(useGameStore.getState().eventQueue).toHaveLength(0)
+  })
+
+  it('keeps queue head available while onEventConsumed callback runs', () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+        payload: {
+          fromIndex: 0,
+          toIndex: 1,
+        },
+      },
+    ])
+
+    const onEventConsumed = vi.fn(() => {
+      expect(useGameStore.getState().eventQueue).toHaveLength(1)
+      expect(useGameStore.getState().eventQueue[0]?.type).toBe('PLAYER_MOVED')
+    })
+
+    setupHook({ onEventConsumed })
+
+    expect(onEventConsumed).toHaveBeenCalledTimes(1)
     expect(useGameStore.getState().eventQueue).toHaveLength(0)
   })
 })

@@ -65,7 +65,7 @@ export function useBoardEventQueue({
       }
 
       consumingRef.current = true
-      const nextEvent = storeState.consumeNextEvent()
+      const nextEvent = storeState.eventQueue[0]
 
       if (!nextEvent) {
         releaseLock()
@@ -73,6 +73,10 @@ export function useBoardEventQueue({
       }
 
       onEventConsumed?.(nextEvent)
+
+      // Keep the event visible to render logic during consume callback execution.
+      // This avoids a frame where pending move data disappears before animation starts.
+      useGameStore.getState().consumeNextEvent()
 
       if (import.meta.env.DEV) {
         console.debug('[eventQueue] consumed', nextEvent.type, nextEvent)

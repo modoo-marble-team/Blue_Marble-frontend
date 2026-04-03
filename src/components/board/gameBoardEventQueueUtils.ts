@@ -26,6 +26,12 @@ export type ChanceMoveAnimationHint = {
   steps: number
 }
 
+export type ChanceMoneyEffect = {
+  playerId: string
+  chanceType: 'GAIN_MONEY' | 'LOSE_MONEY'
+  amount: number
+}
+
 export const FAST_MOVE_ANIMATION_OPTIONS = {
   initialDelayMs: 200,
   stepDelayMs: 80,
@@ -105,6 +111,66 @@ export const getPendingMovePlayerIdsFromEvents = (events: ServerEvent[]) =>
         event.playerId != null
     )
     .map((event) => String(event.playerId))
+
+const toFiniteIntOrNull = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.trunc(value)
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseInt(value, 10)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+export const getPendingMoveStartIndexByPlayerIdFromEvents = (
+  events: ServerEvent[]
+) => {
+  const pendingStartIndexByPlayerId: Record<string, number> = {}
+
+  for (const event of events) {
+    if (toCanonicalEventType(event.type) !== 'PLAYER_MOVED') {
+      continue
+    }
+    if (event.playerId == null) {
+      continue
+    }
+
+    const playerId = String(event.playerId)
+    if (pendingStartIndexByPlayerId[playerId] != null) {
+      continue
+    }
+
+    const eventRecord = getEventRecord(event)
+    const payloadRecord =
+      event.payload && typeof event.payload === 'object' ? event.payload : null
+    const fromIndex =
+      toFiniteIntOrNull(eventRecord.fromIndex) ??
+      toFiniteIntOrNull(eventRecord.from_index) ??
+      toFiniteIntOrNull(eventRecord.fromTileId) ??
+      toFiniteIntOrNull(eventRecord.from_tile_id) ??
+      toFiniteIntOrNull(eventRecord.fromTile) ??
+      toFiniteIntOrNull(eventRecord.from_tile) ??
+      toFiniteIntOrNull(payloadRecord?.fromIndex) ??
+      toFiniteIntOrNull(payloadRecord?.from_index) ??
+      toFiniteIntOrNull(payloadRecord?.fromTileId) ??
+      toFiniteIntOrNull(payloadRecord?.from_tile_id) ??
+      toFiniteIntOrNull(payloadRecord?.fromTile) ??
+      toFiniteIntOrNull(payloadRecord?.from_tile)
+
+    if (fromIndex == null) {
+      continue
+    }
+
+    pendingStartIndexByPlayerId[playerId] = fromIndex
+  }
+
+  return pendingStartIndexByPlayerId
+}
 
 export const shouldDelayPromptModalByMovement = ({
   promptPlayerId,
@@ -344,6 +410,20 @@ export const resolveBoardEventTileIndex = (event: ServerEvent) => {
   return getPayloadNumber(payload, ['toIndex', 'tileIndex', 'toTileId'])
 }
 
+const resolveChanceRecord = (event: ServerEvent) => {
+  const eventRecord = getEventRecord(event)
+  return (
+    (typeof eventRecord.chance === 'object' && eventRecord.chance !== null
+      ? (eventRecord.chance as Record<string, unknown>)
+      : null) ??
+    (event.payload?.chance &&
+    typeof event.payload.chance === 'object' &&
+    event.payload.chance !== null
+      ? (event.payload.chance as Record<string, unknown>)
+      : null)
+  )
+}
+
 export const resolveChanceMoveAnimationHint = (
   event: ServerEvent
 ): ChanceMoveAnimationHint | null => {
@@ -355,16 +435,7 @@ export const resolveChanceMoveAnimationHint = (
     return null
   }
 
-  const eventRecord = getEventRecord(event)
-  const chanceRecord =
-    (typeof eventRecord.chance === 'object' && eventRecord.chance !== null
-      ? (eventRecord.chance as Record<string, unknown>)
-      : undefined) ??
-    (event.payload?.chance &&
-    typeof event.payload.chance === 'object' &&
-    event.payload.chance !== null
-      ? (event.payload.chance as Record<string, unknown>)
-      : undefined)
+  const chanceRecord = resolveChanceRecord(event)
 
   const chanceType = getRecordString(chanceRecord, ['type'])
     ?.trim()
@@ -390,6 +461,42 @@ export const resolveChanceMoveAnimationHint = (
   }
 }
 
+export const resolveChanceMoneyEffectFromEvent = (
+  event: ServerEvent
+): ChanceMoneyEffect | null => {
+  if (toCanonicalEventType(event.type) !== 'CHANCE_RESOLVED') {
+    return null
+  }
+
+  if (event.playerId == null) {
+    return null
+  }
+
+  const chanceRecord = resolveChanceRecord(event)
+  const chanceType = getRecordString(chanceRecord, ['type'])
+    ?.trim()
+    .toUpperCase()
+
+  if (chanceType !== 'GAIN_MONEY' && chanceType !== 'LOSE_MONEY') {
+    return null
+  }
+
+  const rawAmount =
+    getRecordNumber(chanceRecord, ['power', 'amount']) ??
+    getPayloadNumber(event.payload, ['power', 'amount'])
+  const amount = Math.trunc(Math.abs(rawAmount ?? 0))
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null
+  }
+
+  return {
+    playerId: String(event.playerId),
+    chanceType,
+    amount,
+  }
+}
+
 const resolveEventTileName = (event: ServerEvent, tiles: TileData[]) => {
   const eventRecord = getEventRecord(event)
   const eventTile = getEventTileRecord(event)
@@ -405,16 +512,7 @@ const resolveEventTileName = (event: ServerEvent, tiles: TileData[]) => {
 }
 
 const resolveChanceDescription = (event: ServerEvent) => {
-  const eventRecord = getEventRecord(event)
-  const chanceRecord =
-    (typeof eventRecord.chance === 'object' && eventRecord.chance !== null
-      ? (eventRecord.chance as Record<string, unknown>)
-      : null) ??
-    (event.payload?.chance &&
-    typeof event.payload.chance === 'object' &&
-    event.payload.chance !== null
-      ? (event.payload.chance as Record<string, unknown>)
-      : null)
+  const chanceRecord = resolveChanceRecord(event)
 
   return (
     getRecordString(chanceRecord, ['description']) ??
