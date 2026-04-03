@@ -84,3 +84,10 @@
   - `chance-move-direction-animation`, `game-board-result-and-travel-fix`,
     `island-speed-and-exit-modal-style` moved to `Done`
   - `board-sot-sync` remains `In Progress` until workflow-gate follow-up item closes
+
+## 2026-04-03 Workflow Gate Follow-up
+
+- PR workflow gate rerun after body-format fix:
+  - run id: `23948439413`
+  - workflow: `Workflow Gate`
+  - conclusion: `success`

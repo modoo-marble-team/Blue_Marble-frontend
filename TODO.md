@@ -4,16 +4,17 @@
 
 ## Ready
 
-## In Progress
+- [ ] `runtime-parity-regression-guard` - Runtime Parity Regression Guard (`docs/ai/tasks/runtime-parity-regression-guard/`)
 
-- [ ] `board-sot-sync` - Board SoT sync + initial full sync (`docs/ai/tasks/board-sot-sync/`) - 보드판 SoT를 백엔드 기준으로 전환하고 최초 sync knownRevision=-1 요청 반영
-- [ ] `mypage-nickname-change` - MyPage Nickname Change (`docs/ai/tasks/mypage-nickname-change/`) - 게스트 제한은 유지하고 카카오 사용자는 마이페이지에서 닉네임을 반복 변경할 수 있게 정리
-- [ ] `git-flow-template-source-of-truth` - Git Flow Template Source Of Truth (`docs/ai/tasks/git-flow-template-source-of-truth/`) - ai:git-flow가 .github 템플릿을 직접 읽어 issue/PR 제목, labels, 본문을 생성하도록 정렬
+## In Progress
 
 ## Blocked
 
 ## Done
 
+- [x] `board-sot-sync` - Board SoT sync + initial full sync (`docs/ai/tasks/board-sot-sync/`) - 보드판 SoT를 백엔드 기준으로 전환하고 최초 sync knownRevision=-1 요청 반영
+- [x] `mypage-nickname-change` - MyPage Nickname Change (`docs/ai/tasks/mypage-nickname-change/`) - 게스트 제한은 유지하고 카카오 사용자는 마이페이지에서 닉네임을 반복 변경할 수 있게 정리
+- [x] `git-flow-template-source-of-truth` - Git Flow Template Source Of Truth (`docs/ai/tasks/git-flow-template-source-of-truth/`) - ai:git-flow가 .github 템플릿을 직접 읽어 issue/PR 제목, labels, 본문을 생성하도록 정렬
 - [x] `game-board-result-and-travel-fix` - Game Board Result And Travel Fix (`docs/ai/tasks/game-board-result-and-travel-fix/`) - 결과 모달 보유도시 수를 종료 시점 타일 소유 정보로 복구하고 이벤트칸 오인 travel 애니메이션을 수정
 - [x] `island-speed-and-exit-modal-style` - Island Speed and Exit Modal Style (`docs/ai/tasks/island-speed-and-exit-modal-style/`) - 무인도 이동 속도 개선 및 게임 종료 모달 스타일 통일
 - [x] `chance-move-direction-animation` - Chance Move Direction Animation (`docs/ai/tasks/chance-move-direction-animation/`) - chance 이동 방향 힌트 기반 순차 애니메이션 보정 및 검증

@@ -29,7 +29,7 @@
 
 - [x] Updated task triplet files in current high-risk runtime branch.
 - [x] Confirmed TODO slug linkage for `board-sot-sync`.
-- [ ] Re-run workflow-gate after pushing this doc update.
+- [x] Re-run workflow-gate after pushing this doc update (`Workflow Gate` run `23948439413`, success).
 
 ## 2026-04-03 Parity Checklist
 
