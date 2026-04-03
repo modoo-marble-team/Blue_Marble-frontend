@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { ensureDevControlPanelOpen } from './helpers/devPanel'
 import { loginAsGuest, resetSessionAndOpenHome } from './helpers/session'
 
@@ -45,23 +45,35 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
     const rollButton = page.getByRole('button', { name: /ROLL|END/ })
     await expect(rollButton).toBeVisible()
 
+    const clickActionButton = async (button: Locator) => {
+      await button.scrollIntoViewIfNeeded()
+
+      try {
+        await button.click({ timeout: 1200 })
+      } catch {
+        await button.click({ timeout: 1200, force: true })
+      }
+    }
+
     const consumePromptIfVisible = async () => {
       const topModalOverlay = page
         .locator('div.fixed.inset-0:has(button:enabled)')
         .last()
 
       if ((await topModalOverlay.count()) > 0) {
-        const modalActionButtons = topModalOverlay.locator('button:enabled')
+        const modalActionButtons = topModalOverlay.locator(
+          'button:enabled:visible'
+        )
         const buttonCount = await modalActionButtons.count()
 
         for (let index = buttonCount - 1; index >= 0; index -= 1) {
           const button = modalActionButtons.nth(index)
-          if (!(await button.isVisible()) || !(await button.isEnabled())) {
+          if (!(await button.isEnabled())) {
             continue
           }
 
           try {
-            await button.click({ timeout: 1200 })
+            await clickActionButton(button)
             await page.waitForTimeout(350)
             return true
           } catch {
@@ -72,8 +84,12 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
 
       for (const promptPattern of PROMPT_BUTTONS) {
         const button = page.getByRole('button', { name: promptPattern }).first()
-        if ((await button.count()) > 0 && (await button.isVisible())) {
-          await button.click({ timeout: 1200 })
+        if (
+          (await button.count()) > 0 &&
+          (await button.isVisible()) &&
+          (await button.isEnabled())
+        ) {
+          await clickActionButton(button)
           await page.waitForTimeout(350)
           return true
         }
@@ -114,7 +130,7 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
         (await endTurnButton.count()) > 0 &&
         (await endTurnButton.isVisible())
       ) {
-        await endTurnButton.click()
+        await clickActionButton(endTurnButton)
       }
 
       await page.waitForTimeout(400)
