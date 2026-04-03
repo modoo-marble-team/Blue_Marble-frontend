@@ -291,6 +291,55 @@ describe('gameContractAdapters', () => {
     ])
   })
 
+  it('preserves transportType when set patch replaces tile objects using tile_type aliases', () => {
+    const normalized = normalizePatchEnvelopePayload({
+      gameId: 'game-tile-transport-patch',
+      revision: 95,
+      patch: [
+        {
+          op: 'set',
+          path: 'tiles.16',
+          value: {
+            tile_id: 16,
+            name: 'travel',
+            tile_type: 'TRAVEL',
+          },
+        },
+        {
+          op: 'set',
+          path: 'tiles.20',
+          value: {
+            tile_id: 20,
+            name: 'event',
+            tile_type: 'EVENT',
+          },
+        },
+      ],
+      events: [],
+    })
+
+    expect(normalized.patch).toEqual([
+      {
+        op: 'set',
+        path: 'tiles.16',
+        value: expect.objectContaining({
+          index: 16,
+          type: 'travel',
+          transportType: 'TRAVEL',
+        }),
+      },
+      {
+        op: 'set',
+        path: 'tiles.20',
+        value: expect.objectContaining({
+          index: 20,
+          type: 'event',
+          transportType: 'EVENT',
+        }),
+      },
+    ])
+  })
+
   it('normalizes active global effect from snapshot aliases', () => {
     const normalized = normalizeSnapshotPayload(
       {
