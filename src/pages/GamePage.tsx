@@ -26,7 +26,12 @@ import {
   emitPromptResponse,
 } from '../services/socket/game.handler'
 import { useGameStore } from '../stores/game.store'
-import type { GamePromptChoice, GameRanking, PlayerId } from '../types/domain'
+import type {
+  GamePromptChoice,
+  GameRanking,
+  PlayerId,
+  ServerEvent,
+} from '../types/domain'
 import {
   findBoardCurrentPlayerIndex,
   mapStorePlayersToBoardPlayers,
@@ -40,6 +45,11 @@ import {
   type PendingGameChatEcho,
 } from './game/gameChat'
 import { getGameLeaveErrorMessage, leaveRoomFromGame } from './game/api'
+import {
+  clearMockGameResumeContext,
+  readMockGameResumeContext,
+  writeMockGameResumeContext,
+} from './game/mockGameResumeStorage'
 import { sendWaitingRoomChat } from './waiting-room/socket/socket'
 import type {
   ChatEventPayload,
@@ -91,6 +101,115 @@ type ChanceMoneyEffectPayload = {
   playerId: string
   chanceType: 'GAIN_MONEY' | 'LOSE_MONEY'
   amount: number
+}
+
+const MONEY_UNIT_SCALE = 10_000
+const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const getRecordString = (
+  record: Record<string, unknown> | null | undefined,
+  keys: string[]
+) => {
+  if (!record) {
+    return null
+  }
+
+  for (const key of keys) {
+    const raw = record[key]
+    if (typeof raw === 'string' && raw.trim() !== '') {
+      return raw
+    }
+  }
+
+  return null
+}
+
+const getRecordNumber = (
+  record: Record<string, unknown> | null | undefined,
+  keys: string[]
+) => {
+  if (!record) {
+    return null
+  }
+
+  for (const key of keys) {
+    const raw = record[key]
+    if (typeof raw === 'number' && Number.isFinite(raw)) {
+      return raw
+    }
+    if (typeof raw === 'string' && raw.trim() !== '') {
+      const parsed = Number.parseFloat(raw)
+      if (Number.isFinite(parsed)) {
+        return parsed
+      }
+    }
+  }
+
+  return null
+}
+
+const normalizeChanceMoneyAmountToWon = (value: number | null) => {
+  if (value == null || !Number.isFinite(value)) {
+    return null
+  }
+
+  const normalized = Math.trunc(Math.abs(value))
+  if (normalized <= 0) {
+    return null
+  }
+
+  if (normalized >= MONEY_ALREADY_WON_THRESHOLD) {
+    return normalized
+  }
+
+  return normalized * MONEY_UNIT_SCALE
+}
+
+const resolveQueuedChanceMoneyEffect = (
+  event: ServerEvent
+): ChanceMoneyEffectPayload | null => {
+  if (typeof event.type !== 'string') {
+    return null
+  }
+
+  if (event.type.trim().toUpperCase() !== 'CHANCE_RESOLVED') {
+    return null
+  }
+
+  if (event.playerId == null) {
+    return null
+  }
+
+  const eventRecord = isRecord(event) ? event : null
+  const payloadRecord = isRecord(event.payload) ? event.payload : null
+  const chanceRecord =
+    (isRecord(eventRecord?.chance) ? eventRecord.chance : null) ??
+    (isRecord(payloadRecord?.chance) ? payloadRecord.chance : null)
+  const chanceType = getRecordString(chanceRecord, ['type'])
+    ?.trim()
+    .toUpperCase()
+
+  if (chanceType !== 'GAIN_MONEY' && chanceType !== 'LOSE_MONEY') {
+    return null
+  }
+
+  const rawAmount =
+    getRecordNumber(chanceRecord, ['power', 'amount']) ??
+    getRecordNumber(payloadRecord, ['power', 'amount'])
+  const amount = normalizeChanceMoneyAmountToWon(rawAmount)
+
+  if (amount == null || amount <= 0) {
+    return null
+  }
+
+  return {
+    playerId: String(event.playerId),
+    chanceType,
+    amount,
+  }
 }
 
 const toComparablePlayerId = (playerId: PlayerId | null | undefined) =>
@@ -174,6 +293,7 @@ const GamePage: React.FC = () => {
   const messages = useGameStore((s) => s.messages)
   const storePlayers = useGameStore((s) => s.players)
   const storeTiles = useGameStore((s) => s.tiles)
+  const eventQueue = useGameStore((s) => s.eventQueue)
   const gameResult = useGameStore((s) => s.gameResult)
   const isGameOver = useGameStore((s) => s.isGameOver)
   const winnerId = useGameStore((s) => s.winnerId)
@@ -187,13 +307,37 @@ const GamePage: React.FC = () => {
   const clearPrompt = useGameStore((s) => s.clearPrompt)
   const activeGlobalEffect = useGameStore((s) => s.activeGlobalEffect)
   const resetGame = useGameStore((s) => s.resetGame)
+  const mockResumeContext = useMemo(() => {
+    if (!USE_GAME_SOCKET_MOCK) {
+      return null
+    }
+
+    const storedContext = readMockGameResumeContext()
+    if (!storedContext) {
+      return null
+    }
+
+    if (
+      routeGameId != null &&
+      String(storedContext.gameId) !== String(routeGameId)
+    ) {
+      return null
+    }
+
+    return storedContext
+  }, [routeGameId])
   const activeGameId =
     locationState?.gameId ??
     routeGameId ??
     storeGameId ??
     gameSession.gameId ??
+    mockResumeContext?.gameId ??
     null
-  const activeRoomId = locationState?.roomId ?? gameSession.roomId ?? null
+  const activeRoomId =
+    locationState?.roomId ??
+    gameSession.roomId ??
+    mockResumeContext?.roomId ??
+    null
   const lastRoomSnapshot = locationState?.lastRoomSnapshot ?? null
   const [promptSubmittingChoice, setPromptSubmittingChoice] = useState<
     string | null
@@ -205,6 +349,10 @@ const GamePage: React.FC = () => {
     useState(false)
   const [deferredPlayerFinancialById, setDeferredPlayerFinancialById] =
     useState<Record<string, DeferredPlayerFinancialSnapshot>>({})
+  const [
+    hasObservedBoardBlockingModalForDeferredFinancial,
+    setHasObservedBoardBlockingModalForDeferredFinancial,
+  ] = useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
   const [isGlobalEffectModalOpen, setIsGlobalEffectModalOpen] = useState(false)
@@ -223,7 +371,19 @@ const GamePage: React.FC = () => {
     }
   }, [])
 
-  useGameState(activeGameId)
+  const { isInitialSyncPending } = useGameState(activeGameId)
+
+  useEffect(() => {
+    if (!USE_GAME_SOCKET_MOCK || !activeGameId || !activeRoomId) {
+      return
+    }
+
+    writeMockGameResumeContext({
+      gameId: String(activeGameId),
+      roomId: String(activeRoomId),
+      updatedAt: Date.now(),
+    })
+  }, [activeGameId, activeRoomId])
 
   useEffect(() => {
     if (
@@ -435,6 +595,7 @@ const GamePage: React.FC = () => {
           : currentTotalAssets + amount
       const playerId = String(targetPlayer.id)
 
+      setHasObservedBoardBlockingModalForDeferredFinancial(false)
       setDeferredPlayerFinancialById((previous) => ({
         ...previous,
         [playerId]: {
@@ -447,23 +608,92 @@ const GamePage: React.FC = () => {
   )
 
   useEffect(() => {
-    if (isBoardBlockingModalOpen) {
+    const hasDeferredFinancial =
+      Object.keys(deferredPlayerFinancialById).length > 0
+
+    if (!hasDeferredFinancial) {
+      if (hasObservedBoardBlockingModalForDeferredFinancial) {
+        setHasObservedBoardBlockingModalForDeferredFinancial(false)
+      }
       return
     }
 
-    if (Object.keys(deferredPlayerFinancialById).length === 0) {
+    if (isBoardBlockingModalOpen) {
+      if (!hasObservedBoardBlockingModalForDeferredFinancial) {
+        setHasObservedBoardBlockingModalForDeferredFinancial(true)
+      }
+      return
+    }
+
+    if (!hasObservedBoardBlockingModalForDeferredFinancial) {
       return
     }
 
     setDeferredPlayerFinancialById({})
-  }, [deferredPlayerFinancialById, isBoardBlockingModalOpen])
+    setHasObservedBoardBlockingModalForDeferredFinancial(false)
+  }, [
+    deferredPlayerFinancialById,
+    hasObservedBoardBlockingModalForDeferredFinancial,
+    isBoardBlockingModalOpen,
+  ])
+
+  const queuedChanceDeferredById = useMemo(() => {
+    if (eventQueue.length <= 0) {
+      return {}
+    }
+
+    const deferredById: Record<string, DeferredPlayerFinancialSnapshot> = {}
+
+    for (const event of eventQueue) {
+      const chanceMoneyEffect = resolveQueuedChanceMoneyEffect(event)
+      if (!chanceMoneyEffect) {
+        continue
+      }
+
+      const playerId = String(chanceMoneyEffect.playerId)
+      if (deferredById[playerId] != null) {
+        continue
+      }
+
+      const targetPlayer = storePlayers.find(
+        (player) => String(player.id) === playerId
+      )
+      if (!targetPlayer) {
+        continue
+      }
+
+      if (targetPlayer.is_bankrupt || targetPlayer.state === 'bankrupt') {
+        continue
+      }
+
+      const currentMoney = targetPlayer.balance ?? 0
+      const currentTotalAssets = targetPlayer.totalAssets ?? currentMoney
+      const previousMoney =
+        chanceMoneyEffect.chanceType === 'GAIN_MONEY'
+          ? currentMoney - chanceMoneyEffect.amount
+          : currentMoney + chanceMoneyEffect.amount
+      const previousTotalAssets =
+        chanceMoneyEffect.chanceType === 'GAIN_MONEY'
+          ? currentTotalAssets - chanceMoneyEffect.amount
+          : currentTotalAssets + chanceMoneyEffect.amount
+
+      deferredById[playerId] = {
+        money: Math.max(0, previousMoney),
+        totalAssets: Math.max(0, previousTotalAssets),
+      }
+    }
+
+    return deferredById
+  }, [eventQueue, storePlayers])
 
   const panelPlayers = useMemo(() => {
     const basePanelPlayers: PlayerPanelViewModel[] = storePlayers.map(
       (storePlayer, index) => {
         const boardPlayer = boardPlayers[index]
         const playerId = String(storePlayer.id)
-        const deferredFinancial = deferredPlayerFinancialById[playerId]
+        const deferredFinancial =
+          deferredPlayerFinancialById[playerId] ??
+          queuedChanceDeferredById[playerId]
         const money =
           deferredFinancial?.money ??
           storePlayer.balance ??
@@ -574,6 +804,7 @@ const GamePage: React.FC = () => {
     boardPlayers,
     deferredPlayerFinancialById,
     gameResult,
+    queuedChanceDeferredById,
     storePlayers,
   ])
   const currentPlayerState = boardPlayers[boardCurPlayer]
@@ -646,6 +877,9 @@ const GamePage: React.FC = () => {
     }
 
     if (!activeRoomId) {
+      if (USE_GAME_SOCKET_MOCK) {
+        clearMockGameResumeContext()
+      }
       resetGame()
       setIsExitModalOpen(false)
       navigate('/lobby', { replace: true })
@@ -663,6 +897,9 @@ const GamePage: React.FC = () => {
       requestOnlineUsersSnapshotSync({
         includeFollowUpRefresh: true,
       })
+      if (USE_GAME_SOCKET_MOCK) {
+        clearMockGameResumeContext()
+      }
       resetGame()
       setIsExitModalOpen(false)
       navigate('/lobby', { replace: true })
@@ -676,6 +913,9 @@ const GamePage: React.FC = () => {
   }
 
   const handleGameResultConfirm = () => {
+    if (USE_GAME_SOCKET_MOCK) {
+      clearMockGameResumeContext()
+    }
     resetGame()
 
     if (activeRoomId) {
@@ -750,12 +990,19 @@ const GamePage: React.FC = () => {
     isGameOver || phase === 'finished' || gameResult != null
 
   useEffect(() => {
-    if (!isFatalGameRouteError || hasFinishedGameState) {
+    if (
+      !isFatalGameRouteError ||
+      hasFinishedGameState ||
+      isInitialSyncPending
+    ) {
       return
     }
 
     setIsRecoveringFromFatalGameRoute(true)
 
+    if (USE_GAME_SOCKET_MOCK) {
+      clearMockGameResumeContext()
+    }
     resetGame()
 
     if (activeRoomId) {
@@ -772,17 +1019,25 @@ const GamePage: React.FC = () => {
   }, [
     activeRoomId,
     hasFinishedGameState,
+    isInitialSyncPending,
     isFatalGameRouteError,
     navigate,
     resetGame,
   ])
 
-  const isWaitingForServerState =
-    !USE_GAME_SOCKET_MOCK &&
+  const isWaitingForInitialMockSync =
+    USE_GAME_SOCKET_MOCK &&
     !hasFinishedGameState &&
     !isFatalGameRouteError &&
     !isRecoveringFromFatalGameRoute &&
-    storePlayers.length === 0
+    isInitialSyncPending
+  const isWaitingForServerState =
+    isWaitingForInitialMockSync ||
+    (!USE_GAME_SOCKET_MOCK &&
+      !hasFinishedGameState &&
+      !isFatalGameRouteError &&
+      !isRecoveringFromFatalGameRoute &&
+      storePlayers.length === 0)
 
   if (
     (isFatalGameRouteError || isRecoveringFromFatalGameRoute) &&

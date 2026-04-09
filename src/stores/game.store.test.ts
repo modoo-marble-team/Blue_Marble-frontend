@@ -316,6 +316,59 @@ describe('game store partial updates', () => {
     expect(nextState.pendingAction).toBeNull()
   })
 
+  it('applies snapshot and events atomically in a single store update', () => {
+    const store = useGameStore.getState()
+
+    store.setGameState({
+      prompt: {
+        id: 'prompt-before',
+        type: 'BUY_OR_SKIP',
+      },
+      pendingAction: {
+        actionId: 'action-before',
+        type: 'ROLL_DICE',
+        requestedAt: Date.now(),
+      },
+      eventQueue: [],
+    })
+
+    store.replaceFromSnapshotAndEnqueueEvents(
+      {
+        roomId: 'room-1',
+        gameId: 'game-1',
+        revision: 12,
+        phase: 'prompt',
+        players: [createPlayer()],
+        tiles: [createTile()],
+        currentPlayerId: 'player-1',
+        currentTurn: 'player-1',
+        round: 4,
+        turnTimeoutSec: 30,
+        prompt: {
+          id: 'prompt-after',
+          type: 'BUY_OR_SKIP',
+        },
+        gameResult: null,
+        isGameOver: false,
+        winnerId: null,
+      },
+      [
+        {
+          type: 'DICE_ROLLED',
+          playerId: 'player-1',
+          payload: { dice: [3, 2], total: 5 },
+        },
+      ]
+    )
+
+    const nextState = useGameStore.getState()
+
+    expect(nextState.prompt?.id).toBe('prompt-after')
+    expect(nextState.pendingAction).toBeNull()
+    expect(nextState.eventQueue).toHaveLength(1)
+    expect(nextState.eventQueue[0]?.type).toBe('DICE_ROLLED')
+  })
+
   it('applies revision 0 patch envelopes and keeps current revision value', () => {
     const store = useGameStore.getState()
 

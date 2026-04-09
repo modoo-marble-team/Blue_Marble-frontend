@@ -29,6 +29,7 @@ const RollControl: React.FC<RollControlProps> = ({
   const dashArray = 251 // Approx circumference for r=40
   const dashOffset = dashArray * (1 - timeLeft / (turnTimeoutSec || 30))
   const previousTimeLeftRef = useRef<number | null>(null)
+  const lastAutoActionKeyRef = useRef<string | null>(null)
   const [shouldAnimate, setShouldAnimate] = useState(false)
 
   useEffect(() => {
@@ -41,6 +42,26 @@ const RollControl: React.FC<RollControlProps> = ({
 
     previousTimeLeftRef.current = timeLeft
   }, [timeLeft])
+
+  useEffect(() => {
+    if (timeLeft !== 0 || !canClick) {
+      return
+    }
+
+    const autoActionKey = `${turnTimerKey}:${mode}`
+    if (lastAutoActionKeyRef.current === autoActionKey) {
+      return
+    }
+
+    lastAutoActionKeyRef.current = autoActionKey
+
+    if (isEndTurnMode) {
+      onEndTurn?.()
+      return
+    }
+
+    onRoll()
+  }, [canClick, isEndTurnMode, mode, onEndTurn, onRoll, timeLeft, turnTimerKey])
 
   return (
     <div className="flex items-center gap-6">

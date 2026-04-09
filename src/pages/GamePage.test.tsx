@@ -29,6 +29,7 @@ const {
   sendWaitingRoomChatMock,
   emitChatEvent,
   emitGameActionMock,
+  useGameStateMock,
   socketOnMock,
   socketOffMock,
   navigateMock,
@@ -43,6 +44,7 @@ const {
   return {
     sendWaitingRoomChatMock: vi.fn(),
     emitGameActionMock: vi.fn(),
+    useGameStateMock: vi.fn(),
     socketOnMock: vi.fn(
       (event: string, handler: (payload: unknown) => void) => {
         const nextHandlers = handlers.get(event) ?? new Set()
@@ -101,7 +103,7 @@ vi.mock('../features/presence/online-users/onlineUsersSocket', () => ({
 }))
 
 vi.mock('../hooks/game/useGameState', () => ({
-  useGameState: vi.fn(),
+  useGameState: useGameStateMock,
 }))
 
 vi.mock('../hooks/game/useDiceRoll', () => ({
@@ -392,6 +394,7 @@ describe('GamePage chat flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     useTurnMock.mockReturnValue(false)
+    useGameStateMock.mockReturnValue({ isInitialSyncPending: false })
     setTestGameDebugOverlayVisible(false)
 
     setTestAuthSession(

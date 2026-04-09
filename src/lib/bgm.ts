@@ -1,9 +1,9 @@
 /**
- * 🎵 글로벌 BGM 매니저
+ * ?�� 글로벌 BGM 매니?�
  *
- * 1) initBgm(): 앱 시작 시 호출. 유저의 첫 인터랙션으로 오디오를 미리 unlock.
- * 2) playBgm(): 게임 페이지 진입 시 호출. unlock 되어 있으면 즉시 재생.
- * 3) stopBgm(): 게임 퇴장 시 호출. 정지.
+ * 1) initBgm(): ???�작 ???�출. ?��???�??�터?�션?�로 ?�디?��? 미리 unlock.
+ * 2) playBgm(): 게임 ?�이지 진입 ???�출. unlock ?�어 ?�으�?즉시 ?�생.
+ * 3) stopBgm(): 게임 ?�장 ???�출. ?��?.
  */
 
 const BGM_SRC = '/audio/game-bgm.mp3'
@@ -23,11 +23,11 @@ function getOrCreateAudio(): HTMLAudioElement {
 }
 
 /**
- * 유저 인터랙션 시 오디오 unlock (+ 재생 대기 중이면 바로 재생)
+ * ?��? ?�터?�션 ???�디??unlock (+ ?�생 ?��?중이�?바로 ?�생)
  */
 function onInteraction() {
   if (unlocked) {
-    // 이미 unlock 됨. 재생 대기 상태면 재생 시도.
+    // ?��? unlock ?? ?�생 ?��??�태�??�생 ?�도.
     if (wantPlay) {
       const a = getOrCreateAudio()
       if (a.paused) {
@@ -37,7 +37,7 @@ function onInteraction() {
     return
   }
 
-  // unlock 시도
+  // unlock ?�도
   const a = getOrCreateAudio()
   const savedVolume = a.volume
   a.volume = 0
@@ -49,7 +49,6 @@ function onInteraction() {
         a.currentTime = 0
       }
       a.volume = savedVolume
-      removeListeners()
     })
     .catch(() => {
       a.volume = savedVolume
@@ -71,32 +70,32 @@ function addListeners() {
 }
 
 /**
- * 앱 시작 시 호출. 유저 인터랙션 감지를 시작합니다.
- * 오디오 파일은 아직 로드하지 않습니다.
+ * ???�작 ???�출. ?��? ?�터?�션 감�?�??�작?�니??
+ * ?�디???�일?� ?�직 로드?��? ?�습?�다.
  */
 export function initBgm() {
   addListeners()
 }
 
 /**
- * BGM 재생 시작.
+ * BGM ?�생 ?�작.
  */
 export function playBgm() {
   wantPlay = true
+  addListeners()
   const a = getOrCreateAudio()
   a.play()
     .then(() => {
       unlocked = true
-      removeListeners()
     })
     .catch(() => {
-      // 자동재생 차단 → 인터랙션 리스너로 대기
-      addListeners()
+      // ?�동?�생 차단 ???�터?�션 리스?�로 ?��?
+      // interaction listeners stay active while BGM should play
     })
 }
 
 /**
- * BGM 정지.
+ * BGM ?��?.
  */
 export function stopBgm() {
   wantPlay = false

@@ -32,6 +32,9 @@ export type ChanceMoneyEffect = {
   amount: number
 }
 
+const MONEY_UNIT_SCALE = 10_000
+const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
+
 export const FAST_MOVE_ANIMATION_OPTIONS = {
   initialDelayMs: 200,
   stepDelayMs: 80,
@@ -321,6 +324,23 @@ const getRecordNumber = (
   return null
 }
 
+const normalizeChanceMoneyAmountToWon = (value: number | null) => {
+  if (value == null || !Number.isFinite(value)) {
+    return null
+  }
+
+  const raw = Math.trunc(Math.abs(value))
+  if (raw <= 0) {
+    return null
+  }
+
+  if (raw >= MONEY_ALREADY_WON_THRESHOLD) {
+    return raw
+  }
+
+  return raw * MONEY_UNIT_SCALE
+}
+
 const getEventTileRecord = (
   event: ServerEvent
 ): Record<string, unknown> | null => {
@@ -484,9 +504,9 @@ export const resolveChanceMoneyEffectFromEvent = (
   const rawAmount =
     getRecordNumber(chanceRecord, ['power', 'amount']) ??
     getPayloadNumber(event.payload, ['power', 'amount'])
-  const amount = Math.trunc(Math.abs(rawAmount ?? 0))
+  const amount = normalizeChanceMoneyAmountToWon(rawAmount)
 
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (amount == null || !Number.isFinite(amount) || amount <= 0) {
     return null
   }
 

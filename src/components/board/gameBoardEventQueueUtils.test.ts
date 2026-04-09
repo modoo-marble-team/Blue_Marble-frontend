@@ -514,7 +514,7 @@ describe('gameBoardEventQueueUtils', () => {
     expect(resolveChanceMoneyEffectFromEvent(event)).toEqual({
       playerId: '1',
       chanceType: 'GAIN_MONEY',
-      amount: 20000,
+      amount: 200000000,
     })
   })
 
@@ -533,7 +533,26 @@ describe('gameBoardEventQueueUtils', () => {
     expect(resolveChanceMoneyEffectFromEvent(event)).toEqual({
       playerId: 'guest-2',
       chanceType: 'LOSE_MONEY',
-      amount: 15000,
+      amount: 150000000,
+    })
+  })
+
+  it('keeps already-won amount as-is for chance money effect', () => {
+    const event = {
+      type: 'CHANCE_RESOLVED',
+      playerId: 'guest-3',
+      payload: {
+        chance: {
+          type: 'GAIN_MONEY',
+          power: 100000000,
+        },
+      },
+    } as ServerEvent
+
+    expect(resolveChanceMoneyEffectFromEvent(event)).toEqual({
+      playerId: 'guest-3',
+      chanceType: 'GAIN_MONEY',
+      amount: 100000000,
     })
   })
 
