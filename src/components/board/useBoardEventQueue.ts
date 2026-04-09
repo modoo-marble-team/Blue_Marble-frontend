@@ -20,7 +20,7 @@ interface UseBoardEventQueueParams {
   setDice1: Dispatch<SetStateAction<number>>
   setDice2: Dispatch<SetStateAction<number>>
   onEventAnimation?: (kind: BoardEventAnimationKind) => void
-  onEventConsumed?: (event: ServerEvent) => void
+  onEventConsumed?: (event: ServerEvent) => boolean | void
 }
 
 export function useBoardEventQueue({
@@ -36,6 +36,38 @@ export function useBoardEventQueue({
 }: UseBoardEventQueueParams) {
   const consumingRef = useRef(false)
   const consumeTimerRef = useRef<number | null>(null)
+  const pausedRef = useRef(paused)
+  const immediatePauseRef = useRef(false)
+  const immediatePauseObservedExternalPauseRef = useRef(false)
+  pausedRef.current = paused
+
+  useEffect(() => {
+    return () => {
+      if (consumeTimerRef.current !== null) {
+        window.clearTimeout(consumeTimerRef.current)
+        consumeTimerRef.current = null
+      }
+      consumingRef.current = false
+      immediatePauseRef.current = false
+      immediatePauseObservedExternalPauseRef.current = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!immediatePauseRef.current) {
+      return
+    }
+
+    if (paused) {
+      immediatePauseObservedExternalPauseRef.current = true
+      return
+    }
+
+    if (immediatePauseObservedExternalPauseRef.current) {
+      immediatePauseRef.current = false
+      immediatePauseObservedExternalPauseRef.current = false
+    }
+  }, [paused])
 
   useEffect(() => {
     if (!enabled) {
@@ -55,7 +87,12 @@ export function useBoardEventQueue({
     }
 
     const consumeIfPossible = () => {
-      if (disposed || consumingRef.current || paused) {
+      if (
+        disposed ||
+        consumingRef.current ||
+        pausedRef.current ||
+        immediatePauseRef.current
+      ) {
         return
       }
 
@@ -72,10 +109,15 @@ export function useBoardEventQueue({
         return
       }
 
-      onEventConsumed?.(nextEvent)
+      const shouldPauseImmediately = onEventConsumed?.(nextEvent) === true
+      if (shouldPauseImmediately) {
+        immediatePauseRef.current = true
+        if (pausedRef.current) {
+          immediatePauseObservedExternalPauseRef.current = true
+        }
+      }
 
-      // Keep the event visible to render logic during consume callback execution.
-      // This avoids a frame where pending move data disappears before animation starts.
+      const animationKind = resolveBoardEventAnimationKind(nextEvent)
       useGameStore.getState().consumeNextEvent()
 
       if (import.meta.env.DEV) {
@@ -97,7 +139,12 @@ export function useBoardEventQueue({
         setStatus(statusText)
       }
 
-      onEventAnimation?.(resolveBoardEventAnimationKind(nextEvent))
+      onEventAnimation?.(animationKind)
+
+      if (shouldPauseImmediately) {
+        consumingRef.current = false
+        return
+      }
 
       const delayMs = getBoardEventConsumeDelayMs(nextEvent)
       consumeTimerRef.current = window.setTimeout(() => {

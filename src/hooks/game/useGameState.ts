@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IS_SOCKET_MOCK_ENABLED } from '../../config/env'
 import { useAuthStore } from '../../features/auth/session/store'
 import { connectSocketWithAuthIfNeeded, socket } from '../../lib/socket'
@@ -21,7 +21,35 @@ export const useGameState = (gameId: string | null) => {
   const currentTurn = useGameStore((state) => {
     return state.currentPlayerId ?? state.currentTurn
   })
+  const storeGameId = useGameStore((state) => state.gameId)
+  const sessionGameId = useGameStore((state) => state.session.gameId)
+  const sessionSyncedAt = useGameStore((state) => state.session.syncedAt)
+  const playerCount = useGameStore((state) => state.players.length)
   const isGameFinished = isGameOver || phase === 'finished'
+  const [isInitialSyncPending, setIsInitialSyncPending] = useState(false)
+
+  useEffect(() => {
+    if (!USE_GAME_SOCKET_MOCK || !gameId || isGameFinished) {
+      setIsInitialSyncPending(false)
+      return
+    }
+
+    const resolvedStoreGameId = storeGameId ?? sessionGameId
+    const isSyncedForCurrentGame =
+      resolvedStoreGameId != null &&
+      String(resolvedStoreGameId) === String(gameId) &&
+      playerCount > 0 &&
+      sessionSyncedAt != null
+
+    setIsInitialSyncPending(!isSyncedForCurrentGame)
+  }, [
+    gameId,
+    isGameFinished,
+    playerCount,
+    sessionGameId,
+    sessionSyncedAt,
+    storeGameId,
+  ])
 
   useEffect(() => {
     if (!gameId) {
@@ -66,7 +94,7 @@ export const useGameState = (gameId: string | null) => {
 
       if (!force && !gameChanged && hasUsableLocalState) return
 
-      const shouldForceFullSync = gameChanged || !hasUsableLocalState
+      const shouldForceFullSync = force || gameChanged || !hasUsableLocalState
 
       emitGameSync({
         gameId,
@@ -126,5 +154,5 @@ export const useGameState = (gameId: string | null) => {
     emitGameSyncTimer({ gameId })
   }, [gameId, currentTurn, isGameFinished])
 
-  return {}
+  return { isInitialSyncPending }
 }

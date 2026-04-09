@@ -262,10 +262,10 @@ export const setupGameHandlers = (
         console.debug('[game:patch] events to enqueue', normalizedEvents)
       }
 
-      gameStore.replaceFromSnapshot(normalizedSnapshot)
-      if (normalizedEvents.length > 0) {
-        gameStore.enqueueEvents(normalizedEvents)
-      }
+      gameStore.replaceFromSnapshotAndEnqueueEvents(
+        normalizedSnapshot,
+        normalizedEvents
+      )
       return
     }
 

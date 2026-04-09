@@ -443,11 +443,30 @@ const resolveDoubleDiceInfo = (event: ServerEvent) => {
     payloadRecord?.isDouble ??
     eventRecord?.is_double ??
     eventRecord?.isDouble
+  const rawDice =
+    payloadRecord?.dice ??
+    payloadRecord?.dices ??
+    eventRecord?.dice ??
+    eventRecord?.dices
+
+  const parsedDice = Array.isArray(rawDice)
+    ? rawDice
+        .slice(0, 2)
+        .map((value) => toFiniteNumber(value))
+        .filter((value): value is number => value != null)
+    : []
+  const inferredDoubleFromDice =
+    parsedDice.length >= 2 && parsedDice[0] === parsedDice[1]
 
   const extraRollCount = toFiniteNumber(rawDoubleCount)
-  const hasSignal = rawIsDouble !== undefined || rawDoubleCount !== undefined
+  const explicitDoubleFlag = toBooleanOrNull(rawIsDouble)
+  const hasSignal =
+    rawIsDouble !== undefined ||
+    rawDoubleCount !== undefined ||
+    inferredDoubleFromDice
   const isDouble =
-    toBooleanOrNull(rawIsDouble) ??
+    inferredDoubleFromDice ||
+    explicitDoubleFlag === true ||
     (extraRollCount != null ? extraRollCount > 0 : false)
 
   return {
@@ -692,6 +711,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           direction?: BoardMoveDirection
         }
       ) => {
+        isAnimatingRef.current = true
         setIsMoving(true)
         const totalTiles = boardTiles.length
         const direction = options?.direction ?? 'clockwise'
@@ -738,19 +758,19 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           delete next[String(playerId)]
           return next
         })
+        isAnimatingRef.current = false
         setIsMoving(false)
       },
       [boardTiles.length]
     )
     const handleBoardEventConsumed = useCallback(
-      (event: ServerEvent) => {
+      (event: ServerEvent): boolean | void => {
         const normalizedType =
           typeof event.type === 'string' ? event.type.trim().toUpperCase() : ''
         const isLocalPlayerEvent =
           localPlayerId == null ||
           event.playerId == null ||
           String(event.playerId) === String(localPlayerId)
-
         if (normalizedType === 'DICE_ROLLED') {
           if (rollAnimationIntervalRef.current !== null) {
             freezeDiceRollValues()
@@ -773,11 +793,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
 
           const doubleInfo = resolveDoubleDiceInfo(event)
-          if (
-            isLocalPlayerEvent &&
-            doubleInfo.hasSignal &&
-            doubleInfo.isDouble
-          ) {
+          if (isLocalPlayerEvent && doubleInfo.isDouble) {
             setDoubleDiceModal({
               open: true,
               extraRollCount:
@@ -786,6 +802,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   ? doubleInfo.extraRollCount
                   : null,
             })
+            // Pause queue immediately so PLAYER_MOVED waits for double confirm.
+            return true
           }
         }
 
@@ -898,6 +916,11 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   ? (tileIndex + normalizedSteps) % totalTiles
                   : (tileIndex - normalizedSteps + totalTiles) % totalTiles
             }
+          }
+
+          if (playerKey && playerKey !== 'null') {
+            // Keep prompt surface pinned to pre-move position until movement completes.
+            lastMovePositionRef.current[playerKey] = fromIndex
           }
 
           const isTravelMove = [
@@ -1052,18 +1075,34 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         const key = String(player.id)
         const isAnimatingPlayer = animatedPositions[key] != null
         const hasPendingMove = pendingMovePlayerIdSet.has(key)
+        const pendingStartIndex = pendingMoveStartIndexByPlayerId[key]
 
         if (nextPositions[key] == null) {
-          nextPositions[key] = player.pos
+          nextPositions[key] =
+            pendingStartIndex != null ? pendingStartIndex : player.pos
           continue
         }
 
-        if (!isAnimatingPlayer && !hasPendingMove) {
-          nextPositions[key] = player.pos
+        if (isAnimatingPlayer) {
+          continue
         }
+
+        if (hasPendingMove) {
+          if (pendingStartIndex != null) {
+            nextPositions[key] = pendingStartIndex
+          }
+          continue
+        }
+
+        nextPositions[key] = player.pos
       }
       lastMovePositionRef.current = nextPositions
-    }, [animatedPositions, pendingMovePlayerIdSet, players])
+    }, [
+      animatedPositions,
+      pendingMovePlayerIdSet,
+      pendingMoveStartIndexByPlayerId,
+      players,
+    ])
     const derivedTileOwners = useMemo(
       () => buildTileOwnersFromProps(tiles, players),
       [tiles, players]
@@ -1406,7 +1445,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
         promptPlayerId != null ? animatedPositions[promptPlayerId] : undefined
       const promptPlayerPendingPosition =
         promptPlayerId != null && pendingMovePlayerIdSet.has(promptPlayerId)
-          ? lastMovePositionRef.current[promptPlayerId]
+          ? (pendingMoveStartIndexByPlayerId[promptPlayerId] ??
+            lastMovePositionRef.current[promptPlayerId])
           : undefined
       const promptPlayerSettledPosition =
         promptPlayerId != null
@@ -1443,6 +1483,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       isTravelPromptOpen,
       isMoving,
       pendingMovePlayerIdSet,
+      pendingMoveStartIndexByPlayerId,
       players,
       rolling,
       travelModal.open,
@@ -1935,7 +1976,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
 
     const scaledBoardSize = BOARD_RENDER_BASE_SIZE * boardScale
 
-    const hasAnimationBlocking = isMoving || rolling
+    const hasAnimationBlocking = isMoving || isAnimatingRef.current || rolling
     const canShowModal = !hasAnimationBlocking
     const boardActionAnimationBlocking =
       hasAnimationBlocking || boardActionModalBarrier
@@ -1961,7 +2002,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
     const promptPlayerPendingPosition =
       activePromptPlayerId != null &&
       pendingMovePlayerIdSet.has(activePromptPlayerId)
-        ? lastMovePositionRef.current[activePromptPlayerId]
+        ? (pendingMoveStartIndexByPlayerId[activePromptPlayerId] ??
+          lastMovePositionRef.current[activePromptPlayerId])
         : undefined
     const promptPlayerSettledPosition =
       activePromptPlayerId != null
@@ -1984,32 +2026,50 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       promptPlayerRenderedPosition !== promptTileId
     const canRevealPostMovePromptSurface =
       canRevealPostMoveSurface && !hasPromptTilePositionMismatch
-    const cardModalVisible = canRevealPreMoveSurface && cardModal.open
-    const travelModalVisible = canRevealPreMoveSurface && travelModal.open
+    const isDoubleModalPendingOrVisible = doubleDiceModal.open
+    const cardModalVisible =
+      !isDoubleModalPendingOrVisible &&
+      canRevealPreMoveSurface &&
+      cardModal.open
+    const travelModalVisible =
+      !isDoubleModalPendingOrVisible &&
+      canRevealPreMoveSurface &&
+      travelModal.open
     const goToIslandModalVisible =
-      (canRevealPostMovePromptSurface && isGoToIslandPromptOpen) ||
-      (canRevealPreMoveSurface && goToIslandModal.open)
+      !isDoubleModalPendingOrVisible &&
+      ((canRevealPostMovePromptSurface && isGoToIslandPromptOpen) ||
+        (canRevealPreMoveSurface && goToIslandModal.open))
     const islandModalVisible =
-      canRevealPostMovePromptSurface && (isIslandPromptOpen || islandModal.open)
+      !isDoubleModalPendingOrVisible &&
+      canRevealPostMovePromptSurface &&
+      (isIslandPromptOpen || islandModal.open)
 
     const buyModalVisible =
+      !isDoubleModalPendingOrVisible &&
       canRevealPostMovePromptSurface &&
       buyModalOpen &&
       !isBuyPromptDismissed &&
       !insufficientFundsModal.open
     const buildModalVisible =
+      !isDoubleModalPendingOrVisible &&
       canRevealPostMovePromptSurface &&
       buildModalOpen &&
       !isBuildPromptDismissed &&
       !insufficientFundsModal.open
-    const tollModalVisible = canRevealPostMovePromptSurface && tollModalOpen
+    const tollModalVisible =
+      !isDoubleModalPendingOrVisible &&
+      canRevealPostMovePromptSurface &&
+      tollModalOpen
     const acquisitionModalOpen =
+      !isDoubleModalPendingOrVisible &&
       canRevealPostMovePromptSurface &&
       acquisitionModalOpenRaw &&
       !tollModalOpen &&
       !insufficientFundsModal.open
     const sellModalVisible =
-      canRevealPostMovePromptSurface && (citySellModal.open || isSellPromptOpen)
+      !isDoubleModalPendingOrVisible &&
+      canRevealPostMovePromptSurface &&
+      (citySellModal.open || isSellPromptOpen)
 
     const doubleDiceModalVisible = canShowModal && doubleDiceModal.open
 
@@ -2066,7 +2126,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       aiModal.open ||
       goToIslandModalVisible ||
       islandModalVisible ||
-      doubleDiceModalVisible ||
+      isDoubleModalPendingOrVisible ||
       bankruptModal.open ||
       gameResultModal.open
     const isEventQueuePaused =
@@ -2387,7 +2447,8 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                 const playerKey = String(p.id)
                 const animatedPos = animatedPositions[playerKey]
                 const pendingPos = pendingMoveStartIndexByPlayerId[playerKey]
-                const pos = animatedPos ?? pendingPos ?? p.pos
+                const stablePos = lastMovePositionRef.current[playerKey]
+                const pos = animatedPos ?? pendingPos ?? stablePos ?? p.pos
                 const { row, col } = getTileGridPos(pos)
                 const tokensAtThisPos = players.filter((pl) => {
                   if (pl.state === 'bankrupt') {
@@ -2396,7 +2457,9 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
                   const key = String(pl.id)
                   const plAnimatedPos = animatedPositions[key]
                   const plPendingPos = pendingMoveStartIndexByPlayerId[key]
-                  const renderPos = plAnimatedPos ?? plPendingPos ?? pl.pos
+                  const plStablePos = lastMovePositionRef.current[key]
+                  const renderPos =
+                    plAnimatedPos ?? plPendingPos ?? plStablePos ?? pl.pos
                   return renderPos === pos
                 })
                 const pIdx = players.findIndex((pl) => pl.id === p.id)

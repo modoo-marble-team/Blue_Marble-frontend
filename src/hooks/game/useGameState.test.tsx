@@ -6,6 +6,8 @@ type SetupOptions = {
   mockEnabled?: boolean
   socketConnected?: boolean
   localGameId?: string | null
+  sessionGameId?: string | null
+  sessionSyncedAt?: string | null
   currentTurn?: string | number | null
   revision?: number
   playersLength?: number
@@ -23,6 +25,8 @@ async function setupUseGameState(options: SetupOptions) {
   const runtime = {
     accessToken: options.accessToken,
     localGameId: options.localGameId ?? null,
+    sessionGameId: options.sessionGameId ?? options.localGameId ?? null,
+    sessionSyncedAt: options.sessionSyncedAt ?? null,
     currentTurn: options.currentTurn ?? null,
     revision: options.revision ?? 0,
     playersLength: options.playersLength ?? 0,
@@ -33,6 +37,7 @@ async function setupUseGameState(options: SetupOptions) {
 
   const socketHandlers = new Map<string, (...args: unknown[]) => void>()
   const connectSocketWithAuthIfNeeded = vi.fn()
+  const socketDisconnectMock = vi.fn()
   const emitGameSync = vi.fn()
   const emitGameSyncTimer = vi.fn()
   const teardownHandlers = vi.fn()
@@ -63,7 +68,7 @@ async function setupUseGameState(options: SetupOptions) {
           socketHandlers.delete(event)
         }
       }),
-      disconnect: vi.fn(),
+      disconnect: socketDisconnectMock,
     },
     connectSocketWithAuthIfNeeded,
   }))
@@ -73,20 +78,24 @@ async function setupUseGameState(options: SetupOptions) {
     emitGameSyncTimer,
   }))
   vi.doMock('../../stores/game.store', () => {
+    const buildState = () => ({
+      currentPlayerId: runtime.currentTurn,
+      currentTurn: runtime.currentTurn,
+      phase: runtime.phase,
+      isGameOver: runtime.isGameOver,
+      gameId: runtime.localGameId,
+      players: createPlayers(runtime.playersLength),
+      session: {
+        roomId: 'room-1',
+        gameId: runtime.sessionGameId,
+        transport: 'event-socket',
+        syncedAt: runtime.sessionSyncedAt,
+      },
+    })
+
     const useGameStore = (
-      selector: (state: {
-        currentPlayerId: string | number | null
-        currentTurn: string | number | null
-        phase: string
-        isGameOver: boolean
-      }) => unknown
-    ) =>
-      selector({
-        currentPlayerId: runtime.currentTurn,
-        currentTurn: runtime.currentTurn,
-        phase: runtime.phase,
-        isGameOver: runtime.isGameOver,
-      })
+      selector: (state: ReturnType<typeof buildState>) => unknown
+    ) => selector(buildState())
 
     ;(
       useGameStore as typeof useGameStore & {
@@ -97,6 +106,12 @@ async function setupUseGameState(options: SetupOptions) {
           revision: number
           phase: string
           isGameOver: boolean
+          session: {
+            roomId: string | null
+            gameId: string | null
+            transport: string | null
+            syncedAt: string | null
+          }
         }
       }
     ).getState = () => ({
@@ -108,6 +123,12 @@ async function setupUseGameState(options: SetupOptions) {
       revision: runtime.revision,
       phase: runtime.phase,
       isGameOver: runtime.isGameOver,
+      session: {
+        roomId: 'room-1',
+        gameId: runtime.sessionGameId,
+        transport: 'event-socket',
+        syncedAt: runtime.sessionSyncedAt,
+      },
     })
 
     return { useGameStore }
@@ -119,6 +140,7 @@ async function setupUseGameState(options: SetupOptions) {
     useGameState,
     runtime,
     socketHandlers,
+    socketDisconnectMock,
     connectSocketWithAuthIfNeeded,
     emitGameSync,
     emitGameSyncTimer,
@@ -156,7 +178,7 @@ describe('useGameState', () => {
     expect(emitGameSyncTimer).not.toHaveBeenCalled()
   })
 
-  it('소켓 reconnect 시 기존 local state가 있어도 current revision 기준으로 game sync를 재요청한다', async () => {
+  it('reconnect 시에는 local state 유무와 무관하게 full sync를 재요청한다', async () => {
     const {
       useGameState,
       socketHandlers,
@@ -168,6 +190,8 @@ describe('useGameState', () => {
       mockEnabled: false,
       socketConnected: false,
       localGameId: 'game-2',
+      sessionGameId: 'game-2',
+      sessionSyncedAt: '2026-04-09T00:00:00.000Z',
       revision: 3,
       playersLength: 2,
       tilesLength: 2,
@@ -192,7 +216,7 @@ describe('useGameState', () => {
     expect(emitGameSync).toHaveBeenCalledTimes(2)
     expect(emitGameSync).toHaveBeenNthCalledWith(2, {
       gameId: 'game-2',
-      knownRevision: 3,
+      knownRevision: -1,
     })
     expect(emitGameSyncTimer).toHaveBeenCalledTimes(2)
   })
@@ -288,6 +312,7 @@ describe('useGameState', () => {
       localGameId: 'game-old',
       revision: 9,
       playersLength: 4,
+      tilesLength: 4,
     })
 
     renderHook(() => useGameState('game-new'))
@@ -296,5 +321,32 @@ describe('useGameState', () => {
       gameId: 'game-new',
       knownRevision: -1,
     })
+  })
+
+  it('mock 모드에서 초기 동기화 전에는 isInitialSyncPending=true를 반환한다', async () => {
+    const { useGameState, runtime, socketDisconnectMock } =
+      await setupUseGameState({
+        accessToken: null,
+        mockEnabled: true,
+        localGameId: null,
+        sessionGameId: null,
+        sessionSyncedAt: null,
+        playersLength: 0,
+        tilesLength: 0,
+      })
+
+    const { result, rerender } = renderHook(() => useGameState('game-mock'))
+
+    expect(socketDisconnectMock).toHaveBeenCalledTimes(1)
+    expect(result.current.isInitialSyncPending).toBe(true)
+
+    runtime.localGameId = 'game-mock'
+    runtime.sessionGameId = 'game-mock'
+    runtime.sessionSyncedAt = '2026-04-09T00:00:00.000Z'
+    runtime.playersLength = 2
+    runtime.tilesLength = 2
+    rerender()
+
+    expect(result.current.isInitialSyncPending).toBe(false)
   })
 })

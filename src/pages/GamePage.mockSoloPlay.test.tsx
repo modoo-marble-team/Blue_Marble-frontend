@@ -21,12 +21,14 @@ const {
   diceRollMock,
   emitPromptResponseMock,
   emitGameActionMock,
+  useGameStateMock,
   navigateMock,
   boardRollDiceMock,
 } = vi.hoisted(() => ({
   diceRollMock: vi.fn(),
   emitPromptResponseMock: vi.fn(),
   emitGameActionMock: vi.fn(),
+  useGameStateMock: vi.fn(),
   navigateMock: vi.fn(),
   boardRollDiceMock: vi.fn(),
 }))
@@ -58,7 +60,7 @@ vi.mock('../features/presence/online-users/onlineUsersSocket', () => ({
 }))
 
 vi.mock('../hooks/game/useGameState', () => ({
-  useGameState: vi.fn(),
+  useGameState: useGameStateMock,
 }))
 
 vi.mock('../hooks/game/useDiceRoll', () => ({
@@ -229,6 +231,7 @@ function renderGamePage() {
 describe('GamePage mock solo play', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useGameStateMock.mockReturnValue({ isInitialSyncPending: false })
     class MockAudio {
       play() {
         return Promise.resolve()
@@ -352,5 +355,24 @@ describe('GamePage mock solo play', () => {
       choice: 'CONFIRM',
       payload: undefined,
     })
+  })
+
+  it('holds game board render while mock initial sync is pending', () => {
+    useGameStateMock.mockReturnValue({ isInitialSyncPending: true })
+    resetAndSetTestGameState({
+      roomId: 'room-1',
+      gameId: 'game-1',
+      currentTurn: 'user-1',
+      phase: 'rolling',
+      players: [],
+      tiles: [],
+      messages: [],
+      prompt: null,
+      pendingAction: null,
+    })
+
+    renderGamePage()
+
+    expect(screen.queryByTestId('mock-board-game')).not.toBeInTheDocument()
   })
 })

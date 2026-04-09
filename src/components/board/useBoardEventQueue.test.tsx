@@ -37,7 +37,7 @@ const setupHook = ({
 }: {
   enabled?: boolean
   paused?: boolean
-  onEventConsumed?: (event: { type: string }) => void
+  onEventConsumed?: (event: { type: string }) => boolean | void
 } = {}) => {
   const setStatus = vi.fn()
   const setDice1 = vi.fn()
@@ -80,6 +80,72 @@ const setupHook = ({
       rerender({
         isEnabled: nextEnabled,
         isPaused: nextPaused,
+      }),
+  }
+}
+
+const setupHookWithDynamicCallback = ({
+  enabled = true,
+  paused = false,
+  onEventConsumed,
+}: {
+  enabled?: boolean
+  paused?: boolean
+  onEventConsumed?: (event: { type: string }) => boolean | void
+}) => {
+  const setStatus = vi.fn()
+  const setDice1 = vi.fn()
+  const setDice2 = vi.fn()
+  const onEventAnimation = vi.fn()
+
+  const { rerender } = renderHook(
+    ({
+      isEnabled,
+      isPaused,
+      callback,
+    }: {
+      isEnabled: boolean
+      isPaused: boolean
+      callback?: (event: { type: string }) => boolean | void
+    }) =>
+      useBoardEventQueue({
+        enabled: isEnabled,
+        paused: isPaused,
+        playersRef,
+        tiles,
+        setStatus,
+        setDice1,
+        setDice2,
+        onEventAnimation,
+        onEventConsumed: callback,
+      }),
+    {
+      initialProps: {
+        isEnabled: enabled,
+        isPaused: paused,
+        callback: onEventConsumed,
+      },
+    }
+  )
+
+  return {
+    setStatus,
+    setDice1,
+    setDice2,
+    onEventAnimation,
+    rerender: ({
+      enabled: nextEnabled = enabled,
+      paused: nextPaused = paused,
+      onEventConsumed: nextOnEventConsumed = onEventConsumed,
+    }: {
+      enabled?: boolean
+      paused?: boolean
+      onEventConsumed?: (event: { type: string }) => boolean | void
+    } = {}) =>
+      rerender({
+        isEnabled: nextEnabled,
+        isPaused: nextPaused,
+        callback: nextOnEventConsumed,
       }),
   }
 }
@@ -227,5 +293,115 @@ describe('useBoardEventQueue', () => {
 
     expect(onEventConsumed).toHaveBeenCalledTimes(1)
     expect(useGameStore.getState().eventQueue).toHaveLength(0)
+  })
+
+  it('does not auto-consume next event when onEventConsumed requests immediate pause', () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'DICE_ROLLED',
+        playerId: 1,
+        payload: { dice: [4, 4], total: 8 },
+      },
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+      },
+    ])
+
+    const onEventConsumed = vi.fn((event: { type: string }) => {
+      if (event.type === 'DICE_ROLLED') {
+        return true
+      }
+      return undefined
+    })
+
+    const { rerender } = setupHook({ onEventConsumed })
+
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    vi.advanceTimersByTime(2000)
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    rerender({ paused: true })
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    rerender({ paused: false })
+    expect(useGameStore.getState().eventQueue).toHaveLength(0)
+    expect(onEventConsumed).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps queue paused even when new events are enqueued before paused prop updates', () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'DICE_ROLLED',
+        playerId: 1,
+        payload: { dice: [6, 6], total: 12 },
+      },
+    ])
+
+    const onEventConsumed = vi.fn((event: { type: string }) => {
+      if (event.type === 'DICE_ROLLED') {
+        return true
+      }
+      return undefined
+    })
+
+    const { rerender } = setupHook({ onEventConsumed })
+
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+      },
+    ])
+
+    vi.advanceTimersByTime(2000)
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    rerender({ paused: true })
+    rerender({ paused: false })
+    expect(useGameStore.getState().eventQueue).toHaveLength(0)
+    expect(onEventConsumed).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps immediate pause even if onEventConsumed callback identity changes', () => {
+    useGameStore.getState().enqueueEvents([
+      {
+        type: 'DICE_ROLLED',
+        playerId: 1,
+        payload: { dice: [2, 2], total: 4 },
+      },
+      {
+        type: 'PLAYER_MOVED',
+        playerId: 1,
+        tileIndex: 1,
+        payload: { fromIndex: 0, toIndex: 1 },
+      },
+    ])
+
+    const callbackV1 = vi.fn((event: { type: string }) =>
+      event.type === 'DICE_ROLLED' ? true : undefined
+    )
+    const callbackV2 = vi.fn((event: { type: string }) =>
+      event.type === 'DICE_ROLLED' ? true : undefined
+    )
+
+    const { rerender } = setupHookWithDynamicCallback({
+      onEventConsumed: callbackV1,
+    })
+
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    rerender({ onEventConsumed: callbackV2 })
+    vi.advanceTimersByTime(2000)
+    expect(useGameStore.getState().eventQueue).toHaveLength(1)
+
+    rerender({ paused: true, onEventConsumed: callbackV2 })
+    rerender({ paused: false, onEventConsumed: callbackV2 })
+    expect(useGameStore.getState().eventQueue).toHaveLength(0)
+    expect(callbackV1).toHaveBeenCalledTimes(1)
+    expect(callbackV2).toHaveBeenCalledTimes(1)
   })
 })

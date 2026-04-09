@@ -27,6 +27,10 @@ interface GameActions {
   setGameResult: (result: GameResult) => void
   addMessage: (message: ChatMessage) => void
   replaceFromSnapshot: (snapshot: GameSnapshot) => void
+  replaceFromSnapshotAndEnqueueEvents: (
+    snapshot: GameSnapshot,
+    events: ServerEvent[]
+  ) => void
   applyPatchEnvelope: (envelope: GamePatchEnvelope) => void
   applyTimerSync: (timerSync: GameTimerSync) => void
   setPendingAction: (action: PendingGameAction | null) => void
@@ -380,6 +384,25 @@ export const useGameStore = create<GameStoreState>()(
         }
         if (!('pendingAction' in snapshot)) {
           draft.pendingAction = null
+        }
+        draft.session.roomId = snapshot.roomId ?? draft.session.roomId
+        draft.session.gameId = snapshot.gameId ?? draft.session.gameId
+        draft.session.transport = 'event-socket'
+        draft.session.syncedAt = new Date().toISOString()
+        draft.turnTimerKey = Date.now()
+      }),
+
+    replaceFromSnapshotAndEnqueueEvents: (snapshot, events) =>
+      set((draft) => {
+        Object.assign(draft, normalizeState(snapshot))
+        if (!('prompt' in snapshot)) {
+          draft.prompt = null
+        }
+        if (!('pendingAction' in snapshot)) {
+          draft.pendingAction = null
+        }
+        if (events.length > 0) {
+          draft.eventQueue.push(...events)
         }
         draft.session.roomId = snapshot.roomId ?? draft.session.roomId
         draft.session.gameId = snapshot.gameId ?? draft.session.gameId
