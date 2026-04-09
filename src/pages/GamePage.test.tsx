@@ -9,6 +9,7 @@ import { useAuthStore } from '../features/auth/session/store'
 import { CHAT_MESSAGE_MAX_LENGTH } from '../constants/chat'
 import { createAuthSessionFixture } from '../test/fixtures'
 import { renderWithProviders } from '../test/renderWithProviders'
+import { useGameTimer } from '../hooks/game/useGameTimer'
 import type { Player } from '../types/domain'
 import type { WaitingRoomSnapshot } from './waiting-room/api/types'
 
@@ -182,7 +183,7 @@ vi.mock('../components/board/GameBoard', () => ({
 }))
 
 vi.mock('../components/game/controls/RollButton', () => ({
-  default: ({
+  default: function MockRollButton({
     isMyTurn,
     mode = 'roll',
     onRoll,
@@ -192,18 +193,29 @@ vi.mock('../components/game/controls/RollButton', () => ({
     mode?: 'roll' | 'end_turn'
     onRoll?: () => void
     onEndTurn?: () => void
-  }) => {
+  }) {
+    const turnTimeoutSec = useGameStore((state) => state.turnTimeoutSec)
+    const turnTimerKey = useGameStore((state) => state.turnTimerKey)
+    const [timeLeft] = useGameTimer({
+      initialTime: turnTimeoutSec,
+      resetSignal: turnTimerKey,
+    })
     const isEndTurnMode = mode === 'end_turn'
     const label = isEndTurnMode ? '턴 종료' : '주사위'
 
     return (
-      <button
-        type="button"
-        disabled={!isMyTurn}
-        onClick={isEndTurnMode ? onEndTurn : onRoll}
-      >
-        {label}
-      </button>
+      <div>
+        <span data-testid="mock-roll-timer" aria-label="턴 타이머">
+          {timeLeft}
+        </span>
+        <button
+          type="button"
+          disabled={!isMyTurn}
+          onClick={isEndTurnMode ? onEndTurn : onRoll}
+        >
+          {label}
+        </button>
+      </div>
     )
   },
 }))
@@ -491,6 +503,94 @@ describe('GamePage chat flow', () => {
     })
 
     expect(screen.getByRole('button', { name: 'Choice C' })).toBeEnabled()
+  })
+
+  it('게임 룰북 아이콘으로 모달을 열고 닫을 수 있다', async () => {
+    const user = userEvent.setup()
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '게임 룰북 열기' }))
+    expect(
+      screen.getByRole('dialog', { name: '게임 룰북' })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '룰북 닫기' }))
+    expect(
+      screen.queryByRole('dialog', { name: '게임 룰북' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('룰북이 열린 상태에서 보드 블로킹 모달이 열리면 자동으로 닫힌다', async () => {
+    const user = userEvent.setup()
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '게임 룰북 열기' }))
+    expect(
+      screen.getByRole('dialog', { name: '게임 룰북' })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '보드 막기' }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '게임 룰북' })
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  it('룰북이 열린 상태에서 prompt가 표시되면 자동으로 닫힌다', async () => {
+    const user = userEvent.setup()
+
+    renderGamePage()
+
+    await user.click(screen.getByRole('button', { name: '게임 룰북 열기' }))
+    expect(
+      screen.getByRole('dialog', { name: '게임 룰북' })
+    ).toBeInTheDocument()
+
+    setTestGameState({
+      prompt: {
+        id: 'rulebook-auto-close-prompt',
+        type: 'CONFIRM_ONLY',
+        playerId: 'user-1',
+        title: 'Prompt Open',
+        choices: [{ id: 'confirm', label: '확인', value: 'CONFIRM' }],
+      },
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '게임 룰북' })
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  it('룰북이 열린 상태에서도 턴 타이머는 계속 감소한다', async () => {
+    const user = userEvent.setup()
+
+    renderGamePage()
+
+    const timerNode = screen.getByTestId('mock-roll-timer')
+    const initial = Number.parseInt(timerNode.textContent ?? '0', 10)
+    expect(Number.isFinite(initial)).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: '게임 룰북 열기' }))
+    expect(
+      screen.getByRole('dialog', { name: '게임 룰북' })
+    ).toBeInTheDocument()
+
+    await waitFor(
+      () => {
+        const next = Number.parseInt(
+          screen.getByTestId('mock-roll-timer').textContent ?? '0',
+          10
+        )
+        expect(next).toBeLessThan(initial)
+      },
+      { timeout: 2_500 }
+    )
   })
 
   it('우측 패널은 totalAssets를 우선 표시하고 그 기준으로 정렬과 왕관을 표시한다', () => {

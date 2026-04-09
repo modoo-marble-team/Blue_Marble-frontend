@@ -6,6 +6,8 @@
 
 ## In Progress
 
+- [ ] `in-game-rulebook-modal` - In-game Rulebook Modal (`docs/ai/tasks/in-game-rulebook-modal/`) - 인게임 우측 상단 `?` 아이콘으로 플레이어 룰북 모달을 열고 도시 가격/통행비/티어순을 board constants 기반 자동 산출로 제공
+
 ## Blocked
 
 ## Done

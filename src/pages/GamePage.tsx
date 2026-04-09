@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CircleHelp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import BoardGame, { BoardGameHandle } from '../components/board/GameBoard'
 import RollButton from '../components/game/controls/RollButton'
 import ExitGameModal from '../components/game/modals/ExitGameModal'
+import GameRulebookModal from '../components/game/modals/GameRulebookModal'
 import { isPromptHandledByBoardModal } from '../components/game/modals/promptModalMapping'
 import PlayerPanel from '../components/game/panels/PlayerPanel'
 import GlobalEffectModal from '../components/game/GlobalEffectModal'
@@ -38,6 +39,7 @@ import {
   mapStoreTilesToBoardTiles,
 } from './game/gameViewModel'
 import { normalizeChanceMoneyAmountToWon } from '../components/board/gameBoardEventQueueUtils'
+import { buildGameRulebookData } from './game/gameRulebookModel'
 import {
   consumePendingGameChatEcho,
   createOptimisticGameChatMessage,
@@ -335,6 +337,7 @@ const GamePage: React.FC = () => {
     setHasObservedBoardBlockingModalForDeferredFinancial,
   ] = useState(false)
   const [isExitModalOpen, setIsExitModalOpen] = useState(false)
+  const [isRulebookModalOpen, setIsRulebookModalOpen] = useState(false)
   const [isLeavePending, setIsLeavePending] = useState(false)
   const [isGlobalEffectModalOpen, setIsGlobalEffectModalOpen] = useState(false)
   const [isSoloPlayEnabled, setIsSoloPlayEnabled] = useState(false)
@@ -396,6 +399,7 @@ const GamePage: React.FC = () => {
     Math.max(round ?? 1, 1),
     MAX_ROUND_BADGE_VALUE
   )
+  const rulebookData = useMemo(() => buildGameRulebookData(), [])
   const activePlayerId = toComparablePlayerId(normalizedCurrentTurn)
   const canControlActiveMockTurn =
     USE_GAME_SOCKET_MOCK && (ALLOW_ALL_MOCK_TURNS || isSoloPlayEnabled)
@@ -504,6 +508,21 @@ const GamePage: React.FC = () => {
       socket.off('chat', handleChat)
     }
   }, [activeRoomId, currentUserId])
+
+  useEffect(() => {
+    if (!isRulebookModalOpen) {
+      return
+    }
+
+    if (isBoardBlockingModalOpen || isPromptVisible || isExitModalOpen) {
+      setIsRulebookModalOpen(false)
+    }
+  }, [
+    isBoardBlockingModalOpen,
+    isPromptVisible,
+    isExitModalOpen,
+    isRulebookModalOpen,
+  ])
 
   const handleSendMessage = (content: string) => {
     if (!activeRoomId) {
@@ -1062,6 +1081,16 @@ const GamePage: React.FC = () => {
           <ArrowLeft size={20} />
         </button>
       </div>
+      <div className="absolute right-6 top-6 z-70">
+        <button
+          type="button"
+          aria-label="게임 룰북 열기"
+          onClick={() => setIsRulebookModalOpen(true)}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#E2E8F0] bg-white/90 text-[#245FE5] shadow-sm transition-colors hover:bg-white"
+        >
+          <CircleHelp size={20} />
+        </button>
+      </div>
 
       <div className="relative z-10 mx-auto flex h-full w-full items-center justify-between gap-8 pb-12 pt-4">
         <div className="flex h-[80%] min-h-0 w-[320px] shrink-0 flex-col">
@@ -1234,6 +1263,12 @@ const GamePage: React.FC = () => {
         isSubmitting={isLeavePending}
         onCancel={() => setIsExitModalOpen(false)}
         onConfirm={handleExitConfirm}
+      />
+      <GameRulebookModal
+        open={isRulebookModalOpen}
+        tiers={rulebookData.tiers}
+        cityRows={rulebookData.cityRows}
+        onClose={() => setIsRulebookModalOpen(false)}
       />
 
       <DevRoomChatControlPanel

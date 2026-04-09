@@ -96,7 +96,10 @@ const RollControl: React.FC<RollControlProps> = ({
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xl font-black tracking-tighter text-[#45556C]">
+          <span
+            aria-label="턴 타이머"
+            className="text-xl font-black tracking-tighter text-[#45556C]"
+          >
             {timeLeft}
           </span>
         </div>
