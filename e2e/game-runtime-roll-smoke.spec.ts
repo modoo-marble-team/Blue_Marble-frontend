@@ -35,6 +35,37 @@ test.describe('@game 게임 런타임 롤 스모크', () => {
     await page.getByRole('button', { name: /^시작$/ }).click()
     await expect(page).toHaveURL(/\/game\/game-room-\d+-\d+$/)
 
+    const rulebookOpenButton = page.getByRole('button', {
+      name: '게임 룰북 열기',
+    })
+    await expect(rulebookOpenButton).toBeVisible()
+    await rulebookOpenButton.click()
+
+    const rulebookDialog = page.getByRole('dialog', { name: '게임 룰북' })
+    await expect(rulebookDialog).toBeVisible()
+
+    const turnTimer = page.getByLabel('턴 타이머').first()
+    const beforeRulebookTimer = Number.parseInt(
+      ((await turnTimer.textContent()) ?? '').trim(),
+      10
+    )
+
+    await page.waitForTimeout(1_100)
+
+    const afterRulebookTimer = Number.parseInt(
+      ((await turnTimer.textContent()) ?? '').trim(),
+      10
+    )
+
+    expect(Number.isFinite(beforeRulebookTimer)).toBe(true)
+    expect(Number.isFinite(afterRulebookTimer)).toBe(true)
+    if (beforeRulebookTimer > 0) {
+      expect(afterRulebookTimer).toBeLessThan(beforeRulebookTimer)
+    }
+
+    await page.keyboard.press('Escape')
+    await expect(rulebookDialog).not.toBeVisible()
+
     const soloPlaySwitch = page.getByRole('switch', { name: '혼자 플레이' })
     const isSoloEnabled = await soloPlaySwitch.getAttribute('aria-checked')
     if (isSoloEnabled !== 'true') {
