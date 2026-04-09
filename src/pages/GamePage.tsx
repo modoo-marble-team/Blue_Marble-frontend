@@ -37,6 +37,7 @@ import {
   mapStorePlayersToBoardPlayers,
   mapStoreTilesToBoardTiles,
 } from './game/gameViewModel'
+import { normalizeChanceMoneyAmountToWon } from '../components/board/gameBoardEventQueueUtils'
 import {
   consumePendingGameChatEcho,
   createOptimisticGameChatMessage,
@@ -103,9 +104,6 @@ type ChanceMoneyEffectPayload = {
   amount: number
 }
 
-const MONEY_UNIT_SCALE = 10_000
-const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
@@ -149,23 +147,6 @@ const getRecordNumber = (
   }
 
   return null
-}
-
-const normalizeChanceMoneyAmountToWon = (value: number | null) => {
-  if (value == null || !Number.isFinite(value)) {
-    return null
-  }
-
-  const normalized = Math.trunc(Math.abs(value))
-  if (normalized <= 0) {
-    return null
-  }
-
-  if (normalized >= MONEY_ALREADY_WON_THRESHOLD) {
-    return normalized
-  }
-
-  return normalized * MONEY_UNIT_SCALE
 }
 
 const resolveQueuedChanceMoneyEffect = (

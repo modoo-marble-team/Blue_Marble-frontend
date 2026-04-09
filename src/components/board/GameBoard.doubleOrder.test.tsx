@@ -225,6 +225,27 @@ describe('GameBoard double ordering', () => {
     ).toBeInTheDocument()
   })
 
+  it('does not open double popup for non-local player double roll', async () => {
+    renderGameBoard()
+
+    const handler = getBoardQueueCallbacks().onEventConsumed
+    const result = handler?.({
+      type: 'DICE_ROLLED',
+      playerId: 2,
+      payload: {
+        dice: [4, 4],
+        isDouble: true,
+        is_double: true,
+        doubleCount: 1,
+      },
+    } as ServerEvent)
+
+    expect(result).toBeUndefined()
+    expect(
+      screen.queryByRole('button', { name: 'double-confirm' })
+    ).not.toBeInTheDocument()
+  })
+
   it('keeps follow-up move queued until double popup confirm', async () => {
     useGameStore.getState().enqueueEvents([
       {

@@ -40,14 +40,6 @@ export function useBoardEventQueue({
   const immediatePauseRef = useRef(false)
   const immediatePauseObservedExternalPauseRef = useRef(false)
   pausedRef.current = paused
-  if (immediatePauseRef.current) {
-    if (paused) {
-      immediatePauseObservedExternalPauseRef.current = true
-    } else if (immediatePauseObservedExternalPauseRef.current) {
-      immediatePauseRef.current = false
-      immediatePauseObservedExternalPauseRef.current = false
-    }
-  }
 
   useEffect(() => {
     return () => {
@@ -60,6 +52,22 @@ export function useBoardEventQueue({
       immediatePauseObservedExternalPauseRef.current = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!immediatePauseRef.current) {
+      return
+    }
+
+    if (paused) {
+      immediatePauseObservedExternalPauseRef.current = true
+      return
+    }
+
+    if (immediatePauseObservedExternalPauseRef.current) {
+      immediatePauseRef.current = false
+      immediatePauseObservedExternalPauseRef.current = false
+    }
+  }, [paused])
 
   useEffect(() => {
     if (!enabled) {

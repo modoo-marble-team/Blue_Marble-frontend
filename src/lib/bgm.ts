@@ -1,9 +1,8 @@
 /**
- * ?�� 글로벌 BGM 매니?�
- *
- * 1) initBgm(): ???�작 ???�출. ?��???�??�터?�션?�로 ?�디?��? 미리 unlock.
- * 2) playBgm(): 게임 ?�이지 진입 ???�출. unlock ?�어 ?�으�?즉시 ?�생.
- * 3) stopBgm(): 게임 ?�장 ???�출. ?��?.
+ * Global BGM manager.
+ * 1) initBgm(): register interaction listeners to unlock media playback.
+ * 2) playBgm(): request continuous gameplay BGM.
+ * 3) stopBgm(): stop playback and reset position.
  */
 
 const BGM_SRC = '/audio/game-bgm.mp3'
@@ -23,11 +22,11 @@ function getOrCreateAudio(): HTMLAudioElement {
 }
 
 /**
- * ?��? ?�터?�션 ???�디??unlock (+ ?�생 ?��?중이�?바로 ?�생)
+ * Unlock media playback on first user interaction.
  */
 function onInteraction() {
   if (unlocked) {
-    // ?��? unlock ?? ?�생 ?��??�태�??�생 ?�도.
+    // Already unlocked: if BGM should be playing, retry playback.
     if (wantPlay) {
       const a = getOrCreateAudio()
       if (a.paused) {
@@ -37,7 +36,7 @@ function onInteraction() {
     return
   }
 
-  // unlock ?�도
+  // Attempt unlock by starting muted playback once.
   const a = getOrCreateAudio()
   const savedVolume = a.volume
   a.volume = 0
@@ -70,15 +69,15 @@ function addListeners() {
 }
 
 /**
- * ???�작 ???�출. ?��? ?�터?�션 감�?�??�작?�니??
- * ?�디???�일?� ?�직 로드?��? ?�습?�다.
+ * Initialize listeners for user interaction unlock flow.
+ * Audio instance is lazily created only when needed.
  */
 export function initBgm() {
   addListeners()
 }
 
 /**
- * BGM ?�생 ?�작.
+ * Start BGM playback.
  */
 export function playBgm() {
   wantPlay = true
@@ -89,13 +88,12 @@ export function playBgm() {
       unlocked = true
     })
     .catch(() => {
-      // ?�동?�생 차단 ???�터?�션 리스?�로 ?��?
       // interaction listeners stay active while BGM should play
     })
 }
 
 /**
- * BGM ?��?.
+ * Stop BGM playback.
  */
 export function stopBgm() {
   wantPlay = false

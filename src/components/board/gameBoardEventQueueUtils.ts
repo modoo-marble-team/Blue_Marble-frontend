@@ -32,8 +32,8 @@ export type ChanceMoneyEffect = {
   amount: number
 }
 
-const MONEY_UNIT_SCALE = 10_000
-const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
+export const MONEY_UNIT_SCALE = 10_000
+export const MONEY_ALREADY_WON_THRESHOLD = 10_000_000
 
 export const FAST_MOVE_ANIMATION_OPTIONS = {
   initialDelayMs: 200,
@@ -324,7 +324,7 @@ const getRecordNumber = (
   return null
 }
 
-const normalizeChanceMoneyAmountToWon = (value: number | null) => {
+export const normalizeChanceMoneyAmountToWon = (value: number | null) => {
   if (value == null || !Number.isFinite(value)) {
     return null
   }

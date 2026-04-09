@@ -767,6 +767,10 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
       (event: ServerEvent): boolean | void => {
         const normalizedType =
           typeof event.type === 'string' ? event.type.trim().toUpperCase() : ''
+        const isLocalPlayerEvent =
+          localPlayerId == null ||
+          event.playerId == null ||
+          String(event.playerId) === String(localPlayerId)
         if (normalizedType === 'DICE_ROLLED') {
           if (rollAnimationIntervalRef.current !== null) {
             freezeDiceRollValues()
@@ -789,7 +793,7 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
           }
 
           const doubleInfo = resolveDoubleDiceInfo(event)
-          if (doubleInfo.isDouble) {
+          if (isLocalPlayerEvent && doubleInfo.isDouble) {
             setDoubleDiceModal({
               open: true,
               extraRollCount:
@@ -978,11 +982,6 @@ const GameBoard = forwardRef<BoardGameHandle, GameBoardProps>(
               steps: chanceMoveHint.steps,
             }
           }
-
-          const isLocalPlayerEvent =
-            localPlayerId == null ||
-            event.playerId == null ||
-            String(event.playerId) === String(localPlayerId)
 
           if (!isLocalPlayerEvent) {
             return
